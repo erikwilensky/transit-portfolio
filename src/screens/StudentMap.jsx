@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { applyLens, getStore, getStudentMap, suggestInterchanges } from '../api.js';
+import { applyLens, getStore, getStudentMap, LEARNER_PROFILE, suggestInterchanges } from '../api.js';
 import LineDialog from '../components/LineDialog.jsx';
 import PhoneCapture from '../components/PhoneCapture.jsx';
 import MetroMap from '../components/MetroMap.jsx';
@@ -60,9 +60,10 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
   const [kind, setKind] = useState('');
   const [ver, setVer] = useState('');
   const [year, setYear] = useState('');
+  const [lp, setLp] = useState(''); // N6: a learner-profile lens, such as risk-taker moments
   const [opts, setOpts] = useState(false); // P3: on a phone, the view options fold away
   const [view, setView] = useState(() => (typeof window !== 'undefined' && window.innerWidth < 600 ? 'list' : 'map'));
-  const filtering = q.trim() || kind || ver || year;
+  const filtering = q.trim() || kind || ver || year || lp;
   const base = useMemo(() => applyLens(shown, null, { hiddenLines: hidden }), [shown, hidden]);
   const lens = useMemo(() => {
     if (!filtering) return base;
@@ -70,10 +71,10 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
     const visible = new Set([...base.visible].filter((id) => {
       const e = shown.events.find((x) => x.id === id);
       const hay = `${e.title} ${e.summary} ${e.about || ''} ${e.reflections.map((r) => r.text).join(' ')} ${e.lineIds.map((l) => shown.lines.find((x) => x.id === l)?.name).join(' ')}`.toLowerCase();
-      return words.every((w) => hay.includes(w)) && (!kind || e.type === kind) && (!ver || e.verification === ver) && (!year || yearOf(e, shown.student) === year);
+      return words.every((w) => hay.includes(w)) && (!kind || e.type === kind) && (!ver || e.verification === ver) && (!year || yearOf(e, shown.student) === year) && (!lp || e.tags?.lp.includes(lp));
     }));
     return { ...base, visible };
-  }, [base, shown, q, kind, ver, year, filtering]);
+  }, [base, shown, q, kind, ver, year, lp, filtering]);
   const years = useMemo(() => [...new Set(map.events.map((e) => yearOf(e, map.student)))], [map]);
   const kinds = useMemo(() => [...new Set(map.events.map((e) => e.type))], [map]);
   const listed = useMemo(() => shown.events.filter((e) => lens.visible.has(e.id)).sort((a, b) => b.date.localeCompare(a.date)), [shown, lens]);
@@ -134,7 +135,8 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
           <select value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Kind"><option value="">Any kind</option>{kinds.map((k) => <option key={k} value={k}>{TYPE_LABEL[k] || k}</option>)}</select>
           <select value={ver} onChange={(e) => setVer(e.target.value)} aria-label="Verification"><option value="">Any verification</option>{Object.entries(VERIFY_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
           <select value={year} onChange={(e) => setYear(e.target.value)} aria-label="Year"><option value="">Any year</option>{years.map((y) => <option key={y}>{y}</option>)}</select>
-          {filtering && <span className="find-n" role="status">{lens.visible.size} match{lens.visible.size === 1 ? '' : 'es'} <button className="linkish" onClick={() => { setQ(''); setKind(''); setVer(''); setYear(''); }}>Clear</button></span>}
+          <select value={lp} onChange={(e) => setLp(e.target.value)} aria-label="Learner profile"><option value="">Any learner profile</option>{LEARNER_PROFILE.map((k) => <option key={k} value={k}>{k} moments</option>)}</select>
+          {filtering && <span className="find-n" role="status">{lens.visible.size} match{lens.visible.size === 1 ? '' : 'es'} <button className="linkish" onClick={() => { setQ(''); setKind(''); setVer(''); setYear(''); setLp(''); }}>Clear</button></span>}
           <div className="seg small" role="group" aria-label="Show as"><button className={view === 'map' ? 'on' : ''} aria-pressed={view === 'map'} onClick={() => setView('map')}>Map</button><button className={view === 'list' ? 'on' : ''} aria-pressed={view === 'list'} onClick={() => setView('list')}>List</button></div>
         </div>
         <div className="chips filter" role="group" aria-label="Show or hide lines">

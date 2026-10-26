@@ -69,6 +69,7 @@ export function getStudentMap(studentId, viewer = 'student') {
       // Reflections carry their own visibility (private by default).
       reflections: store.reflections.filter((r) => r.eventId === e.id && allowed.includes(r.visibility || 'private')),
       endorsements: store.endorsements.filter((n) => n.eventId === e.id).map((n) => ({ ...n, teacher: teacherById[n.teacherId] })),
+      tags: getTags(e),
     }))
     .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
   const lines = student.laneOrder.map((id) => { const l = lineById(id); return { ...l, name: student.lineLabels?.[id] || l.name, status: student.lineStatus?.[id] || l.status }; })
@@ -343,6 +344,7 @@ if (!store.consentReqs) store.consentReqs = [
 ];
 if (!store.family) store.family = { lang: 'en', email: true };
 if (!store.reportComments) store.reportComments = {};
+if (!store.tags) store.tags = {};
 // ── Advisor ───────────────────────────────────────────────────────────
 export function getCohort(advisorId) {
   return store.students.filter((s) => s.advisorId === advisorId).map((s) => {
@@ -1022,4 +1024,45 @@ export function saveReportComment(studentId, patch, by) {
     notify(PERSONA_OF_STUDENT[studentId], 'Your advisor’s end-of-term report comment is in the SIS');
   }
   emit();
+}
+
+// ── N6: IB learner profile attributes and ATL skills on stations ──────
+export const LEARNER_PROFILE = ['Inquirer', 'Knowledgeable', 'Thinker', 'Communicator', 'Principled', 'Open-minded', 'Caring', 'Risk-taker', 'Balanced', 'Reflective'];
+export const ATL = ['Thinking', 'Communication', 'Social', 'Self-management', 'Research'];
+const LP_RULES = [
+  ['Risk-taker', (e, t) => e.type === 'competition' || /hackathon|ab initio|solo|audition|first ep|first time|stepped up|new to/.test(t)],
+  ['Caring', (e, t) => e.type === 'service' || /volunteer|tutor|buddy|buddies|mentor|community|girls|year 2|y7|y8/.test(t)],
+  ['Inquirer', (e, t) => /research|investigat|question|explor|essay|\bia\b|science fair|survey/.test(t)],
+  ['Thinker', (e, t) => /model|design|predict|analys|solv|algorithm|prototype|engine|sensor/.test(t)],
+  ['Communicator', (e, t) => /present|perform|concert|debate|oral|commentary|exhibition|french|spanish|japanese|thai|chatbot|report/.test(t)],
+  ['Principled', (e, t) => /lead|captain|organis|committee|integrity|commit/.test(t)],
+  ['Open-minded', (e, t) => /exchange|culture|language|international|global|perspective/.test(t)],
+  ['Balanced', (e, t) => ['sport', 'club'].includes(e.type) || /swim|football|choir|band|squad|club/.test(t)],
+  ['Knowledgeable', (e, t) => ['assessment', 'class', 'award'].includes(e.type) || /exam|grade \d|certificate|course|unit/.test(t)],
+  ['Reflective', (e) => e.type === 'reflection' || store.reflections.some((r) => r.eventId === e.id)],
+];
+const ATL_RULES = [
+  ['Research', (e, t) => /research|data|essay|\bia\b|survey|investigat|report|microplastic/.test(t)],
+  ['Thinking', (e, t) => /model|design|predict|analys|solv|prototype|algorithm|engine|code|game/.test(t)],
+  ['Communication', (e, t) => /present|perform|concert|oral|commentary|exhibition|chatbot|language|writ/.test(t)],
+  ['Social', (e, t) => /team|club|band|choir|buddy|buddies|group|squad|committee/.test(t)],
+  ['Self-management', (e, t) => /deadline|training|practice|hours|submission|season|grade \d|marathon/.test(t)],
+];
+function autoTags(e) {
+  const t = `${e.title} ${e.summary || ''} ${e.about || ''}`.toLowerCase();
+  return { lp: LP_RULES.filter(([, f]) => f(e, t)).map(([k]) => k).slice(0, 3), atl: ATL_RULES.filter(([, f]) => f(e, t)).map(([k]) => k).slice(0, 2), auto: true };
+}
+export function getTags(e) { return store.tags[e.id] || autoTags(e); }
+export function setTags(eventId, tags) {
+  const e = getEvent(eventId); if (!e) return;
+  store.tags[eventId] = { lp: tags.lp, atl: tags.atl, auto: false };
+  log(e.studentId, getStudent(e.studentId).name, 'station', `Tagged “${e.title}”: ${[...tags.lp, ...tags.atl].join(', ') || 'no tags'}`);
+  emit();
+}
+// Leadership sees counts only: how many students have at least one station showing each attribute.
+export function profileCoverage() {
+  const students = getStudents({ includeCohort: true }).filter((s) => store.events.some((e) => e.studentId === s.id));
+  const has = (k, field) => students.filter((s) => store.events.some((e) => e.studentId === s.id && e.type !== 'goal' && getTags(e)[field].includes(k))).length;
+  return { n: students.length, lp: LEARNER_PROFILE.map((k) => ({ k, n: has(k, 'lp') })), atl: ATL.map((k) => ({ k, n: has(k, 'atl') })),
+    stations: (k, field) => store.events.filter((e) => e.type !== 'goal' && getTags(e)[field].includes(k)).length };
 }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { VerifyBadge } from './Badge.jsx';
 import RecordInspector from './RecordInspector.jsx';
-import { addCheckIn, addReflection, completeGoal, deleteStation, editStation, getTeacher, getTeachers, requestEndorsement, requestFor, resubmit, setVisibility, snapshot, TODAY } from '../api.js';
+import { ATL, LEARNER_PROFILE, setTags, addCheckIn, addReflection, completeGoal, deleteStation, editStation, getTeacher, getTeachers, requestEndorsement, requestFor, resubmit, setVisibility, snapshot, TODAY } from '../api.js';
 import { createPortal } from 'react-dom';
 import { fmtTerm, TYPE_LABEL, VIS_LABEL, VERIFY_HELP } from '../format.js';
 import { dateIn, daysIn, lineName, termText, tr, useLang } from '../i18n.js';
@@ -34,6 +34,7 @@ export default function StationPanel({ event, map, onClose, readOnly = false, on
           {event.about && <p className="panel-about">{event.about}</p>}
           {event.type === 'goal' && <GoalBox event={event} readOnly={readOnly} lang={lang} />}
           {!readOnly && event.type !== 'goal' && <StudentActions key={event.id} event={event} onClose={onClose} toast={toast} />}
+          {event.type !== 'goal' && event.tags && <TagBox key={`t-${event.id}`} event={event} readOnly={readOnly} t={t} />}
           <VerifyBadge level={event.verification} large event={event} />
           <span className="vhelp">{t(VERIFY_HELP[event.verification])}</span>
 
@@ -88,6 +89,32 @@ export default function StationPanel({ event, map, onClose, readOnly = false, on
       {inspect && <RecordInspector eventId={inspect} onClose={() => setInspect(null)} />}
       {view && event && <EvidenceView ev={view} event={event} onClose={() => setView(null)} />}
     </aside>
+  );
+}
+
+// N6: IB learner profile attributes and ATL skills, suggested from the station and confirmed by the student.
+function TagBox({ event, readOnly, t }) {
+  const [edit, setEdit] = useState(false);
+  const tags = event.tags;
+  const flip = (field, k) => setTags(event.id, { ...tags, [field]: tags[field].includes(k) ? tags[field].filter((x) => x !== k) : [...tags[field], k] });
+  if (!edit) {
+    if (!tags.lp.length && !tags.atl.length && readOnly) return null;
+    return (
+      <div className="tag-box">
+        {tags.lp.map((k) => <span key={k} className="lp-tag">{t(k)}</span>)}
+        {tags.atl.map((k) => <span key={k} className="atl-tag">{t(k)} {t('skills')}</span>)}
+        {!readOnly && <button className="linkish" onClick={() => setEdit(true)}>{tags.auto ? 'Suggested · check the tags' : 'Edit tags'}</button>}
+      </div>
+    );
+  }
+  return (
+    <div className="tag-box editing">
+      <small>Learner profile</small>
+      <div>{LEARNER_PROFILE.map((k) => <button key={k} className={`lp-tag${tags.lp.includes(k) ? ' on' : ''}`} aria-pressed={tags.lp.includes(k)} onClick={() => flip('lp', k)}>{k}</button>)}</div>
+      <small>Approaches to learning</small>
+      <div>{ATL.map((k) => <button key={k} className={`atl-tag${tags.atl.includes(k) ? ' on' : ''}`} aria-pressed={tags.atl.includes(k)} onClick={() => flip('atl', k)}>{k}</button>)}</div>
+      <button className="ghost small-btn" onClick={() => { if (tags.auto) setTags(event.id, tags); setEdit(false); }}>Done</button>
+    </div>
   );
 }
 

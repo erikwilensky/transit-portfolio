@@ -35,6 +35,7 @@ import Governance from './screens/Governance.jsx';
 import Rollout from './screens/Rollout.jsx';
 import ParentView from './screens/ParentView.jsx';
 import Family from './screens/Family.jsx';
+import LearnerProfile from './screens/LearnerProfile.jsx';
 import { tr } from './i18n.js';
 import Pilot from './screens/Pilot.jsx';
 import AuditLog from './screens/AuditLog.jsx';
@@ -267,6 +268,7 @@ export default function App() {
           {persona.kind === 'leadership' && route.screen === 'rollout' && <Rollout {...ctx} />}
           {persona.kind === 'leadership' && route.screen === 'pilot' && <Pilot {...ctx} />}
           {persona.kind === 'leadership' && route.screen === 'audit' && <AuditLog {...ctx} />}
+          {persona.kind === 'leadership' && route.screen === 'profile' && <LearnerProfile {...ctx} />}
           {persona.kind === 'parent' && <Family {...ctx} screen={route.screen} param={route.param} />}
           {persona.kind === 'external' && <ShareLanding token={persona.token} drafts={drafts} version={version} embedded />}
           <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} />

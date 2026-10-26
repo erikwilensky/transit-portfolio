@@ -1826,3 +1826,26 @@ p b, p strong, td b { font-weight: 600; }
 
 /* N10: draft a line narrative */
 .bl-draft { display: flex; gap: 12px; font-size: 12.5px; margin-top: 2px; }
+
+/* N6: learner profile and ATL tags */
+.tag-box { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin: 8px 0; }
+.tag-box.editing { display: grid; gap: 6px; padding: 10px; border: 1px solid var(--rule); border-radius: 10px; background: var(--bg); }
+.tag-box.editing > div { display: flex; flex-wrap: wrap; gap: 5px; } .tag-box.editing small { color: var(--muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; }
+.tag-box.editing > button { justify-self: start; }
+.lp-tag, .atl-tag { font-size: 12px; font-weight: 600; border-radius: 999px; padding: 2px 9px; border: 1px solid transparent; }
+.lp-tag { background: color-mix(in srgb, var(--b-purple) 14%, var(--surface)); color: var(--b-purple); }
+.atl-tag { background: color-mix(in srgb, var(--b-green) 13%, var(--surface)); color: var(--b-green); }
+:root[data-theme="dark"] .lp-tag { color: #c4c6ee; } :root[data-theme="dark"] .atl-tag { color: #7fd8b5; }
+button.lp-tag, button.atl-tag { background: var(--surface); border-color: var(--rule); color: var(--muted); }
+button.lp-tag.on { background: var(--b-purple); border-color: var(--b-purple); color: #fff; } button.atl-tag.on { background: var(--b-green); border-color: var(--b-green); color: #fff; }
+.lp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.lp-grid h3 small { color: var(--muted); font-weight: 400; font-size: 12.5px; margin-left: 6px; }
+.lp-bars { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+.lp-bars li { display: grid; grid-template-columns: 130px 1fr 44px; gap: 10px; align-items: center; font-size: 13.5px; }
+.lpb-track { height: 14px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+.lpb-bar { display: block; height: 100%; background: var(--b-purple); border-radius: 0 4px 4px 0; }
+.lp-grid section:nth-child(2) .lpb-bar { background: var(--b-green); }
+.lpb-bar.low { opacity: .55; }
+.lpb-n { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+@media (max-width: 860px) { .lp-grid { grid-template-columns: 1fr; } }
+.tag-box .linkish { font-size: 12.5px; }
