@@ -1,3 +1,4 @@
+import { inkOn } from '../format.js';
 import { getRollout } from '../api.js';
 import { plan, SYSTEMS } from '../screens/Rollout.jsx';
 import { PERSONAS, KIND_LABEL } from '../personas.js';
@@ -20,7 +21,7 @@ export function TourCard({ kind, ctx }) {
           <section><h2>Today</h2><p>A student’s learning sits in six systems: the SIS, ManageBac, the CAS log, clubs and sports, exam boards and GitHub. No one sees the whole journey, and every year counsellors rebuild it by hand.</p></section>
           <section><h2>The idea</h2><p>One record that each system feeds and the student owns. Teachers verify it. Every audience reads it in the format it needs, and only what the student chooses to share.</p></section>
         </div>
-        <ul className="tc-roles">{ROLES.map((k) => { const p = PERSONAS.find((x) => x.kind === k); return <li key={k}><span className="av" style={{ background: p.colour }}>{p.initials}</span><b>{KIND_LABEL[k] === 'Students' ? 'Student' : KIND_LABEL[k]}</b><small>{ROLE_LINE[k]}</small></li>; })}</ul>
+        <ul className="tc-roles">{ROLES.map((k) => { const p = PERSONAS.find((x) => x.kind === k); return <li key={k}><span className="av" style={{ background: p.colour, color: inkOn(p.colour) }}>{p.initials}</span><b>{KIND_LABEL[k] === 'Students' ? 'Student' : KIND_LABEL[k]}</b><small>{ROLE_LINE[k]}</small></li>; })}</ul>
         <p className="tc-hint">Seven roles, one record. Press <kbd>→</kbd> to begin.</p>
       </div>
     );

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import ClassTask from '../components/ClassTask.jsx';
 import { declineRequest, endorse, getRequests, getStore, getTeacher, getLine, snapshot } from '../api.js';
-import { fmtDate, TYPE_LABEL } from '../format.js';
+import { fmtDate, TYPE_LABEL, inkOn } from '../format.js';
 import { VerifyBadge } from '../components/Badge.jsx';
 import SponsorPanel from '../components/SponsorPanel.jsx';
 import { getSponsored } from '../api.js';
@@ -78,7 +78,7 @@ export default function TeacherQueue({ teacherId, toast, version, focus }) {
               {img ? <img src={img.url} alt={img.caption} className="q-img" /> : <div className="q-img none">{TYPE_LABEL[e.type]}</div>}
               <div className="q-body">
                 <div className="q-meta">
-                  <span className="pres-avatar xs" style={{ background: r.student.avatar.colour }}>{r.student.avatar.initials}</span>
+                  <span className="pres-avatar xs" style={{ background: r.student.avatar.colour, color: inkOn(r.student.avatar.colour) }}>{r.student.avatar.initials}</span>
                   <b>{r.student.name}</b><span>Year {r.student.grade + 1}</span>
                   <span className="q-src">{r.source === 'lms' ? 'From ManageBac' : r.source === 'sponsor' ? 'Finished project you sponsored' : 'Requested by the student'} · {fmtDate(r.date)}</span>
                   {r.resubmitted ? <span className="new-pill">RESUBMITTED</span> : r.fresh && <span className="new-pill">NEW</span>}

@@ -624,7 +624,7 @@ export function getActivity(studentId) {
   }
   for (const n of store.endorsements) { const e = getEvent(n.eventId); if (e?.studentId === studentId && !n.live) hist.push({ ts: `${n.date}T15:40:00`, actor: teacherById[n.teacherId]?.name, kind: 'endorse', text: `Endorsed “${e.title}”` }); }
   for (const p of presentationsData.filter((x) => x.studentId === studentId)) for (const l of p.shareLinks) {
-    for (let i = 0; i < l.views; i++) { const d = new Date(new Date(`${TODAY}T12:00:00`).getTime() - (i * 5 + (l.token.charCodeAt(3) % 4)) * 86400000 - i * 3600000); hist.push({ ts: d.toISOString().slice(0, 19), actor: SHARED_LABEL[l.token] || 'Link viewer', kind: 'view', text: `Viewed share link /s/${l.token}` }); }
+    for (let i = 0; i < l.views; i++) { const end = l.revoked || l.expiresAt < TODAY ? (l.expiresAt < TODAY ? l.expiresAt : TODAY) : TODAY; const d = new Date(new Date(`${end}T12:00:00`).getTime() - ((l.revoked ? i + 1 : i) * 5 + (l.token.charCodeAt(3) % 4)) * 86400000 - i * 3600000); hist.push({ ts: d.toISOString().slice(0, 19), actor: SHARED_LABEL[l.token] || l.sharedWith || 'Anyone with the link', kind: 'view', text: `Viewed share link /s/${l.token}` }); }
     if (l.revoked) hist.push({ ts: `${l.expiresAt}T09:00:00`, actor: s.name, kind: 'link', text: `Revoked share link /s/${l.token}` });
   }
   const live = store.activity.filter((a) => a.studentId === studentId).map((a) => ({ ...a, live: true }));

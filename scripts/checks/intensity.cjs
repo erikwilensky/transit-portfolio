@@ -1,0 +1,23 @@
+// Interface intensity: Simple for Year 7, Standard for Lena, Full for Maya; switching changes the interface.
+const { chromium } = require('playwright');
+const ok = (c, m) => { console.log(c ? 'PASS' : 'FAIL', m); if (!c) process.exitCode = 1; };
+(async () => { const b = await chromium.launch(); const errs=[]; const U='http://localhost:4173/#/'; const SH=require('os').tmpdir()+'/tp-';
+const p = await b.newPage({ viewport: { width: 1280, height: 800 } }); p.on('pageerror', e => errs.push(e.message));
+await p.goto(U+'reset'); await p.waitForTimeout(400);
+await p.click('.tour-btn'); await p.click('.tour-row >> nth=0 >> summary'); await p.click('.tour-row >> nth=0 >> text=Pim, Year 7, on Simple'); await p.waitForTimeout(900);
+await p.click('.presenter button[aria-label="Close tour"]');
+ok(/pim\/map/.test(p.url()), 'tour stop opens Pim');
+ok((await p.locator('.intensity .on').first().textContent()) === 'Simple', 'Pim on Simple');
+ok(!(await p.locator('.map-bar').count()), 'Simple hides the map toolbar');
+await p.screenshot({ path: SH+'int-simple.png' });
+await p.click('.sh-card.add'); await p.waitForTimeout(300); ok(await p.locator('.sh-flow').count() > 0, 'guided add opens'); await p.screenshot({ path: SH+'int-simple-add.png' }); await p.keyboard.press('Escape');
+await p.goto(U+'lena/map'); await p.waitForTimeout(700);
+ok((await p.locator('.intensity .on').first().textContent()) === 'Standard', 'Lena on Standard'); ok(!(await p.locator('.map-q').count()), 'Standard has no search box');
+await p.screenshot({ path: SH+'int-standard.png' });
+await p.goto(U+'maya/map'); await p.waitForTimeout(700);
+ok((await p.locator('.intensity .on').first().textContent()) === 'Full', 'Maya on Full'); ok(await p.locator('.map-q').count() === 1, 'Full has search');
+await p.click('.intensity >> text=Simple'); await p.waitForTimeout(400); ok(await p.locator('.sh-card.add').count() === 1, 'switching Maya to Simple shows the guided home');
+await p.goto(U+'maya/studio'); await p.waitForTimeout(600); const simpleTiers = await p.locator('.tier-toggle button').count();
+await p.click('.intensity >> text=Full'); await p.waitForTimeout(400); const fullTiers = await p.locator('.tier-toggle button').count();
+ok(fullTiers >= simpleTiers && fullTiers > 0, `studio tiers simple ${simpleTiers} full ${fullTiers}`);
+ok(!errs.length, 'no page errors ' + errs.join('; ')); await b.close(); })();

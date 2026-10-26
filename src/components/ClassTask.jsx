@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { endorseClassTask, getClassTasks, getStudent, snapshot } from '../api.js';
-import { fmtDate } from '../format.js';
+import { fmtDate, inkOn } from '../format.js';
 
 const NOTES = ['Met the brief.', 'Independent work.', 'Beyond the syllabus.'];
 
@@ -33,9 +33,9 @@ export default function ClassTask({ teacherId, onClose, toast }) {
           <>
             <ul className="ct-list">
               {task.submitted.map((sid) => { const s = getStudent(sid); return (
-                <li key={sid}><label><input type="checkbox" checked={picked.includes(sid)} onChange={() => flip(sid)} /><span className="av" style={{ background: s.avatar.colour }}>{s.avatar.initials}</span><b>{s.name}</b><small>Year {s.grade + 1} · submitted</small></label></li>
+                <li key={sid}><label><input type="checkbox" checked={picked.includes(sid)} onChange={() => flip(sid)} /><span className="av" style={{ background: s.avatar.colour, color: inkOn(s.avatar.colour) }}>{s.avatar.initials}</span><b>{s.name}</b><small>Year {s.grade + 1} · submitted</small></label></li>
               ); })}
-              {task.late.map((sid) => { const s = getStudent(sid); return <li key={sid} className="late"><span className="av" style={{ background: s.avatar.colour }}>{s.avatar.initials}</span><b>{s.name}</b><small>not submitted yet, so left out</small></li>; })}
+              {task.late.map((sid) => { const s = getStudent(sid); return <li key={sid} className="late"><span className="av" style={{ background: s.avatar.colour, color: inkOn(s.avatar.colour) }}>{s.avatar.initials}</span><b>{s.name}</b><small>not submitted yet, so left out</small></li>; })}
             </ul>
             <div className="ct-notes q-chips"><small>Note on every endorsement</small>{NOTES.map((n) => <button key={n} className={note === n ? 'on' : ''} aria-pressed={note === n} onClick={() => setNote(n)}>{n}</button>)}</div>
             <p className="fineprint">Each student gets the station in their inbox, already endorsed, and chooses whether it joins their map. By hand this is about 3 minutes each.</p>

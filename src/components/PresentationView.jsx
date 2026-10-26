@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import MetroMap from './MetroMap.jsx';
 import { VerifyBadge, VerifyLegend } from './Badge.jsx';
 import { LENSES } from '../api.js';
-import { fmtDate, TYPE_LABEL } from '../format.js';
+import { fmtDate, TYPE_LABEL, inkOn } from '../format.js';
 import CustomView from '../custom/CustomView.jsx';
 import { defaultDesign } from '../custom/design.js';
 
@@ -55,7 +55,7 @@ export default function PresentationView({ map, lens, pres, selectedId, onSelect
   return (
     <div className={`pres layout-${layout}`}>
       <header className="pres-head">
-        <div className="pres-avatar" style={{ background: map.student.avatar.colour }}>{map.student.avatar.initials}</div>
+        <div className="pres-avatar" style={{ background: map.student.avatar.colour, color: inkOn(map.student.avatar.colour) }}>{map.student.avatar.initials}</div>
         <div>
           <div className="pres-kicker">{LENSES[pres.audience].label}{pres.targetName ? ` · ${pres.targetName}` : ''}</div>
           <h1>{pres.title}</h1>
@@ -93,7 +93,7 @@ export default function PresentationView({ map, lens, pres, selectedId, onSelect
                 );
               })}
             </div>
-            {reflections.at(-1) && <blockquote className="pull">“{reflections.at(-1).text.split('\n\n')[0]}”<cite>From a reflection on “{reflections.at(-1).event.title}”</cite></blockquote>}
+            {reflections.at(-1) && <blockquote className="pull">“{reflections.at(-1).text.split('\n\n')[0]}”<cite>{/^Reflection: /.test(reflections.at(-1).event.title) ? `From a reflection: “${reflections.at(-1).event.title.replace(/^Reflection: /, '')}”` : `From a reflection on “${reflections.at(-1).event.title}”`}</cite></blockquote>}
             {goals.length > 0 && <><h2 className="p-h2">Next</h2><ul className="goal-list">{goals.map((e) => <li key={e.id} onClick={() => open(e.id)}><b>{e.title}</b> <span>{month(e.date)}</span></li>)}</ul></>}
           </>
         )}

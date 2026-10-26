@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import MetroMap from '../components/MetroMap.jsx';
 import StationPanel from '../components/StationPanel.jsx';
 import { ALUM, addAlumStation, applyLens, getAlumMap } from '../api.js';
-import { fmtDate } from '../format.js';
+import { fmtDate, inkOn } from '../format.js';
 
 const TYPES = [['project', 'Project'], ['class', 'Course or module'], ['club', 'Society or club'], ['service', 'Volunteering'], ['award', 'Award'], ['assessment', 'Result']];
 
@@ -22,7 +22,7 @@ export default function AlumJourney({ version, toast, go, persona }) {
     <div className="home alum">
       <div className="home-head">
         <div className="who">
-          <span className="pres-avatar" style={{ background: s.avatar.colour }}>{s.avatar.initials}</span>
+          <span className="pres-avatar" style={{ background: s.avatar.colour, color: inkOn(s.avatar.colour) }}>{s.avatar.initials}</span>
           <div>
             <h1>{s.name}</h1>
             <p>NIST Class of {ALUM.classOf} · BSc Data Science, Northbridge University (fictional) · {fmtDate(ALUM.today)}</p>
@@ -36,7 +36,7 @@ export default function AlumJourney({ version, toast, go, persona }) {
             <button className="primary" onClick={() => setAdding(true)}>＋ Add a station</button>
           </div>
         </div>
-        <p className="alum-note"><b>You left NIST in June {ALUM.classOf} and kept your map.</b> The {verified} stations the school or a teacher verified keep their signatures, so their codes still check. Teachers and your advisor can no longer see it. What you add now is marked as added after NIST.</p>
+        <p className="alum-note"><b>You left NIST in June {ALUM.classOf} and kept your map.</b> <span>The {verified} stations the school or a teacher verified keep their signatures, so their codes still check. Teachers and your advisor can no longer see it. What you add now is marked as added after NIST.</span></p>
       </div>
       <div className="home-map">
         <MetroMap map={map} lens={lens} selectedId={selected} onSelect={setSelected} fitKey="alum" />

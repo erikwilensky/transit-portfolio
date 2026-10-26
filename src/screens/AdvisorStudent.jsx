@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { addNote, applyLens, getNotes, getPrompts, getStudentMap, growth, log, sendPrompt, snapshot, TODAY } from '../api.js';
-import { appUrl, fmtDate } from '../format.js';
+import { appUrl, fmtDate, inkOn } from '../format.js';
 import MeetingMode from '../components/MeetingMode.jsx';
 import Qr from '../components/Qr.jsx';
 import MetroMap from '../components/MetroMap.jsx';
@@ -29,7 +29,7 @@ export default function AdvisorStudent({ studentId, version, toast, go, persona 
   const open = map.signals.filter((g) => g.open);
   const event = map.events.find((e) => e.id === selected);
   const agenda = [
-    since.length ? `${since.length} new station${since.length > 1 ? 's' : ''} since ${fmtDate(lastMeeting)}: ${since.slice(-3).map((e) => e.title).join('; ')}` : `No new stations since ${fmtDate(lastMeeting)}`,
+    since.length ? `${since.length} new station${since.length > 1 ? 's' : ''} since ${fmtDate(lastMeeting)}: ${since.slice(-3).map((e) => `“${e.title}”`).join(', ')}` : `No new stations since ${fmtDate(lastMeeting)}`,
     ...ended.map((l) => `${l.name} has ended. Ask what it gave ${first}.`),
     ...soon.map((e) => `${e.title}: due in ${Math.round(daysBetween(TODAY, e.date) / 7)} weeks`),
     open.length ? `${open.length} open reflection signal${open.length > 1 ? 's' : ''}` : 'All reflection signals answered',
@@ -39,7 +39,7 @@ export default function AdvisorStudent({ studentId, version, toast, go, persona 
     <div className="adv-student">
       <div className="as-head">
         <button className="cb-back" onClick={() => go(persona.id, 'advisory')}>‹ Advisory 4B</button>
-        <span className="pres-avatar" style={{ background: s.avatar.colour }}>{s.avatar.initials}</span>
+        <span className="pres-avatar" style={{ background: s.avatar.colour, color: inkOn(s.avatar.colour) }}>{s.avatar.initials}</span>
         <div><h1>{s.name}</h1><p>Year {s.grade + 1} · {s.programme} · advisor view (advisor, school and publishable items)</p></div>
         <span className="spacer" />
         <button className="primary" onClick={() => setMeeting(true)}>Start meeting mode</button>
@@ -55,7 +55,7 @@ export default function AdvisorStudent({ studentId, version, toast, go, persona 
             <ol className="agenda">{agenda.map((a, i) => <li key={i}>{a}</li>)}</ol>
           </section>
           <details className="card-sec growth">
-            <summary><h3>{first} against {first}’s own last term</h3></summary>
+            <summary><h3>This term against last term</h3></summary>
             <div className="gr-row">
               {[['stations', 'stations'], ['reflections', 'reflections']].map(([k, l]) => { const d = g.now[k] - g.before[k]; return <div key={k}><b>{g.now[k]}</b><span>{l} this term</span><small className={d > 0 ? 'up' : ''}>{d === 0 ? 'same as last term' : `${Math.abs(d)} ${d > 0 ? 'more' : 'fewer'} than last term`}</small></div>; })}
             </div>

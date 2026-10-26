@@ -1,3 +1,4 @@
+import { inkOn } from '../format.js';
 import { useMemo, useState } from 'react';
 import { addNote, applyLens, getStudentMap } from '../api.js';
 import MetroMap from './MetroMap.jsx';
@@ -23,7 +24,7 @@ export default function MeetingMode({ studentId, agenda, advisorId, onClose, toa
   return (
     <div className="meeting" role="dialog" aria-label={`Meeting with ${first}`}>
       <header className="mt-head">
-        <span className="pres-avatar sm" style={{ background: map.student.avatar.colour }}>{map.student.avatar.initials}</span>
+        <span className="pres-avatar sm" style={{ background: map.student.avatar.colour, color: inkOn(map.student.avatar.colour) }}>{map.student.avatar.initials}</span>
         <div><b>1:1 with {map.student.name}</b><small>Year {map.student.grade + 1} · showing what {first} shares with an advisor</small></div>
         <span className="spacer" />
         <button className="ghost" onClick={() => setGoal(true)}>＋ Set a goal together</button>

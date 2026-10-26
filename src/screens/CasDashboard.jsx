@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { CAS_STATUSES, casNudge, getCasNudges, getCasProject, getStore, getStudentMap, getStudents, setCasProject, TODAY } from '../api.js';
-import { fmtDate } from '../format.js';
+import { fmtDate, inkOn } from '../format.js';
 import { OUTCOMES } from '../components/AddStation.jsx';
 import StationPanel from '../components/StationPanel.jsx';
 
@@ -49,7 +49,7 @@ export default function CasDashboard({ version, persona, toast }) {
           </div>
           {rows.map((r) => (
             <div key={r.s.id} className="cas-row" role="row">
-              <span role="rowheader" className="cas-name"><span className="pres-avatar xs" style={{ background: r.s.avatar.colour }}>{r.s.avatar.initials}</span>{r.s.name}<small>Y{r.s.grade + 1} · {r.covered}/7</small></span>
+              <span role="rowheader" className="cas-name"><span className="pres-avatar xs" style={{ background: r.s.avatar.colour, color: inkOn(r.s.avatar.colour) }}>{r.s.avatar.initials}</span>{r.s.name}<small>Y{r.s.grade + 1} · {r.covered}/7</small></span>
               {OUTCOMES.map((o, i) => {
                 const evs = r.by(i + 1);
                 const isNew = evs.some(fresh);

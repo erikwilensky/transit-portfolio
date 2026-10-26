@@ -1,0 +1,23 @@
+// Map search, filters and the list view (Full interface), plus phone.
+const { chromium } = require('playwright');
+const ok = (c, m) => { console.log(c ? 'PASS' : 'FAIL', m); if (!c) process.exitCode = 1; };
+(async () => { const b = await chromium.launch(); const errs=[]; const U='http://localhost:4173/#/'; const SH=require('os').tmpdir()+'/tp-';
+const p = await b.newPage({ viewport: { width: 1280, height: 800 } }); p.on('pageerror', e => errs.push(e.message));
+await p.goto(U+'reset'); await p.waitForTimeout(400); await p.goto(U+'maya/map'); await p.reload(); await p.waitForTimeout(900);
+const n0 = await p.locator('.metro .station, svg .station').count();
+await p.fill('.map-q', 'sensor'); await p.waitForTimeout(600);
+const found = await p.locator('.find-n').textContent(); ok(/\d+ match/.test(found), 'search shows a count: ' + found.trim());
+await p.screenshot({ path: SH+'f10-search.png' });
+await p.fill('.map-q', ''); await p.click('.map-bar >> text=Filters'); await p.selectOption('select[aria-label="Verification"]', 'teacher-endorsed'); await p.waitForTimeout(400);
+ok(/\d+ match/.test(await p.locator('.find-n').textContent()), 'verification filter counts');
+await p.click('.map-bar >> role=button[name="List"]'); await p.waitForTimeout(300);
+const rows = await p.locator('.sl-row').count(); ok(rows > 0, 'list rows ' + rows);
+await p.locator('.sl-row').first().click(); await p.waitForTimeout(400);
+ok(!!(await p.locator('.station-panel h2').first().textContent()), 'row opens the station panel');
+await p.click('.find-n >> text=Clear'); await p.waitForTimeout(300); ok(!(await p.locator('.find-n').count()), 'Clear removes filters');
+await p.screenshot({ path: SH+'f10-list.png' });
+const m = await b.newPage({ viewport: { width: 390, height: 800 } }); m.on('pageerror', e => errs.push(e.message));
+await m.goto(U+'maya/map'); await m.waitForTimeout(800);
+ok(await m.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'no sideways scroll on phone');
+await m.screenshot({ path: SH+'f10-phone.png' });
+ok(!errs.length, 'no page errors ' + errs.join('; ')); await b.close(); })();

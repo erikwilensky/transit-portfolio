@@ -4,7 +4,7 @@ import SimpleHome, { ShowFamily } from './screens/SimpleHome.jsx';
 import IntensityControl from './components/IntensityControl.jsx';
 import { ensureEndorsed } from './tourStory.js';
 import { PERSONAS, KIND_LABEL, NAV, personaById, home } from './personas.js';
-import { ago, appUrl } from './format.js';
+import { ago, appUrl, inkOn } from './format.js';
 import Studio from './components/Studio.jsx';
 import SharedView from './components/SharedView.jsx';
 import IntegrationsPanel from './components/IntegrationsPanel.jsx';
@@ -188,7 +188,7 @@ export default function App() {
             <button className="icon-btn nav-search" onClick={() => setLaunch(true)} aria-label="Jump to anything (Ctrl+K)" title="Jump to anything (/ or Ctrl+K)"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" strokeWidth="1.8" /><path d="M11 11l3.5 3.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg></button>
             <div className="menu-wrap">
               <button className="persona-btn" onClick={() => setMenu(menu === 'persona' ? null : 'persona')} aria-expanded={menu === 'persona'} aria-haspopup="menu">
-                <span className="av" style={{ background: persona.colour }}>{persona.initials}</span>
+                <span className="av" style={{ background: persona.colour, color: inkOn(persona.colour) }}>{persona.initials}</span>
                 <span className="pb-text"><small>{T('Viewing as')}</small><b>{persona.name}</b></span><span aria-hidden="true">▾</span>
               </button>
               {menu === 'persona' && (
@@ -198,7 +198,7 @@ export default function App() {
                       <div className="menu-title">{T(label)}</div>
                       {PERSONAS.filter((p) => p.kind === kind).map((p) => (
                         <button key={p.id} role="menuitem" className={p.id === persona.id ? 'on' : ''} onClick={() => go(p.id)}>
-                          <span className="av" style={{ background: p.colour }}>{p.initials}</span><span><b>{p.name}</b><small>{p.role}</small></span>
+                          <span className="av" style={{ background: p.colour, color: inkOn(p.colour) }}>{p.initials}</span><span><b>{p.name}</b><small>{p.role}</small></span>
                         </button>
                       ))}
                     </div>

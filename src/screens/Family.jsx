@@ -1,3 +1,4 @@
+import { inkOn } from '../format.js';
 import { useMemo, useState } from 'react';
 import { answerConsent, applyLens, consentOnFile, familyViewer, getConsentReqs, getDigest, getFamily, getLang, setLang, getStudent, getStudentMap, setFamily, TERM_START, TODAY, youngStudent } from '../api.js';
 import MetroMap from '../components/MetroMap.jsx';
@@ -69,7 +70,7 @@ function Head({ persona, childId, screen, go, title, lede, lang }) {
         <div className="fam-kids" role="group" aria-label="Child">
           {persona.children.map((id) => { const s = getStudent(id); return (
             <button key={id} className={id === childId ? 'on' : ''} aria-pressed={id === childId} onClick={() => go(persona.id, screen, id)}>
-              <span className="av" style={{ background: s.avatar.colour }}>{s.avatar.initials}</span><span><b>{first(s)}</b><small>Year {s.grade + 1}</small></span>
+              <span className="av" style={{ background: s.avatar.colour, color: inkOn(s.avatar.colour) }}>{s.avatar.initials}</span><span><b>{first(s)}</b><small>Year {s.grade + 1}</small></span>
               {youngStudent(s) && !consentOnFile(id) && <i className="fam-dot" aria-label={SAY[lang].waiting} />}
             </button>
           ); })}
@@ -185,7 +186,7 @@ function Digest({ persona, go, lang }) {
             const nameOf = (id) => lineName(lang, d.map.lines.find((l) => l.id === id)?.name || id);
             return (
               <section key={s.id} className="dg-kid">
-                <h3><span className="av" style={{ background: s.avatar.colour }}>{s.avatar.initials}</span>{s.name} <small>Year {s.grade + 1}</small></h3>
+                <h3><span className="av" style={{ background: s.avatar.colour, color: inkOn(s.avatar.colour) }}>{s.avatar.initials}</span>{s.name} <small>Year {s.grade + 1}</small></h3>
                 {!joined ? <p>{say.notJoined(f)} <button className="linkish" onClick={() => go(persona.id, 'consent', s.id)}>{say.toConsent}</button></p> : quiet ? <p className="fineprint">{say.nothing(f)}</p> : (
                   <>
                     {d.stations.length > 0 && <><h4>{say.newSt}</h4><ul>{d.stations.map((e) => <li key={e.id}><b lang="en">{e.title}</b> <small>{dateIn(lang, e.date)} · {e.lineIds.map(nameOf).join(', ')}</small></li>)}</ul></>}

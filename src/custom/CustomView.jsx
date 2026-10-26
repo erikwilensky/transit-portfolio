@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import MetroMap from '../components/MetroMap.jsx';
 import { VerifyBadge } from '../components/Badge.jsx';
 import { applyLens } from '../api.js';
-import { fmtDate } from '../format.js';
+import { fmtDate, inkOn } from '../format.js';
 import { BLOCKS, SPANS, themeVars } from './design.js';
 
 const SPAN_STEPS = SPANS.map(([n]) => n).sort((a, b) => a - b);
@@ -47,7 +47,7 @@ export default function CustomView({ map, lens, design, editable = false, select
       case 'hero': return (
         <div className={`cv-hero hero-${p.layout}`}>
           <div className="cv-hero-text">
-            {p.avatar && <div className="cv-avatar" style={{ background: map.student.avatar.colour }}>{map.student.avatar.initials}</div>}
+            {p.avatar && <div className="cv-avatar" style={{ background: map.student.avatar.colour, color: inkOn(map.student.avatar.colour) }}>{map.student.avatar.initials}</div>}
             {ed('title', { tag: 'h1', className: 'cv-title' })}
             {ed('subtitle', { tag: 'div', className: 'cv-sub' })}
             {ed('tagline', { tag: 'p', className: 'cv-tagline', multiline: true })}

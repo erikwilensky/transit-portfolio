@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { applyLens, askEvidence, exportPresentation, extraViews, getStudentMap, isGated, notify, recordView, TODAY, PERSONA_OF_STUDENT } from '../api.js';
-import { appUrl, fmtDate, TYPE_LABEL, verifyCode } from '../format.js';
+import { applyLens, askEvidence, exportPresentation, extraViews, getStudentMap, isGated, notify, recordView, TODAY, PERSONA_OF_STUDENT, SHARED_LABEL } from '../api.js';
+import { appUrl, fmtDate, TYPE_LABEL, verifyCode, inkOn } from '../format.js';
 import Qr from '../components/Qr.jsx';
 import { VerifyBadge } from '../components/Badge.jsx';
 import PresentationView from '../components/PresentationView.jsx';
@@ -9,7 +9,7 @@ import StationPanel from '../components/StationPanel.jsx';
 import Logo from '../components/Logo.jsx';
 import { VerifyScope } from '../components/VerifyModal.jsx';
 
-const SHARED_WITH = { 'tp-nb7d': 'Northbridge University admissions', 'tp-u8k4': 'University applications', 'tp-c7m1': 'Anyone with the link' };
+const SHARED_WITH = SHARED_LABEL;
 
 // What someone outside the school sees when they open a share link.
 export default function ShareLanding({ token, drafts, embedded = false }) {
@@ -101,7 +101,7 @@ function Skim({ map, lens, pres, onOpen }) {
   return (
     <div className="skim">
       <div className="skim-head">
-        <span className="pres-avatar" style={{ background: map.student.avatar.colour }}>{map.student.avatar.initials}</span>
+        <span className="pres-avatar" style={{ background: map.student.avatar.colour, color: inkOn(map.student.avatar.colour) }}>{map.student.avatar.initials}</span>
         <div>
           <h1>{map.student.name}</h1>
           <p>{pres.intro || pres.title}</p>

@@ -31,16 +31,6 @@
       "status": "pending"
     },
     {
-      "id": "rq-04",
-      "eventId": "ev-336",
-      "studentId": "st-07",
-      "teacherId": "t-01",
-      "date": "2026-10-23",
-      "source": "lms",
-      "note": null,
-      "status": "pending"
-    },
-    {
       "id": "rq-05",
       "eventId": "ev-337",
       "studentId": "st-07",

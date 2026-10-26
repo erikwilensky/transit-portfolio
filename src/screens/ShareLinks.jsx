@@ -35,7 +35,7 @@ export default function ShareLinks({ studentId, drafts, updateDraft, toast, vers
           <p>Each link opens one presentation, read-only. Views are logged, links expire, and you can switch any of them off at once.</p>
         </div>
         <div className="meter">
-          <div><b>{rows.filter(({ l }) => !l.revoked && l.expiresAt >= TODAY).length}</b><span>links working</span></div>
+          {(() => { const n = rows.filter(({ l }) => !l.revoked && l.expiresAt >= TODAY).length; return <div><b>{n}</b><span>link{n === 1 ? '' : 's'} working</span></div>; })()}
           <div><b>{rows.reduce((n, { l }) => n + l.views + extraViews(l.token), 0)}</b><span>views in total</span></div>
         </div>
       </header>

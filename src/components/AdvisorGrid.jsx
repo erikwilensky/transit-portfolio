@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { applyLens, getCohort, getTeacher, growth, sendPrompt, snapshot, TODAY } from '../api.js';
-import { fmtDate } from '../format.js';
+import { fmtDate, inkOn } from '../format.js';
 import MetroMap from './MetroMap.jsx';
 
 export default function AdvisorGrid({ advisorId, onOpen, toast, version }) {
@@ -16,7 +16,7 @@ export default function AdvisorGrid({ advisorId, onOpen, toast, version }) {
           <p>{advisor.name} · {cohort.length} students · vertical tutor group, Years 11 to 13</p>
         </div>
         <div className="adv-summary">
-          <span><b>{flagged}</b> students with few reflections</span>
+          <span className={flagged ? '' : 'zero'}><b>{flagged}</b> student{flagged === 1 ? '' : 's'} with few reflections</span>
           <span><b>{cohort.reduce((n, c) => n + c.openSignals, 0)}</b> open reflection signals</span>
         </div>
       </div>
@@ -28,7 +28,7 @@ export default function AdvisorGrid({ advisorId, onOpen, toast, version }) {
           return (
             <article key={c.student.id} className={`adv-card${c.flagFewReflections ? ' flagged' : ''}`}>
               <header>
-                <span className="pres-avatar sm" style={{ background: c.student.avatar.colour }}>{c.student.avatar.initials}</span>
+                <span className="pres-avatar sm" style={{ background: c.student.avatar.colour, color: inkOn(c.student.avatar.colour) }}>{c.student.avatar.initials}</span>
                 <div><h3>{c.student.name}</h3><small>Year {c.student.grade + 1} · {c.student.programme}</small></div>
               </header>
               <button className="adv-mini" onClick={() => onOpen(c.student.id)} aria-label={`Open ${c.student.name}'s map`}>

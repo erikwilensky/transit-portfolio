@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { CONSENT, getIntegrations, getRoster, getStore, getStudents, getTeacher, matchRoster, TERM_START } from '../api.js';
-import { fmtDate } from '../format.js';
+import { CONSENT, getSignals, getIntegrations, getRoster, getStore, getStudents, getTeacher, matchRoster, TERM_START } from '../api.js';
+import { fmtDate, inkOn } from '../format.js';
 import { BarChart, LineChart, StackBar } from '../components/Charts.jsx';
 
 // School-wide figures. Adoption and term trends are illustrative pilot numbers; the verification mix is computed live.
@@ -24,7 +24,7 @@ export default function SchoolDashboard({ go, version, persona, toast }) {
   const mix = ['school-verified', 'teacher-endorsed', 'student-added'].map((k) => ({ k, value: events.filter((e) => e.verification === k).length }));
   const ints = getIntegrations('st-01');
   const students = getStudents({ includeCohort: true });
-  const signals = students.reduce((n, s) => n + (s.openSignals || 0), 0);
+  const signals = students.reduce((n, s) => n + getSignals(s.id).filter((g) => g.open).length, 0);
   const pending = getStore().requests.filter((r) => r.status === 'pending').length;
   return (
     <div className="page dash">
@@ -73,7 +73,7 @@ export default function SchoolDashboard({ go, version, persona, toast }) {
         </section>
       </div>
       <div className="dash-foot">
-        <span>{signals} open advisor signals across the school</span>
+        <span>{signals} open reflection signal{signals === 1 ? '' : 's'} across the school</span>
         <button className="ghost" onClick={() => go('principal', 'scan')}>Open the scan-in screen</button>
       </div>
       {drill && <Drill drill={drill} events={events} students={students} onClose={() => setDrill(null)} />}
@@ -95,7 +95,7 @@ function Drill({ drill, events, students, onClose }) {
     body = (<>
       <table className="drill-t"><thead><tr><th>Year group</th><th>Active</th><th>Students</th><th>Consent pending</th></tr></thead>
         <tbody>{pick.map((r) => <tr key={r.label}><td>{r.label}{r.note ? <small> · {r.note}</small> : null}</td><td>{r.active} <small>({r.value}%)</small></td><td>{r.total}</td><td>{r.consent || '–'}</td></tr>)}</tbody></table>
-      {named.length > 0 && <><h3>In this demo</h3><ul className="drill-l">{named.map(({ s, n }) => <li key={s.id}><span className="pres-avatar xs" style={{ background: s.avatar.colour }}>{s.avatar.initials}</span>{s.name}<small>Y{s.grade + 1}</small><b className={n ? '' : 'zero'}>{n ? `${n} new station${n > 1 ? 's' : ''}` : 'none yet'}</b></li>)}</ul></>}
+      {named.length > 0 && <><h3>In this demo</h3><ul className="drill-l">{named.map(({ s, n }) => <li key={s.id}><span className="pres-avatar xs" style={{ background: s.avatar.colour, color: inkOn(s.avatar.colour) }}>{s.avatar.initials}</span>{s.name}<small>Y{s.grade + 1}</small><b className={n ? '' : 'zero'}>{n ? `${n} new station${n > 1 ? 's' : ''}` : 'none yet'}</b></li>)}</ul></>}
       {drill.kind === 'year' && !named.length && <p className="fineprint">No demo students in this year group. The counts above are illustrative.</p>}
     </>);
   } else if (drill.kind === 'verified' || drill.kind === 'level') {

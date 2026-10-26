@@ -69,6 +69,7 @@ export default function ParentView({ studentId, lang: linkLang }) {
           </section>
           <div className="pv-map">
             <MetroMap recent map={map} lens={lens} selectedId={sel} onSelect={setSel} fitKey={`pv-${studentId}`} />
+            {!map.events.some((e) => e.type !== 'goal') && <p className="pv-empty">{t(`Nothing on ${first}’s map is public yet. When ${first} shares something with the family, it appears here.`)}</p>}
             <StationPanel event={map.events.find((e) => e.id === sel)} map={map} onClose={() => setSel(null)} readOnly />
           </div>
         </div>

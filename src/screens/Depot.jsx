@@ -5,7 +5,7 @@ import { VerifyBadge } from '../components/Badge.jsx';
 
 // A class is a depot: one building that many students' stations leave from.
 const CLASSES = [
-  { id: 'ibcs', name: 'Computer Science', sub: 'MYP 5 and IB SL/HL · Years 11–13', from: '2025-08-01', to: TODAY, enrol: /^Started (IB|MYP) Computer Science/ },
+  { id: 'ibcs', name: 'Computer Science', sub: 'MYP 5, IB SL and HL', from: '2025-08-01', to: TODAY, enrol: /^Started (IB|MYP) Computer Science/ },
   { id: 'y10', name: 'Year 10 Computing', sub: 'MYP Design: digital · Year 10', from: '2023-08-01', to: '2025-07-31' },
 ];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

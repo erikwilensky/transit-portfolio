@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { getLine, getSchoolLines, getStudent, rootLine, schoolEvents } from '../api.js';
-import { fmtDate, TYPE_LABEL } from '../format.js';
+import { fmtDate, TYPE_LABEL, inkOn } from '../format.js';
 import { VerifyBadge } from '../components/Badge.jsx';
 
 const RANK = { 'student-added': 0, 'teacher-endorsed': 1, 'school-verified': 2 };
@@ -43,7 +43,7 @@ export default function CohortSearch({ go, persona, toast, version }) {
       </header>
       <div className="cs-presets">{PRESETS.map(([name, help, preset]) => <button key={name} className={`cs-preset${JSON.stringify(q) === JSON.stringify(preset) ? ' on' : ''}`} onClick={() => setQ(preset)}><b>{name}</b><small>{help}</small></button>)}</div>
       <div className="card-sec cs-builder">
-        <fieldset><legend>Year</legend>{[10, 11, 12, 13].map((y) => <label key={y} className="cs-check"><input type="checkbox" checked={q.years.includes(y)} onChange={(e) => set({ years: e.target.checked ? [...q.years, y] : q.years.filter((x) => x !== y) })} />Year {y}</label>)}</fieldset>
+        <div className="cs-years" role="group" aria-labelledby="cs-years-l"><span id="cs-years-l">Year</span><div>{[10, 11, 12, 13].map((y) => <label key={y} className="cs-check"><input type="checkbox" checked={q.years.includes(y)} onChange={(e) => set({ years: e.target.checked ? [...q.years, y] : q.years.filter((x) => x !== y) })} />Year {y}</label>)}</div></div>
         <label>Line<select value={q.line} onChange={(e) => set({ line: e.target.value })}><option value="">Any line</option>{getSchoolLines().map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</select></label>
         <label>Kind<select value={q.type} onChange={(e) => set({ type: e.target.value })}><option value="">Any kind</option>{types.map((t) => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}</select></label>
         <label>Evidence<select value={q.verified} onChange={(e) => set({ verified: +e.target.value })}><option value={0}>Any level</option><option value={1}>Teacher-endorsed or better</option><option value={2}>School-verified only</option></select></label>
@@ -62,7 +62,7 @@ export default function CohortSearch({ go, persona, toast, version }) {
           {rows.map(({ s, evs }) => (
             <section key={s.id} className="card-sec cs-row">
               <div className="as-row-head">
-                <span className="pres-avatar sm" style={{ background: s.avatar.colour }}>{s.avatar.initials}</span>
+                <span className="pres-avatar sm" style={{ background: s.avatar.colour, color: inkOn(s.avatar.colour) }}>{s.avatar.initials}</span>
                 <div><h2>{s.name}</h2><small>Year {s.grade + 1} · {s.programme} · {evs.length} match{evs.length === 1 ? '' : 'es'}</small></div>
                 <span className="spacer" />
                 {s.grade === 12 && <button className="ghost" onClick={() => go(persona.id, 'letter', s.id)}>Reference letter</button>}

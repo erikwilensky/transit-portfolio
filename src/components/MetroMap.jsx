@@ -118,7 +118,7 @@ export default function MetroMap({ map, lens, selectedId, onSelect, onSignal, mi
       const cols = target.columns;
       const now = cols.find((c) => target.todayX >= c.x && target.todayX < c.x + c.w) || cols.at(-1);
       const x0 = (cols.find((c) => c.grade === now?.grade) || { x: 0 }).x;
-      const s = 1;
+      const s = cw < 640 ? 0.72 : 1;
       const tx = Math.max(cw - target.width * s, Math.min(0, 12 - x0 * s));
       const ty = target.height * s < ch ? (ch - target.height * s) / 2 : 0;
       const sel = select(svg);

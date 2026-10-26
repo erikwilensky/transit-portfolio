@@ -9,7 +9,7 @@ import AddStation from '../components/AddStation.jsx';
 import GoalDialog from '../components/GoalDialog.jsx';
 import TermReview from '../components/TermReview.jsx';
 import { MapLegend, VerifyBadge, VerifyLegend } from '../components/Badge.jsx';
-import { fmtDate, fmtTerm, TYPE_LABEL, VERIFY_LABEL } from '../format.js';
+import { fmtDate, fmtTerm, TYPE_LABEL, VERIFY_LABEL, inkOn } from '../format.js';
 import { TOUR_REFLECTION, TOUR_STATION, tourEvent } from '../tourStory.js';
 
 
@@ -102,7 +102,7 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
     <div className="home">
       <div className="home-head">
         <div className="who">
-          <span className="pres-avatar" style={{ background: s.avatar.colour }}>{s.avatar.initials}</span>
+          <span className="pres-avatar" style={{ background: s.avatar.colour, color: inkOn(s.avatar.colour) }}>{s.avatar.initials}</span>
           <div>
             <h1>{s.name}</h1>
             <p>Year {s.grade + 1} · {s.programme} · Advisory {s.homeroom}</p>

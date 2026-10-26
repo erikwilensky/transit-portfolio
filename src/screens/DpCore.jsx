@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { getDpCore, markMilestone, nudgeMilestone, TODAY } from '../api.js';
-import { fmtDate } from '../format.js';
+import { fmtDate, inkOn } from '../format.js';
 
 const PART = { EE: ['Extended Essay', 'var(--b-purple)'], TOK: ['Theory of Knowledge', 'var(--b-green)'], IA: ['Internal assessment', 'var(--b-orange)'] };
 const STATUS = { done: 'Handed in', 'done-late': 'Handed in late', late: 'Overdue', upcoming: 'Coming up' };
@@ -41,7 +41,7 @@ export default function DpCore({ toast, go, version }) {
           {rows.filter((r) => r.student.grade === g).map((r) => (
             <div key={r.student.id} className="dc-row">
               <div className="dc-who">
-                <span className="pres-avatar sm" style={{ background: r.student.avatar.colour }}>{r.student.avatar.initials}</span>
+                <span className="pres-avatar sm" style={{ background: r.student.avatar.colour, color: inkOn(r.student.avatar.colour) }}>{r.student.avatar.initials}</span>
                 <div><b>{r.student.name}</b><small>EE: {r.topic} · supervisor {r.supervisor?.name}</small></div>
               </div>
               <div className="dc-track">

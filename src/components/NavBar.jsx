@@ -8,23 +8,26 @@ export default function NavBar({ items, isOn, onGo, hrefOf, moreLabel = 'More' }
   const cap = items.length > 5 ? 4 : items.length;
   const [fit, setFit] = useState(cap);
   const [open, setOpen] = useState(false);
+  const activeIdx = items.findIndex(([id]) => isOn(id));
   useLayoutEffect(() => {
     const calc = () => {
       if (!wrap.current || !measure.current) return;
       const avail = wrap.current.clientWidth;
       const widths = [...measure.current.children].map((c) => c.getBoundingClientRect().width + 2);
-      const more = widths.pop();
+      const moreW = widths.pop();
       const total = widths.reduce((a, b) => a + b, 0);
       if (total <= avail) { setFit(cap); return; }
-      let used = more, n = 0;
-      while (n < widths.length && used + widths[n] <= avail) used += widths[n++];
+      // The More button takes the active screen's name when that screen is under it.
+      let used = 0, n = 0;
+      const more = () => Math.max(moreW, activeIdx >= n ? widths[activeIdx] + 16 : 0);
+      while (n < widths.length && used + widths[n] + more() <= avail) used += widths[n++];
       setFit(Math.max(1, Math.min(cap, n)));
     };
     calc();
     const ro = new ResizeObserver(calc); ro.observe(wrap.current);
     document.fonts?.ready.then(calc);
     return () => ro.disconnect();
-  }, [items, cap]);
+  }, [items, cap, activeIdx]);
   const shown = items.slice(0, fit), rest = items.slice(fit);
   const activeRest = rest.find(([id]) => isOn(id));
   const link = ([id, label], extra = {}) => (

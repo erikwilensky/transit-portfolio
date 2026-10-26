@@ -46,7 +46,7 @@ export default function Privacy({ studentId, drafts, toast, go, persona, version
               {VIEWERS.map(([v, l]) => { const c = count(getStudentMap(studentId, v)); return <tr key={v}><td>{l}</td><td><Meter n={c.st} of={mine.st} /></td><td><Meter n={c.rf} of={mine.rf} /></td></tr>; })}
             </tbody>
           </table>
-          <p className="fineprint">These limits are applied by the data core before anything reaches a screen, a share link or an export.</p>
+          <p className="fineprint">These rules are applied before anything reaches a screen, a share link or an export.</p>
         </div>
 
         <div className="card-sec pv-defaults">

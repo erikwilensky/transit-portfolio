@@ -23,7 +23,7 @@ export default function Pilot({ go, persona }) {
       <header className="page-head">
         <div>
           <div className="kicker">Pilot options</div>
-          <h1>Which grades start?</h1>
+          <h1>Which year groups start?</h1>
           <p>The same estimates as the rollout planner, for the two ways NIST could begin. A third way, Years 10–13, sits in between.</p>
         </div>
         <span className="mock-pill">Illustrative estimates, not a quote</span>

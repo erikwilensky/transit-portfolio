@@ -69,7 +69,7 @@ export default function Pdpa({ drafts, version, go }) {
         <section className="card">
           <h2>Who can read each station</h2>
           <ul className="visbars">{vis.map(([k, n]) => <li key={k}><span>{k === 'publishable' ? 'Publishable' : k === 'school' ? 'School staff' : k === 'advisor' ? 'Advisor only' : 'Private'}</span><span className="vb"><i style={{ width: `${(100 * n) / maxVis}%` }} /></span><b>{n}</b></li>)}</ul>
-          <p className="fineprint">New items start advisor-only; students chose to publish the rest. {changes} visibility, link and line changes made by students during this demo are in the audit log.</p>
+          <p className="fineprint">New items start advisor-only; students chose to publish the rest. Every change a student makes to visibility, links or lines goes in the audit log ({changes} so far in this demo).</p>
         </section>
       </div>
 
