@@ -10,12 +10,14 @@ import CustomView from '../custom/CustomView.jsx';
 import CustomBuilder, { useDesignHistory } from '../custom/CustomBuilder.jsx';
 import { defaultDesign } from '../custom/design.js';
 import { CommentStrip } from './DraftComments.jsx';
+import LensCompare from './LensCompare.jsx';
 
 export default function Studio({ map, drafts, audience, setAudience, tier, setTier, updateDraft, onShare, toast }) {
   const pres = drafts.find((p) => p.audience === audience) || drafts[0];
   const lens = useMemo(() => applyLens(map, pres, { hiddenLines: pres.filters.hiddenLines }), [map, pres]);
   const [selected, setSelected] = useState(null);
   const [collapsed, setCollapsed] = useState(false);
+  const [compare, setCompare] = useState(false);
   const first = map.student.name.split(' ')[0];
   const event = map.events.find((e) => e.id === selected && lens.visible.has(e.id));
   const specific = drafts.find((p) => p.audience === 'specific');
@@ -42,12 +44,14 @@ export default function Studio({ map, drafts, audience, setAudience, tier, setTi
   return (
     <div className="studio">
       <div className="studio-bar">
-        <div className="bar-group"><label>Audience</label><LensSwitcher value={audience} onChange={(a) => { setAudience(a); setSelected(null); }} targetName={specific?.targetName} /></div>
+        {!compare && <><div className="bar-group"><label>Audience</label><LensSwitcher value={audience} onChange={(a) => { setAudience(a); setSelected(null); }} targetName={specific?.targetName} /></div>
         {custom
           ? <div className="bar-group"><label>Mode</label><div className="seg"><button className={editing ? 'on' : ''} onClick={() => setEditing(true)}>Design</button><button className={!editing ? 'on' : ''} onClick={() => { setEditing(false); setBlockId(null); }}>Preview</button></div></div>
-          : <div className="bar-group"><label>Skill tier</label><TierToggle value={tier} onChange={setTier} /></div>}
-        <button className="collapse-btn" onClick={() => setCollapsed(!collapsed)} aria-pressed={collapsed}>{collapsed ? 'Show controls' : 'Hide controls'}</button>
+          : <div className="bar-group"><label>Skill tier</label><TierToggle value={tier} onChange={setTier} /></div>}</>}
+        <button className={`compare-btn${compare ? ' on' : ''}`} onClick={() => setCompare(!compare)} aria-pressed={compare}>{compare ? 'Back to editing' : 'Compare two audiences'}</button>
+        {!compare && <button className="collapse-btn" onClick={() => setCollapsed(!collapsed)} aria-pressed={collapsed}>{collapsed ? 'Show controls' : 'Hide controls'}</button>}
       </div>
+      {compare ? <LensCompare map={map} drafts={drafts} initial={audience} /> : <>
       <p className="lens-blurb">{LENSES[pres.audience].blurb}</p>
       <CommentStrip presId={pres.id} onPick={setSelected} />
 
@@ -149,6 +153,7 @@ export default function Studio({ map, drafts, audience, setAudience, tier, setTi
           <StationPanel event={event} map={map} onClose={() => setSelected(null)} readOnly />
         </div>
       </div>
+      </>}
     </div>
   );
 }

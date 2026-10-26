@@ -83,7 +83,7 @@ export function VerificationMark({ level, x = 0, y = 0, r = 3.6 }) {
 
 const GRADE_YEARS = (start, g) => `${start + g - 9}–${String(start + g - 8).slice(2)}`;
 
-export default function MetroMap({ map, lens, selectedId, onSelect, onSignal, mini = false, recent = false, newIds, fitKey, duration = 450, showToday = true, className = '' }) {
+export default function MetroMap({ map, lens, selectedId, onSelect, onSignal, mini = false, recent = false, panel = true, newIds, fitKey, duration = 450, showToday = true, className = '' }) {
   const target = useMemo(() => computeLayout(map, lens, TODAY, mini ? { laneH: 70, slotW: 40, colPad: 10, emptyW: 24, left: 20, top: 30, bottom: 30, right: 20 } : {}), [map, lens, mini]);
   const tweened = useTween(target, duration);
   // On the first frame after the data changes shape, the tween hasn't caught up yet.
@@ -152,8 +152,8 @@ export default function MetroMap({ map, lens, selectedId, onSelect, onSignal, mi
     if (!st) return;
     const svg = svgRef.current;
     const { width: cw, height: ch } = svg.getBoundingClientRect();
-    const phone = cw < 640;
-    const visW = phone ? cw : cw - 410;
+    const phone = cw < 640 && panel;
+    const visW = phone || !panel ? cw : cw - 410;
     const visH = phone ? ch * 0.28 : ch;
     const sx = tr.x + st.x * tr.k, sy = tr.y + st.y * tr.k;
     let dx = 0, dy = 0;
