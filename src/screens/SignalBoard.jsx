@@ -38,7 +38,7 @@ export default function SignalBoard({ persona, toast, go, version }) {
             <article key={r.key} className={`sig-row k-${r.kind}${done ? ' done' : ''}`}>
               <span className="pres-avatar sm" style={{ background: r.c.student.avatar.colour }}>{r.c.student.avatar.initials}</span>
               <div className="sr-main">
-                <div className="sr-top"><b>{r.c.student.name}</b><span className={`sr-kind k-${r.kind}`}>{KIND[r.kind]}</span>{r.line && <span className="line-chip static" style={{ '--c': r.line.colour }}><i />{r.line.name}</span>}</div>
+                <div className="sr-top"><b>{r.c.student.name}</b><span className={`sr-kind k-${r.kind}`}>{KIND[r.kind]}</span>{r.line && <span className="line-chip static" style={{ '--c': r.line.colour }}><i className={r.line.pattern === 'cased' ? 'cased' : undefined} />{r.line.name}</span>}</div>
                 <p className="fineprint">{r.kind === 'quiet' ? `${r.c.reflectionCount} reflections shared with you. Latest station: “${e?.title}”.` : `At “${e?.title}”, ${fmtDate(e?.date)}`}</p>
                 {done ? <p className="sr-sent">✓ Sent. It now shows as a signal on {r.c.student.name.split(' ')[0]}’s map.</p> : (
                   <>

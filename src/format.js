@@ -25,3 +25,8 @@ export function verifyCode(eventId) {
   return `NIST-${h.toString(36).toUpperCase().padStart(6, '0').slice(0, 6)}`;
 }
 export const appUrl = (hash) => `${location.origin}${location.pathname}#/${hash}`;
+
+// P12: a short code for each line, so lines that share a colour can be named without it.
+export const lineCode = (l) => l.code || (l.name.includes(' ') ? l.name.split(/[\s·]+/).filter(Boolean).map((w) => w[0]).join('').slice(0, 3) : l.name.slice(0, 3)).toUpperCase();
+// Navy or white text, whichever reads on a line colour.
+export const inkOn = (hex) => { const n = parseInt(hex.slice(1), 16); const [r, g, b] = [n >> 16, (n >> 8) & 255, n & 255]; return 0.299 * r + 0.587 * g + 0.114 * b > 150 ? '#002554' : '#fff'; };

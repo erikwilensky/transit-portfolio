@@ -56,7 +56,7 @@ export default function SchoolMetro({ version }) {
       <div className="sm-top">
         <h3>Most common interchanges</h3>
         <ol>{pairs.map((p) => { const a = lines.find((l) => l.id === p.a), b = lines.find((l) => l.id === p.b); return (
-          <li key={p.a + p.b} onPointerEnter={() => setFocus(p.a)} onPointerLeave={() => setFocus(null)}><span className="line-chip static" style={{ '--c': a?.colour }}><i />{a?.name}</span> meets <span className="line-chip static" style={{ '--c': b?.colour }}><i />{b?.name}</span><b>{p.events.length}</b><small>{p.events.slice(0, 2).map((e) => e.title).join(' · ')}</small></li>
+          <li key={p.a + p.b} onPointerEnter={() => setFocus(p.a)} onPointerLeave={() => setFocus(null)}><span className="line-chip static" style={{ '--c': a?.colour }}><i className={a?.pattern === 'cased' ? 'cased' : undefined} />{a?.name}</span> meets <span className="line-chip static" style={{ '--c': b?.colour }}><i className={b?.pattern === 'cased' ? 'cased' : undefined} />{b?.name}</span><b>{p.events.length}</b><small>{p.events.slice(0, 2).map((e) => e.title).join(' · ')}</small></li>
         ); })}</ol>
       </div>
     </div>

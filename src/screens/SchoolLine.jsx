@@ -29,7 +29,7 @@ export default function SchoolLine({ version }) {
           <p>Each track is one student's {line.name} line. White pills are interchanges with another line. Only items students made visible to the school appear.</p>
         </div>
       </header>
-      <div className="chips">{counts.map(({ l, n }) => <button key={l.id} className={`line-chip${l.id === lineId ? '' : ' off'}`} style={{ '--c': l.colour }} aria-pressed={l.id === lineId} onClick={() => setLineId(l.id)}><i />{l.name} <small>{n}</small></button>)}</div>
+      <div className="chips">{counts.map(({ l, n }) => <button key={l.id} className={`line-chip${l.id === lineId ? '' : ' off'}`} style={{ '--c': l.colour }} aria-pressed={l.id === lineId} onClick={() => setLineId(l.id)}><i className={l.pattern === 'cased' ? 'cased' : undefined} />{l.name} <small>{n}</small></button>)}</div>
       <div className="sl-wrap card-sec">
         {!rows.length ? <p className="fineprint">No students have school-visible stations on this line yet.</p> : (
           <svg viewBox={`0 0 ${W} ${H}`} className="sl-svg" role="img" aria-label={`${line.name} line for ${rows.length} students`}>

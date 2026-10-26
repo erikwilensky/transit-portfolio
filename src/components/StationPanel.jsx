@@ -23,7 +23,7 @@ export default function StationPanel({ event, map, onClose, readOnly = false, on
           <div className="chips">
             {event.lineIds.map((id) => {
               const l = map.lines.find((x) => x.id === id);
-              return l && <span key={id} className="line-chip static" style={{ '--c': l.colour }}><i />{l.name}</span>;
+              return l && <span key={id} className="line-chip static" style={{ '--c': l.colour }}><i className={l.pattern === 'cased' ? 'cased' : undefined} />{l.name}</span>;
             })}
           </div>
           <p className="panel-summary">{event.summary}</p>

@@ -176,5 +176,5 @@ export function lineSegments(lineId, layout, eventsById) {
   const terminus = line.ended && last ? { x: last.x + 20, y: last.y } : null;
   if (terminus) segs.push({ d: `M${last.x},${last.y}L${terminus.x},${terminus.y}`, dashed: false });
   const start = line.branchFrom && pts[1] ? { x: pts[0].x + Math.abs(pts[1].y - pts[0].y) / 2 + 14, y: (pts[0].y + pts[1].y) / 2 + 6 } : null;
-  return { segs, terminus, start };
+  return { segs, terminus, start, end: last };
 }

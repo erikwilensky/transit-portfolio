@@ -30,7 +30,7 @@ export default function PresentationView({ map, lens, pres, selectedId, onSelect
   const chips = (e) => (
     <span className="chips small">
       {e.lineIds.filter((id) => lens.lineState[id] && lens.lineState[id] !== 'hidden').map((id) => (
-        <span key={id} className="line-chip static" style={{ '--c': lineById[id].colour }}><i />{lineById[id].name}</span>
+        <span key={id} className="line-chip static" style={{ '--c': lineById[id].colour }}><i className={lineById[id].pattern === 'cased' ? 'cased' : undefined} />{lineById[id].name}</span>
       ))}
     </span>
   );
@@ -161,7 +161,7 @@ export default function PresentationView({ map, lens, pres, selectedId, onSelect
             {thinLines.length > 0 && (
               <section className="context">
                 <h2 className="p-h2">Other context</h2>
-                <div className="chips">{thinLines.map((l) => <span key={l.id} className="line-chip static" style={{ '--c': l.colour }}><i />{l.name} · {onLine(l).length}</span>)}</div>
+                <div className="chips">{thinLines.map((l) => <span key={l.id} className="line-chip static" style={{ '--c': l.colour }}><i className={l.pattern === 'cased' ? 'cased' : undefined} />{l.name} · {onLine(l).length}</span>)}</div>
               </section>
             )}
           </>
@@ -223,7 +223,7 @@ function Cv({ map, pres, past, fullLines, shownLines, Item }) {
         <p>{pres.intro}</p>
         {pres.skills && <><h3>Skills</h3><ul>{pres.skills.map((s) => <li key={s}>{s}</li>)}</ul></>}
         <h3>Interests</h3>
-        <div className="chips small">{shownLines.map((l) => <span key={l.id} className="line-chip static" style={{ '--c': l.colour }}><i />{l.name.split(' ·')[0]}</span>)}</div>
+        <div className="chips small">{shownLines.map((l) => <span key={l.id} className="line-chip static" style={{ '--c': l.colour }}><i className={l.pattern === 'cased' ? 'cased' : undefined} />{l.name.split(' ·')[0]}</span>)}</div>
         <h3>Education</h3>
         <p>{map.student.programme}, Year {map.student.grade + 1}</p>
         <p className="p-muted">Grades are not shown in this version.</p>

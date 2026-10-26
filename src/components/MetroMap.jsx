@@ -4,6 +4,7 @@ import { select } from 'd3-selection';
 import { computeLayout, lineSegments } from '../layout/metroLayout.js';
 import { useTween } from '../hooks/useTween.js';
 import { TODAY } from '../api.js';
+import { inkOn, lineCode } from '../format.js';
 
 // Station labels wrap onto up to three short rows instead of being cut off.
 function wrap(text, max = 16) {
@@ -201,7 +202,8 @@ export default function MetroMap({ map, lens, selectedId, onSelect, onSignal, mi
       {map.lines.map((l) => {
         const ln = L.lines[l.id];
         if (ln.opacity < 0.01 || ln.width < 0.2) return null;
-        const { segs, terminus, start } = lineSegments(l.id, L, eventsById);
+        const { segs, terminus, start, end } = lineSegments(l.id, L, eventsById);
+        const sigAtEnd = terminus && (!map.signals || map.signals.some((g) => g.lineId === l.id && g.kind !== 'prompt' && g.kind !== 'branch'));
         return (
           <g key={l.id} className="line" style={{ opacity: ln.opacity }}>
             {segs.map((s, i) => (
@@ -211,6 +213,7 @@ export default function MetroMap({ map, lens, selectedId, onSelect, onSignal, mi
             {/* P6: lines that share a brand colour are told apart by pattern: a cased line has a light centre. */}
             {l.pattern === 'cased' && segs.filter((s) => !s.dashed).map((s, i) => <path key={`c${i}`} d={s.d} className="line-case" strokeWidth={ln.width * 0.38} fill="none" strokeLinecap="round" strokeLinejoin="round" />)}
             {terminus && <line x1={terminus.x} x2={terminus.x} y1={terminus.y - ln.width * 1.8} y2={terminus.y + ln.width * 1.8} stroke={l.colour} strokeWidth={ln.width} strokeLinecap="round" />}
+            {!mini && end && ln.state === 'full' && (terminus || !L.stations[ln.stationIds.at(-1)]?.interchange) && <LineTag l={l} x={terminus ? terminus.x + (sigAtEnd ? 32 : 10) : end.x + 16} y={terminus ? terminus.y : end.y} />}
             {!mini && terminus && !map.signals && <Signal x={terminus.x + 16} y={terminus.y} />}
             {!mini && start && ln.state === 'full' && !map.signals && <Signal x={start.x} y={start.y} />}
             {!mini && map.signals?.filter((g) => g.lineId === l.id && g.kind !== 'prompt').map((g) => {
@@ -290,15 +293,15 @@ export default function MetroMap({ map, lens, selectedId, onSelect, onSignal, mi
         <g ref={gRef}>{content}</g>
         {/* Line names stay pinned to the left edge while the map pans. */}
         <g className="gutter" transform={`translate(0 ${tr.y}) scale(${tr.k})`}>
-          <rect x={0} y={0} width={172} height={L.height} className="gutter-bg" style={{ opacity: tr.x < -4 ? 1 : 0 }} />
+          <rect x={0} y={0} width={186} height={L.height} className="gutter-bg" style={{ opacity: tr.x < -4 ? 1 : 0 }} />
       {map.lines.map((l) => {
         const ln = L.lines[l.id];
         return (
           <g key={l.id} className="line-name" style={{ opacity: ln.state === 'hidden' ? 0 : ln.state === 'thin' ? 0.5 : 1 }} transform={`translate(16 ${ln.y})`}>
-            <rect x={0} y={-11} width={22} height={22} rx={11} fill={l.colour} opacity={l.status === 'ended' ? 0.5 : 1} />
-            <text x={30} y={l.status === 'ended' ? -1 : 4} className="line-name-text">{l.name}</text>
-            {l.status === 'ended' && <text x={30} y={12} className="line-name-sub">ended</text>}
-            {l.parentLineId && l.status !== 'ended' && <text x={30} y={17} className="line-name-sub">branch of {lineById[l.parentLineId]?.name.split(' ·')[0] || l.parentLineId}</text>}
+            <g opacity={l.status === 'ended' ? 0.5 : 1}><LineTag l={l} x={0} y={0} legend /></g>
+            <text x={44} y={l.status === 'ended' ? -1 : 4} className="line-name-text">{l.name}</text>
+            {l.status === 'ended' && <text x={44} y={12} className="line-name-sub">ended</text>}
+            {l.parentLineId && l.status !== 'ended' && <text x={44} y={17} className="line-name-sub">branch of {lineById[l.parentLineId]?.name.split(' ·')[0] || l.parentLineId}</text>}
           </g>
         );
       })}
@@ -311,6 +314,19 @@ export default function MetroMap({ map, lens, selectedId, onSelect, onSignal, mi
       </div>
       <span className="sr-only">Zoom {Math.round(k * 100)}%</span>
     </div>
+  );
+}
+
+// P12: the line's code in a pill of its colour. A cased line gets a light pill with a coloured rim, like its track.
+function LineTag({ l, x, y, legend = false }) {
+  const code = lineCode(l);
+  const w = legend ? 36 : 30, h = legend ? 20 : 16;
+  const cased = l.pattern === 'cased';
+  return (
+    <g className="line-tag" transform={`translate(${x} ${y})`}>
+      <rect x={0} y={-h / 2} width={w} height={h} rx={h / 2} fill={cased ? 'var(--surface)' : l.colour} stroke={l.colour} strokeWidth={cased ? 3 : 0} />
+      <text x={w / 2} y={legend ? 4 : 3.5} textAnchor="middle" fill={cased ? 'var(--ink)' : inkOn(l.colour)} fontSize={legend ? 10.5 : 9.5}>{code}</text>
+    </g>
   );
 }
 

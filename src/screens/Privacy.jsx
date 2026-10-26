@@ -65,7 +65,7 @@ export default function Privacy({ studentId, drafts, toast, go, persona, version
           <h3>By line</h3>
           <p className="fineprint">Set every station on a line at once. You can still change single stations on the map.</p>
           {me.lines.map((l) => { const v = lineVis(l.id); return (
-            <label key={l.id} className="pv-row"><span className="line-chip static" style={{ '--c': l.colour }}><i />{l.name}{l.status === 'ended' ? ' (ended)' : ''}</span>
+            <label key={l.id} className="pv-row"><span className="line-chip static" style={{ '--c': l.colour }}><i className={l.pattern === 'cased' ? 'cased' : undefined} />{l.name}{l.status === 'ended' ? ' (ended)' : ''}</span>
               <select value={v} onChange={(e) => setLine(l.id, e.target.value)}>{v === 'mixed' && <option value="mixed">Mixed</option>}{Object.entries(VIS_LABEL).map(([k, t]) => <option key={k} value={k}>{t}</option>)}</select>
             </label>
           ); })}

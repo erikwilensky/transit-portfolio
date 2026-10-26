@@ -84,7 +84,7 @@ export default function TeacherQueue({ teacherId, toast, version, focus }) {
                 <h3>{e.title}</h3>
                 <p>{e.about || e.summary}</p>
                 <div className="q-tags">
-                  {e.lineIds.map((id) => { const l = getLine(id); return l && <span key={id} className="line-chip static" style={{ '--c': l.colour }}><i />{l.name}</span>; })}
+                  {e.lineIds.map((id) => { const l = getLine(id); return l && <span key={id} className="line-chip static" style={{ '--c': l.colour }}><i className={l.pattern === 'cased' ? 'cased' : undefined} />{l.name}</span>; })}
                   <VerifyBadge level={e.verification} />
                   <span className="q-src">{e.source.system}{e.source.ref ? ` · ${e.source.ref}` : ''}</span>
                 </div>

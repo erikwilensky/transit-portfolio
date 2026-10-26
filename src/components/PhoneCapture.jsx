@@ -30,7 +30,7 @@ export default function PhoneCapture({ map, studentId, onClose, onSent }) {
               <img src={`evidence/${shot}.svg`} alt="" className="ph-mini" />
               <label>What happened?<input value={title} onChange={(e) => setTitle(e.target.value)} /></label>
               <label>One line about it<textarea rows={3} value={refl} onChange={(e) => setRefl(e.target.value)} /></label>
-              <div className="ph-lines">{map.lines.filter((l) => l.status !== 'ended').map((l) => <button key={l.id} className={`line-chip${lines.includes(l.id) ? '' : ' off'}`} style={{ '--c': l.colour }} onClick={() => setLines(lines.includes(l.id) ? lines.filter((x) => x !== l.id) : [...lines, l.id])}><i />{l.name}</button>)}</div>
+              <div className="ph-lines">{map.lines.filter((l) => l.status !== 'ended').map((l) => <button key={l.id} className={`line-chip${lines.includes(l.id) ? '' : ' off'}`} style={{ '--c': l.colour }} onClick={() => setLines(lines.includes(l.id) ? lines.filter((x) => x !== l.id) : [...lines, l.id])}><i className={l.pattern === 'cased' ? 'cased' : undefined} />{l.name}</button>)}</div>
               <button className="primary ph-send" disabled={title.trim().length < 3} onClick={() => { capturePhone(studentId, { title: title.trim(), reflection: refl.trim(), image: `evidence/${shot}.svg`, lineIds: lines }); setStep(2); }}>Send to my inbox</button>
             </div>
           )}

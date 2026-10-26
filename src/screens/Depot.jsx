@@ -78,7 +78,7 @@ export default function Depot({ version }) {
           <div className="xl-top"><b>{selEv.title}</b><VerifyBadge level={selEv.verification} /></div>
           <small>{getStudent(selEv.studentId).name} · {TYPE_LABEL[selEv.type]} · {fmtDate(selEv.date)} · from {selEv.source?.system}</small>
           <p>{selEv.summary}</p>
-          <div className="chips small">{[...new Set(selEv.lineIds.map(rootLine))].map((r) => <span key={r} className="line-chip static" style={{ '--c': getLine(r).colour }}><i />{getLine(r).name}</span>)}</div>
+          <div className="chips small">{[...new Set(selEv.lineIds.map(rootLine))].map((r) => <span key={r} className="line-chip static" style={{ '--c': getLine(r).colour }}><i className={getLine(r).pattern === 'cased' ? 'cased' : undefined} />{getLine(r).name}</span>)}</div>
         </div>
       ) : <p className="fineprint">Click a station to see what it is. White pills are interchanges, with a tick in the colour of the subject they meet. A dashed track means the student joined before their first station from this class.</p>}
     </div>

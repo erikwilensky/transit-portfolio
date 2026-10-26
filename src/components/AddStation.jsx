@@ -30,7 +30,7 @@ export default function AddStation({ map, studentId, onClose, onAdded, prefill =
           <label>When<input type="date" value={f.date} max={TODAY} onChange={(e) => set({ date: e.target.value })} /></label>
           <label>Kind<select value={f.type} onChange={(e) => set({ type: e.target.value })}>{Object.entries(TYPE_LABEL).filter(([k]) => k !== 'goal').map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
           <div className="span2 field"><span>Which line, or lines (two or more makes an interchange)</span>
-            <div className="chips">{lines.map((l) => <button key={l.id} type="button" className={`line-chip${f.lineIds.includes(l.id) ? '' : ' off'}`} style={{ '--c': l.colour }} aria-pressed={f.lineIds.includes(l.id)} onClick={() => toggleLine(l.id)}><i />{l.name}</button>)}</div>
+            <div className="chips">{lines.map((l) => <button key={l.id} type="button" className={`line-chip${f.lineIds.includes(l.id) ? '' : ' off'}`} style={{ '--c': l.colour }} aria-pressed={f.lineIds.includes(l.id)} onClick={() => toggleLine(l.id)}><i className={l.pattern === 'cased' ? 'cased' : undefined} />{l.name}</button>)}</div>
           </div>
           <label className="span2">One line about it<input value={f.summary} onChange={(e) => set({ summary: e.target.value })} placeholder="What you did, and what came of it" /></label>
           <div className="span2 field"><span>Photo</span>

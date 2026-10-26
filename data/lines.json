@@ -4,21 +4,24 @@
     "name": "Science",
     "colour": "#4F529B",
     "parentLineId": null,
-    "status": "active"
+    "status": "active",
+    "code": "SCI"
   },
   {
     "id": "computing",
     "name": "Computing",
     "colour": "#78D5E1",
     "parentLineId": null,
-    "status": "active"
+    "status": "active",
+    "code": "CMP"
   },
   {
     "id": "environment",
     "name": "Environment",
     "colour": "#008A60",
     "parentLineId": null,
-    "status": "active"
+    "status": "active",
+    "code": "ENV"
   },
   {
     "id": "sport",
@@ -26,21 +29,24 @@
     "colour": "#FFB81C",
     "parentLineId": null,
     "status": "active",
-    "pattern": "cased"
+    "pattern": "cased",
+    "code": "SPT"
   },
   {
     "id": "service",
     "name": "Service",
     "colour": "#E73C3E",
     "parentLineId": null,
-    "status": "active"
+    "status": "active",
+    "code": "SVC"
   },
   {
     "id": "music",
     "name": "Music",
     "colour": "#FF8F1C",
     "parentLineId": null,
-    "status": "active"
+    "status": "active",
+    "code": "MUS"
   },
   {
     "id": "design",
@@ -48,7 +54,8 @@
     "colour": "#78D5E1",
     "parentLineId": null,
     "status": "active",
-    "pattern": "cased"
+    "pattern": "cased",
+    "code": "DES"
   },
   {
     "id": "languages",
@@ -56,14 +63,16 @@
     "colour": "#4F529B",
     "parentLineId": null,
     "status": "active",
-    "pattern": "cased"
+    "pattern": "cased",
+    "code": "LAN"
   },
   {
     "id": "art",
     "name": "Art",
     "colour": "#FFB81C",
     "parentLineId": null,
-    "status": "active"
+    "status": "active",
+    "code": "ART"
   },
   {
     "id": "maya-datasci",

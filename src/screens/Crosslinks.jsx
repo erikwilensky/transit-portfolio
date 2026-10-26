@@ -41,8 +41,8 @@ export default function Crosslinks({ persona, toast, version }) {
         </div>
       </header>
       <div className="chips xl-filter">
-        <button className={`line-chip${other === 'all' ? '' : ' off'}`} style={{ '--c': getLine(subject).colour }} aria-pressed={other === 'all'} onClick={() => setOther('all')}><i />All subjects <small>{hits.length}</small></button>
-        {others.map((id) => <button key={id} className={`line-chip${other === id ? '' : ' off'}`} style={{ '--c': getLine(id).colour }} aria-pressed={other === id} onClick={() => setOther(id)}><i />{getLine(id).name} <small>{hits.filter((h) => h.roots.includes(id)).length}</small></button>)}
+        <button className={`line-chip${other === 'all' ? '' : ' off'}`} style={{ '--c': getLine(subject).colour }} aria-pressed={other === 'all'} onClick={() => setOther('all')}><i className={getLine(subject).pattern === 'cased' ? 'cased' : undefined} />All subjects <small>{hits.length}</small></button>
+        {others.map((id) => <button key={id} className={`line-chip${other === id ? '' : ' off'}`} style={{ '--c': getLine(id).colour }} aria-pressed={other === id} onClick={() => setOther(id)}><i className={getLine(id).pattern === 'cased' ? 'cased' : undefined} />{getLine(id).name} <small>{hits.filter((h) => h.roots.includes(id)).length}</small></button>)}
       </div>
       <div className="xl-list">
         {shown.map(({ e, roots }) => {
@@ -59,7 +59,7 @@ export default function Crosslinks({ persona, toast, version }) {
                 <div className="xl-top"><b>{e.title}</b><VerifyBadge level={e.verification} /></div>
                 <small>{s.name} · Year {s.grade + 1} · {TYPE_LABEL[e.type]} · {fmtDate(e.date)}</small>
                 <p>{e.summary}</p>
-                <div className="chips small">{roots.map((r) => <span key={r} className="line-chip static" style={{ '--c': getLine(r).colour }}><i />{getLine(r).name}</span>)}</div>
+                <div className="chips small">{roots.map((r) => <span key={r} className="line-chip static" style={{ '--c': getLine(r).colour }}><i className={getLine(r).pattern === 'cased' ? 'cased' : undefined} />{getLine(r).name}</span>)}</div>
               </div>
               <div className="xl-act">
                 {meets.filter((r) => COLLEAGUE[r]).map((r) => { const t = getTeacher(COLLEAGUE[r]); const done = shared[`${e.id}:${r}`]; return (

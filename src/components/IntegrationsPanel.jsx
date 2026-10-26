@@ -120,7 +120,7 @@ function Candidate({ c, map, onAdd, onSkip }) {
       <div className="cand-label">{c.suggestedLineIds.length ? 'Line (suggested, change if you like)' : 'No line suggested: pick one, or skip it'}</div>
       <div className="chips">
         {map.lines.filter((l) => l.status !== 'ended').map((l) => (
-          <button key={l.id} className={`line-chip${lines.includes(l.id) ? '' : ' off'}`} style={{ '--c': l.colour }} aria-pressed={lines.includes(l.id)} onClick={() => toggle(l.id)}><i />{l.name}</button>
+          <button key={l.id} className={`line-chip${lines.includes(l.id) ? '' : ' off'}`} style={{ '--c': l.colour }} aria-pressed={lines.includes(l.id)} onClick={() => toggle(l.id)}><i className={l.pattern === 'cased' ? 'cased' : undefined} />{l.name}</button>
         ))}
       </div>
       <div className="cand-foot">

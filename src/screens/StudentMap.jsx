@@ -140,7 +140,7 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
         <div className="chips filter" role="group" aria-label="Show or hide lines">
           {map.lines.map((l) => (
             <button key={l.id} className={`line-chip${hidden.includes(l.id) ? ' off' : ''}${l.status === 'ended' ? ' ended' : ''}`} style={{ '--c': l.colour }} aria-pressed={!hidden.includes(l.id)}
-              onClick={() => setHidden(hidden.includes(l.id) ? hidden.filter((x) => x !== l.id) : [...hidden, l.id])}><i />{l.name}</button>
+              onClick={() => setHidden(hidden.includes(l.id) ? hidden.filter((x) => x !== l.id) : [...hidden, l.id])}><i className={l.pattern === 'cased' ? 'cased' : undefined} />{l.name}</button>
           ))}
         </div>
         </div>

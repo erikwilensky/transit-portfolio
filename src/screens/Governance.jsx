@@ -90,7 +90,7 @@ export default function Governance({ toast, version }) {
       {approved.length > 0 && (
         <section className="card-sec">
           <h3>Approved sub-lines</h3>
-          <div className="chips">{approved.map((l) => <span key={l.id} className="line-chip static" style={{ '--c': l.colour }}><i />{l.name} <small>{getStudent(l.studentId).name.split(' ')[0]} · {getLine(l.parentLineId).name}</small></span>)}</div>
+          <div className="chips">{approved.map((l) => <span key={l.id} className="line-chip static" style={{ '--c': l.colour }}><i className={l.pattern === 'cased' ? 'cased' : undefined} />{l.name} <small>{getStudent(l.studentId).name.split(' ')[0]} · {getLine(l.parentLineId).name}</small></span>)}</div>
         </section>
       )}
     </div>
