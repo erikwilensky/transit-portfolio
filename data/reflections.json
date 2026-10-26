@@ -121,132 +121,604 @@
   },
   {
     "id": "rf-016",
+    "eventId": "ev-001",
+    "text": "I have swum since I was six, but this is the first time anyone has timed me seriously. I want to see how far I can push the 200 IM.",
+    "date": "2023-08-28",
+    "prompt": "What does joining this squad mean to you?",
+    "visibility": "private"
+  },
+  {
+    "id": "rf-017",
+    "eventId": "ev-002",
+    "text": "Loops. Once I realised a computer could repeat something boring forever without complaining, I started seeing loops everywhere.",
+    "date": "2023-09-15",
+    "prompt": "What clicked for you in this unit?",
+    "visibility": "private"
+  },
+  {
+    "id": "rf-018",
+    "eventId": "ev-003",
+    "text": "My friend Ploy dragged me along. I stayed because the beach looked completely different by lunchtime, and I could see what we had done.",
+    "date": "2023-09-20",
+    "prompt": "Why this club?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-019",
+    "eventId": "ev-004",
+    "text": "My drawings were accurate but I did not say how I chose which cells to draw. Next time I will explain my sampling.",
+    "date": "2023-10-12",
+    "prompt": "What would you do differently next time?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-020",
+    "eventId": "ev-005",
+    "text": "We had six weeks of numbers, not just an opinion. The facilities manager asked for the spreadsheet before he said yes.",
+    "date": "2024-01-18",
+    "prompt": "What made the proposal work?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-021",
+    "eventId": "ev-006",
+    "text": "My breaststroke leg was the best I have ever swum. Missing bronze by 0.6 seconds hurt for a day, then it made me train harder.",
+    "date": "2024-02-10",
+    "prompt": "How did the race feel?",
+    "visibility": "private"
+  },
+  {
+    "id": "rf-022",
+    "eventId": "ev-007",
+    "text": "Half the hall got the coffee-cup question wrong, which was the point. But the buttons were too small on phones, so I fixed them that afternoon.",
+    "date": "2024-03-05",
+    "prompt": "What did you learn from real users?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-023",
+    "eventId": "ev-008",
+    "text": "How messy real data is. Two groups counted the same quadrat and got different numbers, so we had to agree on rules first.",
+    "date": "2024-03-12",
+    "prompt": "What surprised you in the field?",
+    "visibility": "private"
+  },
+  {
+    "id": "rf-024",
+    "eventId": "ev-009",
+    "text": "The cleanup stopped being just a morning out. When we saw that 40% was single-use bottles, the club started a refill-station campaign.",
+    "date": "2024-04-20",
+    "prompt": "What changed when you started counting?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-025",
+    "eventId": "ev-011",
+    "text": "I loved the training but spent every evening worrying about revision. That was the first sign something would have to give.",
+    "date": "2024-06-10",
+    "prompt": "What did the camp show you?",
+    "visibility": "private"
+  },
+  {
+    "id": "rf-026",
+    "eventId": "ev-013",
+    "text": "Like letting the team down, at first. Then I had two free evenings and spent both building things, and I knew it was right.",
+    "date": "2024-09-10",
+    "prompt": "How did it feel to cut back?",
+    "visibility": "private"
+  },
+  {
+    "id": "rf-027",
+    "eventId": "ev-014",
+    "text": "It was the first time code did something in the physical world. The temperature graph moved when I breathed on the sensor and I laughed out loud.",
+    "date": "2024-10-05",
+    "prompt": "What did this workshop unlock?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-028",
+    "eventId": "ev-015",
+    "text": "If I could not explain something with a drawing, I did not really understand it. I re-learned density properly.",
+    "date": "2024-10-20",
+    "prompt": "What does tutoring teach the tutor?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-029",
+    "eventId": "ev-016",
+    "text": "I made a Punnett square for every family in a TV series. It sounds silly, but I never got a cross wrong in the test.",
+    "date": "2024-11-02",
+    "prompt": "How did you prepare?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-030",
+    "eventId": "ev-017",
+    "text": "A number in baht made people listen. \"Turn the lights off\" never did.",
+    "date": "2025-01-20",
+    "prompt": "Why did this audit work?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-031",
+    "eventId": "ev-019",
+    "text": "They showed which differences were real. Two of my \"trends\" disappeared once I drew them.",
+    "date": "2025-03-10",
+    "prompt": "What did error bars change?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-032",
+    "eventId": "ev-020",
+    "text": "Scary at first. I learned that a good survey sheet does half the leading for you.",
+    "date": "2025-04-26",
+    "prompt": "How did it feel to lead?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-033",
+    "eventId": "ev-021",
+    "text": "I was tired of copying formulas in spreadsheets. I used my own litter data for every exercise, which made it stick.",
+    "date": "2025-05-10",
+    "prompt": "Why take a course on your own?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-034",
+    "eventId": "ev-022",
+    "text": "Mud up to my knees, and the ranger telling us only half would survive. So we tagged them, to find out which half.",
+    "date": "2025-06-15",
+    "prompt": "What will you remember?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-035",
+    "eventId": "ev-023",
+    "text": "Because every project I care about starts with a living-world question: algae, mangroves, dengue.",
+    "date": "2025-08-20",
+    "prompt": "Why Biology at HL?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-036",
+    "eventId": "ev-024",
+    "text": "Because I kept needing code to answer my science questions. It felt like choosing a tool I would use every day.",
+    "date": "2025-08-21",
+    "prompt": "Why CS over a third science?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-037",
+    "eventId": "ev-025",
+    "text": "Seeing their own sensor change on the screen. Theory lost them; live data kept them.",
+    "date": "2025-10-01",
+    "prompt": "What made the girls keep coming?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-038",
+    "eventId": "ev-026",
+    "text": "To find out what breaks. It was the power supply, twice.",
+    "date": "2025-11-05",
+    "prompt": "Why start with just one sensor?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-039",
+    "eventId": "ev-028",
+    "text": "I had forgotten that light varies across the lab. Now every flask sits under the same lamp.",
+    "date": "2026-01-20",
+    "prompt": "What did the feedback change?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-040",
+    "eventId": "ev-030",
+    "text": "Fitting a model rather than just drawing a line. The model told me something the graph did not: growth peaks earlier at higher temperatures.",
+    "date": "2026-04-20",
+    "prompt": "What was new here?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-041",
+    "eventId": "ev-031",
+    "text": "Yes. Two weeks of nothing but data and I wanted more, not less.",
+    "date": "2026-07-10",
+    "prompt": "Did it confirm the direction?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-042",
+    "eventId": "ev-032",
+    "text": "Deciding what the lag should be. The literature says 4 to 8 weeks; my data says 6. I need to justify it, not just pick it.",
+    "date": "2026-09-15",
+    "prompt": "What is hardest so far?",
+    "visibility": "private"
+  },
+  {
+    "id": "rf-043",
+    "eventId": "ev-033",
+    "text": "Data pipeline. I pulled the rainfall feed and decided when an alert should fire. At 4 a.m. I learned that thresholds are a design decision.",
+    "date": "2026-09-28",
+    "prompt": "What was your role?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-044",
+    "eventId": "ev-101",
+    "text": "I used to go straight to the computer. Now I do ten bad sketches first and the good idea is usually number seven.",
+    "date": "2024-09-05",
+    "prompt": "What did sketching change?",
+    "visibility": "private"
+  },
+  {
+    "id": "rf-045",
+    "eventId": "ev-102",
+    "text": "Sight-reading. I can learn anything by ear, which is exactly why I never practised reading.",
+    "date": "2024-09-20",
+    "prompt": "What was hardest?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-046",
+    "eventId": "ev-103",
+    "text": "I froze on one question and then remembered a phrase from a song. It worked, so I kept learning French through music.",
+    "date": "2024-10-08",
+    "prompt": "How did the oral go?",
+    "visibility": "private"
+  },
+  {
+    "id": "rf-047",
+    "eventId": "ev-104",
+    "text": "Typing everything. One missing colon broke the game, and I learned to read error messages instead of panicking.",
+    "date": "2024-10-22",
+    "prompt": "What was hard about leaving Scratch?",
+    "visibility": "private"
+  },
+  {
+    "id": "rf-048",
+    "eventId": "ev-105",
+    "text": "No sheet music for the solos. Ms Marín said \"play three notes and mean them\". That is still the best advice I have had.",
+    "date": "2024-12-02",
+    "prompt": "What was new?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-049",
+    "eventId": "ev-106",
+    "text": "The music, surprisingly. I spent longer on the 40-second loop than on the whole game.",
+    "date": "2025-01-20",
+    "prompt": "Which part did you enjoy most?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-050",
+    "eventId": "ev-107",
+    "text": "Every classmate held their phone differently. Version 4 is the first one nobody complained about.",
+    "date": "2025-02-15",
+    "prompt": "Why four versions?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-051",
+    "eventId": "ev-108",
+    "text": "Terrifying, then great. Practising the lyrics fixed my pronunciation more than any worksheet.",
+    "date": "2025-03-20",
+    "prompt": "How did it feel to sing in French?",
+    "visibility": "private"
+  },
+  {
+    "id": "rf-052",
+    "eventId": "ev-109",
+    "text": "My grandmother sang it to me. I wanted to keep the melody simple and put the jazz in the left hand.",
+    "date": "2025-05-12",
+    "prompt": "Why this song?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-053",
+    "eventId": "ev-110",
+    "text": "Speaking practice with the French assistant every Friday. The oral was my best paper.",
+    "date": "2025-06-10",
+    "prompt": "What helped you pass?",
+    "visibility": "private"
+  },
+  {
+    "id": "rf-054",
+    "eventId": "ev-112",
+    "text": "Finishing is a skill. I had 30 unfinished loops; this was the first time I made myself stop and call something done.",
+    "date": "2025-09-12",
+    "prompt": "What did releasing it teach you?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-055",
+    "eventId": "ev-113",
+    "text": "That \"users\" are real people. Krit tested every version and told me exactly where it hurt.",
+    "date": "2025-10-06",
+    "prompt": "What did designing for one person teach you?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-056",
+    "eventId": "ev-114",
+    "text": "That analysing tone in French is hard but fun. It is like listening for a chord change.",
+    "date": "2025-10-20",
+    "prompt": "What did you learn about writing?",
+    "visibility": "private"
+  },
+  {
+    "id": "rf-057",
+    "eventId": "ev-115",
+    "text": "Jazz band. Playing with others fixed my rhythm, and the examiner noticed.",
+    "date": "2025-11-15",
+    "prompt": "What made the difference since Grade 5?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-058",
+    "eventId": "ev-116",
+    "text": "Pygame could not do the adaptive music I was hearing in my head.",
+    "date": "2025-12-10",
+    "prompt": "Why Unity?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-059",
+    "eventId": "ev-118",
+    "text": "We rehearsed like it mattered. The band got tighter in six weeks than in the whole year before.",
+    "date": "2026-03-08",
+    "prompt": "What did competing change?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-060",
+    "eventId": "ev-119",
+    "text": "Kids played my game wrong in ways I never imagined. I wrote down every one of them.",
+    "date": "2026-04-18",
+    "prompt": "What was it like watching people play?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-061",
+    "eventId": "ev-121",
+    "text": "Forty-two cues and one missed. I learned to stay calm and keep going.",
+    "date": "2026-06-12",
+    "prompt": "What was it like on the desk?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-062",
+    "eventId": "ev-122",
+    "text": "It is the subject where I already spend my free time. I want the theory to catch up with my ears.",
+    "date": "2026-08-20",
+    "prompt": "Why Music at HL?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-063",
+    "eventId": "ev-123",
+    "text": "Because my music projects keep turning into programming projects. I want to build the tools, not just use them.",
+    "date": "2026-08-20",
+    "prompt": "Why CS at HL?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-064",
+    "eventId": "ev-124",
+    "text": "My cousins in Madrid. Next summer I want to talk to them without my mum translating.",
+    "date": "2026-08-22",
+    "prompt": "Why Spanish?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-065",
+    "eventId": "ev-125",
+    "text": "Every one I could afford had pads in the wrong place for the way I play. Now I get to decide.",
+    "date": "2026-10-01",
+    "prompt": "Why build your own controller?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-066",
+    "eventId": "ev-126",
+    "text": "A rainy afternoon in Bangkok. The electronics are recordings from my window.",
+    "date": "2026-10-10",
+    "prompt": "What is the piece about?",
+    "visibility": "private"
+  },
+  {
+    "id": "rf-067",
+    "eventId": "ev-127",
+    "text": "Easier than my first French one. Learning one language really did help with the next.",
+    "date": "2026-10-15",
+    "prompt": "How did your first Spanish oral feel?",
+    "visibility": "private"
+  },
+  {
+    "id": "rf-068",
+    "eventId": "ev-201",
+    "text": "Clay does not need language. In my first weeks that mattered a lot.",
+    "date": "2025-09-02",
+    "prompt": "Why ceramics?",
+    "visibility": "private"
+  },
+  {
+    "id": "rf-069",
+    "eventId": "ev-205",
+    "text": "Four months ago I was the one who needed a buddy.",
+    "date": "2025-12-05",
+    "prompt": "Why join?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-070",
+    "eventId": "ev-206",
+    "text": "I needed something that was only mine in a new place.",
+    "date": "2026-01-15",
+    "prompt": "Why a daily challenge?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-071",
+    "eventId": "ev-208",
+    "text": "Annoying, and then funny. The teacher kept a shelf of my collapsed bowls.",
+    "date": "2026-02-26",
+    "prompt": "What did six weeks of failure feel like?",
+    "visibility": "private"
+  },
+  {
+    "id": "rf-072",
+    "eventId": "ev-211",
+    "text": "Learning Thai made me realise I like learning scripts. And I want to read manga without waiting for translations.",
+    "date": "2026-05-10",
+    "prompt": "Why Japanese?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-073",
+    "eventId": "ev-212",
+    "text": "The children's drawings were better than my plan, so the plan changed. Leading meant listening first.",
+    "date": "2026-06-05",
+    "prompt": "What was it like to lead?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-074",
+    "eventId": "ev-214",
+    "text": "Someone corrects my pronunciation now. It is humbling.",
+    "date": "2026-08-19",
+    "prompt": "How is it different from self-study?",
+    "visibility": "publishable"
+  },
+  {
+    "id": "rf-075",
     "eventId": "ev-301",
     "text": "Sample reflection.",
     "date": "2025-04-09",
     "prompt": "Term check-in"
   },
   {
-    "id": "rf-017",
+    "id": "rf-076",
     "eventId": "ev-310",
     "text": "Sample reflection.",
     "date": "2024-07-05",
     "prompt": "Term check-in"
   },
   {
-    "id": "rf-018",
+    "id": "rf-077",
     "eventId": "ev-312",
     "text": "Sample reflection.",
     "date": "2024-12-22",
     "prompt": "Term check-in"
   },
   {
-    "id": "rf-019",
+    "id": "rf-078",
     "eventId": "ev-314",
     "text": "Sample reflection.",
     "date": "2025-04-02",
     "prompt": "Term check-in"
   },
   {
-    "id": "rf-020",
+    "id": "rf-079",
     "eventId": "ev-316",
     "text": "Sample reflection.",
     "date": "2025-05-31",
     "prompt": "Term check-in"
   },
   {
-    "id": "rf-021",
+    "id": "rf-080",
     "eventId": "ev-318",
     "text": "Sample reflection.",
     "date": "2026-06-01",
     "prompt": "Term check-in"
   },
   {
-    "id": "rf-022",
+    "id": "rf-081",
     "eventId": "ev-321",
     "text": "Sample reflection.",
     "date": "2025-12-08",
     "prompt": "Term check-in"
   },
   {
-    "id": "rf-023",
+    "id": "rf-082",
     "eventId": "ev-324",
     "text": "Sample reflection.",
     "date": "2026-02-05",
     "prompt": "Term check-in"
   },
   {
-    "id": "rf-024",
+    "id": "rf-083",
     "eventId": "ev-327",
     "text": "Sample reflection.",
     "date": "2026-06-11",
     "prompt": "Term check-in"
   },
   {
-    "id": "rf-025",
+    "id": "rf-084",
     "eventId": "ev-330",
     "text": "Sample reflection.",
     "date": "2026-08-04",
     "prompt": "Term check-in"
   },
   {
-    "id": "rf-026",
+    "id": "rf-085",
     "eventId": "ev-334",
     "text": "Sample reflection.",
     "date": "2023-09-18",
     "prompt": "Term check-in"
   },
   {
-    "id": "rf-027",
+    "id": "rf-086",
     "eventId": "ev-342",
     "text": "Sample reflection.",
     "date": "2025-06-06",
     "prompt": "Term check-in"
   },
   {
-    "id": "rf-028",
+    "id": "rf-087",
     "eventId": "ev-350",
     "text": "Sample reflection.",
     "date": "2025-01-02",
     "prompt": "Term check-in"
   },
   {
-    "id": "rf-029",
+    "id": "rf-088",
     "eventId": "ev-352",
     "text": "Sample reflection.",
     "date": "2025-04-16",
     "prompt": "Term check-in"
   },
   {
-    "id": "rf-030",
+    "id": "rf-089",
     "eventId": "ev-354",
     "text": "Sample reflection.",
     "date": "2025-08-11",
     "prompt": "Term check-in"
   },
   {
-    "id": "rf-031",
+    "id": "rf-090",
     "eventId": "ev-356",
     "text": "Sample reflection.",
     "date": "2025-09-27",
     "prompt": "Term check-in"
   },
   {
-    "id": "rf-032",
+    "id": "rf-091",
     "eventId": "ev-358",
     "text": "Sample reflection.",
     "date": "2025-10-24",
     "prompt": "Term check-in"
   },
   {
-    "id": "rf-033",
+    "id": "rf-092",
     "eventId": "ev-360",
     "text": "Sample reflection.",
     "date": "2026-01-27",
     "prompt": "Term check-in"
   },
   {
-    "id": "rf-034",
+    "id": "rf-093",
     "eventId": "ev-362",
     "text": "Sample reflection.",
     "date": "2026-04-12",

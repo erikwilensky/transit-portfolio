@@ -9,13 +9,25 @@
     ],
     "type": "sport",
     "summary": "Selected for the varsity squad; five sessions a week.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-001.svg",
+        "caption": "Morning session, lane 4"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Training schedule, Term 1"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
       "system": "Clubs & Sports",
       "ref": "roster-swim-23"
-    }
+    },
+    "about": "Made the varsity squad after a two-week trial. Training was 6:00–7:30 before school on weekdays, plus Saturday meets. Maya swam the individual medley and anchored the 4×50 relay."
   },
   {
     "id": "ev-002",
@@ -27,13 +39,30 @@
     ],
     "type": "class",
     "summary": "First programming unit: loops, lists and a text adventure.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-002.svg",
+        "caption": "Text adventure, room logic"
+      },
+      {
+        "kind": "grade",
+        "url": null,
+        "caption": "MYP Design cycle: 6/8"
+      },
+      {
+        "kind": "link",
+        "url": "https://example.org/adventure",
+        "caption": "Play the adventure"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "school",
     "source": {
       "system": "ManageBac",
       "ref": "class-g9cs"
-    }
+    },
+    "about": "The first programming unit in Grade 9. Maya learned variables, loops and lists, then built a text adventure set in the school with six rooms and an inventory."
   },
   {
     "id": "ev-003",
@@ -45,13 +74,25 @@
     ],
     "type": "club",
     "summary": "Student service club running monthly beach cleanups in Rayong.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-003.svg",
+        "caption": "First club meeting"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Club charter"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
       "system": "Clubs & Sports",
       "ref": "club-bg"
-    }
+    },
+    "about": "Beach Guardians runs a cleanup on the first Saturday of every month at Mae Ramphueng beach in Rayong. Maya joined as a volunteer in Grade 9 and became data lead a year later."
   },
   {
     "id": "ev-004",
@@ -65,9 +106,19 @@
     "summary": "Microscopy of onion and cheek cells; scored 7/8 on criterion B.",
     "evidence": [
       {
+        "kind": "image",
+        "url": "evidence/ev-004.svg",
+        "caption": "Marked lab report"
+      },
+      {
         "kind": "grade",
         "url": null,
         "caption": "MYP criterion B: 7/8"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Lab report (PDF)"
       }
     ],
     "verification": "school-verified",
@@ -75,7 +126,8 @@
     "source": {
       "system": "ManageBac",
       "ref": "task-2231"
-    }
+    },
+    "about": "First formal lab report in MYP Science. Maya prepared slides of onion epidermis and cheek cells, drew labelled diagrams at ×400 and compared plant and animal cell structures."
   },
   {
     "id": "ev-005",
@@ -97,14 +149,20 @@
         "kind": "image",
         "url": "evidence/compost-bin.svg",
         "caption": "Compost bin site"
+      },
+      {
+        "kind": "link",
+        "url": "https://example.org/compost",
+        "caption": "Proposal slides"
       }
     ],
-    "verification": "student-added",
+    "verification": "teacher-endorsed",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "Over six weeks Maya and two friends weighed canteen food waste every lunchtime. They found 38 kg a week and presented a proposal for a compost bin to the facilities manager, which was approved."
   },
   {
     "id": "ev-006",
@@ -118,9 +176,19 @@
     "summary": "Personal best of 2:31 at the regional age-group championships.",
     "evidence": [
       {
+        "kind": "image",
+        "url": "evidence/ev-006.svg",
+        "caption": "Results board"
+      },
+      {
         "kind": "certificate",
         "url": "#",
         "caption": "Results sheet"
+      },
+      {
+        "kind": "link",
+        "url": "https://example.org/meet2402",
+        "caption": "Full meet results"
       }
     ],
     "verification": "school-verified",
@@ -128,7 +196,8 @@
     "source": {
       "system": "Clubs & Sports",
       "ref": "meet-2402"
-    }
+    },
+    "about": "Regional age-group championships in Bangkok. Maya placed 4th in the 200m IM with a personal best of 2:31.4, taking four seconds off her previous time."
   },
   {
     "id": "ev-007",
@@ -142,9 +211,19 @@
     "summary": "First web app in HTML and JavaScript, used in a G6 assembly.",
     "evidence": [
       {
+        "kind": "image",
+        "url": "evidence/ev-007.svg",
+        "caption": "Quiz app source"
+      },
+      {
         "kind": "link",
         "url": "https://example.org/quiz",
         "caption": "Live quiz"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Assembly feedback form"
       }
     ],
     "verification": "student-added",
@@ -152,7 +231,8 @@
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "A ten-question quiz about which bin each item goes in, built with HTML, CSS and JavaScript. It ran on the hall projector in a Grade 6 assembly and 180 students answered on their phones."
   },
   {
     "id": "ev-008",
@@ -164,13 +244,25 @@
     ],
     "type": "class",
     "summary": "Quadrat sampling and species counts in the national park.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-008.svg",
+        "caption": "Quadrat sampling"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Field notebook scans"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "school",
     "source": {
       "system": "ManageBac",
       "ref": "trip-khaoyai"
-    }
+    },
+    "about": "Three-day Grade 9 field trip to Khao Yai National Park. Students used quadrats to sample ground plants at three altitudes and compared species diversity."
   },
   {
     "id": "ev-009",
@@ -200,7 +292,8 @@
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "Maya noticed the club collected 30 bags of rubbish each month but nobody knew what was in them. She designed a tally sheet with 12 litter categories, trained 40 volunteers in ten minutes, and turned the results into a chart for the club newsletter."
   },
   {
     "id": "ev-010",
@@ -229,7 +322,8 @@
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "For the Grade 9 science fair Maya filtered water from three Bangkok canals, counted microplastic fibres under a microscope and compared the canals. The project won Silver."
   },
   {
     "id": "ev-011",
@@ -241,13 +335,25 @@
     ],
     "type": "sport",
     "summary": "Week-long training camp; started to feel the time pressure.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-011.svg",
+        "caption": "Camp week"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Camp training log"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
       "system": "Clubs & Sports",
       "ref": "camp-2406"
-    }
+    },
+    "about": "A week-long camp in Hua Hin with two pool sessions a day and an open-water swim. It came during exam revision week, which is when Maya first felt the clash between swimming and school."
   },
   {
     "id": "ev-012",
@@ -259,13 +365,25 @@
     ],
     "type": "reflection",
     "summary": "End-of-year reflection on the science fair and the composting audit.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-012.svg",
+        "caption": "Reflection journal"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Advisor meeting notes"
+      }
+    ],
     "verification": "student-added",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "End-of-Grade-9 reflection written for Maya's advisor. She looked back at three projects and noticed that each one turned on careful counting."
   },
   {
     "id": "ev-013",
@@ -277,13 +395,25 @@
     ],
     "type": "sport",
     "summary": "Dropped to two sessions to make room for coursework and code club.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-013.svg",
+        "caption": "Weekly timetable rethink"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Revised timetable"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "advisor",
     "source": {
       "system": "Clubs & Sports",
       "ref": "roster-swim-24"
-    }
+    },
+    "about": "After talking with her coach and parents, Maya dropped from five sessions a week to two, to make time for IB preparation and the new code club."
   },
   {
     "id": "ev-014",
@@ -295,13 +425,25 @@
     ],
     "type": "club",
     "summary": "Wired a temperature sensor and logged readings to a laptop.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-014.svg",
+        "caption": "Arduino and sensor"
+      },
+      {
+        "kind": "link",
+        "url": "https://example.org/arduino",
+        "caption": "Sketch on GitHub"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
       "system": "Clubs & Sports",
       "ref": "club-maker"
-    }
+    },
+    "about": "A two-session maker club workshop. Maya wired a DHT22 temperature sensor to an Arduino Uno and logged a reading every ten seconds to a laptop over serial."
   },
   {
     "id": "ev-015",
@@ -313,13 +455,25 @@
     ],
     "type": "service",
     "summary": "Weekly peer tutoring in the library for two terms.",
-    "evidence": [],
-    "verification": "school-verified",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-015.svg",
+        "caption": "Wednesday library tutoring"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Tutoring log (24 sessions)"
+      }
+    ],
+    "verification": "teacher-endorsed",
     "visibility": "publishable",
     "source": {
       "system": "CAS log",
       "ref": "svc-0412"
-    }
+    },
+    "about": "Every Wednesday lunchtime for two terms, Maya tutored three Grade 7 students in the library on science homework, mostly states of matter and forces."
   },
   {
     "id": "ev-016",
@@ -333,9 +487,19 @@
     "summary": "Grade 10 genetics test.",
     "evidence": [
       {
+        "kind": "image",
+        "url": "evidence/ev-016.svg",
+        "caption": "Genetics test"
+      },
+      {
         "kind": "grade",
         "url": null,
         "caption": "Grade 7"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Revision Punnett square sheet"
       }
     ],
     "verification": "school-verified",
@@ -343,7 +507,8 @@
     "source": {
       "system": "SIS",
       "ref": "grade-g10bio-t1"
-    }
+    },
+    "about": "Grade 10 Biology test on Mendelian genetics, Punnett squares and pedigree analysis. Maya scored a 7, the top grade."
   },
   {
     "id": "ev-017",
@@ -357,17 +522,28 @@
     "summary": "Read every classroom meter for a month; lights left on cost ฿18,000 a term.",
     "evidence": [
       {
+        "kind": "image",
+        "url": "evidence/ev-017.svg",
+        "caption": "Meter readings"
+      },
+      {
         "kind": "file",
         "url": "#",
         "caption": "Energy audit report"
+      },
+      {
+        "kind": "link",
+        "url": "https://example.org/energy",
+        "caption": "Energy dashboard (spreadsheet)"
       }
     ],
-    "verification": "student-added",
+    "verification": "teacher-endorsed",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "With the eco-committee, Maya read every classroom electricity meter at 7:30 and 16:30 for a month. Lights and air-con left on after school were costing about ฿18,000 a term. Facilities installed timers in twelve rooms."
   },
   {
     "id": "ev-018",
@@ -379,13 +555,25 @@
     ],
     "type": "competition",
     "summary": "Swam the 200m IM one last time, then left the squad.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-018.svg",
+        "caption": "Final race"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Gala results"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
       "system": "Clubs & Sports",
       "ref": "meet-2502"
-    }
+    },
+    "about": "Maya's final race for the school: the 200m IM at the inter-school gala, in 2:33. After the meet she left the squad to focus on her projects and the IB."
   },
   {
     "id": "ev-019",
@@ -399,17 +587,28 @@
     "summary": "Measured catalase activity across temperatures; first time graphing error bars.",
     "evidence": [
       {
+        "kind": "image",
+        "url": "evidence/ev-019.svg",
+        "caption": "Results graph"
+      },
+      {
         "kind": "grade",
         "url": null,
         "caption": "MYP criterion C: 8/8"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Investigation report"
       }
     ],
-    "verification": "school-verified",
+    "verification": "teacher-endorsed",
     "visibility": "publishable",
     "source": {
       "system": "ManageBac",
       "ref": "task-3310"
-    }
+    },
+    "about": "An independent investigation into how temperature affects catalase activity in potato, measured by oxygen volume. Maya ran five repeats at each of six temperatures and plotted means with error bars."
   },
   {
     "id": "ev-020",
@@ -424,17 +623,23 @@
     "summary": "Ran survey days for Beach Guardians and shared the results with the district office.",
     "evidence": [
       {
+        "kind": "image",
+        "url": "evidence/ev-020.svg",
+        "caption": "Litter by type, 2024–25"
+      },
+      {
         "kind": "file",
         "url": "#",
         "caption": "Survey summary for district office"
       }
     ],
-    "verification": "school-verified",
+    "verification": "teacher-endorsed",
     "visibility": "publishable",
     "source": {
       "system": "CAS log",
       "ref": "svc-0533"
-    }
+    },
+    "about": "As survey lead, Maya ran three survey days, merged two years of tally data and wrote a two-page summary for the district environment office, which now asks the club for figures each term."
   },
   {
     "id": "ev-021",
@@ -448,6 +653,11 @@
     "summary": "Online course in pandas and matplotlib; 8 graded notebooks.",
     "evidence": [
       {
+        "kind": "image",
+        "url": "evidence/ev-021.svg",
+        "caption": "Course notebook"
+      },
+      {
         "kind": "certificate",
         "url": "#",
         "caption": "Course certificate"
@@ -458,7 +668,8 @@
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "A self-paced online course in Python data analysis. Maya completed eight graded notebooks covering pandas, cleaning, grouping and matplotlib charts."
   },
   {
     "id": "ev-022",
@@ -475,14 +686,25 @@
         "kind": "image",
         "url": "evidence/mangroves.svg",
         "caption": "Tagged seedlings"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Seedling tag register"
+      },
+      {
+        "kind": "link",
+        "url": "https://example.org/mangroves",
+        "caption": "Trip photo album"
       }
     ],
-    "verification": "school-verified",
+    "verification": "teacher-endorsed",
     "visibility": "publishable",
     "source": {
       "system": "CAS log",
       "ref": "cas-mangrove"
-    }
+    },
+    "about": "A CAS trip with 30 students to Chanthaburi. Over three days they planted 600 mangrove seedlings and tagged a sample of 50 so that survival could be checked six months later."
   },
   {
     "id": "ev-023",
@@ -494,13 +716,25 @@
     ],
     "type": "class",
     "summary": "Depot: IB Biology HL with Mr Okafor.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-023.svg",
+        "caption": "Diploma Programme starts"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Course outline"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
       "system": "SIS",
       "ref": "enrol-biohl"
-    }
+    },
+    "about": "Maya began IB Biology at Higher Level with Mr Okafor, the start of her Diploma Programme science line."
   },
   {
     "id": "ev-024",
@@ -512,13 +746,25 @@
     ],
     "type": "class",
     "summary": "Depot: IB CS SL with Ms Nair.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-024.svg",
+        "caption": "Diploma Programme starts"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Course outline"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
       "system": "SIS",
       "ref": "enrol-cssl"
-    }
+    },
+    "about": "Maya began IB Computer Science at Standard Level with Ms Nair, choosing it over a third science."
   },
   {
     "id": "ev-025",
@@ -535,6 +781,16 @@
         "kind": "image",
         "url": "evidence/stem-club.svg",
         "caption": "Friday STEM club"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Session plans (12 weeks)"
+      },
+      {
+        "kind": "link",
+        "url": "https://example.org/stem",
+        "caption": "Club showcase video"
       }
     ],
     "verification": "teacher-endorsed",
@@ -542,7 +798,8 @@
     "source": {
       "system": "CAS log",
       "ref": "cas-stem"
-    }
+    },
+    "about": "Maya co-founded a Friday after-school STEM club for Grade 6 girls with a friend. Over two terms, 14 regular members built light sensors, a micro:bit pet and a class weather station."
   },
   {
     "id": "ev-026",
@@ -556,6 +813,11 @@
     "summary": "One classroom sensor on a Raspberry Pi, logging every minute.",
     "evidence": [
       {
+        "kind": "image",
+        "url": "evidence/ev-026.svg",
+        "caption": "Classroom CO₂ over a school day"
+      },
+      {
         "kind": "link",
         "url": "https://example.org/co2",
         "caption": "Source code"
@@ -566,7 +828,8 @@
     "source": {
       "system": "GitHub",
       "ref": "repo-co2"
-    }
+    },
+    "about": "A first prototype: a single CO₂ sensor on a Raspberry Pi in Maya's classroom, logging every minute. It showed CO₂ above 1,500 ppm by the end of double lessons."
   },
   {
     "id": "ev-028",
@@ -578,13 +841,25 @@
     ],
     "type": "assessment",
     "summary": "Proposal: algae growth against water temperature.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-028.svg",
+        "caption": "IA proposal with feedback"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Proposal with teacher comments"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
       "system": "ManageBac",
       "ref": "task-ia-bio"
-    }
+    },
+    "about": "Maya's proposal for her Biology internal assessment, on how water temperature affects the growth rate of Chlorella algae. It was approved with one change: add a light-intensity control."
   },
   {
     "id": "ev-042",
@@ -624,7 +899,8 @@
     "source": {
       "system": "ManageBac",
       "ref": "task-8812"
-    }
+    },
+    "about": "Maya built six sensor units from Raspberry Pis and PM2.5/CO₂ modules, 3D-printed weatherproof housings and mounted them around campus. She calibrated each unit against the school weather station and wrote a live web dashboard that facilities now checks daily."
   },
   {
     "id": "ev-029",
@@ -659,7 +935,8 @@
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "Maya cleaned and analysed 40,000 readings from the sensor network in Python. Her report showed a PM2.5 spike in the canteen at lunchtime, caused by the grill extractor, and facilities moved the extractor vent."
   },
   {
     "id": "ev-030",
@@ -674,9 +951,19 @@
     "summary": "Fitted a regression model to 12 weeks of growth data.",
     "evidence": [
       {
+        "kind": "image",
+        "url": "evidence/ev-030.svg",
+        "caption": "Model fit to growth data"
+      },
+      {
         "kind": "grade",
         "url": null,
         "caption": "IA predicted: 7"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "IA report (PDF)"
       }
     ],
     "verification": "teacher-endorsed",
@@ -684,7 +971,8 @@
     "source": {
       "system": "ManageBac",
       "ref": "task-ia-bio-2"
-    }
+    },
+    "about": "For her Biology IA, Maya grew algae at five temperatures for twelve weeks, counted cells with a haemocytometer and fitted a logistic growth model in Python."
   },
   {
     "id": "ev-031",
@@ -698,9 +986,19 @@
     "summary": "Two-week online summer school; final project on bike-share demand.",
     "evidence": [
       {
+        "kind": "image",
+        "url": "evidence/ev-031.svg",
+        "caption": "Final project: bike demand"
+      },
+      {
         "kind": "certificate",
         "url": "#",
         "caption": "Certificate of completion"
+      },
+      {
+        "kind": "link",
+        "url": "https://example.org/bikeshare",
+        "caption": "Final presentation"
       }
     ],
     "verification": "student-added",
@@ -708,7 +1006,8 @@
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "A two-week online summer school run by a university data science department. Maya's team modelled bike-share demand against weather and presented to faculty."
   },
   {
     "id": "ev-032",
@@ -720,13 +1019,25 @@
     ],
     "type": "project",
     "summary": "EE draft: can rainfall and temperature predict dengue cases in Bangkok?",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-032.svg",
+        "caption": "EE draft figure"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "EE draft 1 (3,200 words)"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "school",
     "source": {
       "system": "ManageBac",
       "ref": "ee-maya"
-    }
+    },
+    "about": "Maya's Extended Essay asks whether rainfall and temperature can predict weekly dengue cases in Bangkok, using ten years of public health and weather data."
   },
   {
     "id": "ev-033",
@@ -760,7 +1071,8 @@
     "source": {
       "system": "Clubs & Sports",
       "ref": "hack-2609"
-    }
+    },
+    "about": "A 24-hour youth hackathon on climate resilience. Maya's team of three built a LINE chatbot that sends flood alerts by district, using live rainfall data. They placed 2nd of 22 teams."
   },
   {
     "id": "ev-034",
@@ -772,13 +1084,25 @@
     ],
     "type": "reflection",
     "summary": "CAS mid-point reflection.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-034.svg",
+        "caption": "CAS journal"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "CAS portfolio summary"
+      }
+    ],
     "verification": "student-added",
     "visibility": "advisor",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "A CAS mid-point reflection written for Maya's advisor and CAS coordinator, looking back at three years of service."
   },
   {
     "id": "ev-035",
@@ -790,13 +1114,20 @@
     ],
     "type": "goal",
     "summary": "Planned: submit the EE in January.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "EE timeline"
+      }
+    ],
     "verification": "student-added",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "Planned: final Extended Essay submission in January, after a second draft and a viva with her supervisor."
   },
   {
     "id": "ev-036",
@@ -808,13 +1139,20 @@
     ],
     "type": "goal",
     "summary": "Planned: start a Data Science degree.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "University shortlist"
+      }
+    ],
     "verification": "student-added",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "Planned: a BSc in Data Science, ideally a course with environmental or public-health applications."
   },
   {
     "id": "ev-101",
@@ -826,13 +1164,25 @@
     ],
     "type": "class",
     "summary": "MYP Design unit on orthographic and perspective sketching.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-101.svg",
+        "caption": "Sketching class"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Sketch portfolio"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "school",
     "source": {
       "system": "ManageBac",
       "ref": "class-g9des"
-    }
+    },
+    "about": "A Grade 9 Design unit on orthographic projection, two-point perspective and quick ideation sketches for a desk organiser."
   },
   {
     "id": "ev-102",
@@ -846,9 +1196,19 @@
     "summary": "Graded piano exam.",
     "evidence": [
       {
+        "kind": "image",
+        "url": "evidence/ev-102.svg",
+        "caption": "Grade 5 piano certificate"
+      },
+      {
         "kind": "certificate",
         "url": "#",
         "caption": "Grade 5 certificate"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Examiner's mark sheet"
       }
     ],
     "verification": "school-verified",
@@ -856,7 +1216,8 @@
     "source": {
       "system": "Exam boards",
       "ref": "pno-5"
-    }
+    },
+    "about": "An external graded piano exam with three pieces, scales, sight-reading and aural tests. Arun passed with Merit."
   },
   {
     "id": "ev-103",
@@ -868,13 +1229,25 @@
     ],
     "type": "assessment",
     "summary": "Two-minute talk about my neighbourhood.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-103.svg",
+        "caption": "French oral prompt"
+      },
+      {
+        "kind": "grade",
+        "url": null,
+        "caption": "Criterion C: 6/8"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
       "system": "ManageBac",
       "ref": "task-fr-1"
-    }
+    },
+    "about": "A two-minute oral in French describing Arun's neighbourhood in Bangkok, followed by questions from the teacher."
   },
   {
     "id": "ev-104",
@@ -886,13 +1259,25 @@
     ],
     "type": "class",
     "summary": "Moved from Scratch to Python.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-104.svg",
+        "caption": "Maze in Python"
+      },
+      {
+        "kind": "link",
+        "url": "https://example.org/maze",
+        "caption": "Code on GitHub"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "school",
     "source": {
       "system": "ManageBac",
       "ref": "class-g9cs"
-    }
+    },
+    "about": "Arun moved from Scratch to Python, rebuilding his old Scratch maze game as a text-based version to learn the syntax."
   },
   {
     "id": "ev-105",
@@ -904,13 +1289,25 @@
     ],
     "type": "club",
     "summary": "Rehearses Tuesdays; first time improvising.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-105.svg",
+        "caption": "Jazz band rehearsal"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Band setlist"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
       "system": "Clubs & Sports",
       "ref": "club-jazz"
-    }
+    },
+    "about": "Arun joined the school jazz band on keyboard. Weekly Tuesday rehearsals, and his first experience of improvising over chord changes."
   },
   {
     "id": "ev-106",
@@ -924,6 +1321,11 @@
     "summary": "A side-scroller with chiptune music I wrote myself.",
     "evidence": [
       {
+        "kind": "image",
+        "url": "evidence/ev-106.svg",
+        "caption": "Pygame main loop"
+      },
+      {
         "kind": "link",
         "url": "https://example.org/pygame",
         "caption": "Play it"
@@ -934,7 +1336,8 @@
     "source": {
       "system": "Clubs & Sports",
       "ref": "club-code"
-    }
+    },
+    "about": "In code club Arun built a Pygame side-scroller about a cat escaping a flooded soi. He composed an 8-bit soundtrack for it in a free tracker app."
   },
   {
     "id": "ev-107",
@@ -951,14 +1354,25 @@
         "kind": "image",
         "url": "evidence/phone-stands.svg",
         "caption": "Prototype line-up"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Fusion 360 file"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "User testing notes"
       }
     ],
-    "verification": "student-added",
+    "verification": "teacher-endorsed",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "A desk phone stand designed in Fusion 360 and 3D-printed in PLA. Arun printed four versions, changing the angle and adding a cable slot after testing with classmates."
   },
   {
     "id": "ev-108",
@@ -976,6 +1390,11 @@
         "kind": "image",
         "url": "evidence/piano-stage.svg",
         "caption": "On stage"
+      },
+      {
+        "kind": "link",
+        "url": "https://example.org/francophonie",
+        "caption": "Performance video"
       }
     ],
     "verification": "teacher-endorsed",
@@ -983,7 +1402,8 @@
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "Arun sang and accompanied himself on piano for \"La Vie en rose\" at the Francophonie evening, in front of about 200 parents and students."
   },
   {
     "id": "ev-109",
@@ -1000,14 +1420,25 @@
         "kind": "image",
         "url": "evidence/piano-stage.svg",
         "caption": "Spring concert"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Arrangement score (PDF)"
+      },
+      {
+        "kind": "link",
+        "url": "https://example.org/spring",
+        "caption": "Concert recording"
       }
     ],
-    "verification": "school-verified",
+    "verification": "teacher-endorsed",
     "visibility": "publishable",
     "source": {
       "system": "Clubs & Sports",
       "ref": "concert-25"
-    }
+    },
+    "about": "Arun's own piano arrangement of the Thai folk song \"Lao Duang Duean\", performed as a solo at the spring concert."
   },
   {
     "id": "ev-110",
@@ -1021,9 +1452,19 @@
     "summary": "External French exam.",
     "evidence": [
       {
+        "kind": "image",
+        "url": "evidence/ev-110.svg",
+        "caption": "DELF A2 diploma"
+      },
+      {
         "kind": "certificate",
         "url": "#",
         "caption": "DELF A2"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Score report"
       }
     ],
     "verification": "school-verified",
@@ -1031,7 +1472,8 @@
     "source": {
       "system": "Exam boards",
       "ref": "delf-a2"
-    }
+    },
+    "about": "Arun passed the external DELF A2 exam in listening, reading, writing and speaking, scoring 78/100."
   },
   {
     "id": "ev-111",
@@ -1045,9 +1487,19 @@
     "summary": "Two-week course in a digital audio workstation.",
     "evidence": [
       {
+        "kind": "image",
+        "url": "evidence/ev-111.svg",
+        "caption": "DAW session"
+      },
+      {
         "kind": "certificate",
         "url": "#",
         "caption": "Course certificate"
+      },
+      {
+        "kind": "link",
+        "url": "https://example.org/daw",
+        "caption": "Course tracks"
       }
     ],
     "verification": "student-added",
@@ -1055,7 +1507,8 @@
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "A two-week summer course in a digital audio workstation: recording, MIDI, mixing, EQ and compression. Arun produced two finished tracks."
   },
   {
     "id": "ev-112",
@@ -1069,9 +1522,19 @@
     "summary": "Four tracks produced at home, released on the school music page.",
     "evidence": [
       {
+        "kind": "image",
+        "url": "evidence/ev-112.svg",
+        "caption": "EP session"
+      },
+      {
         "kind": "link",
         "url": "https://example.org/ep",
         "caption": "Listen"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Track notes"
       }
     ],
     "verification": "student-added",
@@ -1079,7 +1542,8 @@
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "A four-track lo-fi EP recorded and produced at home, built from field recordings of Bangkok rain and street sounds. It was released on the school music page."
   },
   {
     "id": "ev-113",
@@ -1093,17 +1557,28 @@
     "summary": "Designed a one-handed game controller for a classmate with a wrist injury.",
     "evidence": [
       {
+        "kind": "image",
+        "url": "evidence/ev-113.svg",
+        "caption": "Controller prototype"
+      },
+      {
         "kind": "grade",
         "url": null,
         "caption": "MYP Design: 7"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Design folio"
       }
     ],
-    "verification": "school-verified",
+    "verification": "teacher-endorsed",
     "visibility": "publishable",
     "source": {
       "system": "ManageBac",
       "ref": "task-des-ctrl"
-    }
+    },
+    "about": "For a classmate with a wrist injury, Arun designed a one-handed game controller. He interviewed his client, built a cardboard mock-up, then 3D-printed and wired a working version."
   },
   {
     "id": "ev-114",
@@ -1115,13 +1590,25 @@
     ],
     "type": "assessment",
     "summary": "Commentary on a short story.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-114.svg",
+        "caption": "Commentary"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Commentary with feedback"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "school",
     "source": {
       "system": "ManageBac",
       "ref": "task-fr-5"
-    }
+    },
+    "about": "A written commentary on a short story by Le Clézio, analysing the narrator's voice."
   },
   {
     "id": "ev-115",
@@ -1135,9 +1622,19 @@
     "summary": "Graded piano exam.",
     "evidence": [
       {
+        "kind": "image",
+        "url": "evidence/ev-115.svg",
+        "caption": "Grade 6 piano certificate"
+      },
+      {
         "kind": "certificate",
         "url": "#",
         "caption": "Grade 6 certificate"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Examiner's mark sheet"
       }
     ],
     "verification": "school-verified",
@@ -1145,7 +1642,8 @@
     "source": {
       "system": "Exam boards",
       "ref": "pno-6"
-    }
+    },
+    "about": "Arun passed Grade 6 piano with Distinction, scoring 132/150. His pieces included a Bach invention and a jazz standard."
   },
   {
     "id": "ev-116",
@@ -1159,6 +1657,11 @@
     "summary": "Online course; built a small 3D level.",
     "evidence": [
       {
+        "kind": "image",
+        "url": "evidence/ev-116.svg",
+        "caption": "Unity script"
+      },
+      {
         "kind": "certificate",
         "url": "#",
         "caption": "Course certificate"
@@ -1169,7 +1672,8 @@
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "A self-paced online Unity course. Arun built a small 3D level with physics, triggers and spatial audio."
   },
   {
     "id": "ev-117",
@@ -1205,7 +1709,8 @@
     "source": {
       "system": "GitHub",
       "ref": "repo-rainfall"
-    }
+    },
+    "about": "A Unity game in which a soundtrack adapts to the in-game weather. Arun designed the levels, wrote the C# audio engine and composed 14 stems that crossfade on the beat."
   },
   {
     "id": "ev-118",
@@ -1217,13 +1722,30 @@
     ],
     "type": "competition",
     "summary": "Band placed second at the Bangkok schools jazz festival.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-118.svg",
+        "caption": "Festival stage"
+      },
+      {
+        "kind": "certificate",
+        "url": "#",
+        "caption": "Festival certificate"
+      },
+      {
+        "kind": "link",
+        "url": "https://example.org/jazzfest",
+        "caption": "Festival recording"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
       "system": "Clubs & Sports",
       "ref": "fest-26"
-    }
+    },
+    "about": "The jazz band placed second of 11 school bands at the Bangkok schools jazz festival. Arun played keys and took a 16-bar solo in \"Watermelon Man\"."
   },
   {
     "id": "ev-119",
@@ -1241,14 +1763,25 @@
         "kind": "image",
         "url": "evidence/arcade.svg",
         "caption": "Arcade cabinet"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Build plans"
+      },
+      {
+        "kind": "link",
+        "url": "https://example.org/arcade",
+        "caption": "Games list"
       }
     ],
-    "verification": "student-added",
+    "verification": "teacher-endorsed",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "For open day, Arun and two friends built a full-size arcade cabinet from MDF with a Raspberry Pi running six student-made games. Over 300 visitors played it."
   },
   {
     "id": "ev-120",
@@ -1260,13 +1793,25 @@
     ],
     "type": "assessment",
     "summary": "MYP eAssessment; then left French.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-120.svg",
+        "caption": "Final exam"
+      },
+      {
+        "kind": "grade",
+        "url": null,
+        "caption": "MYP French: 6"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
       "system": "SIS",
       "ref": "eassess-fr"
-    }
+    },
+    "about": "Arun's final MYP eAssessment in French. He then chose Spanish ab initio for the Diploma."
   },
   {
     "id": "ev-121",
@@ -1278,13 +1823,25 @@
     ],
     "type": "project",
     "summary": "Designed and ran live sound for “The Tempest”.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-121.svg",
+        "caption": "Cue list on the desk"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Cue sheet"
+      }
+    ],
     "verification": "teacher-endorsed",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "Arun designed the sound cues for the school production of \"The Tempest\", from a storm opening to island ambience, and ran the sound desk for five performances."
   },
   {
     "id": "ev-122",
@@ -1296,13 +1853,25 @@
     ],
     "type": "class",
     "summary": "Depot: IB Music HL.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-122.svg",
+        "caption": "Diploma Programme starts"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Course outline"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
       "system": "SIS",
       "ref": "enrol-mushl"
-    }
+    },
+    "about": "Arun began IB Music at Higher Level, which includes composition, performance and a music technology coursework option."
   },
   {
     "id": "ev-123",
@@ -1314,13 +1883,25 @@
     ],
     "type": "class",
     "summary": "Depot: IB CS HL.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-123.svg",
+        "caption": "Diploma Programme starts"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Course outline"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
       "system": "SIS",
       "ref": "enrol-cshl"
-    }
+    },
+    "about": "Arun began IB Computer Science at Higher Level with Ms Nair."
   },
   {
     "id": "ev-124",
@@ -1332,13 +1913,25 @@
     ],
     "type": "class",
     "summary": "New language for the Diploma.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-124.svg",
+        "caption": "Diploma Programme starts"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Course outline"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
       "system": "SIS",
       "ref": "enrol-spab"
-    }
+    },
+    "about": "Arun started Spanish ab initio, a beginners' course for the Diploma."
   },
   {
     "id": "ev-125",
@@ -1355,14 +1948,25 @@
         "kind": "image",
         "url": "evidence/pcb.svg",
         "caption": "PCB layout"
+      },
+      {
+        "kind": "link",
+        "url": "https://example.org/midi",
+        "caption": "KiCad project"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Bill of materials"
       }
     ],
-    "verification": "student-added",
+    "verification": "teacher-endorsed",
     "visibility": "publishable",
     "source": {
       "system": "GitHub",
       "ref": "repo-midi"
-    }
+    },
+    "about": "Arun designed a 16-pad MIDI controller PCB in KiCad, with velocity-sensitive pads and a USB-C connection. The boards are being manufactured."
   },
   {
     "id": "ev-126",
@@ -1374,13 +1978,25 @@
     ],
     "type": "assessment",
     "summary": "First composition draft for Music HL.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-126.svg",
+        "caption": "Composition draft"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Score and audio draft"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "school",
     "source": {
       "system": "ManageBac",
       "ref": "task-mus-c1"
-    }
+    },
+    "about": "Arun's first composition draft for IB Music HL: a three-minute piece for piano and electronics."
   },
   {
     "id": "ev-127",
@@ -1392,13 +2008,25 @@
     ],
     "type": "assessment",
     "summary": "Introduced myself and my family.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-127.svg",
+        "caption": "Spanish oral prompt"
+      },
+      {
+        "kind": "grade",
+        "url": null,
+        "caption": "Criterion B: 5/8"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "advisor",
     "source": {
       "system": "ManageBac",
       "ref": "task-sp-1"
-    }
+    },
+    "about": "Arun's first spoken assessment in Spanish: introducing himself and his family."
   },
   {
     "id": "ev-128",
@@ -1410,13 +2038,20 @@
     ],
     "type": "goal",
     "summary": "Planned: sit Grade 8 piano.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Practice plan"
+      }
+    ],
     "verification": "student-added",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "Planned: Grade 8 piano in June 2027, with a jazz piece as an own-choice item."
   },
   {
     "id": "ev-129",
@@ -1428,13 +2063,20 @@
     ],
     "type": "goal",
     "summary": "Planned: IB CS internal assessment.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "IA idea notes"
+      }
+    ],
     "verification": "student-added",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "Planned: a CS internal assessment building a procedural music engine that generates game soundtracks from level data."
   },
   {
     "id": "ev-130",
@@ -1446,13 +2088,20 @@
     ],
     "type": "goal",
     "summary": "Planned: study music technology.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "University shortlist"
+      }
+    ],
     "verification": "student-added",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "Planned: a BMus in Music Technology, or a joint music and computer science course."
   },
   {
     "id": "ev-201",
@@ -1464,13 +2113,25 @@
     ],
     "type": "club",
     "summary": "Thursday after-school club.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-201.svg",
+        "caption": "Ceramics club"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Club membership card"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
       "system": "Clubs & Sports",
       "ref": "club-ceramics"
-    }
+    },
+    "about": "In her first month at the school, Lena joined the Thursday ceramics club, mostly to make friends."
   },
   {
     "id": "ev-204",
@@ -1482,13 +2143,25 @@
     ],
     "type": "reflection",
     "summary": "First-term reflection.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-204.svg",
+        "caption": "Phrase notebook"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Phrase list"
+      }
+    ],
     "verification": "student-added",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "A first-term reflection written for Lena's advisor, after moving from Munich to Bangkok in July."
   },
   {
     "id": "ev-205",
@@ -1500,13 +2173,25 @@
     ],
     "type": "service",
     "summary": "Peer support for new students who speak little English.",
-    "evidence": [],
-    "verification": "school-verified",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-205.svg",
+        "caption": "Buddy session"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Buddy log"
+      }
+    ],
+    "verification": "teacher-endorsed",
     "visibility": "publishable",
     "source": {
       "system": "CAS log",
       "ref": "svc-lb"
-    }
+    },
+    "about": "Language Buddies pairs new students who speak little English with a peer. Lena meets her buddies twice a week to help with classes and canteen orders."
   },
   {
     "id": "ev-206",
@@ -1523,14 +2208,20 @@
         "kind": "image",
         "url": "evidence/sketchbook.svg",
         "caption": "Sketchbook spread"
+      },
+      {
+        "kind": "link",
+        "url": "https://example.org/100days",
+        "caption": "All 100 drawings"
       }
     ],
-    "verification": "student-added",
+    "verification": "teacher-endorsed",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "Lena drew one sketch every day for 100 days and posted them on the art department wall. She used pencil, then ink, then watercolour."
   },
   {
     "id": "ev-207",
@@ -1560,7 +2251,8 @@
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "Lena translated the 24-page new-family welcome pack into German and simple English, and added a glossary of school words. Admissions now sends it to every German-speaking family."
   },
   {
     "id": "ev-208",
@@ -1577,6 +2269,11 @@
         "kind": "image",
         "url": "evidence/bowl.svg",
         "caption": "The bowl"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Glaze test tiles"
       }
     ],
     "verification": "student-added",
@@ -1584,7 +2281,8 @@
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "After six weeks of collapsed attempts, Lena threw her first bowl on the wheel and glazed it in celadon."
   },
   {
     "id": "ev-209",
@@ -1596,13 +2294,25 @@
     ],
     "type": "reflection",
     "summary": "Reflection on the drawing challenge.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-209.svg",
+        "caption": "Reflection page"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Exhibition label"
+      }
+    ],
     "verification": "student-added",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "A reflection on the 100-day drawing challenge, written for the art department exhibition."
   },
   {
     "id": "ev-210",
@@ -1614,13 +2324,25 @@
     ],
     "type": "club",
     "summary": "Showed three pieces, then left the club.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-210.svg",
+        "caption": "Showcase table"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Showcase catalogue"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
       "system": "Clubs & Sports",
       "ref": "show-26"
-    }
+    },
+    "about": "Lena showed three pieces in the end-of-year ceramics showcase, including her first bowl. Afterwards the club moved to Thursdays, which clashed with Language Buddies, so she left."
   },
   {
     "id": "ev-211",
@@ -1632,13 +2354,25 @@
     ],
     "type": "project",
     "summary": "Self-study with an app and anime subtitles.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-211.svg",
+        "caption": "Kana flashcards"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Study streak: 41 days"
+      }
+    ],
     "verification": "student-added",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "Lena began learning Japanese on her own with a phone app, kana flashcards and anime with Japanese subtitles."
   },
   {
     "id": "ev-212",
@@ -1656,6 +2390,16 @@
         "kind": "image",
         "url": "evidence/mural.svg",
         "caption": "Finished mural"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Design sketches"
+      },
+      {
+        "kind": "link",
+        "url": "https://example.org/mural",
+        "caption": "Time-lapse video"
       }
     ],
     "verification": "teacher-endorsed",
@@ -1663,7 +2407,8 @@
     "source": {
       "system": "CAS log",
       "ref": "svc-mural"
-    }
+    },
+    "about": "Lena designed a 6-metre mural for a community centre in Khlong Toei, gathered ideas from children at the centre, and led 12 volunteers over three weekends."
   },
   {
     "id": "ev-213",
@@ -1677,6 +2422,11 @@
     "summary": "Passed the club’s hiragana and katakana test.",
     "evidence": [
       {
+        "kind": "image",
+        "url": "evidence/ev-213.svg",
+        "caption": "Kana test cards"
+      },
+      {
         "kind": "certificate",
         "url": "#",
         "caption": "Kana certificate"
@@ -1687,7 +2437,8 @@
     "source": {
       "system": "Clubs & Sports",
       "ref": "club-jp"
-    }
+    },
+    "about": "Lena passed the Japanese club's hiragana and katakana test, reading and writing all 92 basic characters."
   },
   {
     "id": "ev-214",
@@ -1699,13 +2450,25 @@
     ],
     "type": "class",
     "summary": "Depot: G10 Japanese.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-214.svg",
+        "caption": "Japanese elective starts"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Course outline"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
       "system": "SIS",
       "ref": "enrol-jp"
-    }
+    },
+    "about": "Lena joined the Grade 10 Japanese elective, three lessons a week with a native-speaker teacher."
   },
   {
     "id": "ev-218",
@@ -1717,13 +2480,25 @@
     ],
     "type": "reflection",
     "summary": "Term reflection.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-218.svg",
+        "caption": "Buddy session"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Buddy log, Term 1"
+      }
+    ],
     "verification": "student-added",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "A term reflection on two terms of Language Buddies, now with buddies from Korea and Brazil."
   },
   {
     "id": "ev-219",
@@ -1735,13 +2510,20 @@
     ],
     "type": "goal",
     "summary": "Planned: sit the JLPT N5 in December.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Study plan"
+      }
+    ],
     "verification": "student-added",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "Planned: sit the JLPT N5 exam in December."
   },
   {
     "id": "ev-220",
@@ -1753,13 +2535,20 @@
     ],
     "type": "goal",
     "summary": "Planned: MYP Personal Project.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Project proposal"
+      }
+    ],
     "verification": "student-added",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "Planned: a bilingual German and Thai zine for new students, as Lena's MYP Personal Project."
   },
   {
     "id": "ev-300",

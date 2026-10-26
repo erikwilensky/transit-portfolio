@@ -61,5 +61,96 @@
     "teacherId": "t-06",
     "note": "Lena led the design process with real maturity.",
     "date": "2026-06-05"
+  },
+  {
+    "id": "en-010",
+    "eventId": "ev-005",
+    "teacherId": "t-02",
+    "note": "Careful, honest data collection; the bin is still in use.",
+    "date": "2024-01-18"
+  },
+  {
+    "id": "en-011",
+    "eventId": "ev-015",
+    "teacherId": "t-08",
+    "note": "Reliable every week; her tutees' grades rose.",
+    "date": "2024-10-20"
+  },
+  {
+    "id": "en-012",
+    "eventId": "ev-017",
+    "teacherId": "t-08",
+    "note": "Maya translated a vague worry into a costed recommendation.",
+    "date": "2025-01-20"
+  },
+  {
+    "id": "en-013",
+    "eventId": "ev-019",
+    "teacherId": "t-02",
+    "note": "Exceptional control of variables and uncertainty.",
+    "date": "2025-03-10"
+  },
+  {
+    "id": "en-014",
+    "eventId": "ev-020",
+    "teacherId": "t-08",
+    "note": "Her data reached the district office: real-world impact.",
+    "date": "2025-04-26"
+  },
+  {
+    "id": "en-015",
+    "eventId": "ev-022",
+    "teacherId": "t-08",
+    "note": "Maya set up the survival tracking the school now uses.",
+    "date": "2025-06-15"
+  },
+  {
+    "id": "en-016",
+    "eventId": "ev-107",
+    "teacherId": "t-04",
+    "note": "Excellent iteration driven by real user testing.",
+    "date": "2025-02-15"
+  },
+  {
+    "id": "en-017",
+    "eventId": "ev-109",
+    "teacherId": "t-03",
+    "note": "A sensitive, original arrangement.",
+    "date": "2025-05-12"
+  },
+  {
+    "id": "en-018",
+    "eventId": "ev-113",
+    "teacherId": "t-04",
+    "note": "Empathetic, client-led design; a model folio.",
+    "date": "2025-10-06"
+  },
+  {
+    "id": "en-019",
+    "eventId": "ev-119",
+    "teacherId": "t-04",
+    "note": "Ambitious, well-organised build; ran flawlessly all day.",
+    "date": "2026-04-18"
+  },
+  {
+    "id": "en-020",
+    "eventId": "ev-125",
+    "teacherId": "t-01",
+    "note": "Self-taught PCB design at a very high level.",
+    "date": "2026-10-01"
+  },
+  {
+    "id": "en-021",
+    "eventId": "ev-205",
+    "teacherId": "t-05",
+    "note": "Lena is one of our most patient buddies.",
+    "date": "2025-12-05"
+  },
+  {
+    "id": "en-022",
+    "eventId": "ev-206",
+    "teacherId": "t-06",
+    "note": "Remarkable discipline and visible growth.",
+    "date": "2026-01-15"
   }
 ]

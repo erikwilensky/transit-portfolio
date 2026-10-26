@@ -109,7 +109,7 @@ export function exportPresentation(pres, map, lensResult) {
     }),
     stations: map.events.filter((e) => lensResult.visible.has(e.id)).map((e) => ({
       id: e.id, title: e.title, date: e.date, lineIds: e.lineIds.filter((id) => lensResult.lineState[id] !== 'hidden'), type: e.type,
-      summary: e.summary, verification: e.verification, evidence: e.evidence, source: e.source.system,
+      summary: e.summary, about: e.about, verification: e.verification, evidence: e.evidence, source: e.source.system,
       endorsements: e.endorsements.map((n) => ({ teacher: n.teacher?.name, note: n.note, date: n.date })),
     })),
   };

@@ -89,4 +89,64 @@ const scenes = {
 };
 
 for (const [name, content] of Object.entries(scenes)) writeFileSync(new URL(`${name}.svg`, dir), content);
-console.log(Object.keys(scenes).length, 'illustrations');
+
+// ── Per-station scenes from templates (data in scripts/enrich.mjs) ──────
+const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const T = (x, y, t, size = 18, fill = '#1b1f27', o = '') => `<text x="${x}" y="${y}" font-family="Helvetica,Arial" font-size="${size}" fill="${fill}" ${o}>${esc(t)}</text>`;
+const tint = (c) => `${c}22`;
+const templates = {
+  cert: ({ title, sub, c }) => svg(`<rect x="90" y="60" width="460" height="300" rx="6" fill="#fffdf6" stroke="${c}" stroke-width="8"/><rect x="108" y="78" width="424" height="264" fill="none" stroke="${c}" stroke-width="2" opacity=".5"/>
+    ${T(320, 130, 'CERTIFICATE', 16, '#7b8794', 'text-anchor="middle" letter-spacing="4"')}${T(320, 180, title, 28, '#1b1f27', 'text-anchor="middle" font-weight="700"')}${T(320, 216, sub, 17, '#52606d', 'text-anchor="middle"')}
+    <line x1="150" x2="290" y1="300" y2="300" stroke="#9aa5b1" stroke-width="2"/><path d="M160 292 q20 -22 40 -4 t50 -6" stroke="#1b1f27" stroke-width="2" fill="none"/>
+    <path d="M440 300 l-14 52 l16 -10 l10 16 l6 -54z M470 300 l14 52 l-16 -10 l-10 16 l-6 -54z" fill="${c}"/><circle cx="455" cy="290" r="34" fill="${c}"/><circle cx="455" cy="290" r="24" fill="none" stroke="#fff" stroke-width="3"/>`, tint(c)),
+  paper: ({ title, mark, c }) => svg(`<g transform="rotate(-4 320 210)"><rect x="150" y="40" width="340" height="340" rx="4" fill="#fff" stroke="#c0c7d1" stroke-width="2"/>
+    ${T(180, 86, title, 20, '#1b1f27', 'font-weight="700"')}<g fill="#d4d9e0">${Array.from({ length: 9 }, (_, i) => `<rect x="180" y="${110 + i * 26}" width="${260 - (i % 4) * 34}" height="8" rx="4"/>`).join('')}</g>
+    <g stroke="#E2343C" stroke-width="4" fill="none">${[118, 196, 274].map((y) => `<path d="M450 ${y} l8 8 l14 -16"/>`).join('')}</g>
+    <circle cx="420" cy="330" r="40" fill="none" stroke="#E2343C" stroke-width="4"/>${T(420, 340, mark, 24, '#E2343C', 'text-anchor="middle" font-weight="800"')}
+    <rect x="150" y="40" width="10" height="340" fill="${c}"/></g>`, tint(c)),
+  board: ({ lines = [], c, n = 4 }) => svg(`<rect x="60" y="36" width="520" height="220" rx="8" fill="#fff" stroke="#9aa5b1" stroke-width="6"/>
+    ${lines.map((t, i) => T(90, 90 + i * 46, t, 26, i === 0 ? c : '#3a3f4b', i === 0 ? 'font-weight="700"' : '')).join('')}
+    ${Array.from({ length: n }, (_, i) => person(150 + i * (340 / Math.max(1, n - 1)), 300 + (i % 2) * 6, .85, ['#E0458B', '#F2A100', '#00A39E', '#6B3FB0', '#1E6FD9'][i % 5], ['#8d5a3b', '#e0b48c', '#c68e64'][i % 3])).join('')}
+    <rect x="110" y="362" width="420" height="18" rx="6" fill="#8A5A44"/>`, '#f3efe6'),
+  code: ({ title, lines = [], c }) => svg(`${screen(60, 36, 520, 330, `<rect x="70" y="46" width="500" height="34" fill="#eef2f7"/>${T(86, 69, title, 15, '#52606d')}
+    ${lines.map((t, i) => `${T(86, 112 + i * 30, String(i + 1).padStart(2, ' '), 14, '#9aa5b1', 'font-family="Menlo,monospace"')}${T(116, 112 + i * 30, t, 16, i % 3 === 0 ? c : '#1b1f27', 'font-family="Menlo,monospace"')}`).join('')}`)}
+    <rect x="250" y="366" width="140" height="18" fill="#3a3f4b"/><rect x="210" y="384" width="220" height="12" rx="4" fill="#52606d"/>`, tint(c)),
+  chart: ({ title, vals, c, kind = 'bar', note }) => svg(`${screen(60, 36, 520, 330, `${T(92, 84, title, 19, '#1b1f27', 'font-weight="700"')}
+    <line x1="96" x2="96" y1="104" y2="300" stroke="#c0c7d1" stroke-width="2"/><line x1="96" x2="540" y1="300" y2="300" stroke="#c0c7d1" stroke-width="2"/>
+    ${kind === 'bar' ? bars(104, 110, 430, 186, vals, c) : line(104, 110, 430, 186, vals, c)}${note ? T(104, 336, note, 14, '#52606d') : ''}`)}`, tint(c)),
+  pool: ({ text, c }) => svg(`<rect y="120" width="${W}" height="300" fill="#4aa8d8"/>${[0, 1, 2, 3, 4].map((i) => `<line x1="0" x2="${W}" y1="${180 + i * 50}" y2="${180 + i * 50}" stroke="#fff" stroke-width="4" stroke-dasharray="14 10"/>`).join('')}
+    <g transform="translate(380 228)"><ellipse rx="40" ry="11" fill="${c}"/><circle cx="46" cy="-2" r="11" fill="#c68e64"/><path d="M50 -8 q-10 -10 -20 -2" stroke="#1b1f27" stroke-width="5" fill="none"/></g>
+    <path d="M150 300 q20 -10 40 0 t40 0" stroke="#fff" stroke-width="3" fill="none" opacity=".7"/>
+    <rect x="160" y="22" width="320" height="76" rx="8" fill="#1b1f27"/>${T(320, 72, text, 30, '#F2A100', 'text-anchor="middle" font-family="Menlo,monospace" font-weight="700"')}`, '#d9eef8'),
+  stage: ({ text, c, n = 3 }) => svg(`<rect y="300" width="${W}" height="120" fill="#5b3a29"/><path d="M200 0 L90 300 H550 L440 0z" fill="#fff6d6" opacity=".28"/>
+    ${Array.from({ length: n }, (_, i) => person(200 + i * (240 / Math.max(1, n - 1)), 214 + (i % 2) * 8, 1, [c, '#1E6FD9', '#F2A100', '#00A39E'][i % 4], ['#a86b45', '#e0b48c', '#8d5a3b'][i % 3])).join('')}
+    <rect x="150" y="30" width="340" height="50" rx="6" fill="${c}"/>${T(320, 63, text, 22, '#fff', 'text-anchor="middle" font-weight="700"')}`, '#2a1f3d'),
+  daw: ({ title, c }) => svg(`${screen(50, 36, 540, 330, `<rect x="60" y="46" width="520" height="310" fill="#20242c"/>${T(80, 72, title, 15, '#c0c7d1')}
+    ${[0, 1, 2, 3, 4].map((r) => `<rect x="80" y="${90 + r * 50}" width="70" height="40" rx="4" fill="#323844"/>${Array.from({ length: 4 }, (_, k) => `<rect x="${164 + k * 98 + (r * 17) % 30}" y="${92 + r * 50}" width="${60 + (r * k * 13) % 30}" height="36" rx="4" fill="${[c, '#1E6FD9', '#F2A100', '#2E9E4F', '#00A39E'][r]}" opacity=".85"/>`).join('')}`).join('')}
+    <line x1="330" x2="330" y1="84" y2="340" stroke="#fff" stroke-width="2"/>`)}`, '#dfe2ea'),
+  forest: ({ c, text }) => svg(`<rect y="280" width="${W}" height="140" fill="#7cb46b"/>${[70, 170, 470, 570].map((x, i) => `<rect x="${x - 6}" y="180" width="12" height="110" fill="#6b4f3a"/><circle cx="${x}" cy="${160 - (i % 2) * 14}" r="${54 - (i % 2) * 8}" fill="${['#2E9E4F', '#27894a', '#3cb15e'][i % 3]}"/>`).join('')}
+    <rect x="240" y="320" width="150" height="70" fill="none" stroke="#fff" stroke-width="4"/>${[0, 1, 2].map((k) => `<circle cx="${270 + k * 40}" cy="${345 + (k % 2) * 20}" r="7" fill="#F2A100"/>`).join('')}
+    ${person(330, 230, .9, c, '#e0b48c')}<rect x="350" y="250" width="26" height="34" rx="3" fill="#fff" stroke="#3a3f4b" stroke-width="2"/>${text ? T(320, 60, text, 22, '#1b1f27', 'text-anchor="middle" font-weight="700"') : ''}`, '#d8ecd2'),
+  tutor: ({ text, c }) => svg(`<rect y="300" width="${W}" height="120" fill="#c9b8a6"/><rect x="40" y="60" width="140" height="240" fill="#8A5A44"/>${[0, 1, 2, 3].map((r) => [0, 1, 2, 3, 4].map((k) => `<rect x="${52 + k * 25}" y="${76 + r * 56}" width="18" height="44" fill="${['#1E6FD9', '#E2343C', '#F2A100', '#2E9E4F', '#6B3FB0'][(r + k) % 5]}"/>`).join('')).join('')}
+    ${person(300, 236, 1, c, '#e0b48c')}${person(450, 246, .85, '#1E6FD9', '#8d5a3b')}<rect x="250" y="300" width="270" height="16" rx="4" fill="#5b3a29"/><rect x="340" y="288" width="60" height="12" fill="#fff"/>
+    <path d="M380 110 h200 a14 14 0 0 1 14 14 v50 a14 14 0 0 1 -14 14 h-150 l-24 22 l4 -22 h-30 a14 14 0 0 1 -14 -14 v-50 a14 14 0 0 1 14 -14z" fill="#fff"/>${T(480, 158, text, 20, '#1b1f27', 'text-anchor="middle"')}`, '#efe7da'),
+  workshop: ({ title, c }) => svg(`<rect x="90" y="110" width="460" height="230" rx="12" fill="#f1f3f5" stroke="#c0c7d1" stroke-width="3"/>${Array.from({ length: 60 }, (_, i) => `<circle cx="${120 + (i % 20) * 20}" cy="${150 + Math.floor(i / 20) * 20}" r="3" fill="#9aa5b1"/>`).join('')}
+    <rect x="130" y="230" width="140" height="80" rx="6" fill="#1f7a4d"/><rect x="150" y="250" width="40" height="30" fill="#111"/>
+    <g stroke-width="5" fill="none"><path d="M270 250 q60 -80 120 -90" stroke="${c}"/><path d="M270 280 q90 -40 160 -120" stroke="#E2343C"/><path d="M270 300 q120 0 200 -140" stroke="#F2A100"/></g>
+    <circle cx="390" cy="160" r="10" fill="#E2343C"/><circle cx="430" cy="160" r="10" fill="#2E9E4F"/><rect x="460" y="150" width="30" height="22" rx="4" fill="${c}"/>${T(320, 70, title, 22, '#1b1f27', 'text-anchor="middle" font-weight="700"')}`, tint(c)),
+  notebook: ({ title, c }) => svg(`<rect x="80" y="50" width="480" height="320" rx="10" fill="#fdfbf5" stroke="#c9b8a6" stroke-width="4"/><line x1="320" y1="50" x2="320" y2="370" stroke="#d6cfc2" stroke-width="3"/>
+    ${T(110, 100, title, 20, c, 'font-family="Georgia,serif" font-style="italic"')}${Array.from({ length: 8 }, (_, i) => `<path d="M110 ${136 + i * 28} q40 -6 80 0 t80 0 t20 0" stroke="#52606d" stroke-width="2" fill="none" opacity="${0.4 + (i % 3) * 0.15}"/>`).join('')}
+    ${Array.from({ length: 9 }, (_, i) => `<path d="M350 ${100 + i * 28} q40 -6 80 0 t${60 - (i % 3) * 15} 0" stroke="#52606d" stroke-width="2" fill="none" opacity=".5"/>`).join('')}
+    <rect x="470" y="40" width="20" height="70" fill="${c}"/><path d="M470 110 l10 -10 l10 10z" fill="#fdfbf5"/>`, '#ece4d6'),
+  meter: ({ text, c }) => svg(`<rect x="110" y="70" width="200" height="270" rx="16" fill="#e9ecef" stroke="#52606d" stroke-width="4"/><circle cx="210" cy="160" r="60" fill="#fff" stroke="#52606d" stroke-width="3"/><path d="M210 160 l36 -30" stroke="#E2343C" stroke-width="5"/>
+    <rect x="150" y="250" width="120" height="40" rx="4" fill="#1b1f27"/>${T(210, 278, '04 2 1 7', 20, '#2E9E4F', 'text-anchor="middle" font-family="Menlo,monospace"')}
+    <circle cx="460" cy="140" r="56" fill="#f6c14b" opacity=".9"/><rect x="440" y="196" width="40" height="30" rx="4" fill="#9aa5b1"/>${T(460, 300, text, 22, c, 'text-anchor="middle" font-weight="700"')}`, tint(c)),
+  depot: ({ text, sub, c }) => svg(`<rect y="320" width="${W}" height="100" fill="#9aa5b1"/><rect x="110" y="120" width="420" height="200" fill="#f8fafc" stroke="#52606d" stroke-width="4"/>
+    <path d="M90 130 L320 40 L550 130z" fill="${c}"/>${[0, 1, 2, 3].map((k) => `<rect x="${140 + k * 100}" y="170" width="60" height="60" fill="#bfe0f5" stroke="#52606d" stroke-width="2"/>`).join('')}<rect x="290" y="250" width="60" height="70" fill="#52606d"/>
+    <rect x="170" y="335" width="300" height="56" rx="28" fill="${c}"/>${T(320, 371, text, 22, '#fff', 'text-anchor="middle" font-weight="700"')}${sub ? T(320, 110, sub, 16, '#fff', 'text-anchor="middle"') : ''}`, '#e8eef4'),
+  cards: ({ glyphs, c }) => svg(`${glyphs.map((g, i) => `<g transform="rotate(${(i - 2) * 6} ${140 + i * 90} 220)"><rect x="${100 + i * 90}" y="150" width="80" height="110" rx="8" fill="#fff" stroke="${c}" stroke-width="3"/>${T(140 + i * 90, 222, g, 44, '#1b1f27', 'text-anchor="middle"')}</g>`).join('')}`, tint(c)),
+};
+const { ENRICH } = await import('./enrich.mjs');
+let n = 0;
+for (const [id, e] of Object.entries(ENRICH)) if (e.img) { writeFileSync(new URL(`${id}.svg`, dir), templates[e.img[0]](e.img[2])); n++; }
+console.log(Object.keys(scenes).length + n, 'illustrations');

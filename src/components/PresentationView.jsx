@@ -120,7 +120,7 @@ export default function PresentationView({ map, lens, pres, selectedId, onSelect
                           <span className="p-date">{month(e.date)}</span>
                           <div>
                             <b>{e.title}</b> <VerifyBadge level={e.verification} />
-                            <p>{e.summary}</p>
+                            <p>{e.about || e.summary}</p>
                             {firstImage(e) && <img className="narr-img" src={firstImage(e).url} alt={firstImage(e).caption} loading="lazy" />}
                             {e.reflections.map((r) => <blockquote key={r.id} className="refl-quote"><span className="refl-prompt">Reflection: {r.prompt}</span>{r.text.split('\n\n').map((para, i) => <p key={i}>{para}</p>)}</blockquote>)}
                           </div>
@@ -172,7 +172,7 @@ export default function PresentationView({ map, lens, pres, selectedId, onSelect
                 <div className="case-top"><span>{TYPE_LABEL[e.type]}</span><span>{fmtDate(e.date)}</span></div>
                 {firstImage(e) && <img className="p-img" src={firstImage(e).url} alt={firstImage(e).caption} loading="lazy" />}
                 <h3>{e.title}</h3>
-                <p>{e.summary}</p>
+                <p>{e.about || e.summary}</p>
                 {quote(e)}
                 <div className="case-foot">{chips(e)}<VerifyBadge level={e.verification} /></div>
               </article>

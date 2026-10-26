@@ -1,6 +1,7 @@
 // Generates the mock data in /data. Run with: node scripts/seed.mjs
 // All people and records are fictional.
 import { writeFileSync } from 'node:fs';
+import { ENRICH } from './enrich.mjs';
 const out = (f, d) => writeFileSync(new URL(`../data/${f}`, import.meta.url), JSON.stringify(d, null, 2) + '\n');
 
 const lines = [
@@ -175,6 +176,23 @@ const EXTRA_IMAGES = {
 };
 for (const [id, [name, caption]] of Object.entries(EXTRA_IMAGES)) events.find((e) => e.id === id).evidence.push(img(caption, name));
 
+// ── Fuller detail for every station (scripts/enrich.mjs) ────────────────
+const ADDED_REFLECTIONS = [];
+for (const [id, x] of Object.entries(ENRICH)) {
+  const e = events.find((ev) => ev.id === id);
+  e.about = x.about;
+  if (x.img) e.evidence.unshift(img(x.img[1], id));
+  if (x.add) e.evidence.push(...x.add);
+  if (x.refl && !reflections.some((r) => r.eventId === id)) {
+    reflections.push({ id: `rf-${String(rc++).padStart(3, '0')}`, eventId: id, text: x.refl[1], date: e.date, prompt: x.refl[0] });
+    ADDED_REFLECTIONS.push(id);
+  }
+  if (x.end && !endorsements.some((n) => n.eventId === id)) {
+    endorsements.push({ id: `en-${String(ec++).padStart(3, '0')}`, eventId: id, teacherId: x.end[0], note: x.end[1], date: e.date });
+    e.verification = 'teacher-endorsed';
+  }
+}
+
 // ── Full reflections, in the students' own voices ────────────────────────
 const FULL = {
   'ev-010': `Counting fibres by hand took forever. I had three jars of canal water, a cheap microscope from the science store and a tally sheet, and every session ended with sore eyes and numbers I didn't fully trust.
@@ -255,7 +273,13 @@ I'm trying to talk to myself the way I talk to them. That might be the most usef
 };
 for (const r of reflections) if (FULL[r.eventId]) r.text = FULL[r.eventId];
 // Reflections are private by default; these are the ones each student chose to publish.
-const PUBLISHED_REFLECTIONS = ['ev-010', 'ev-012', 'ev-042', 'ev-029', 'ev-111', 'ev-117', 'ev-207', 'ev-209', 'ev-213', 'ev-218'];
+let PUBLISHED_REFLECTIONS = ['ev-010', 'ev-012', 'ev-042', 'ev-029', 'ev-111', 'ev-117', 'ev-207', 'ev-209', 'ev-213', 'ev-218'];
+// Shorter reflections added with the station detail are published unless the station is not public or sits on an ended line.
+const ENDED_LINES = ['maya-swim', 'arun-french', 'lena-ceramics'];
+for (const id of ADDED_REFLECTIONS) {
+  const e = events.find((ev) => ev.id === id);
+  if (e.visibility === 'publishable' && !e.lineIds.some((l) => ENDED_LINES.includes(l))) PUBLISHED_REFLECTIONS.push(id);
+}
 for (const r of reflections) r.visibility = PUBLISHED_REFLECTIONS.includes(r.eventId) ? 'publishable' : r.eventId === 'ev-034' ? 'advisor' : 'private';
 
 // ── Cohort sample (advisor grid only), generated deterministically ──────
