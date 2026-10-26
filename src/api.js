@@ -357,15 +357,15 @@ export function restartLine(studentId, lineId) {
   emit();
 }
 
-// Grade 6 starters: what arrives from school systems once a new student picks their interests.
+// Year 7 starters: what arrives from school systems once a new student picks their interests.
 export const STARTERS = {
-  science: { title: 'Lab safety certificate', type: 'class', source: { system: 'ManageBac', ref: 'g6-sci-01' }, summary: 'Passed the Grade 6 lab safety quiz.', img: 'cert' },
+  science: { title: 'Lab safety certificate', type: 'class', source: { system: 'ManageBac', ref: 'g6-sci-01' }, summary: 'Passed the Year 7 lab safety quiz.', img: 'cert' },
   sport: { title: 'Joined the U12 swim squad', type: 'sport', source: { system: 'Clubs & Sports', ref: 'swim-u12' }, summary: 'Tuesday and Thursday training.', img: 'pool' },
   art: { title: 'First sketchbook page', type: 'project', source: { system: 'ManageBac', ref: 'g6-art-02' }, summary: 'Observational drawing of a shell.', img: 'sketchbook' },
   music: { title: 'Joined the junior choir', type: 'club', source: { system: 'Clubs & Sports', ref: 'choir-jr' }, summary: 'Rehearsals on Wednesdays.', img: 'piano-stage' },
   computing: { title: 'Scratch: animated name', type: 'class', source: { system: 'ManageBac', ref: 'g6-cs-01' }, summary: 'First Scratch project in Design & Tech.', img: 'code' },
   environment: { title: 'Eco-club welcome walk', type: 'club', source: { system: 'Clubs & Sports', ref: 'eco-jr' }, summary: 'Mapped the recycling bins on campus.', img: 'compost-bin' },
-  service: { title: 'Reading buddy for Grade 1', type: 'service', source: { system: 'CAS log', ref: 'sa-g6-01' }, summary: 'Service as action: reading with a Grade 1 class.', img: 'stem-club' },
+  service: { title: 'Reading buddy for Year 2', type: 'service', source: { system: 'CAS log', ref: 'sa-g6-01' }, summary: 'Service as action: reading with a Year 2 class.', img: 'stem-club' },
   languages: { title: 'Thai placement: Level 2', type: 'assessment', source: { system: 'SIS', ref: 'thai-place' }, summary: 'Placed in Thai as an additional language, Level 2.', img: 'welcome-pack' },
   design: { title: 'Design cycle: pencil holder', type: 'project', source: { system: 'ManageBac', ref: 'g6-des-01' }, summary: 'First MYP design cycle project.', img: 'phone-stands' },
 };
@@ -448,4 +448,30 @@ export function exportRecord(studentId) {
     presentations: presentationsData.filter((p) => p.studentId === studentId).map(({ shareLinks, ...p }) => p),
     activity: getActivity(studentId).slice(0, 200),
   };
+}
+
+// ── Whole-school reads (school viewer: school and publishable items only) ─
+export const schoolEvents = () => store.events.filter((e) => VISIBLE_TO.school.includes(e.visibility) && e.type !== 'goal' && e.date <= TODAY);
+export function linePairs() {
+  const pairs = {};
+  for (const e of schoolEvents()) {
+    const ls = [...new Set(e.lineIds.map((id) => lineById(id)?.parentLineId || id))].sort();
+    for (let i = 0; i < ls.length; i++) for (let j = i + 1; j < ls.length; j++) { const k = `${ls[i]}|${ls[j]}`; (pairs[k] ||= []).push(e); }
+  }
+  return Object.entries(pairs).map(([k, evs]) => ({ a: k.split('|')[0], b: k.split('|')[1], events: evs })).sort((x, y) => y.events.length - x.events.length);
+}
+// School line of a station's line (sub-lines roll up to their parent).
+export const rootLine = (id) => lineById(id)?.parentLineId || id;
+export function renameLine(id, patch) { const l = lineById(id); Object.assign(l, patch); emit(); }
+export function decideBranch(id, ok, mergeInto) {
+  const l = lineById(id); if (!l) return;
+  if (ok) { l.approval = 'approved'; notify(PERSONA_OF_STUDENT[l.studentId], `Ms Brandt approved your new line “${l.name}”`, { persona: PERSONA_OF_STUDENT[l.studentId], screen: 'map' }); }
+  else if (mergeInto) {
+    const target = lineById(mergeInto);
+    store.events.forEach((e) => { if (e.lineIds.includes(id)) e.lineIds = [...new Set(e.lineIds.map((x) => (x === id ? mergeInto : x)))]; });
+    const s = getStudent(l.studentId); s.laneOrder = s.laneOrder.filter((x) => x !== id); if (!s.laneOrder.includes(mergeInto)) s.laneOrder.push(mergeInto);
+    store.lines = store.lines.filter((x) => x.id !== id);
+    notify(PERSONA_OF_STUDENT[l.studentId], `Your line “${l.name}” was merged into “${target.name}”`, { persona: PERSONA_OF_STUDENT[l.studentId], screen: 'map' });
+  }
+  emit();
 }

@@ -1,9 +1,9 @@
 // "Viewing as": one record, seen through each role's own screens.
 export const PERSONAS = [
-  { id: 'maya', kind: 'student', studentId: 'st-01', name: 'Maya Chen', role: 'Student · Grade 12', initials: 'MC', colour: '#4F529B' },
-  { id: 'arun', kind: 'student', studentId: 'st-02', name: 'Arun Mehta', role: 'Student · Grade 11', initials: 'AM', colour: '#D6457F' },
-  { id: 'lena', kind: 'student', studentId: 'st-03', name: 'Lena Fischer', role: 'Student · Grade 10', initials: 'LF', colour: '#FF8F1C' },
-  { id: 'pim', kind: 'student', studentId: 'st-09', name: 'Pim Chaiyaporn', role: 'Student · Grade 6', initials: 'PC', colour: '#1FA3A8' },
+  { id: 'maya', kind: 'student', studentId: 'st-01', name: 'Maya Chen', role: 'Student · Year 13', initials: 'MC', colour: '#4F529B' },
+  { id: 'arun', kind: 'student', studentId: 'st-02', name: 'Arun Mehta', role: 'Student · Year 12', initials: 'AM', colour: '#D6457F' },
+  { id: 'lena', kind: 'student', studentId: 'st-03', name: 'Lena Fischer', role: 'Student · Year 11', initials: 'LF', colour: '#FF8F1C' },
+  { id: 'pim', kind: 'student', studentId: 'st-09', name: 'Pim Chaiyaporn', role: 'Student · Year 7', initials: 'PC', colour: '#1FA3A8' },
   { id: 'whitfield', kind: 'advisor', teacherId: 't-07', name: 'Mr James Whitfield', role: 'Advisor · 4B', initials: 'JW', colour: '#008A60' },
   { id: 'nair', kind: 'teacher', teacherId: 't-01', name: 'Ms Priya Nair', role: 'Computer Science teacher', initials: 'PN', colour: '#0072CE' },
   { id: 'adeyemi', kind: 'counsellor', teacherId: 't-09', name: 'Ms Ruth Adeyemi', role: 'University counsellor', initials: 'RA', colour: '#E73C3E' },

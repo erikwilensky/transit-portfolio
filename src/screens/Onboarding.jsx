@@ -4,7 +4,7 @@ import { completeOnboarding, getSchoolLines, STARTERS } from '../api.js';
 const TEMPLATES = [['postcard', 'Postcard', 'One photo and a sentence per line. Good for family.'], ['scrapbook', 'Scrapbook', 'Photos first, a few words under each.'], ['poster', 'Poster', 'Big title, your lines as colourful bands.']];
 const INTEREST = { science: 'Experiments', computing: 'Coding and games', environment: 'Nature and animals', sport: 'Sport', service: 'Helping people', music: 'Music', design: 'Making things', languages: 'Languages', art: 'Art and drawing' };
 
-// S9: a Grade 6 student's first week. Pick interests, see starter lines, watch the first stations arrive, pick a look.
+// S9: a Year 7 student's first week. Pick interests, see starter lines, watch the first stations arrive, pick a look.
 export default function Onboarding({ map, studentId, onDone }) {
   const [step, setStep] = useState(0);
   const [picked, setPicked] = useState([]);
@@ -40,9 +40,9 @@ export default function Onboarding({ map, studentId, onDone }) {
           <>
             <div className="kicker">Your starter lines</div>
             <h1>This is your map</h1>
-            <p>It starts in Grade 6 and grows until you graduate. Every time you do something, a station appears on a line.</p>
+            <p>It starts in Year 7 and grows until you graduate. Every time you do something, a station appears on a line.</p>
             <svg className="ob-map" viewBox={`0 0 640 ${40 + chosen.length * 54}`} role="img" aria-label="Starter lines">
-              {['G6', 'G7', 'G8', 'G9', 'G10', 'G11', 'G12'].map((g, i) => <text key={g} x={90 + i * 80} y={18} className="ob-g">{g}</text>)}
+              {['Y7', 'Y8', 'Y9', 'Y10', 'Y11', 'Y12', 'Y13'].map((g, i) => <text key={g} x={90 + i * 80} y={18} className="ob-g">{g}</text>)}
               {chosen.map((l, i) => { const y = 50 + i * 54; return (
                 <g key={l.id}><path d={`M90 ${y} H150`} stroke={l.colour} strokeWidth="9" strokeLinecap="round" className="ob-line" style={{ animationDelay: `${i * 0.2}s` }} /><path d={`M150 ${y} H610`} stroke={l.colour} strokeWidth="5" strokeDasharray="2 10" strokeLinecap="round" opacity=".55" /><text x={8} y={y + 4} className="ob-l">{l.name}</text></g>
               ); })}

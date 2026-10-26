@@ -58,7 +58,7 @@ export default function PresentationView({ map, lens, pres, selectedId, onSelect
         <div>
           <div className="pres-kicker">{LENSES[pres.audience].label}{pres.targetName ? ` · ${pres.targetName}` : ''}</div>
           <h1>{pres.title}</h1>
-          <div className="pres-sub">{map.student.programme} · Grade {map.student.grade}{pres.institution ? ` · for ${pres.institution}` : ''}</div>
+          <div className="pres-sub">{map.student.programme} · Year {map.student.grade + 1}{pres.institution ? ` · for ${pres.institution}` : ''}</div>
         </div>
       </header>
 
@@ -224,7 +224,7 @@ function Cv({ map, pres, past, fullLines, shownLines, Item }) {
         <h3>Interests</h3>
         <div className="chips small">{shownLines.map((l) => <span key={l.id} className="line-chip static" style={{ '--c': l.colour }}><i />{l.name.split(' ·')[0]}</span>)}</div>
         <h3>Education</h3>
-        <p>{map.student.programme}, Grade {map.student.grade}</p>
+        <p>{map.student.programme}, Year {map.student.grade + 1}</p>
         <p className="p-muted">Grades are not shown in this version.</p>
       </aside>
       <div className="cv-main">

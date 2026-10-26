@@ -145,7 +145,7 @@
           "service"
         ],
         "type": "cas",
-        "summary": "Logged the 20th session of the G6 STEM club.",
+        "summary": "Logged the 20th session of the Y7 STEM club.",
         "evidence": [],
         "verification": "school-verified",
         "visibility": "advisor",
@@ -301,13 +301,13 @@
       "event": {
         "id": "ev-134",
         "studentId": "st-02",
-        "title": "Sound desk for G6 assembly",
+        "title": "Sound desk for Y7 assembly",
         "date": "2026-10-23",
         "lineIds": [
           "arun-musictech"
         ],
         "type": "cas",
-        "summary": "Ran sound for the Grade 6 assembly.",
+        "summary": "Ran sound for the Year 7 assembly.",
         "evidence": [],
         "verification": "school-verified",
         "visibility": "advisor",
@@ -412,7 +412,7 @@
           "art"
         ],
         "type": "club",
-        "summary": "Helped hang the Grade 12 art exhibition.",
+        "summary": "Helped hang the Year 13 art exhibition.",
         "evidence": [],
         "verification": "school-verified",
         "visibility": "advisor",

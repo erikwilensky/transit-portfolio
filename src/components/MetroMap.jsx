@@ -168,7 +168,7 @@ export default function MetroMap({ map, lens, selectedId, onSelect, onSignal, mi
             return (
               <g key={g}>
                 <line x1={a.x} x2={a.x} y1={0} y2={L.height} className="grade-rule" />
-                <text x={cx} y={30} textAnchor="middle" className="grade-label">Grade {a.grade}</text>
+                <text x={cx} y={30} textAnchor="middle" className="grade-label">Year {a.grade + 1}</text>
                 <text x={cx} y={46} textAnchor="middle" className="year-label">{GRADE_YEARS(map.student.g9StartYear, a.grade)}</text>
               </g>
             );

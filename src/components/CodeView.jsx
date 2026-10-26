@@ -17,7 +17,7 @@ const starter = (id) => `<!doctype html>
 
     document.title = student.name;
     const app = document.querySelector('#app');
-    app.innerHTML = \`<h1>\${student.name}</h1><p class="sub">\${student.programme} · Grade \${student.grade}</p>\`;
+    app.innerHTML = \`<h1>\${student.name}</h1><p class="sub">\${student.programme} · Year \${student.grade + 1}</p>\`;
     for (const line of lines) {
       const stops = stations.filter((s) => s.lineIds.includes(line.id));
       app.insertAdjacentHTML('beforeend', \`

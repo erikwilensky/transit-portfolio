@@ -1,7 +1,7 @@
 import { NAV } from '../personas.js';
 const BUILT = {
-  student: ['map', 'studio', 'shared', 'inbox', 'links', 'activity', 'privacy'], advisor: ['advisory', 'student'], teacher: ['queue'], counsellor: ['letter', 'applications'],
-  coordinator: ['cas'], leadership: ['dashboard', 'scan', 'pdpa'], external: ['reader'],
+  student: ['map', 'studio', 'shared', 'inbox', 'links', 'activity', 'privacy'], advisor: ['advisory', 'student', 'signals'], teacher: ['queue'], counsellor: ['letter', 'applications'],
+  coordinator: ['cas', 'schoolline'], leadership: ['dashboard', 'scan', 'pdpa', 'schoolmetro'], external: ['reader'],
 };
 // Screens from the roadmap that are not in this build yet.
 export default function ComingSoon({ screen, kind }) {

@@ -32,7 +32,7 @@
   {
     "id": "ev-002",
     "studentId": "st-01",
-    "title": "G9 Computing: intro to Python",
+    "title": "Y10 Computing: intro to Python",
     "date": "2023-09-15",
     "lineIds": [
       "computing"
@@ -62,7 +62,7 @@
       "system": "ManageBac",
       "ref": "class-g9cs"
     },
-    "about": "The first programming unit in Grade 9. Maya learned variables, loops and lists, then built a text adventure set in the school with six rooms and an inventory."
+    "about": "The first programming unit in Year 10. Maya learned variables, loops and lists, then built a text adventure set in the school with six rooms and an inventory."
   },
   {
     "id": "ev-003",
@@ -92,7 +92,7 @@
       "system": "Clubs & Sports",
       "ref": "club-bg"
     },
-    "about": "Beach Guardians runs a cleanup on the first Saturday of every month at Mae Ramphueng beach in Rayong. Maya joined as a volunteer in Grade 9 and became data lead a year later."
+    "about": "Beach Guardians runs a cleanup on the first Saturday of every month at Mae Ramphueng beach in Rayong. Maya joined as a volunteer in Year 10 and became data lead a year later."
   },
   {
     "id": "ev-004",
@@ -208,7 +208,7 @@
       "computing"
     ],
     "type": "project",
-    "summary": "First web app in HTML and JavaScript, used in a G6 assembly.",
+    "summary": "First web app in HTML and JavaScript, used in a Y7 assembly.",
     "evidence": [
       {
         "kind": "image",
@@ -232,7 +232,7 @@
       "system": "Manual entry",
       "ref": null
     },
-    "about": "A ten-question quiz about which bin each item goes in, built with HTML, CSS and JavaScript. It ran on the hall projector in a Grade 6 assembly and 180 students answered on their phones."
+    "about": "A ten-question quiz about which bin each item goes in, built with HTML, CSS and JavaScript. It ran on the hall projector in a Year 7 assembly and 180 students answered on their phones."
   },
   {
     "id": "ev-008",
@@ -262,7 +262,7 @@
       "system": "ManageBac",
       "ref": "trip-khaoyai"
     },
-    "about": "Three-day Grade 9 field trip to Khao Yai National Park. Students used quadrats to sample ground plants at three altitudes and compared species diversity."
+    "about": "Three-day Year 10 field trip to Khao Yai National Park. Students used quadrats to sample ground plants at three altitudes and compared species diversity."
   },
   {
     "id": "ev-009",
@@ -323,7 +323,7 @@
       "system": "Manual entry",
       "ref": null
     },
-    "about": "For the Grade 9 science fair Maya filtered water from three Bangkok canals, counted microplastic fibres under a microscope and compared the canals. The project won Silver."
+    "about": "For the Year 10 science fair Maya filtered water from three Bangkok canals, counted microplastic fibres under a microscope and compared the canals. The project won Silver."
   },
   {
     "id": "ev-011",
@@ -448,7 +448,7 @@
   {
     "id": "ev-015",
     "studentId": "st-01",
-    "title": "Tutoring G7 science",
+    "title": "Tutoring Y8 science",
     "date": "2024-10-20",
     "lineIds": [
       "service"
@@ -473,7 +473,7 @@
       "system": "CAS log",
       "ref": "svc-0412"
     },
-    "about": "Every Wednesday lunchtime for two terms, Maya tutored three Grade 7 students in the library on science homework, mostly states of matter and forces."
+    "about": "Every Wednesday lunchtime for two terms, Maya tutored three Year 8 students in the library on science homework, mostly states of matter and forces."
   },
   {
     "id": "ev-016",
@@ -484,7 +484,7 @@
       "science"
     ],
     "type": "assessment",
-    "summary": "Grade 10 genetics test.",
+    "summary": "Year 11 genetics test.",
     "evidence": [
       {
         "kind": "image",
@@ -508,7 +508,7 @@
       "system": "SIS",
       "ref": "grade-g10bio-t1"
     },
-    "about": "Grade 10 Biology test on Mendelian genetics, Punnett squares and pedigree analysis. Maya scored a 7, the top grade."
+    "about": "Year 11 Biology test on Mendelian genetics, Punnett squares and pedigree analysis. Maya scored a 7, the top grade."
   },
   {
     "id": "ev-017",
@@ -769,7 +769,7 @@
   {
     "id": "ev-025",
     "studentId": "st-01",
-    "title": "CAS: STEM club for G6 girls",
+    "title": "CAS: STEM club for Y7 girls",
     "date": "2025-10-01",
     "lineIds": [
       "service"
@@ -799,7 +799,7 @@
       "system": "CAS log",
       "ref": "cas-stem"
     },
-    "about": "Maya co-founded a Friday after-school STEM club for Grade 6 girls with a friend. Over two terms, 14 regular members built light sensors, a micro:bit pet and a class weather station.",
+    "about": "Maya co-founded a Friday after-school STEM club for Year 7 girls with a friend. Over two terms, 14 regular members built light sensors, a micro:bit pet and a class weather station.",
     "cas": {
       "strand": "S",
       "outcomes": [
@@ -1218,7 +1218,7 @@
       "system": "ManageBac",
       "ref": "class-g9des"
     },
-    "about": "A Grade 9 Design unit on orthographic projection, two-point perspective and quick ideation sketches for a desk organiser."
+    "about": "A Year 10 Design unit on orthographic projection, two-point perspective and quick ideation sketches for a desk organiser."
   },
   {
     "id": "ev-102",
@@ -1288,7 +1288,7 @@
   {
     "id": "ev-104",
     "studentId": "st-02",
-    "title": "G9 Computing: Python basics",
+    "title": "Y10 Computing: Python basics",
     "date": "2024-10-22",
     "lineIds": [
       "computing"
@@ -1679,7 +1679,7 @@
       "system": "Exam boards",
       "ref": "pno-6"
     },
-    "about": "Arun passed Grade 6 piano with Distinction, scoring 132/150. His pieces included a Bach invention and a jazz standard."
+    "about": "Arun passed Year 7 piano with Distinction, scoring 132/150. His pieces included a Bach invention and a jazz standard."
   },
   {
     "id": "ev-116",
@@ -2086,7 +2086,7 @@
       "music"
     ],
     "type": "goal",
-    "summary": "Planned: sit Grade 8 piano.",
+    "summary": "Planned: sit Year 9 piano.",
     "evidence": [
       {
         "kind": "file",
@@ -2100,7 +2100,7 @@
       "system": "Manual entry",
       "ref": null
     },
-    "about": "Planned: Grade 8 piano in June 2027, with a jazz piece as an own-choice item."
+    "about": "Planned: Year 9 piano in June 2027, with a jazz piece as an own-choice item."
   },
   {
     "id": "ev-129",
@@ -2498,7 +2498,7 @@
       "lena-japanese"
     ],
     "type": "class",
-    "summary": "Depot: G10 Japanese.",
+    "summary": "Depot: Y11 Japanese.",
     "evidence": [
       {
         "kind": "image",
@@ -2517,7 +2517,7 @@
       "system": "SIS",
       "ref": "enrol-jp"
     },
-    "about": "Lena joined the Grade 10 Japanese elective, three lessons a week with a native-speaker teacher."
+    "about": "Lena joined the Year 11 Japanese elective, three lessons a week with a native-speaker teacher."
   },
   {
     "id": "ev-218",
@@ -2602,7 +2602,7 @@
   {
     "id": "ev-300",
     "studentId": "st-04",
-    "title": "Reading buddies with G3",
+    "title": "Reading buddies with Y4",
     "date": "2025-02-06",
     "lineIds": [
       "service"
@@ -2872,7 +2872,7 @@
   {
     "id": "ev-315",
     "studentId": "st-05",
-    "title": "Reading buddies with G3",
+    "title": "Reading buddies with Y4",
     "date": "2025-04-09",
     "lineIds": [
       "service"

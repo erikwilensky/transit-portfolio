@@ -35,7 +35,7 @@ export default function AdvisorStudent({ studentId, version, toast, go, persona 
       <div className="as-head">
         <button className="cb-back" onClick={() => go(persona.id, 'advisory')}>‹ Advisory 4B</button>
         <span className="pres-avatar" style={{ background: s.avatar.colour }}>{s.avatar.initials}</span>
-        <div><h1>{s.name}</h1><p>Grade {s.grade} · {s.programme} · advisor view (advisor, school and publishable items)</p></div>
+        <div><h1>{s.name}</h1><p>Year {s.grade + 1} · {s.programme} · advisor view (advisor, school and publishable items)</p></div>
       </div>
       <div className="as-body">
         <div className="as-map">

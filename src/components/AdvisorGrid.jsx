@@ -13,7 +13,7 @@ export default function AdvisorGrid({ advisorId, onOpen, toast, version }) {
       <div className="adv-head">
         <div>
           <h1>Advisory 4B</h1>
-          <p>{advisor.name} · {cohort.length} students · vertical tutor group, Grades 10 to 12</p>
+          <p>{advisor.name} · {cohort.length} students · vertical tutor group, Years 11 to 13</p>
         </div>
         <div className="adv-summary">
           <span><b>{flagged}</b> students with few reflections</span>
@@ -29,7 +29,7 @@ export default function AdvisorGrid({ advisorId, onOpen, toast, version }) {
             <article key={c.student.id} className={`adv-card${c.flagFewReflections ? ' flagged' : ''}`}>
               <header>
                 <span className="pres-avatar sm" style={{ background: c.student.avatar.colour }}>{c.student.avatar.initials}</span>
-                <div><h3>{c.student.name}</h3><small>Grade {c.student.grade} · {c.student.programme}</small></div>
+                <div><h3>{c.student.name}</h3><small>Year {c.student.grade + 1} · {c.student.programme}</small></div>
               </header>
               <button className="adv-mini" onClick={() => onOpen(c.student.id)} aria-label={`Open ${c.student.name}'s map`}>
                 <MetroMap map={c} lens={lens} mini />

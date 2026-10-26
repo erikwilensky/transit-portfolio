@@ -49,7 +49,7 @@ export function newBlock(type, map) {
   const first = map.student.name.split(' ')[0];
   const featured = pickFeatured(map);
   const props = {
-    hero: { title: map.student.name, subtitle: `${map.student.programme} · Grade ${map.student.grade}`, tagline: 'A short line about who you are.', layout: 'left', avatar: true },
+    hero: { title: map.student.name, subtitle: `${map.student.programme} · Year ${map.student.grade + 1}`, tagline: 'A short line about who you are.', layout: 'left', avatar: true },
     text: { heading: 'About me', body: `Write in your own voice, ${first}.` },
     map: { height: 'm', lines: [] },
     feature: { eventId: featured?.id, imageSide: 'left', showReflection: true, showEndorsement: true },

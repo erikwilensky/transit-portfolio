@@ -6,9 +6,9 @@ import { VerifyBadge } from '../components/Badge.jsx';
 const DRAFTS = {
   'st-01': `I have known Maya Chen for four years as her university counsellor, and it is a pleasure to recommend her for Data Science.
 
-Maya is at her best when a local problem can be measured. In Grade 11 she built a network of six air-quality sensors around our campus and wrote the live dashboard that our facilities team still checks every day [ev-042]. She then cleaned 40,000 readings in Python and traced a lunchtime pollution spike to the canteen extractor, which the school has since moved [ev-029].
+Maya is at her best when a local problem can be measured. In Year 12 she built a network of six air-quality sensors around our campus and wrote the live dashboard that our facilities team still checks every day [ev-042]. She then cleaned 40,000 readings in Python and traced a lunchtime pollution spike to the canteen extractor, which the school has since moved [ev-029].
 
-Her Biology internal assessment went well beyond what the course asks, fitting a growth model to twelve weeks of data [ev-030]. She co-founded a Friday STEM club for Grade 6 girls that now has fourteen regular members [ev-025].
+Her Biology internal assessment went well beyond what the course asks, fitting a growth model to twelve weeks of data [ev-030]. She co-founded a Friday STEM club for Year 7 girls that now has fourteen regular members [ev-025].
 
 Maya is also a natural leader under pressure. She is one of the most curious students I have worked with.`,
 };

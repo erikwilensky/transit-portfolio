@@ -4,7 +4,7 @@ import { fmtDate } from '../format.js';
 import { OUTCOMES } from '../components/AddStation.jsx';
 
 const STRAND = { C: 'Creativity', A: 'Activity', S: 'Service' };
-const PROJECT = { 'st-01': ['Complete', 'Friday STEM club for G6 girls'], 'st-02': ['Planning', 'Sound desk crew for school events'], 'st-04': ['In progress', 'Coaching junior football'], 'st-05': ['Complete', 'Community art workshop'], 'st-07': ['Not started', null], 'st-08': ['In progress', 'Campus garden'] };
+const PROJECT = { 'st-01': ['Complete', 'Friday STEM club for Y7 girls'], 'st-02': ['Planning', 'Sound desk crew for school events'], 'st-04': ['In progress', 'Coaching junior football'], 'st-05': ['Complete', 'Community art workshop'], 'st-07': ['Not started', null], 'st-08': ['In progress', 'Campus garden'] };
 
 // The CAS coordinator's grid: the seven learning outcomes for every DP student, filled from tagged stations.
 export default function CasDashboard({ version }) {
@@ -46,7 +46,7 @@ export default function CasDashboard({ version }) {
           </div>
           {rows.map((r) => (
             <div key={r.s.id} className="cas-row" role="row">
-              <span role="rowheader" className="cas-name"><span className="pres-avatar xs" style={{ background: r.s.avatar.colour }}>{r.s.avatar.initials}</span>{r.s.name}<small>G{r.s.grade} · {r.covered}/7</small></span>
+              <span role="rowheader" className="cas-name"><span className="pres-avatar xs" style={{ background: r.s.avatar.colour }}>{r.s.avatar.initials}</span>{r.s.name}<small>Y{r.s.grade + 1} · {r.covered}/7</small></span>
               {OUTCOMES.map((o, i) => {
                 const evs = r.by(i + 1);
                 const isNew = evs.some(fresh);

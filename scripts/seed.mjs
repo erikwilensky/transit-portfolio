@@ -34,7 +34,7 @@ const teachers = [
   { id: 't-08', name: 'Ms Clara Brandt', role: 'CAS Coordinator' },
   { id: 't-09', name: 'Ms Ruth Adeyemi', role: 'University Counsellor' },
   { id: 't-10', name: 'Dr Anan Wongsakul', role: 'Head of School' },
-  { id: 't-11', name: 'Ms Siriporn Thongdee', role: 'Grade 6 homeroom, 6C' },
+  { id: 't-11', name: 'Ms Siriporn Thongdee', role: 'Year 7 homeroom, 7C' },
 ];
 
 const students = [
@@ -68,15 +68,15 @@ const img = (caption, name) => ({ kind: 'image', url: `evidence/${name || IMG[ca
 const grade = (caption) => ({ kind: 'grade', url: null, caption });
 const cert = (caption) => ({ kind: 'certificate', url: '#', caption });
 
-// ── Maya Chen, Grade 12 ───────────────────────────────────────────────
+// ── Maya Chen, Year 13 ───────────────────────────────────────────────
 const M = (...a) => ev('st-01', ...a);
 M('ev-001', '2023-08-28', ['maya-swim'], 'sport', 'Joined varsity swim squad', 'Selected for the varsity squad; five sessions a week.', { src: SRC.clubs('roster-swim-23') });
-M('ev-002', '2023-09-15', ['computing'], 'class', 'G9 Computing: intro to Python', 'First programming unit: loops, lists and a text adventure.', { src: SRC.lms('class-g9cs'), vis: 'school' });
+M('ev-002', '2023-09-15', ['computing'], 'class', 'Y10 Computing: intro to Python', 'First programming unit: loops, lists and a text adventure.', { src: SRC.lms('class-g9cs'), vis: 'school' });
 M('ev-003', '2023-09-20', ['service'], 'club', 'Joined Beach Guardians', 'Student service club running monthly beach cleanups in Rayong.', { src: SRC.clubs('club-bg') });
 M('ev-004', '2023-10-12', ['science'], 'assessment', 'Cell biology lab report', 'Microscopy of onion and cheek cells; scored 7/8 on criterion B.', { src: SRC.lms('task-2231'), evidence: [grade('MYP criterion B: 7/8')] });
 M('ev-005', '2024-01-18', ['environment'], 'project', 'Campus composting audit', 'Weighed canteen food waste for six weeks and proposed a compost bin.', { evidence: [file('Audit spreadsheet'), img('Compost bin site')] });
 M('ev-006', '2024-02-10', ['maya-swim'], 'competition', 'Regional champs: 200m IM, 4th', 'Personal best of 2:31 at the regional age-group championships.', { src: SRC.clubs('meet-2402'), evidence: [cert('Results sheet')] });
-M('ev-007', '2024-03-05', ['computing'], 'project', 'Recycling quiz web app', 'First web app in HTML and JavaScript, used in a G6 assembly.', { evidence: [link('https://example.org/quiz', 'Live quiz')] });
+M('ev-007', '2024-03-05', ['computing'], 'project', 'Recycling quiz web app', 'First web app in HTML and JavaScript, used in a Y7 assembly.', { evidence: [link('https://example.org/quiz', 'Live quiz')] });
 M('ev-008', '2024-03-12', ['science'], 'class', 'Ecology field trip, Khao Yai', 'Quadrat sampling and species counts in the national park.', { src: SRC.lms('trip-khaoyai'), vis: 'school' });
 M('ev-009', '2024-04-20', ['environment', 'service'], 'service', 'Beach cleanup + litter survey', 'Designed a tally sheet so 40 volunteers could log litter by type.', { end: ['t-08', 'Maya turned a cleanup into a data-collection exercise the club still uses.'], evidence: [img('Volunteers sorting litter'), file('Tally sheet template')] });
 M('ev-010', '2024-05-15', ['science'], 'project', 'Science fair: microplastics', 'Filtered water from three canals and counted microplastic fibres.', { evidence: [img('Poster'), cert('Science fair: Silver')], refl: ['What surprised you?', 'Counting fibres by hand took forever. I wondered if a program could do it.'] });
@@ -84,8 +84,8 @@ M('ev-011', '2024-06-10', ['maya-swim'], 'sport', 'Swim training camp, Hua Hin',
 M('ev-012', '2024-06-20', ['science'], 'reflection', 'Reflection: why data keeps pulling me in', 'End-of-year reflection on the science fair and the composting audit.', { refl: ['What connected your projects this year?', 'Both projects were really about counting things carefully and finding a pattern. I liked the spreadsheet part best.'] });
 M('ev-013', '2024-09-10', ['maya-swim'], 'sport', 'Cut to two sessions a week', 'Dropped to two sessions to make room for coursework and code club.', { src: SRC.clubs('roster-swim-24'), vis: 'advisor' });
 M('ev-014', '2024-10-05', ['computing'], 'club', 'Arduino workshop', 'Wired a temperature sensor and logged readings to a laptop.', { src: SRC.clubs('club-maker') });
-M('ev-015', '2024-10-20', ['service'], 'service', 'Tutoring G7 science', 'Weekly peer tutoring in the library for two terms.', { src: SRC.cas('svc-0412') });
-M('ev-016', '2024-11-02', ['science'], 'assessment', 'Genetics unit test', 'Grade 10 genetics test.', { src: SRC.sis('grade-g10bio-t1'), evidence: [grade('Grade 7')] });
+M('ev-015', '2024-10-20', ['service'], 'service', 'Tutoring Y8 science', 'Weekly peer tutoring in the library for two terms.', { src: SRC.cas('svc-0412') });
+M('ev-016', '2024-11-02', ['science'], 'assessment', 'Genetics unit test', 'Year 11 genetics test.', { src: SRC.sis('grade-g10bio-t1'), evidence: [grade('Grade 7')] });
 M('ev-017', '2025-01-20', ['environment'], 'project', 'Eco-committee energy audit', 'Read every classroom meter for a month; lights left on cost ฿18,000 a term.', { evidence: [file('Energy audit report')] });
 M('ev-018', '2025-02-22', ['maya-swim'], 'competition', 'Last race: inter-school gala', 'Swam the 200m IM one last time, then left the squad.', { src: SRC.clubs('meet-2502'),
   refl: ['A line is ending. What are you taking with you?', 'Swimming taught me to train on a schedule. I stopped because I wanted my evenings for building things, not because I fell out of love with it.', '2025-03-01'] });
@@ -95,7 +95,7 @@ M('ev-021', '2025-05-10', ['computing'], 'award', 'Data visualisation course', '
 M('ev-022', '2025-06-15', ['environment'], 'cas', 'Mangrove planting trip', 'Three days planting and tagging mangroves in Chanthaburi.', { src: SRC.cas('cas-mangrove') });
 M('ev-023', '2025-08-20', ['science'], 'class', 'Started IB Biology HL', 'Depot: IB Biology HL with Mr Okafor.', { src: SRC.sis('enrol-biohl') });
 M('ev-024', '2025-08-21', ['computing'], 'class', 'Started IB Computer Science SL', 'Depot: IB CS SL with Ms Nair.', { src: SRC.sis('enrol-cssl') });
-M('ev-025', '2025-10-01', ['service'], 'cas', 'CAS: STEM club for G6 girls', 'Co-founded a Friday STEM club; 14 regular members.', { src: SRC.cas('cas-stem'), end: ['t-08', 'A genuinely student-led CAS project with clear impact.'] });
+M('ev-025', '2025-10-01', ['service'], 'cas', 'CAS: STEM club for Y7 girls', 'Co-founded a Friday STEM club; 14 regular members.', { src: SRC.cas('cas-stem'), end: ['t-08', 'A genuinely student-led CAS project with clear impact.'] });
 M('ev-026', '2025-11-05', ['computing'], 'project', 'CO₂ sensor prototype', 'One classroom sensor on a Raspberry Pi, logging every minute.', { src: SRC.gh('repo-co2'), evidence: [link('https://example.org/co2', 'Source code')] });
 M('ev-028', '2026-01-20', ['science'], 'assessment', 'Biology IA proposal', 'Proposal: algae growth against water temperature.', { src: SRC.lms('task-ia-bio') });
 M('ev-042', '2026-03-14', ['computing', 'environment'], 'project', 'Air-quality sensor network', 'Built 6 Raspberry Pi sensors around campus and a live dashboard.',
@@ -112,12 +112,12 @@ M('ev-034', '2026-10-10', ['service'], 'reflection', 'Reflection: what service t
 M('ev-035', '2027-01-15', ['maya-datasci'], 'goal', 'Extended Essay final submission', 'Planned: submit the EE in January.', {});
 M('ev-036', '2027-07-01', ['maya-datasci'], 'goal', 'Target: BSc Data Science', 'Planned: start a Data Science degree.', {});
 
-// ── Arun Mehta, Grade 11 ──────────────────────────────────────────────
+// ── Arun Mehta, Year 12 ──────────────────────────────────────────────
 const A = (...a) => ev('st-02', ...a);
 A('ev-101', '2024-09-05', ['design'], 'class', 'Design: product sketching', 'MYP Design unit on orthographic and perspective sketching.', { src: SRC.lms('class-g9des'), vis: 'school' });
 A('ev-102', '2024-09-20', ['music'], 'award', 'Piano Grade 5: Merit', 'Graded piano exam.', { src: SRC.exam('pno-5'), evidence: [cert('Grade 5 certificate')] });
 A('ev-103', '2024-10-08', ['arun-french'], 'assessment', 'French: oral presentation', 'Two-minute talk about my neighbourhood.', { src: SRC.lms('task-fr-1') });
-A('ev-104', '2024-10-22', ['computing'], 'class', 'G9 Computing: Python basics', 'Moved from Scratch to Python.', { src: SRC.lms('class-g9cs'), vis: 'school' });
+A('ev-104', '2024-10-22', ['computing'], 'class', 'Y10 Computing: Python basics', 'Moved from Scratch to Python.', { src: SRC.lms('class-g9cs'), vis: 'school' });
 A('ev-105', '2024-12-02', ['music'], 'club', 'Joined jazz band on keys', 'Rehearses Tuesdays; first time improvising.', { src: SRC.clubs('club-jazz') });
 A('ev-106', '2025-01-20', ['computing'], 'club', 'Code club: first Pygame game', 'A side-scroller with chiptune music I wrote myself.', { src: SRC.clubs('club-code'), evidence: [link('https://example.org/pygame', 'Play it')] });
 A('ev-107', '2025-02-15', ['design'], 'project', '3D-printed phone stand', 'Iterated four prototypes in Fusion.', { evidence: [img('Prototype line-up')] });
@@ -146,11 +146,11 @@ A('ev-124', '2026-08-22', ['languages'], 'class', 'Started Spanish ab initio', '
 A('ev-125', '2026-10-01', ['design'], 'project', 'MIDI controller PCB', 'Designed my own 16-pad controller board.', { src: SRC.gh('repo-midi') });
 A('ev-126', '2026-10-10', ['arun-musictech'], 'assessment', 'Music HL: composition draft', 'First composition draft for Music HL.', { src: SRC.lms('task-mus-c1'), vis: 'school' });
 A('ev-127', '2026-10-15', ['languages'], 'assessment', 'Spanish: first oral', 'Introduced myself and my family.', { src: SRC.lms('task-sp-1'), vis: 'advisor' });
-A('ev-128', '2027-06-01', ['music'], 'goal', 'Piano Grade 8', 'Planned: sit Grade 8 piano.', {});
+A('ev-128', '2027-06-01', ['music'], 'goal', 'Piano Grade 8', 'Planned: sit Year 9 piano.', {});
 A('ev-129', '2027-10-15', ['computing'], 'goal', 'CS IA: procedural music engine', 'Planned: IB CS internal assessment.', {});
 A('ev-130', '2028-06-01', ['arun-musictech'], 'goal', 'Target: BMus Music Technology', 'Planned: study music technology.', {});
 
-// ── Lena Fischer, Grade 10 ────────────────────────────────────────────
+// ── Lena Fischer, Year 11 ────────────────────────────────────────────
 const L = (...a) => ev('st-03', ...a);
 L('ev-201', '2025-09-02', ['lena-ceramics'], 'club', 'Joined ceramics club', 'Thursday after-school club.', { src: SRC.clubs('club-ceramics') });
 L('ev-204', '2025-11-20', ['languages'], 'reflection', 'Reflection: arriving in a new school', 'First-term reflection.', { refl: ['What has been hardest, and what has helped?', 'Not understanding the canteen staff at first. Learning ten Thai phrases a week helped more than anything.'] });
@@ -166,7 +166,7 @@ L('ev-211', '2026-05-10', ['languages'], 'project', 'Started learning Japanese',
 L('ev-212', '2026-06-05', ['art', 'service'], 'service', 'Community centre mural', 'Designed and led painting of a 6 m mural with 12 volunteers.', { src: SRC.cas('svc-mural'), end: ['t-06', 'Lena led the design process with real maturity.'], evidence: [img('Finished mural')] });
 L('ev-213', '2026-06-20', ['lena-japanese'], 'award', 'Japanese club: kana certificate', 'Passed the club’s hiragana and katakana test.', { src: SRC.clubs('club-jp'), evidence: [cert('Kana certificate')],
   refl: ['A new line has branched. Why now?', 'Self-study got serious enough that I wanted a teacher and a test.'] });
-L('ev-214', '2026-08-19', ['lena-japanese'], 'class', 'Started Japanese elective', 'Depot: G10 Japanese.', { src: SRC.sis('enrol-jp') });
+L('ev-214', '2026-08-19', ['lena-japanese'], 'class', 'Started Japanese elective', 'Depot: Y11 Japanese.', { src: SRC.sis('enrol-jp') });
 L('ev-218', '2026-10-14', ['service'], 'reflection', 'Reflection: why tutoring matters', 'Term reflection.', { refl: ['What do you notice about yourself when you help others?', 'I am more patient with my buddies than with myself. I am trying to fix that.'] });
 L('ev-219', '2026-12-06', ['lena-japanese'], 'goal', 'JLPT N5', 'Planned: sit the JLPT N5 in December.', {});
 L('ev-220', '2027-03-15', ['art'], 'goal', 'Personal Project: bilingual zine', 'Planned: MYP Personal Project.', {});
@@ -203,7 +203,7 @@ const FULL = {
 Halfway through, Mr Okafor asked how I knew I hadn't counted the same fibre twice. I didn't. So I started photographing each slide and marking fibres on the photo instead, which was slower but meant someone else could check me.
 
 What surprised me most wasn't the result (canal B was much worse) but how much of science is bookkeeping. I kept thinking a program could do the counting. I didn't know how to write one yet.`,
-  'ev-012': `Looking back at Grade 9, my projects look unrelated on paper: a composting audit, a science fair, a quiz website. But they were all really about counting things carefully and finding a pattern.
+  'ev-012': `Looking back at Year 10, my projects look unrelated on paper: a composting audit, a science fair, a quiz website. But they were all really about counting things carefully and finding a pattern.
 
 The best part of the composting audit wasn't the bin we eventually got. It was the spreadsheet: six weeks of canteen waste, and the moment the chart showed Mondays were twice as bad as Fridays. I sat with it for an hour trying to work out why (it was the weekend fridge clear-out).
 
@@ -223,7 +223,7 @@ That's when I realised the part I enjoy most isn't the hardware or even the envi
 This report was the first time I wrote Python that someone else depended on. Forty thousand readings, a lunch-time PM2.5 spike in the canteen, and a recommendation the facilities team actually followed (they moved the extractor fan schedule).
 
 I'm nervous about calling it a "line" when it's only a few months old. But the map shows it clearly: everything I've done since March has run along it.`,
-  'ev-034': `When I joined Beach Guardians in Grade 9 I thought service meant picking up rubbish. It does, but the cleanups that changed anything were the ones where we counted what we found and sent it to the district office.
+  'ev-034': `When I joined Beach Guardians in Year 10 I thought service meant picking up rubbish. It does, but the cleanups that changed anything were the ones where we counted what we found and sent it to the district office.
 
 The STEM club taught me the same lesson from the other side. The girls stayed when they could see their sensor readings change in real time, not when I explained theory.
 
@@ -268,7 +268,7 @@ The line ends here on my map, but I still love clay. Maybe it will come back as 
 Passing the kana test proved to me that this wasn't just a phase. It also helped that learning a third script made Thai feel less scary in hindsight.
 
 I like seeing Japanese branch off Languages on my map. It started as a hobby and now it's going somewhere: I want to take it in the Diploma.`,
-  'ev-218': `I am more patient with my buddies than with myself. When a Grade 6 student mixes up words, I tell them it's normal. When I mix up Thai tones, I get angry.
+  'ev-218': `I am more patient with my buddies than with myself. When a Year 7 student mixes up words, I tell them it's normal. When I mix up Thai tones, I get angry.
 
 This term I have two new buddies, one from Korea and one from Brazil. We use a mix of English, gestures and translation apps, and somehow it works.
 
@@ -299,7 +299,7 @@ let gc = 300;
 const POOL = {
   computing: ['Python data project', 'Robotics club build', 'Library web app', 'CS class: algorithms unit', 'Game jam entry', 'Spreadsheet automation for the PTA'],
   science: ['Chemistry titration lab', 'Physics pendulum investigation', 'Science fair entry', 'Biology field study', 'Lab report: osmosis'],
-  service: ['Food bank volunteering', 'Reading buddies with G3', 'Charity run organiser', 'Animal shelter weekends', 'Community garden'],
+  service: ['Food bank volunteering', 'Reading buddies with Y4', 'Charity run organiser', 'Animal shelter weekends', 'Community garden'],
   sport: ['Football team season', 'Badminton tournament', 'Cross-country race', 'Basketball league', 'Climbing club'],
   environment: ['Recycling audit', 'Tree planting day', 'Plastic-free week campaign', 'Eco-committee meeting series'],
   languages: ['Spanish oral exam', 'Thai poetry recital', 'Translation project', 'Language exchange'],
@@ -327,13 +327,13 @@ for (const [id, name, grade, ls, nRefl] of cohort) {
 // ── Presentations (saved lenses) ──────────────────────────────────────
 const presentations = [
   { id: 'pr-01', studentId: 'st-01', audience: 'general', targetName: null, tier: 'template', title: 'Maya Chen: my journey', filters: { hiddenLines: [] }, order: null, theme: 'metro', layout: 'profile', showMap: true, narratives: {},
-    intro: 'I am a Grade 12 IB student in Bangkok who likes turning local problems into data: canals, classrooms, beaches and air.',
+    intro: 'I am a Year 13 IB student in Bangkok who likes turning local problems into data: canals, classrooms, beaches and air.',
     shareLinks: [{ token: 'tp-g3n2', presentationId: 'pr-01', expiresAt: '2026-11-30', revoked: false, views: 9 }] },
-  { id: 'pr-02', studentId: 'st-01', audience: 'university', targetName: null, tier: 'builder', title: 'Maya Chen: university portfolio', intro: 'My map has six lines, but one question runs through all of them: what can careful measurement tell us about the place we live? This page follows how that question grew from a Grade 9 science fair into a plan to study Data Science.', filters: { hiddenLines: [] }, order: ['maya-datasci', 'science', 'computing', 'environment', 'service', 'maya-swim'], theme: 'ivy', layout: 'narrative', showMap: false,
+  { id: 'pr-02', studentId: 'st-01', audience: 'university', targetName: null, tier: 'builder', title: 'Maya Chen: university portfolio', intro: 'My map has six lines, but one question runs through all of them: what can careful measurement tell us about the place we live? This page follows how that question grew from a Year 10 science fair into a plan to study Data Science.', filters: { hiddenLines: [] }, order: ['maya-datasci', 'science', 'computing', 'environment', 'service', 'maya-swim'], theme: 'ivy', layout: 'narrative', showMap: false,
     narratives: {
-      'maya-datasci': 'Data Science branched off my Biology line in Grade 11, when an air-quality project showed me I enjoy the analysis more than the collection. Since then I have modelled algae growth for my IA and I am predicting dengue outbreaks from weather data for my Extended Essay.',
+      'maya-datasci': 'Data Science branched off my Biology line in Year 12, when an air-quality project showed me I enjoy the analysis more than the collection. Since then I have modelled algae growth for my IA and I am predicting dengue outbreaks from weather data for my Extended Essay.',
       science: 'Biology gave me my questions: microplastics in canals, enzyme kinetics, algae growth. Each project pushed me toward more careful measurement.',
-      computing: 'I learned to code in Grade 9 and use it as a tool: sensors, dashboards and a hackathon chatbot.',
+      computing: 'I learned to code in Year 10 and use it as a tool: sensors, dashboards and a hackathon chatbot.',
       environment: 'Most of my projects start with a local environmental problem I can measure.',
       service: 'Beach Guardians and the STEM club taught me that data is only useful when someone can act on it.',
       'maya-swim': 'Four years of competitive swimming taught me to train on a schedule.' },
@@ -354,7 +354,7 @@ const presentations = [
 
   { id: 'pr-21', studentId: 'st-03', audience: 'general', targetName: null, tier: 'template', title: 'Lena Fischer: my journey', filters: { hiddenLines: [] }, order: null, theme: 'metro', layout: 'profile', showMap: true, narratives: {}, shareLinks: [{ token: 'tp-l5g2', presentationId: 'pr-21', expiresAt: '2026-12-20', revoked: false, views: 4 }] },
   { id: 'pr-22', studentId: 'st-03', audience: 'university', targetName: null, tier: 'template', title: 'Lena Fischer: portfolio', filters: { hiddenLines: [] }, order: null, theme: 'ivy', layout: 'narrative', showMap: false,
-    narratives: { languages: 'I arrived in Bangkok in Grade 9 speaking no Thai. Languages became the line everything else hangs from.', service: 'Language Buddies is where my languages turned into something useful for other people.', art: 'Art is where I slow down.' }, shareLinks: [] },
+    narratives: { languages: 'I arrived in Bangkok in Year 10 speaking no Thai. Languages became the line everything else hangs from.', service: 'Language Buddies is where my languages turned into something useful for other people.', art: 'Art is where I slow down.' }, shareLinks: [] },
   { id: 'pr-23', studentId: 'st-03', audience: 'specific', targetName: 'Japanese', institution: 'IB Diploma course choice: Japanese ab initio', tier: 'template', title: 'Lena Fischer: why Japanese', filters: { hiddenLines: [] }, order: null, theme: 'ivy', layout: 'letter', showMap: false, focusLines: ['lena-japanese', 'languages'],
     whyCourse: 'Japanese started as a hobby and became a branch of my Languages line within a year. I want to take it further in the Diploma.', narratives: {}, shareLinks: [] },
   { id: 'pr-24', studentId: 'st-03', audience: 'employer', targetName: null, tier: 'template', title: 'Lena Fischer: volunteering and experience', intro: 'Multilingual volunteer who helps new families settle in, with experience in translation and community art.', skills: ['German, English, Thai', 'Translation', 'Peer tutoring', 'Mural design', 'Workshop leading'], filters: { hiddenLines: [] }, order: null, theme: 'slate', layout: 'cv', showMap: false, narratives: {}, shareLinks: [] },
@@ -390,7 +390,7 @@ const pending = [
   P('github', 'ev-040', 'st-01', '2026-10-12', ['computing'], 'project', 'Forked a weather-API library', 'Forked a library to read the Thai Meteorological Department feed.', 'fork-tmd-api', 'student-added'),
   P('lms', 'ev-038', 'st-01', '2026-10-22', ['maya-datasci'], 'assessment', 'EE: research question approved', 'Supervisor approved the Extended Essay research question.', 'ee-maya-rq'),
   P('lms', 'ev-041', 'st-01', '2026-10-16', ['computing'], 'assessment', 'CS IA: proposal submitted', 'Proposal for a flood-alert app for the school bus routes.', 'task-cs-ia-1'),
-  P('cas', 'ev-039', 'st-01', '2026-10-24', ['service'], 'cas', 'STEM club: 20th session', 'Logged the 20th session of the G6 STEM club.', 'cas-stem-20'),
+  P('cas', 'ev-039', 'st-01', '2026-10-24', ['service'], 'cas', 'STEM club: 20th session', 'Logged the 20th session of the Y7 STEM club.', 'cas-stem-20'),
   P('sis', 'ev-043', 'st-01', '2026-10-25', ['science'], 'assessment', 'Term 1 report: Biology HL', 'Term 1 report published: predicted 7.', 'rpt-t1-bio'),
   P('sis', 'ev-044', 'st-01', '2026-10-25', [], 'award', 'Attendance: 100% in Term 1', 'Full attendance recorded for Term 1.', 'att-t1'),
   P('clubs', 'ev-045', 'st-01', '2026-10-08', [], 'club', 'Joined Model UN', 'Added to the Model UN roster for the November conference.', 'club-mun'),
@@ -398,18 +398,18 @@ const pending = [
   P('github', 'ev-131', 'st-02', '2026-10-21', ['computing'], 'project', 'MIDI controller firmware', 'First firmware release for the 16-pad controller.', 'repo-midi@v0.1', 'student-added'),
   P('exams', 'ev-132', 'st-02', '2026-10-18', ['music'], 'award', 'Piano Grade 7: Merit', 'Graded piano exam result received.', 'pno-7'),
   P('lms', 'ev-133', 'st-02', '2026-10-19', ['music'], 'assessment', 'Music HL: listening paper', 'First practice listening paper.', 'task-mus-l1'),
-  P('cas', 'ev-134', 'st-02', '2026-10-23', ['arun-musictech'], 'cas', 'Sound desk for G6 assembly', 'Ran sound for the Grade 6 assembly.', 'cas-sound-1'),
+  P('cas', 'ev-134', 'st-02', '2026-10-23', ['arun-musictech'], 'cas', 'Sound desk for Y7 assembly', 'Ran sound for the Year 7 assembly.', 'cas-sound-1'),
   P('sis', 'ev-135', 'st-02', '2026-10-25', ['languages'], 'assessment', 'Term 1 report: Spanish ab initio', 'Term 1 report published.', 'rpt-t1-sp'),
   P('clubs', 'ev-136', 'st-02', '2026-10-09', ['music'], 'club', 'Jazz band: new season', 'Re-registered for jazz band, now as band captain.', 'club-jazz-26'),
   P('cas', 'ev-222', 'st-03', '2026-10-23', ['service'], 'service', 'Language Buddies: 30 hours', 'Passed 30 logged hours of peer support.', 'svc-lb-30'),
   P('lms', 'ev-223', 'st-03', '2026-10-21', ['lena-japanese'], 'assessment', 'Japanese: first quiz', 'Vocabulary quiz, unit 2.', 'task-jp-2'),
-  P('clubs', 'ev-224', 'st-03', '2026-10-11', ['art'], 'club', 'Art club: exhibition helper', 'Helped hang the Grade 12 art exhibition.', 'club-art-ex'),
+  P('clubs', 'ev-224', 'st-03', '2026-10-11', ['art'], 'club', 'Art club: exhibition helper', 'Helped hang the Year 13 art exhibition.', 'club-art-ex'),
   P('sis', 'ev-225', 'st-03', '2026-10-25', ['languages'], 'assessment', 'Term 1 report: Thai B', 'Term 1 report published.', 'rpt-t1-th'),
   P('exams', 'ev-226', 'st-03', '2026-10-15', ['lena-japanese'], 'goal', 'JLPT N5: registration confirmed', 'Registered for the December JLPT sitting.', 'jlpt-reg'),
 ];
 
-// Pim is in her first week of Grade 6: no lines yet, onboarding picks them (idea S9).
-students.push({ id: 'st-09', name: 'Pim Chaiyaporn', grade: 6, startGrade: 6, programme: 'IB MYP', avatar: { initials: 'PC', colour: '#1FA3A8' }, homeroom: '6C', advisorId: 't-11',
+// Pim is in her first week of Year 7: no lines yet, onboarding picks them (idea S9).
+students.push({ id: 'st-09', name: 'Pim Chaiyaporn', grade: 6, startGrade: 6, programme: 'IB MYP', avatar: { initials: 'PC', colour: '#1FA3A8' }, homeroom: '7C', advisorId: 't-11',
   g9StartYear: 2029, laneOrder: [], lineLabels: {}, onboarding: true });
 out('lines.json', lines); out('students.json', students); out('teachers.json', teachers); out('events.json', events);
 out('reflections.json', reflections); out('endorsements.json', endorsements); out('presentations.json', presentations);

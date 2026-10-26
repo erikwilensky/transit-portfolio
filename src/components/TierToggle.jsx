@@ -1,5 +1,5 @@
 const TIERS = [
-  ['template', '1 · Template', 'From Grade 6'],
+  ['template', '1 · Template', 'From Year 7'],
   ['builder', '2 · Builder', 'Most students'],
   ['code', '3 · Code', 'Students who code'],
 ];

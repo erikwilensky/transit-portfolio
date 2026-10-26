@@ -16,7 +16,7 @@
     "layout": "profile",
     "showMap": true,
     "narratives": {},
-    "intro": "I am a Grade 12 IB student in Bangkok who likes turning local problems into data: canals, classrooms, beaches and air.",
+    "intro": "I am a Year 13 IB student in Bangkok who likes turning local problems into data: canals, classrooms, beaches and air.",
     "shareLinks": [
       {
         "token": "tp-g3n2",
@@ -34,7 +34,7 @@
     "targetName": null,
     "tier": "builder",
     "title": "Maya Chen: university portfolio",
-    "intro": "My map has six lines, but one question runs through all of them: what can careful measurement tell us about the place we live? This page follows how that question grew from a Grade 9 science fair into a plan to study Data Science.",
+    "intro": "My map has six lines, but one question runs through all of them: what can careful measurement tell us about the place we live? This page follows how that question grew from a Year 10 science fair into a plan to study Data Science.",
     "filters": {
       "hiddenLines": []
     },
@@ -50,9 +50,9 @@
     "layout": "narrative",
     "showMap": false,
     "narratives": {
-      "maya-datasci": "Data Science branched off my Biology line in Grade 11, when an air-quality project showed me I enjoy the analysis more than the collection. Since then I have modelled algae growth for my IA and I am predicting dengue outbreaks from weather data for my Extended Essay.",
+      "maya-datasci": "Data Science branched off my Biology line in Year 12, when an air-quality project showed me I enjoy the analysis more than the collection. Since then I have modelled algae growth for my IA and I am predicting dengue outbreaks from weather data for my Extended Essay.",
       "science": "Biology gave me my questions: microplastics in canals, enzyme kinetics, algae growth. Each project pushed me toward more careful measurement.",
-      "computing": "I learned to code in Grade 9 and use it as a tool: sensors, dashboards and a hackathon chatbot.",
+      "computing": "I learned to code in Year 10 and use it as a tool: sensors, dashboards and a hackathon chatbot.",
       "environment": "Most of my projects start with a local environmental problem I can measure.",
       "service": "Beach Guardians and the STEM club taught me that data is only useful when someone can act on it.",
       "maya-swim": "Four years of competitive swimming taught me to train on a schedule."
@@ -292,7 +292,7 @@
     "layout": "narrative",
     "showMap": false,
     "narratives": {
-      "languages": "I arrived in Bangkok in Grade 9 speaking no Thai. Languages became the line everything else hangs from.",
+      "languages": "I arrived in Bangkok in Year 10 speaking no Thai. Languages became the line everything else hangs from.",
       "service": "Language Buddies is where my languages turned into something useful for other people.",
       "art": "Art is where I slow down."
     },

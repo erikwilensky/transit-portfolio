@@ -16,7 +16,7 @@ export default function Applications({ go, persona, drafts, version }) {
     <div className="page apps">
       <header className="page-head">
         <div>
-          <div className="kicker">University applications · Grade 12</div>
+          <div className="kicker">University applications · Year 13</div>
           <h1>Who is applying where</h1>
           <p>Each application points at one of the student's own presentations, built from the same verified record. You see whether it has been opened.</p>
         </div>

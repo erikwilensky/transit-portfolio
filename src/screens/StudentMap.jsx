@@ -70,7 +70,7 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
           <span className="pres-avatar" style={{ background: s.avatar.colour }}>{s.avatar.initials}</span>
           <div>
             <h1>{s.name}</h1>
-            <p>Grade {s.grade} · {s.programme} · Advisory {s.homeroom}</p>
+            <p>Year {s.grade + 1} · {s.programme} · Advisory {s.homeroom}</p>
           </div>
           <div className="stats">
             <span><b>{map.events.length}</b> stations</span>

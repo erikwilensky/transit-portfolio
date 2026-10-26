@@ -3,8 +3,8 @@ import { BarChart, LineChart, StackBar } from '../components/Charts.jsx';
 
 // School-wide figures. Adoption and term trends are illustrative pilot numbers; the verification mix is computed live.
 const ADOPTION = [
-  { label: 'G6', value: 38, note: 'Pilot year group' }, { label: 'G7', value: 22 }, { label: 'G8', value: 27 },
-  { label: 'G9', value: 61 }, { label: 'G10', value: 74 }, { label: 'G11', value: 88 }, { label: 'G12', value: 93 },
+  { label: 'Y7', value: 38, note: 'Pilot year group' }, { label: 'Y8', value: 22 }, { label: 'Y9', value: 27 },
+  { label: 'Y10', value: 61 }, { label: 'Y11', value: 74 }, { label: 'Y12', value: 88 }, { label: 'Y13', value: 93 },
 ];
 const TERMS = [
   { label: 'T1 25', value: 0.8 }, { label: 'T2 25', value: 1.1 }, { label: 'T3 25', value: 1.4 },
@@ -41,7 +41,7 @@ export default function SchoolDashboard({ go, version }) {
         <section className="card">
           <h2>Students active this term, by grade</h2>
           <BarChart data={ADOPTION} unit="%" max={100} label="Percentage of students active this term by grade" />
-          <p className="fineprint">Grade 6 is the new pilot year group. Grades 7 and 8 have not been onboarded yet.</p>
+          <p className="fineprint">Year 7 is the new pilot year group. Years 8 and 9 have not been onboarded yet.</p>
         </section>
         <section className="card">
           <h2>Reflections per student, by term</h2>

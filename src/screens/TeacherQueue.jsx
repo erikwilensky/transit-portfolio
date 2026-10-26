@@ -58,7 +58,7 @@ export default function TeacherQueue({ teacherId, toast, version }) {
               <div className="q-body">
                 <div className="q-meta">
                   <span className="pres-avatar xs" style={{ background: r.student.avatar.colour }}>{r.student.avatar.initials}</span>
-                  <b>{r.student.name}</b><span>Grade {r.student.grade}</span>
+                  <b>{r.student.name}</b><span>Year {r.student.grade + 1}</span>
                   <span className="q-src">{r.source === 'lms' ? 'From ManageBac' : 'Requested by the student'} · {fmtDate(r.date)}</span>
                   {r.fresh && <span className="new-pill">NEW</span>}
                 </div>

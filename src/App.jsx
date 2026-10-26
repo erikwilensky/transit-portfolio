@@ -22,6 +22,9 @@ import Privacy from './screens/Privacy.jsx';
 import Onboarding from './screens/Onboarding.jsx';
 import Pdpa from './screens/Pdpa.jsx';
 import Applications from './screens/Applications.jsx';
+import SignalBoard from './screens/SignalBoard.jsx';
+import SchoolLine from './screens/SchoolLine.jsx';
+import SchoolMetro from './screens/SchoolMetro.jsx';
 import Logo from './components/Logo.jsx';
 import { VerifyProvider } from './components/VerifyModal.jsx';
 import { TOURS } from './tour.js';
@@ -166,6 +169,9 @@ export default function App() {
           {persona.kind === 'leadership' && route.screen === 'scan' && <ScanIn {...ctx} />}
           {persona.kind === 'leadership' && route.screen === 'pdpa' && <Pdpa {...ctx} />}
           {persona.kind === 'counsellor' && route.screen === 'applications' && <Applications {...ctx} />}
+          {persona.kind === 'advisor' && route.screen === 'signals' && <SignalBoard {...ctx} />}
+          {persona.kind === 'coordinator' && route.screen === 'schoolline' && <SchoolLine {...ctx} />}
+          {persona.kind === 'leadership' && route.screen === 'schoolmetro' && <SchoolMetro {...ctx} />}
           {persona.kind === 'external' && <ShareLanding token={persona.token} drafts={drafts} version={version} embedded />}
           <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} />
         </main>

@@ -60,7 +60,7 @@ export default function Pdpa({ drafts, version, go }) {
           <h2>Parent consent by grade</h2>
           <ul className="sb-legend"><li><i className="dv1" />Consent on file</li><li><i className="dv3" />Waiting for a parent</li></ul>
           <ul className="consent">{CONSENT.map((c) => (
-            <li key={c.grade}><span>G{c.grade}</span>
+            <li key={c.grade}><span>Y{c.grade + 1}</span>
               {c.parent ? <span className="cbar"><i className="ok" style={{ flex: c.parent }} />{c.pending > 0 && <i className="pend" style={{ flex: c.pending }} />}</span> : <span className="cbar none">Not onboarded yet</span>}
               <small>{c.parent ? `${c.parent}/${c.students}${c.pending ? ` · ${c.pending} waiting` : ''}` : ''}</small></li>
           ))}</ul>
