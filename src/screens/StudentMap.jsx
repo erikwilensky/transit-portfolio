@@ -8,7 +8,8 @@ import ReflectComposer from '../components/ReflectComposer.jsx';
 import AddStation from '../components/AddStation.jsx';
 import GoalDialog from '../components/GoalDialog.jsx';
 import TermReview from '../components/TermReview.jsx';
-import { MapLegend, VerifyLegend } from '../components/Badge.jsx';
+import { MapLegend, VerifyBadge, VerifyLegend } from '../components/Badge.jsx';
+import { fmtDate, fmtTerm, TYPE_LABEL, VERIFY_LABEL } from '../format.js';
 import { TOUR_REFLECTION, TOUR_STATION, tourEvent } from '../tourStory.js';
 
 
@@ -16,6 +17,7 @@ const TODAY_STR = '2026-10-26';
 const dayDiff = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
 const addDays = (d, n) => new Date(new Date(d).getTime() + n * 86400000).toISOString().slice(0, 10);
 const countRefl = (m) => m.events.filter((e) => e.type === 'reflection').length + m.events.reduce((n, e) => n + e.reflections.length, 0);
+const yearOf = (e, s) => fmtTerm(e.date, s.g9StartYear, s.startGrade).split(',')[0];
 const SEE = [['student', 'Me'], ['advisor', 'Advisor'], ['school', 'School'], ['public', 'Public']];
 
 export default function StudentMap({ map, studentId, toast, focusId, go, persona }) {
@@ -53,7 +55,27 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
     const t = setInterval(() => setScrub((v) => { const n = (v ?? 0) + 9; if (n >= span) { setPlaying(false); return null; } return n; }), 60);
     return () => clearInterval(t);
   }, [playing, span]);
-  const lens = useMemo(() => applyLens(shown, null, { hiddenLines: hidden }), [shown, hidden]);
+  // F10: search and filters narrow the map itself; the list view reads the same result.
+  const [q, setQ] = useState('');
+  const [kind, setKind] = useState('');
+  const [ver, setVer] = useState('');
+  const [year, setYear] = useState('');
+  const [view, setView] = useState(() => (typeof window !== 'undefined' && window.innerWidth < 600 ? 'list' : 'map'));
+  const filtering = q.trim() || kind || ver || year;
+  const base = useMemo(() => applyLens(shown, null, { hiddenLines: hidden }), [shown, hidden]);
+  const lens = useMemo(() => {
+    if (!filtering) return base;
+    const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const visible = new Set([...base.visible].filter((id) => {
+      const e = shown.events.find((x) => x.id === id);
+      const hay = `${e.title} ${e.summary} ${e.about || ''} ${e.reflections.map((r) => r.text).join(' ')} ${e.lineIds.map((l) => shown.lines.find((x) => x.id === l)?.name).join(' ')}`.toLowerCase();
+      return words.every((w) => hay.includes(w)) && (!kind || e.type === kind) && (!ver || e.verification === ver) && (!year || yearOf(e, shown.student) === year);
+    }));
+    return { ...base, visible };
+  }, [base, shown, q, kind, ver, year, filtering]);
+  const years = useMemo(() => [...new Set(map.events.map((e) => yearOf(e, map.student)))], [map]);
+  const kinds = useMemo(() => [...new Set(map.events.map((e) => e.type))], [map]);
+  const listed = useMemo(() => shown.events.filter((e) => lens.visible.has(e.id)).sort((a, b) => b.date.localeCompare(a.date)), [shown, lens]);
   const s = map.student;
   const reflections = countRefl(map);
   const openSignals = map.signals.filter((g) => g.open);
@@ -102,6 +124,14 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
           <div className="seg small">{SEE.map(([k, l]) => <button key={k} className={seeAs === k ? 'on' : ''} aria-pressed={seeAs === k} onClick={() => { setSeeAs(k); setSelected(null); }}>{l}</button>)}</div>
           {seeAs !== 'student' && <span className="see-note"><b>{seen.events.length}</b> of {map.events.length} stations and <b>{countRefl(seen)}</b> of {reflections} reflections visible to {seeAs === 'public' ? 'anyone with a link' : seeAs === 'school' ? 'school staff' : 'your advisor'}</span>}
         </div>
+        <div className="map-find" role="search">
+          <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search stations, reflections, lines" aria-label="Search the map" />
+          <select value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Kind"><option value="">Any kind</option>{kinds.map((k) => <option key={k} value={k}>{TYPE_LABEL[k] || k}</option>)}</select>
+          <select value={ver} onChange={(e) => setVer(e.target.value)} aria-label="Verification"><option value="">Any verification</option>{Object.entries(VERIFY_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
+          <select value={year} onChange={(e) => setYear(e.target.value)} aria-label="Year"><option value="">Any year</option>{years.map((y) => <option key={y}>{y}</option>)}</select>
+          {filtering && <span className="find-n" role="status">{lens.visible.size} match{lens.visible.size === 1 ? '' : 'es'} <button className="linkish" onClick={() => { setQ(''); setKind(''); setVer(''); setYear(''); }}>Clear</button></span>}
+          <div className="seg small" role="group" aria-label="Show as"><button className={view === 'map' ? 'on' : ''} aria-pressed={view === 'map'} onClick={() => setView('map')}>Map</button><button className={view === 'list' ? 'on' : ''} aria-pressed={view === 'list'} onClick={() => setView('list')}>List</button></div>
+        </div>
         <div className="chips filter" role="group" aria-label="Show or hide lines">
           {map.lines.map((l) => (
             <button key={l.id} className={`line-chip${hidden.includes(l.id) ? ' off' : ''}${l.status === 'ended' ? ' ended' : ''}`} style={{ '--c': l.colour }} aria-pressed={!hidden.includes(l.id)}
@@ -110,7 +140,8 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
         </div>
       </div>
       <div className="home-map">
-        <MetroMap map={shown} lens={lens} selectedId={selected} onSelect={setSelected} onSignal={(g) => (g.open ? setSignal(g) : setSelected(g.eventId))} fitKey={studentId} newIds={newIds} />
+        {view === 'map' ? <MetroMap map={shown} lens={lens} selectedId={selected} onSelect={setSelected} onSignal={(g) => (g.open ? setSignal(g) : setSelected(g.eventId))} fitKey={studentId} newIds={newIds} />
+          : <StationList events={listed} map={shown} selected={selected} onSelect={setSelected} />}
         <StationPanel event={event} map={map} onClose={() => setSelected(null)} readOnly={seeAs !== 'student'} toast={toast} />
       </div>
       <div className="scrubber">
@@ -140,6 +171,31 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
         <AddStation map={map} studentId={studentId} prefill={adding} onClose={() => { setAdding(null); setTourStage(null); }}
           onAdded={(e) => { setAdding(null); setTourStage(null); markNew(e.id); setSelected(e.id); toast(e.verification === 'student-added' && adding.requestFrom !== '' ? `Added “${e.title}”. Endorsement requested.` : `Added “${e.title}”`); }} />
       )}
+    </div>
+  );
+}
+
+// F10: the same stations as a list, newest first, grouped by Year. Phones and screen readers start here.
+function StationList({ events, map, selected, onSelect }) {
+  const groups = [];
+  for (const e of events) { const y = yearOf(e, map.student); if (groups.at(-1)?.y !== y) groups.push({ y, items: [] }); groups.at(-1).items.push(e); }
+  if (!events.length) return <div className="st-list empty"><p>No stations match. Try fewer words or clear the filters.</p></div>;
+  return (
+    <div className="st-list">
+      {groups.map((g) => (
+        <section key={g.y}>
+          <h3>{g.y}</h3>
+          <ul>{g.items.map((e) => (
+            <li key={e.id}>
+              <button className={`sl-row${selected === e.id ? ' on' : ''}${e.type === 'goal' ? ' goal' : ''}`} onClick={() => onSelect(e.id)} aria-current={selected === e.id || undefined}>
+                <span className="sl-dots" aria-hidden="true">{e.lineIds.map((l) => <i key={l} style={{ background: map.lines.find((x) => x.id === l)?.colour }} />)}</span>
+                <span className="sl-main"><b>{e.title}</b><small>{fmtDate(e.date)} · {TYPE_LABEL[e.type]} · {e.lineIds.map((l) => map.lines.find((x) => x.id === l)?.name).filter(Boolean).join(', ')}</small></span>
+                <VerifyBadge level={e.verification} event={e} />
+              </button>
+            </li>
+          ))}</ul>
+        </section>
+      ))}
     </div>
   );
 }

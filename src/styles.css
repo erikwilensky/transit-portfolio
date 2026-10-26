@@ -1499,3 +1499,21 @@ a.ghost { text-decoration: none; display: inline-flex; align-items: center; font
 .sd-main code { display: block; padding: 8px 10px; border: 1px solid var(--rule); border-radius: 8px; background: var(--bg); font-size: 13px; overflow-wrap: anywhere; }
 .sd-btns { display: flex; flex-wrap: wrap; gap: 8px; } .sd-btns a.ghost { text-decoration: none; display: inline-flex; align-items: center; }
 @media (max-width: 520px) { .sd-row { flex-direction: column; align-items: center; } .sd-main { width: 100%; } }
+
+/* F10: search, filters and list view on the map */
+.map-find { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 8px; }
+.map-find input[type=search] { flex: 1 1 220px; min-width: 0; border: 1px solid var(--rule); background: var(--bg); color: var(--ink); border-radius: 9px; padding: 7px 10px; font: inherit; font-size: 14px; }
+.map-find select { border: 1px solid var(--rule); background: var(--bg); color: var(--ink); border-radius: 9px; padding: 7px 8px; font: inherit; font-size: 13.5px; cursor: pointer; }
+.find-n { font-size: 13px; color: var(--muted); display: inline-flex; gap: 8px; align-items: center; }
+.map-find .seg { margin-left: auto; }
+.st-list { position: absolute; inset: 0; overflow: auto; padding: 8px 16px 24px; }
+.st-list.empty p { color: var(--muted); padding: 24px 0; }
+.st-list h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin: 14px 0 6px; font-weight: 600; }
+.st-list ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-width: 760px; }
+.sl-row { all: unset; box-sizing: border-box; width: 100%; display: flex; gap: 12px; align-items: center; padding: 9px 12px; border: 1px solid var(--rule); border-radius: 10px; background: var(--surface); cursor: pointer; }
+.sl-row:hover { border-color: var(--b-purple); } .sl-row.on { border-color: var(--b-purple); box-shadow: inset 0 0 0 1px var(--b-purple); }
+.sl-row:focus-visible { outline: 2px solid var(--b-purple); outline-offset: 2px; }
+.sl-row.goal { border-style: dashed; }
+.sl-dots { display: flex; gap: 3px; flex: none; } .sl-dots i { width: 10px; height: 10px; border-radius: 50%; }
+.sl-main { flex: 1; min-width: 0; } .sl-main b { display: block; font-size: 14.5px; font-weight: 600; } .sl-main small { color: var(--muted); font-size: 12.5px; }
+@media (max-width: 600px) { .map-find select { flex: 1 1 30%; } .map-find .seg { margin-left: 0; } .sl-row .vbadge { display: none; } }
