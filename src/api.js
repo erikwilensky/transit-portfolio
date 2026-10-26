@@ -36,7 +36,7 @@ const store = {
 };
 const listeners = new Set();
 export const subscribe = (fn) => (listeners.add(fn), () => listeners.delete(fn));
-const emit = () => listeners.forEach((fn) => fn());
+const emit = () => { listeners.forEach((fn) => fn()); persist(); };
 
 const lineById = (id) => store.lines.find((l) => l.id === id);
 const teacherById = Object.fromEntries(teachersData.map((t) => [t.id, t]));
@@ -718,3 +718,35 @@ store.events.push(
   { id: 'ev-sp-2', studentId: 'st-02', title: 'Global Game Jam 2027', date: '2027-01-24', lineIds: ['computing', 'music'], type: 'goal', summary: 'A 48-hour game jam at a Bangkok site, outside school. Planning to write the audio engine.', about: '', evidence: [], verification: 'student-added', visibility: 'advisor', source: { system: 'Manual entry', ref: null },
     sponsor: { teacherId: 't-01', status: 'invited', note: 'Would you be my sponsor so it can count on my map? I will post a build after each day.', expectations: '', invitedOn: '2026-10-24', checkIns: [] } },
 );
+
+// ── F2 to F4: the demo survives a reload, can be reset, and stays in step across tabs ─
+// Everything lives in this browser's localStorage. A new build version starts clean.
+const STORE_KEY = 'tp-store-v5';
+const SEED = JSON.stringify(store);
+let saveTimer = null, applying = false;
+function persist() {
+  if (applying) return;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify({ store, seq, evSeq, at: Date.now() })); } catch { /* storage full or blocked: the demo still works in memory */ }
+  }, 150);
+}
+function apply(saved) {
+  applying = true;
+  for (const k of Object.keys(store)) delete store[k];
+  Object.assign(store, saved.store);
+  seq = Math.max(seq, saved.seq || 0); evSeq = Math.max(evSeq, saved.evSeq || 0);
+  listeners.forEach((fn) => fn());
+  applying = false;
+}
+try { const raw = localStorage.getItem(STORE_KEY); if (raw) apply(JSON.parse(raw)); } catch { /* ignore a broken save */ }
+// Another tab changed the record: take its copy. Endorse on the laptop, see the badge flip on the iPad.
+try { addEventListener('storage', (e) => { if (e.key === STORE_KEY && e.newValue) { try { apply(JSON.parse(e.newValue)); } catch { /* ignore */ } } }); } catch { /* no window */ }
+export const isSaved = () => { try { return !!localStorage.getItem(STORE_KEY); } catch { return false; } };
+// F3: back to the seeded record, in every open tab.
+export function resetDemo() {
+  clearTimeout(saveTimer);
+  try { Object.keys(localStorage).filter((k) => k.startsWith('tp-')).forEach((k) => localStorage.removeItem(k)); } catch { /* ignore */ }
+  apply({ store: JSON.parse(SEED), seq: 1, evSeq: 900 });
+  try { localStorage.setItem(STORE_KEY, JSON.stringify({ store, seq, evSeq, at: Date.now() })); } catch { /* ignore */ }
+}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { applyLens, getPresentations, getStudentMap, getStudents, subscribe, getNotifications, markNotificationsRead } from './api.js';
+import { applyLens, getPresentations, getStudentMap, getStudents, subscribe, getNotifications, markNotificationsRead, resetDemo } from './api.js';
+import { ensureEndorsed } from './tourStory.js';
 import { PERSONAS, KIND_LABEL, NAV, personaById, home } from './personas.js';
 import { ago } from './format.js';
 import Studio from './components/Studio.jsx';
@@ -50,19 +51,33 @@ const parse = () => {
   return { persona: p.id, screen: screens.includes(b) ? b : home(p), param: c || null };
 };
 
+// F2: presentations (drafts, letters, custom pages, share links) are saved in this browser too.
+const DRAFTS_KEY = 'tp-drafts-v5';
+const freshDrafts = () => Object.fromEntries(getStudents().map((s) => [s.id, structuredClone(getPresentations(s.id))]));
+const loadDrafts = () => { try { const raw = localStorage.getItem(DRAFTS_KEY); return raw ? { ...freshDrafts(), ...JSON.parse(raw) } : null; } catch { return null; } };
+
 export default function App() {
   const [route, setRoute] = useState(parse);
   const [version, setVersion] = useState(0);
   const [dark, setDark] = useState(() => window.matchMedia?.('(prefers-color-scheme: dark)').matches);
   const [audience, setAudience] = useState('general');
   const [tier, setTier] = useState('template');
-  const [drafts, setDrafts] = useState(() => Object.fromEntries(getStudents().map((s) => [s.id, structuredClone(getPresentations(s.id))])));
+  const [drafts, setDrafts] = useState(() => loadDrafts() || freshDrafts());
   const [toastMsg, setToastMsg] = useState(null);
   const [menu, setMenu] = useState(null); // 'persona' | 'bell' | 'tour'
   const [tourState, setTourState] = useState(null); // { tour, step }
   const [auto, setAuto] = useState(false);
 
   useEffect(() => subscribe(() => setVersion((v) => v + 1)), []);
+  const fromOtherTab = useRef(false);
+  useEffect(() => { if (fromOtherTab.current) { fromOtherTab.current = false; return; } try { localStorage.setItem(DRAFTS_KEY, JSON.stringify(drafts)); } catch { /* full or blocked */ } }, [drafts]);
+  // F4: another tab changed the drafts, or reset the demo.
+  useEffect(() => { const f = (e) => { if (e.key === DRAFTS_KEY || e.key === null) { fromOtherTab.current = true; setDrafts(loadDrafts() || freshDrafts()); } }; addEventListener('storage', f); return () => removeEventListener('storage', f); }, []);
+  // F3: #/reset puts the demo back to its seeded state (handy on a shared screen).
+  useEffect(() => {
+    const f = () => { if (location.hash.startsWith('#/reset')) { resetDemo(); setDrafts(freshDrafts()); history.replaceState(null, '', '#/principal/dashboard'); setRoute(parse()); } };
+    f(); addEventListener('hashchange', f); return () => removeEventListener('hashchange', f);
+  }, []);
   useEffect(() => { const f = () => setRoute(parse()); addEventListener('hashchange', f); return () => removeEventListener('hashchange', f); }, []);
   useEffect(() => { document.documentElement.dataset.theme = dark ? 'dark' : 'light'; }, [dark]);
   useEffect(() => { const f = (e) => { if (!e.target.closest('.menu-wrap')) setMenu(null); }; addEventListener('pointerdown', f); return () => removeEventListener('pointerdown', f); }, []);
@@ -160,6 +175,12 @@ export default function App() {
                       <button className="tour-play" onClick={() => { setMenu(null); ctx.startTour(id); }}>▶ Present this tour</button>
                     </div>
                   ))}
+                  <div className="menu-title">Demo state</div>
+                  <div className="demo-states">
+                    <button onClick={() => { resetDemo(); setDrafts(freshDrafts()); setTourState(null); setMenu(null); go('principal', 'dashboard'); toast('Demo reset. Ready for the tour.'); }}><b>Reset, ready for the tour</b><small>Clean record, starts on the dashboard</small></button>
+                    <button onClick={() => { resetDemo(); setDrafts(freshDrafts()); ensureEndorsed(); setTourState(null); setMenu(null); go('maya', 'map'); toast('Reset with the tour already played'); }}><b>Reset, tour already played</b><small>Hackathon added and endorsed</small></button>
+                  </div>
+                  <p className="fineprint demo-note">Changes are saved in this browser, so a rehearsal is still here tomorrow. Open a second tab to show two people at once.</p>
                 </div>
               )}
             </div>

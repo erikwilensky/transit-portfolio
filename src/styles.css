@@ -1455,3 +1455,7 @@ a.ghost { text-decoration: none; display: inline-flex; align-items: center; font
 .topnav .nav-menu a { display: block; color: var(--ink); padding: 9px 10px; border-radius: 8px; }
 .topnav .nav-menu a:hover:not(.on) { background: var(--surface-2); color: var(--ink); } .topnav .nav-menu a.on { background: var(--navy); color: #fff; }
 @media (max-width: 900px) { .topnav nav.navbar { flex: 1 1 100%; } }
+.demo-states { display: flex; flex-direction: column; gap: 4px; }
+.demo-states button { text-align: left; border: 1px solid var(--rule); background: var(--surface); border-radius: 9px; padding: 8px 10px; display: flex; flex-direction: column; }
+.demo-states button:hover { background: var(--surface-2); } .demo-states small { color: var(--muted); font-size: 12px; }
+.demo-note { margin: 8px 4px 2px; }
