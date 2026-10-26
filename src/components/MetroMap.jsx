@@ -83,8 +83,16 @@ export function VerificationMark({ level, x = 0, y = 0, r = 3.6 }) {
 
 const GRADE_YEARS = (start, g) => `${start + g - 9}–${String(start + g - 8).slice(2)}`;
 
-export default function MetroMap({ map, lens, selectedId, onSelect, onSignal, mini = false, recent = false, panel = true, newIds, fitKey, duration = 450, showToday = true, className = '' }) {
-  const target = useMemo(() => computeLayout(map, lens, TODAY, mini ? { laneH: 70, slotW: 40, colPad: 10, emptyW: 24, left: 20, top: 30, bottom: 30, right: 20 } : {}), [map, lens, mini]);
+export default function MetroMap({ map, lens, selectedId, onSelect, onSignal, mini = false, recent = false, panel = true, newIds, fitKey, duration = 450, showToday = true, className = '', print = false, aspect = 0.5 }) {
+  const target = useMemo(() => {
+    const today = map.today || TODAY;
+    if (!print) return computeLayout(map, lens, today, mini ? { laneH: 70, slotW: 40, colPad: 10, emptyW: 24, left: 20, top: 30, bottom: 30, right: 20 } : {});
+    // A poster has a fixed frame: spread the lines out until the map fills it.
+    const base = computeLayout(map, lens, today, {});
+    const lanes = Math.round((base.height - 118 - 64) / 104);
+    const laneH = Math.min(200, Math.max(104, (base.width * aspect - 182) / Math.max(1, lanes)));
+    return computeLayout(map, lens, today, { laneH });
+  }, [map, lens, mini, print, aspect]);
   const tweened = useTween(target, duration);
   // On the first frame after the data changes shape, the tween hasn't caught up yet.
   const L = Object.keys(target.lines).every((k) => k in tweened.lines) && Object.keys(target.stations).every((k) => k in tweened.stations) ? tweened : target;
@@ -129,7 +137,7 @@ export default function MetroMap({ map, lens, selectedId, onSelect, onSignal, mi
   };
 
   useEffect(() => {
-    if (mini) return;
+    if (mini || print) return;
     const z = d3zoom().scaleExtent([0.3, 3]).on('zoom', (ev) => {
       gRef.current?.setAttribute('transform', ev.transform.toString());
       setTr({ k: ev.transform.k, x: ev.transform.x, y: ev.transform.y });
@@ -142,12 +150,12 @@ export default function MetroMap({ map, lens, selectedId, onSelect, onSignal, mi
     return () => ro.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mini]);
-  useEffect(() => { if (!mini) fit(false); /* refit on student change */ // eslint-disable-next-line
+  useEffect(() => { if (!mini && !print) fit(false); /* refit on student change */ // eslint-disable-next-line
   }, [fitKey]);
 
   // Keep the tapped station visible beside the side panel (or above the bottom sheet).
   useEffect(() => {
-    if (mini || !selectedId || !zoomRef.current) return;
+    if (mini || print || !selectedId || !zoomRef.current) return;
     const st = target.stations[selectedId];
     if (!st) return;
     const svg = svgRef.current;
@@ -183,7 +191,7 @@ export default function MetroMap({ map, lens, selectedId, onSelect, onSignal, mi
             return (
               <g key={g}>
                 <line x1={a.x} x2={a.x} y1={0} y2={L.height} className="grade-rule" />
-                <text x={cx} y={30} textAnchor="middle" className="grade-label">Year {a.grade + 1}</text>
+                <text x={cx} y={30} textAnchor="middle" className="grade-label">{a.grade >= 13 ? `University, year ${a.grade - 12}` : `Year ${a.grade + 1}`}</text>
                 <text x={cx} y={46} textAnchor="middle" className="year-label">{GRADE_YEARS(map.student.g9StartYear, a.grade)}</text>
               </g>
             );
@@ -282,6 +290,25 @@ export default function MetroMap({ map, lens, selectedId, onSelect, onSignal, mi
     </>
   );
 
+  const lineNames = map.lines.map((l) => {
+    const ln = L.lines[l.id];
+    return (
+      <g key={l.id} className="line-name" style={{ opacity: ln.state === 'hidden' ? 0 : ln.state === 'thin' ? 0.5 : 1 }} transform={`translate(16 ${ln.y})`}>
+        <g opacity={l.status === 'ended' ? 0.5 : 1}><LineTag l={l} x={0} y={0} legend /></g>
+        <text x={44} y={l.status === 'ended' ? -1 : 4} className="line-name-text">{lineName(lang, l.name)}</text>
+        {l.status === 'ended' && <text x={44} y={12} className="line-name-sub">{say(lang, 'ended')}</text>}
+        {l.parentLineId && l.status !== 'ended' && <text x={44} y={17} className="line-name-sub">{say(lang, 'branch of')} {lineName(lang, lineById[l.parentLineId]?.name.split(' ·')[0] || l.parentLineId)}</text>}
+      </g>
+    );
+  });
+  // The map poster: the whole journey at once, at print size, with nothing to click.
+  if (print) {
+    return (
+      <svg className={`metro print ${className}`} viewBox={`0 0 ${L.width} ${L.height}`} preserveAspectRatio="xMidYMid meet" role="img" aria-label={`Metro map poster for ${map.student.name}`}>
+        {content}{lineNames}
+      </svg>
+    );
+  }
   if (mini) {
     return (
       <svg className={`metro mini ${className}`} viewBox={`0 0 ${L.width} ${L.height}`} preserveAspectRatio="xMidYMid meet" role="img" aria-label={`Mini map for ${map.student.name}`}>
@@ -296,17 +323,7 @@ export default function MetroMap({ map, lens, selectedId, onSelect, onSignal, mi
         {/* Line names stay pinned to the left edge while the map pans. */}
         <g className="gutter" transform={`translate(0 ${tr.y}) scale(${tr.k})`}>
           <rect x={0} y={0} width={186} height={L.height} className="gutter-bg" style={{ opacity: tr.x < -4 ? 1 : 0 }} />
-      {map.lines.map((l) => {
-        const ln = L.lines[l.id];
-        return (
-          <g key={l.id} className="line-name" style={{ opacity: ln.state === 'hidden' ? 0 : ln.state === 'thin' ? 0.5 : 1 }} transform={`translate(16 ${ln.y})`}>
-            <g opacity={l.status === 'ended' ? 0.5 : 1}><LineTag l={l} x={0} y={0} legend /></g>
-            <text x={44} y={l.status === 'ended' ? -1 : 4} className="line-name-text">{lineName(lang, l.name)}</text>
-            {l.status === 'ended' && <text x={44} y={12} className="line-name-sub">{say(lang, 'ended')}</text>}
-            {l.parentLineId && l.status !== 'ended' && <text x={44} y={17} className="line-name-sub">{say(lang, 'branch of')} {lineName(lang, lineById[l.parentLineId]?.name.split(' ·')[0] || l.parentLineId)}</text>}
-          </g>
-        );
-      })}
+          {lineNames}
         </g>
       </svg>
       <div className="zoom-ctl" aria-label="Zoom">

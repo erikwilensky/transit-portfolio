@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { applyLens, getPresentations, getStudentMap, getStudents, subscribe, getNotifications, markNotificationsRead, resetDemo, restore, logLink, addStation, getLang, setLang, getIntensity, setIntensity, INTENSITY, INTENSITY_NAV, INTENSITY_LABEL } from './api.js';
+import { applyLens, getAlumMap, getPresentations, getStudentMap, getStudents, subscribe, getNotifications, markNotificationsRead, resetDemo, restore, logLink, addStation, getLang, setLang, getIntensity, setIntensity, INTENSITY, INTENSITY_NAV, INTENSITY_LABEL } from './api.js';
 import SimpleHome, { ShowFamily } from './screens/SimpleHome.jsx';
 import IntensityControl from './components/IntensityControl.jsx';
 import { ensureEndorsed } from './tourStory.js';
@@ -41,6 +41,8 @@ import LearnerProfile from './screens/LearnerProfile.jsx';
 import { tr } from './i18n.js';
 import Pilot from './screens/Pilot.jsx';
 import AuditLog from './screens/AuditLog.jsx';
+import Poster from './screens/Poster.jsx';
+import AlumJourney from './screens/AlumJourney.jsx';
 import Logo from './components/Logo.jsx';
 import NavBar from './components/NavBar.jsx';
 import Launcher from './components/Launcher.jsx';
@@ -56,7 +58,7 @@ const parse = () => {
   const [a, b, c] = location.hash.replace(/^#\/?/, '').split('/');
   if (a === 's' || a === 'v' || a === 'p') return { publicKind: a, param: b, lang: c };
   const p = personaById(a);
-  const screens = NAV[p.kind].map(([id]) => id).concat(p.kind === 'advisor' ? ['student'] : []);
+  const screens = NAV[p.kind].map(([id]) => id).concat(p.kind === 'advisor' ? ['student'] : p.kind === 'student' ? ['poster'] : []);
   return { persona: p.id, screen: screens.includes(b) ? b : home(p), param: c || null };
 };
 
@@ -291,6 +293,8 @@ export default function App() {
           {persona.kind === 'leadership' && route.screen === 'audit' && <AuditLog {...ctx} />}
           {persona.kind === 'leadership' && route.screen === 'profile' && <LearnerProfile {...ctx} />}
           {persona.kind === 'parent' && <Family {...ctx} screen={route.screen} param={route.param} />}
+          {persona.kind === 'alum' && route.screen === 'journey' && <AlumJourney {...ctx} />}
+          {persona.kind === 'alum' && route.screen === 'poster' && <AlumPoster {...ctx} />}
           {persona.kind === 'external' && <ShareLanding token={persona.token} drafts={drafts} version={version} embedded />}
           <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} />
           </ErrorBoundary>
@@ -347,6 +351,7 @@ function StudentScreens({ screen, param, studentId, drafts, setDrafts, audience,
   if (map.student.onboarding) return <Onboarding map={map} studentId={studentId} onDone={() => { toast('Your map is ready.'); go(persona.id, 'map'); }} />;
   const level = getIntensity(studentId);
   if (level === 'simple' && screen === 'map') return <SimpleHome map={map} studentId={studentId} toast={toast} version={version} />;
+  if (screen === 'poster') return <Poster map={map} publicMap={publicMap} drafts={myDrafts} toast={toast} />;
   if (screen === 'family') return <ShowFamily map={map} toast={toast} version={version} />;
   if (screen === 'links') return <ShareLinks studentId={studentId} drafts={myDrafts} updateDraft={updateDraft} toast={toast} version={version} />;
   if (screen === 'activity') return <Activity studentId={studentId} version={version} />;
@@ -357,4 +362,10 @@ function StudentScreens({ screen, param, studentId, drafts, setDrafts, audience,
   if (screen === 'shared') return <SharedView key={studentId} publicMap={publicMap} drafts={myDrafts} links={links} />;
   if (screen === 'inbox') return <IntegrationsPanel map={map} lens={applyLens(map, null)} newIds={new Set()} onAdded={(e) => { toast(`Added “${e.title}” to the map`); go(persona.id, 'map', e.id); }} toast={toast} version={version} />;
   return null;
+}
+
+function AlumPoster({ version, toast, drafts }) {
+  const map = useMemo(() => getAlumMap(), [version]); // eslint-disable-line react-hooks/exhaustive-deps
+  const publicMap = useMemo(() => getAlumMap('public'), [version]); // eslint-disable-line react-hooks/exhaustive-deps
+  return <Poster alum map={map} publicMap={publicMap} drafts={drafts['st-01'] || []} toast={toast} />;
 }

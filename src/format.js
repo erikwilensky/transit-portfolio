@@ -1,7 +1,7 @@
 import { termOf } from './layout/metroLayout.js';
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 export const fmtDate = (d) => { const [y, m, day] = d.split('-').map(Number); return `${day} ${MONTHS[m - 1]} ${y}`; };
-export const fmtTerm = (d, g9, startGrade = 9) => { const t = termOf(d, g9, startGrade); return `Year ${startGrade + 1 + Math.floor(t / 3)}, Term ${(t % 3) + 1}`; };
+export const fmtTerm = (d, g9, startGrade = 9, endGrade = 13) => { const t = termOf(d, g9, startGrade, endGrade); const y = startGrade + 1 + Math.floor(t / 3); return `${y > 13 ? `University year ${y - 13}` : `Year ${y}`}, Term ${(t % 3) + 1}`; };
 export const TYPE_LABEL = { class: 'Class', assessment: 'Assessment', project: 'Project', competition: 'Competition', cas: 'CAS', club: 'Club', sport: 'Sport', service: 'Service', award: 'Award', reflection: 'Reflection', goal: 'Planned goal' };
 export const VERIFY_LABEL = { 'school-verified': 'School-verified', 'teacher-endorsed': 'Teacher-endorsed', 'student-added': 'Student-added' };
 export const VERIFY_HELP = {

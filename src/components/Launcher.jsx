@@ -3,7 +3,7 @@ import { getStore, getStudents } from '../api.js';
 import { fmtDate, TYPE_LABEL } from '../format.js';
 import { KIND_LABEL, NAV, PERSONAS } from '../personas.js';
 
-const STUDENT_PERSONA = Object.fromEntries(PERSONAS.filter((p) => p.studentId).map((p) => [p.studentId, p.id]));
+const STUDENT_PERSONA = Object.fromEntries(PERSONAS.filter((p) => p.kind === 'student').map((p) => [p.studentId, p.id]));
 
 // F16: one box to jump to any person, student, station or screen. Opens on / or Ctrl+K.
 export default function Launcher({ onGo, onClose }) {

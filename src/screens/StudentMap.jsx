@@ -119,6 +119,7 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
               {menu && <div className="menu" role="menu" style={{ width: 270 }}>
                 <button role="menuitem" onClick={() => { setMenu(false); setReview(true); }}><span><b>Term in review{sugCount > 0 && <span className="badge-n">{sugCount}</span>}</b><small>What changed this term, and links to make</small></span></button>
                 <button role="menuitem" onClick={() => { setMenu(false); setPhone(true); }}><span><b>Capture on phone</b><small>Snap it now, sort it later</small></span></button>
+                <button role="menuitem" onClick={() => { setMenu(false); go(persona.id, 'poster'); }}><span><b>Map poster</b><small>Your whole journey, ready to print</small></span></button>
                 <div className="menu-title">Plan</div>
                 <button role="menuitem" onClick={() => { setMenu(false); setGoal(true); }}><span><b>Plan a goal</b><small>A dashed station, with a sponsor if you like</small></span></button>
                 <button role="menuitem" onClick={() => { setMenu(false); setLineMode('branch'); }}><span><b>Start a branch</b><small>A sub-line under a school line</small></span></button>

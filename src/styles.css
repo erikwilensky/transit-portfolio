@@ -2091,3 +2091,51 @@ details.card-sec > summary::after { content: '▾'; color: var(--muted); font-si
 details.card-sec[open] > summary::after { transform: rotate(180deg); }
 details.card-sec > summary h3 { margin: 0; }
 details.card-sec[open] > summary { margin-bottom: 10px; }
+
+/* ── Map poster ──────────────────────────────────────────── */
+.poster-screen { padding: 20px 24px 40px; max-width: 1760px; margin: 0 auto; width: 100%; overflow-y: auto; }
+.poster-head { display: flex; gap: 20px; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; margin-bottom: 16px; }
+.poster-head h1 { font-size: 24px; }
+.poster-head .lede { color: var(--muted); max-width: 640px; margin: 6px 0 0; }
+.poster-ctl { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.poster-wrap { position: relative; width: 100%; overflow: hidden; }
+.poster-sheet { position: absolute; top: 0; left: 0; transform-origin: 0 0; display: flex; flex-direction: column; padding: 48px 56px 40px; box-shadow: var(--shadow); border-radius: 4px; font-family: var(--font); background: var(--bg); color: var(--ink); }
+.poster-sheet.paper { --bg: #ffffff; --surface: #ffffff; --surface-2: #e9edf4; --ink: #0b2240; --muted: #56627a; --rule: #d9dfe9; --col-a: #ffffff; --col-b: #f3f5f9; --station: #ffffff; --halo: #ffffff; --accent: #002855; --v-solid: #002855; color-scheme: light; }
+.poster-sheet.navy { --bg: #002855; --surface: #04203f; --surface-2: #0b2b4f; --ink: #f4f7fb; --muted: #a9bad2; --rule: #1d4170; --col-a: #002855; --col-b: #022f61; --station: #f4f6fa; --halo: #002855; --accent: #78D5E1; --v-solid: #c9d6ea; color-scheme: dark; }
+.ps-top { display: flex; align-items: center; gap: 28px; padding-bottom: 22px; border-bottom: 4px solid var(--ink); }
+.ps-logo { width: 92px; color: var(--ink); }
+.ps-logo svg { width: 100%; height: auto; display: block; }
+.ps-title { flex: 1; }
+.ps-title small { text-transform: uppercase; letter-spacing: .14em; font-size: 13px; color: var(--muted); font-weight: 600; }
+.ps-title h2 { font-size: 56px; line-height: 1.05; margin: 4px 0; letter-spacing: -0.02em; }
+.ps-title p { margin: 0; font-size: 19px; color: var(--muted); }
+.ps-stats { display: flex; gap: 30px; margin: 0; }
+.ps-stats div { text-align: right; }
+.ps-stats dt { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 600; }
+.ps-stats dd { margin: 0; font-size: 44px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.ps-map { flex: 1; min-height: 0; padding: 14px 0; display: flex; }
+.ps-map .metro.print { width: 100%; height: 100%; }
+.ps-foot { display: grid; grid-template-columns: 1.5fr 1fr auto; gap: 36px; align-items: center; padding-top: 20px; border-top: 1px solid var(--rule); }
+.ps-legend { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 20px; }
+.ps-legend li { display: flex; gap: 10px; align-items: center; font-size: 15px; font-weight: 600; }
+.ps-legend small { display: block; font-weight: 400; color: var(--muted); font-size: 12.5px; }
+.ps-code { display: inline-grid; place-items: center; min-width: 44px; height: 24px; border-radius: 12px; font-size: 12px; font-weight: 700; padding: 0 6px; }
+.ps-quote { margin: 0; font-size: 18px; line-height: 1.45; font-style: italic; border-left: 4px solid var(--accent); padding-left: 16px; }
+.ps-quote cite { display: block; font-style: normal; font-size: 13px; color: var(--muted); margin-top: 6px; }
+.ps-qr { display: flex; gap: 14px; align-items: center; max-width: 360px; }
+.ps-qr .qr { background: #fff; padding: 4px; border-radius: 6px; flex: none; }
+.ps-qr p { margin: 0; font-size: 13px; color: var(--muted); }
+.ps-qr b { display: block; color: var(--ink); font-size: 15px; }
+.ps-key { display: block; margin-top: 6px; font-size: 12px; }
+.ps-key svg { vertical-align: -3px; margin: 0 3px 0 6px; overflow: visible; }
+.ps-key svg:first-child { margin-left: 0; }
+@media print {
+  @page { size: A3 landscape; margin: 0; }
+  body:has(.poster-sheet) .topnav, body:has(.poster-sheet) .poster-head, body:has(.poster-sheet) .presenter, body:has(.poster-sheet) .toast { display: none !important; }
+  body:has(.poster-sheet) .screen, body:has(.poster-sheet) .poster-screen { padding: 0; overflow: visible; }
+  .poster-wrap { height: auto !important; overflow: visible; }
+  .poster-sheet { position: static; transform: none !important; zoom: 0.944; break-inside: avoid; box-shadow: none; border-radius: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
+/* ── Life after Year 13 ──────────────────────────────────── */
+.alum-note { margin: 0; padding: 10px 14px; border-radius: 10px; background: var(--surface-2); font-size: 14px; max-width: 980px; }

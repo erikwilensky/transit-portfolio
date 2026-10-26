@@ -15,6 +15,8 @@ const S = {
   adeyemi: { title: 'The counsellor’s reference', sub: 'Every claim cites a verified station', secs: 40, say: 'Ms Adeyemi writes Maya’s reference with each claim linked to a verified station. Unsupported claims are flagged.', run: (c) => { ensureEndorsed(); c.go('adeyemi', 'letter', 'st-01'); } },
   lenses: { title: 'One record, many formats', sub: 'University narrative from the same data', secs: 40, say: 'Same verified data, different audience: Maya’s general profile becomes a university narrative, a CV or a scholarship timeline.', run: (c) => { ensureEndorsed(); c.setTier('template'); c.setAudience('university'); c.go('maya', 'studio'); } },
   reader: { title: 'The admissions reader', sub: 'Opens the link, checks a badge', secs: 40, say: 'At Northbridge, the reader opens Maya’s link and clicks a badge to see exactly how that station was verified.', run: (c) => { ensureEndorsed(); c.go('reader', 'reader'); } },
+  alum: { title: 'Maya, two years later', sub: 'The record keeps going after Year 13', secs: 40, say: 'In March 2029 Maya is at university. Her map left NIST with her: the school stations keep their signatures, and she keeps adding modules, an internship and the project that answers her Extended Essay question properly.', run: (c) => c.go('maya-alum', 'journey') },
+  poster: { title: 'The map poster', sub: 'The whole journey on one sheet', secs: 30, say: 'Any student can print their map as an A3 poster, showing only what they have made publishable, with a QR code to the full portfolio. It makes a good leaving gift and an open-day wall.', run: (c) => c.go('maya-alum', 'poster') },
   family: { title: 'A parent, in Thai', sub: 'Consent for Year 7, a weekly digest', secs: 40, say: 'Khun Nok has two children. She gives consent for Pim in Year 7, sees what Ploy shares, and reads a weekly digest in Thai.', run: (c) => c.go('parent', 'consent', 'st-09') },
   inbox: { title: 'Integrations inbox', sub: 'Systems sync, the student chooses', secs: 30, say: 'School systems sync new items into an inbox. Nothing reaches the map until Maya chooses, and GitHub only sends the repositories she shares.', run: (c) => c.go('maya', 'inbox') },
   pdpa: { title: 'Back to leadership', sub: 'Privacy: views logged, links expire', secs: 30, say: 'Back with leadership: every view was logged, the link expires, and the student can switch it off.', run: (c) => c.go('principal', 'pdpa') },
@@ -26,8 +28,8 @@ const tour = (title, use, keys) => ({ title, use, steps: keys.map((k) => ({ key:
 
 export const TOURS = {
   short: tour('Five-minute pitch', 'For the board: under five minutes', ['open', 'pim', 'maya', 'nair', 'adeyemi', 'reader', 'pdpa', 'ask']),
-  roles: tour('One record, every role', 'The full role walk-through', ['open', 'dash', 'pim', 'maya', 'nair', 'whitfield', 'brandt', 'adeyemi', 'reader', 'pdpa', 'ask']),
-  deep: tour('Deep dive for staff', 'A staff session, with time for questions', ['open', 'dash', 'pim', 'maya', 'nair', 'sponsor', 'whitfield', 'signals', 'brandt', 'adeyemi', 'lenses', 'reader', 'family', 'inbox', 'pdpa', 'rollout', 'ask']),
+  roles: tour('One record, every role', 'The full role walk-through', ['open', 'dash', 'pim', 'maya', 'nair', 'whitfield', 'brandt', 'adeyemi', 'reader', 'alum', 'pdpa', 'ask']),
+  deep: tour('Deep dive for staff', 'A staff session, with time for questions', ['open', 'dash', 'pim', 'maya', 'nair', 'sponsor', 'whitfield', 'signals', 'brandt', 'adeyemi', 'lenses', 'reader', 'alum', 'poster', 'family', 'inbox', 'pdpa', 'rollout', 'ask']),
   student: {
     title: 'The student’s map',
     use: 'Formats and tiers for one student',
@@ -40,6 +42,8 @@ export const TOURS = {
       { title: 'Custom page', sub: 'Themes, blocks, drag and resize', secs: 40, say: 'Students who want to can design their own page from blocks, with verified stations they can place but never edit.', run: (c) => { c.setAudience('custom'); c.go('maya', 'studio'); } },
       { title: 'Tier: Code', sub: 'Their own site, same rules', secs: 40, say: 'Students who code can build and publish their own site from the same read API and privacy rules.', run: (c) => { c.setAudience('general'); c.setTier('code'); c.go('maya', 'studio'); } },
       { title: 'Integrations inbox', sub: 'Sync, then choose', secs: 30, say: 'School systems sync new items into an inbox. Nothing reaches the map until Maya chooses.', run: (c) => c.go('maya', 'inbox') },
+      { title: 'Map poster', sub: 'Print the whole journey', secs: 30, say: 'Any student can print their map as an A3 poster, publishable stations only, with a QR code to the full portfolio.', run: (c) => c.go('maya', 'poster') },
+      { title: 'After Year 13', sub: 'Maya in 2029', secs: 30, say: 'The map leaves school with the student and keeps going: university, an internship, and stations she adds herself.', run: (c) => c.go('maya-alum', 'journey') },
     ],
   },
 };

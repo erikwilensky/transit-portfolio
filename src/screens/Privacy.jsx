@@ -84,7 +84,9 @@ export default function Privacy({ studentId, drafts, toast, go, persona, version
           <div className="pv-btns">
             <button className="primary" onClick={exportJson}>Download my record (JSON)</button>
             <button className="ghost" onClick={exportHtml}>Download my presentations (HTML)</button>
+            <button className="ghost" onClick={() => go(persona.id, 'poster')}>Make a map poster</button>
           </div>
+          {studentId === 'st-01' && <p className="fineprint">After you graduate the map keeps going. <button className="linkish" onClick={() => go('maya-alum', 'journey')}>Preview Maya in 2029, two years after NIST</button></p>}
           {done && <p className="fineprint">{done === 'json' ? 'Saved: every station, line, reflection and endorsement, plus your activity log.' : 'Saved: a static copy of each presentation that works offline.'}</p>}
         </div>
       </section>

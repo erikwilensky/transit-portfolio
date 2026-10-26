@@ -351,6 +351,39 @@ if (!store.classTasks) store.classTasks = [
   { id: 'ct-1', teacherId: 't-01', title: 'CS: algorithms problem set 3', ref: 'mb-cs-ps3', due: '2026-10-20', type: 'assessment', summary: 'Searching and sorting: complexity analysis and a timed implementation task.', submitted: ['st-01', 'st-02', 'st-07'], late: [] },
   { id: 'ct-2', teacherId: 't-01', title: 'CS: sorting visualiser project', ref: 'mb-cs-viz', due: '2026-10-24', type: 'project', summary: 'An interactive page that animates three sorting algorithms side by side.', submitted: ['st-01', 'st-02'], late: ['st-07'] },
 ];
+// ── N9: life after Year 13. Maya in March 2029, two years after NIST, still adding to the record she took with her.
+export const ALUM = { studentId: 'st-01', today: '2029-03-15', classOf: 2027, endGrade: 15 };
+const after = (id, date, title, lineIds, type, summary, about, evidence = [], refl, extra = {}) => ({ id, studentId: 'st-01', date, title, lineIds, type, summary, about, evidence, verification: 'student-added', visibility: 'publishable', source: { system: 'Added after NIST', ref: null }, alum: true, reflections: refl ? [{ id: `rf-${id}`, eventId: id, prompt: refl[0], text: refl[1], date, visibility: 'publishable' }] : [], ...extra });
+const doc = (kind, caption, url) => ({ kind, caption, url: url || (kind === 'grade' ? null : '#') });
+if (!store.alumEvents) store.alumEvents = [
+  { ...after('al-01', '2027-01-15', 'Extended Essay submitted', ['maya-datasci', 'science'], 'assessment', 'Final EE on dengue and weather, after a second draft and a viva.', 'Maya submitted her Extended Essay, “To what extent can rainfall and temperature predict weekly dengue cases in Bangkok?”, after rewriting the discussion around the six-week lag her supervisor had questioned.', [doc('grade', 'EE grade: A')]), verification: 'school-verified', source: { system: 'ManageBac', ref: 'ee-final' } },
+  { ...after('al-02', '2027-06-12', 'Graduated from NIST', ['science', 'computing', 'environment', 'service'], 'award', 'Graduation, and a signed copy of the whole record to take away.', 'Maya graduated in June 2027. On her last day she downloaded her whole record: every station, line and reflection, with the school’s signature on each verified item, so anyone can still check them years later.', [doc('file', 'Signed graduation record')]), verification: 'school-verified', source: { system: 'SIS', ref: 'grad-2027' } },
+  { ...after('al-03', '2027-07-06', 'IB Diploma: 41 points', ['science', 'maya-datasci'], 'assessment', 'Diploma results: 41 points, with 7 in Biology HL.', 'Maya’s IB Diploma results arrived in July: 41 points, including 7 in Biology HL and an A for the Extended Essay.', [doc('certificate', 'IB Diploma results')]), verification: 'school-verified', source: { system: 'Exam boards', ref: 'ibdp-2027' } },
+  after('al-04', '2027-09-20', 'Started BSc Data Science', ['maya-datasci'], 'class', 'First year at Northbridge University (fictional).', 'Maya started a BSc in Data Science with an environmental modelling pathway, the target she had planned on her map in Year 12.', [doc('file', 'Enrolment confirmation')], ['How did it feel to arrive?', 'Strange and familiar. The first lecture was on cleaning messy data, and I had already done that 40,000 times with the air-quality sensors.']),
+  after('al-05', '2027-12-08', 'First-year project: river-level forecasting', ['maya-datasci', 'environment'], 'project', 'Forecast river levels 24 hours ahead from upstream gauges.', 'For her first-year group project Maya’s team forecast river levels a day ahead from upstream rain gauges, the same idea as the flood chatbot she built at the Bangkok hackathon, now with a proper model.', [doc('link', 'Project repository', 'https://example.org/river-forecast'), doc('grade', 'Module mark: 78%')], ['What carried over from school?', 'The hackathon idea, and the habit of asking “how do I know this number is right?” that Mr Okafor drilled into me.']),
+  after('al-06', '2028-02-14', 'Joined Data for Good society', ['service', 'computing'], 'club', 'Volunteer data projects for local charities.', 'Maya joined the university Data for Good society, which does pro-bono analysis for local charities. Her first project cleaned a food bank’s donation records.', [doc('link', 'Society project page', 'https://example.org/dfg')]),
+  after('al-07', '2028-07-20', 'Summer internship: city air-quality team', ['environment', 'computing'], 'project', 'Ten weeks with a city council’s air-quality team.', 'A ten-week summer internship with a city council’s air-quality team. Maya recalibrated 40 street sensors and built the dashboard the team now uses for its weekly report, a grown-up version of her campus sensor network.', [doc('file', 'Internship reference'), doc('link', 'Dashboard (public version)', 'https://example.org/city-aq')], ['What did the interview ask about?', 'Almost only the campus sensor network. I opened my map on my phone and showed them the calibration notes from 2026.']),
+  after('al-08', '2028-10-06', 'Online mentor for the NIST STEM club', ['service'], 'service', 'Monthly video calls with the Year 7 girls’ STEM club she co-founded.', 'Maya mentors the Friday STEM club she co-founded at NIST, joining a video call once a month to help the Year 7 girls with their micro:bit projects.', [], ['Why go back?', 'Because the club is still running, and three of the first members are now in Year 10 and running it themselves.']),
+  after('al-09', '2029-02-10', 'Second-year project: dengue early warning, revisited', ['maya-datasci', 'science'], 'project', 'Her Extended Essay question, answered properly with five more years of data.', 'Maya returned to her Extended Essay question with fifteen years of data and a proper time-series model. Her early-warning model predicts dengue peaks in Bangkok six weeks ahead.', [doc('file', 'Project report'), doc('link', 'Notebook', 'https://example.org/dengue-v2')]),
+  { ...after('al-10', '2029-07-01', 'Planned: industrial placement year', ['maya-datasci', 'environment'], 'goal', 'A placement year in environmental data.', 'Planned: a year in industry between second and third year, ideally in climate or public-health data.'), visibility: 'publishable' },
+];
+export const getAlumEvents = () => store.alumEvents;
+// The record as an alum sees it: the school years exactly as they were, plus what came after.
+export function getAlumMap(viewer = 'student') {
+  const base = getStudentMap(ALUM.studentId, viewer);
+  const allowed = VISIBLE_TO[viewer];
+  const extra = store.alumEvents.filter((e) => allowed.includes(e.visibility)).map((e) => ({ ...e, endorsements: [], tags: getTags(e) }));
+  const events = [...base.events.filter((e) => e.type !== 'goal'), ...extra].sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
+  return { student: { ...base.student, endGrade: ALUM.endGrade, grade: 14 }, lines: base.lines, events, signals: [], today: ALUM.today, alum: true };
+}
+export function addAlumStation(f) {
+  const e = after(`al-${Date.now().toString(36)}`, f.date, f.title, f.lineIds, f.type || 'project', f.summary || '', null, f.link ? [doc('link', f.link.replace(/^https?:\/\//, '').slice(0, 40), f.link)] : [], f.reflection ? ['What did this teach you?', f.reflection] : null);
+  store.alumEvents.push(e);
+  log(ALUM.studentId, 'Maya Chen (alum)', 'station', `Added “${f.title}” after graduating`);
+  emit();
+  return e;
+}
+
 // ── Advisor ───────────────────────────────────────────────────────────
 export function getCohort(advisorId) {
   return store.students.filter((s) => s.advisorId === advisorId).map((s) => {

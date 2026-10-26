@@ -10,9 +10,10 @@ export const PERSONAS = [
   { id: 'brandt', kind: 'coordinator', teacherId: 't-08', name: 'Ms Clara Brandt', role: 'CAS coordinator', initials: 'CB', colour: '#FF8F1C' },
   { id: 'principal', kind: 'leadership', teacherId: 't-10', name: 'Dr Anan Wongsakul', role: 'Head of School', initials: 'AW', colour: '#002855' },
   { id: 'parent', kind: 'parent', children: ['st-06', 'st-09'], name: 'Khun Nok Chaiyaporn', role: 'Parent · Ploy (Year 11) and Pim (Year 7)', initials: 'NC', colour: '#FFB81C' },
+  { id: 'maya-alum', kind: 'alum', studentId: 'st-01', name: 'Maya Chen', role: 'Alumna · Class of 2027 · March 2029', initials: 'MC', colour: '#4F529B' },
   { id: 'reader', kind: 'external', name: 'Admissions reader', role: 'Northbridge University (fictional)', initials: 'NU', colour: '#4F529B', token: 'tp-nb7d' },
 ];
-export const KIND_LABEL = { student: 'Students', advisor: 'Advisor', teacher: 'Subject teacher', counsellor: 'Counsellor', coordinator: 'Coordinator', leadership: 'Leadership', parent: 'Family', external: 'External viewer' };
+export const KIND_LABEL = { student: 'Students', advisor: 'Advisor', teacher: 'Subject teacher', counsellor: 'Counsellor', coordinator: 'Coordinator', leadership: 'Leadership', parent: 'Family', alum: 'After NIST', external: 'External viewer' };
 
 // Each kind of persona gets its own navigation. The first item is home.
 export const NAV = {
@@ -23,6 +24,7 @@ export const NAV = {
   coordinator: [['cas', 'CAS outcomes'], ['schoolline', 'One line'], ['core', 'DP core'], ['governance', 'Lines']],
   leadership: [['dashboard', 'Dashboard'], ['schoolmetro', 'School metro'], ['profile', 'Learner profile'], ['pdpa', 'Privacy & PDPA'], ['rollout', 'Rollout'], ['pilot', 'Pilot options'], ['audit', 'Audit log'], ['scan', 'Scan-in']],
   parent: [['family', 'Family view'], ['consent', 'Consent'], ['digest', 'Weekly digest']],
+  alum: [['journey', 'My record'], ['poster', 'Map poster']],
   external: [['reader', 'Shared portfolio']],
 };
 export const personaById = (id) => PERSONAS.find((p) => p.id === id) || PERSONAS[0];

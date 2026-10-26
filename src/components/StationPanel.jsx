@@ -26,7 +26,7 @@ export default function StationPanel({ event, map, onClose, readOnly = false, on
           <button className="panel-close" onClick={onClose} aria-label={t('Close')}>×</button>
           <div className="panel-type">{event.lineIds.length > 1 ? `${t('Interchange')} · ` : ''}{t(TYPE_LABEL[event.type])}</div>
           <h2>{event.title}</h2>
-          <div className="panel-date">{fmtDate(event.date)} · {termText(lang, fmtTerm(event.date, map.student.g9StartYear, map.student.startGrade))}</div>
+          <div className="panel-date">{fmtDate(event.date)} · {termText(lang, fmtTerm(event.date, map.student.g9StartYear, map.student.startGrade, map.student.endGrade))}</div>
           <div className="chips">
             {event.lineIds.map((id) => {
               const l = map.lines.find((x) => x.id === id);
@@ -39,7 +39,7 @@ export default function StationPanel({ event, map, onClose, readOnly = false, on
           {!readOnly && event.type !== 'goal' && <StudentActions key={event.id} event={event} onClose={onClose} toast={toast} />}
           {event.type !== 'goal' && event.tags && <TagBox key={`t-${event.id}`} event={event} readOnly={readOnly} t={t} />}
           <VerifyBadge level={event.verification} large event={event} />
-          <span className="vhelp">{t(VERIFY_HELP[event.verification])}</span>
+          <span className="vhelp">{t(VERIFY_HELP[event.verification])}{event.alum && event.verification === 'student-added' ? ' Added after leaving NIST.' : ''}</span>
 
           {event.evidence.length > 0 && (
             <section>
