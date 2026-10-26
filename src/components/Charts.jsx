@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 // Small, dependency-free charts. Series colours come from --dv1..3 (validated for light and dark).
-export function BarChart({ data, unit = '', height = 180, max, label }) {
+export function BarChart({ data, unit = '', height = 180, max, label, onSelect }) {
   const [hover, setHover] = useState(null);
   const m = max || Math.max(...data.map((d) => d.value)) * 1.1;
   const W = 520, H = height, pad = { l: 34, r: 8, t: 10, b: 26 };
@@ -9,13 +9,13 @@ export function BarChart({ data, unit = '', height = 180, max, label }) {
   const y = (v) => pad.t + (H - pad.t - pad.b) * (1 - v / m);
   const ticks = [0, m / 2, m].map((v) => Math.round(v));
   return (
-    <div className="chart" role="img" aria-label={label}>
+    <div className="chart" role={onSelect ? 'group' : 'img'} aria-label={label}>
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="chart-svg">
         {ticks.map((t) => <g key={t}><line x1={pad.l} x2={W - pad.r} y1={y(t)} y2={y(t)} className="grid" /><text x={pad.l - 6} y={y(t) + 4} textAnchor="end" className="axis">{t}{unit}</text></g>)}
         {data.map((d, i) => {
           const x = pad.l + i * bw + bw * 0.18, w = bw * 0.64, top = y(d.value), h = H - pad.b - top;
           return (
-            <g key={d.label} onPointerEnter={() => setHover(i)} onPointerLeave={() => setHover(null)}>
+            <g key={d.label} onPointerEnter={() => setHover(i)} onPointerLeave={() => setHover(null)} {...(onSelect ? { role: 'button', tabIndex: 0, className: 'bar-hit', 'aria-label': `${d.label}: ${d.value}${unit}. Show the detail`, onClick: () => onSelect(i), onKeyDown: (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), onSelect(i)), onFocus: () => setHover(i), onBlur: () => setHover(null) } : {})}>
               <rect x={pad.l + i * bw} y={pad.t} width={bw} height={H - pad.t - pad.b} fill="transparent" />
               <path d={`M${x},${H - pad.b} V${top + 4} q0,-4 4,-4 h${w - 8} q4,0 4,4 V${H - pad.b} Z`} className={`bar${hover === i ? ' hot' : ''}`} />
               <text x={x + w / 2} y={H - 8} textAnchor="middle" className="axis">{d.label}</text>
@@ -50,12 +50,12 @@ export function LineChart({ data, unit = '', height = 180, label }) {
 }
 
 // One stacked bar with a legend and direct labels.
-export function StackBar({ parts, label }) {
+export function StackBar({ parts, label, onSelect }) {
   const total = parts.reduce((n, p) => n + p.value, 0);
   return (
     <div className="stackbar" role="img" aria-label={label}>
       <div className="sb-bar">{parts.map((p, i) => <span key={p.label} className={`sb-seg dv${i + 1}`} style={{ flex: p.value }} title={`${p.label}: ${Math.round((100 * p.value) / total)}%`} />)}</div>
-      <ul className="sb-legend">{parts.map((p, i) => <li key={p.label}><i className={`dv${i + 1}`} />{p.label} <b>{Math.round((100 * p.value) / total)}%</b></li>)}</ul>
+      <ul className="sb-legend">{parts.map((p, i) => <li key={p.label}>{onSelect ? <button className="sb-btn" onClick={() => onSelect(i)}><i className={`dv${i + 1}`} />{p.label} <b>{Math.round((100 * p.value) / total)}%</b></button> : <><i className={`dv${i + 1}`} />{p.label} <b>{Math.round((100 * p.value) / total)}%</b></>}</li>)}</ul>
     </div>
   );
 }

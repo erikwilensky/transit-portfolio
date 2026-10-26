@@ -315,6 +315,21 @@ export function setLetterStatus(sid, status, by) {
   emit();
 }
 
+// F15: two Clubs & Sports CSV rows that did not match a student. Leadership (or the registrar) matches them by hand.
+if (!store.roster) store.roster = [
+  { id: 'rm-1', raw: 'CHEN, M. · Swim U18 · 4x100 relay', file: 'fixtures-2026-10-24.csv', row: 41, suggest: 'st-01', title: 'Relay: inter-school gala, 2nd', type: 'sport', lines: ['maya-swim'], matched: null },
+  { id: 'rm-2', raw: 'OKOYE S · Eco Club · term roster', file: 'clubs-roster-t1.csv', row: 12, suggest: 'st-08', title: 'Eco Club: term 1 roster', type: 'club', lines: ['environment'], matched: null },
+];
+export const getRoster = () => store.roster;
+export function matchRoster(id, studentId, by) {
+  const r = store.roster.find((x) => x.id === id); if (!r || r.matched) return;
+  r.matched = studentId;
+  const st = getStudent(studentId);
+  store.pending.push({ sourceId: 'clubs', event: { id: `ev-rm-${id}`, studentId, title: r.title, date: '2026-10-24', lineIds: r.lines.filter((l) => st.laneOrder.includes(l)), type: r.type, summary: `From ${r.file}, row ${r.row}, matched by hand.`, evidence: [], verification: 'school-verified', visibility: 'advisor', source: { system: 'Clubs & Sports', ref: `${r.file}#${r.row}` } } });
+  log(studentId, by, 'sync', `Matched roster row “${r.raw}” to ${st.name}`);
+  emit();
+}
+
 // ── Advisor ───────────────────────────────────────────────────────────
 export function getCohort(advisorId) {
   return store.students.filter((s) => s.advisorId === advisorId).map((s) => {
