@@ -168,9 +168,11 @@ export function acceptCandidate(id, lineIds, visibility = 'advisor') {
   const c = store.inbox.find((e) => e.id === id);
   if (!c || !lineIds.length) return null;
   store.inbox = store.inbox.filter((e) => e.id !== id);
-  const { sourceId, suggestedLineIds, quickReflection, ...event } = c;
+  const { sourceId, suggestedLineIds, quickReflection, classEndorsement, ...event } = c;
   const added = { ...event, lineIds, visibility };
   store.events.push(added);
+  // N12: a class task arrives already endorsed by the teacher; the endorsement joins the station when the student accepts it.
+  if (classEndorsement) store.endorsements.push({ id: `en-x${seq++}`, eventId: added.id, teacherId: classEndorsement.teacherId, note: classEndorsement.note, date: classEndorsement.date, live: true });
   if (quickReflection) store.reflections.push({ id: `rf-x${seq++}`, eventId: added.id, text: quickReflection, prompt: 'Quick reflection', date: added.date, visibility: 'advisor' });
   log(added.studentId, getStudent(added.studentId).name, 'station', `Accepted “${added.title}” from the inbox`);
   emit();
@@ -345,6 +347,10 @@ if (!store.consentReqs) store.consentReqs = [
 if (!store.family) store.family = { lang: 'en', email: true };
 if (!store.reportComments) store.reportComments = {};
 if (!store.tags) store.tags = {};
+if (!store.classTasks) store.classTasks = [
+  { id: 'ct-1', teacherId: 't-01', title: 'CS: algorithms problem set 3', ref: 'mb-cs-ps3', due: '2026-10-20', type: 'assessment', summary: 'Searching and sorting: complexity analysis and a timed implementation task.', submitted: ['st-01', 'st-02', 'st-07'], late: [] },
+  { id: 'ct-2', teacherId: 't-01', title: 'CS: sorting visualiser project', ref: 'mb-cs-viz', due: '2026-10-24', type: 'project', summary: 'An interactive page that animates three sorting algorithms side by side.', submitted: ['st-01', 'st-02'], late: ['st-07'] },
+];
 // ── Advisor ───────────────────────────────────────────────────────────
 export function getCohort(advisorId) {
   return store.students.filter((s) => s.advisorId === advisorId).map((s) => {
@@ -1065,4 +1071,23 @@ export function profileCoverage() {
   const has = (k, field) => students.filter((s) => store.events.some((e) => e.studentId === s.id && e.type !== 'goal' && getTags(e)[field].includes(k))).length;
   return { n: students.length, lp: LEARNER_PROFILE.map((k) => ({ k, n: has(k, 'lp') })), atl: ATL.map((k) => ({ k, n: has(k, 'atl') })),
     stations: (k, field) => store.events.filter((e) => e.type !== 'goal' && getTags(e)[field].includes(k)).length };
+}
+
+// ── N12: one ManageBac task, endorsed for the whole class at once ─────
+export const getClassTasks = (teacherId) => store.classTasks.filter((t) => t.teacherId === teacherId);
+export function endorseClassTask(taskId, studentIds, note) {
+  const t = store.classTasks.find((x) => x.id === taskId);
+  if (!t) return 0;
+  const teacher = teacherById[t.teacherId];
+  for (const sid of studentIds) {
+    const st = getStudent(sid);
+    const line = st.laneOrder.find((l) => l === 'computing' || lineById(l)?.parentLineId === 'computing') || 'computing';
+    store.inbox.push({ id: `ev-${evSeq++}`, studentId: sid, title: t.title, date: t.due, lineIds: [line], suggestedLineIds: [line], type: t.type, summary: t.summary, evidence: [],
+      verification: 'teacher-endorsed', visibility: 'advisor', source: { system: 'ManageBac', ref: t.ref }, sourceId: 'lms', classEndorsement: { teacherId: t.teacherId, note, date: TODAY } });
+    log(sid, teacher.name, 'endorsement', `Endorsed “${t.title}” for the whole class`);
+    notify(PERSONA_OF_STUDENT[sid], `${teacher.name} endorsed “${t.title}”. It is in your inbox.`, { persona: PERSONA_OF_STUDENT[sid], screen: 'inbox' });
+  }
+  t.done = { count: studentIds.length, at: TODAY, note };
+  emit();
+  return studentIds.length;
 }

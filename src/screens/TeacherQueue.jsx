@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import ClassTask from '../components/ClassTask.jsx';
 import { declineRequest, endorse, getRequests, getStore, getTeacher, getLine, snapshot } from '../api.js';
 import { fmtDate, TYPE_LABEL } from '../format.js';
 import { VerifyBadge } from '../components/Badge.jsx';
@@ -14,6 +15,7 @@ export default function TeacherQueue({ teacherId, toast, version, focus }) {
   const t = getTeacher(teacherId);
   const pending = getRequests(teacherId);
   const done = getRequests(teacherId, null).filter((r) => r.status !== 'pending');
+  const [classTask, setClassTask] = useState(false);
   const [picked, setPicked] = useState([]);
   const [notes, setNotes] = useState({});
   const [chips, setChips] = useState({});
@@ -41,11 +43,13 @@ export default function TeacherQueue({ teacherId, toast, version, focus }) {
 
   return (
     <div className="page queue">
+      {classTask && <ClassTask teacherId={teacherId} toast={toast} onClose={() => setClassTask(false)} />}
       <header className="page-head">
         <div>
           <div className="kicker">Endorsement queue</div>
           <h1>{t.name}</h1>
           <p>{t.role} · items from your students and from ManageBac that need a teacher’s eye</p>
+          <button className="ghost ct-open" onClick={() => setClassTask(true)}>Endorse a whole-class task</button>
           {getSponsored(teacherId).some((e) => e.sponsor.status === 'invited') && <a className="sp-jump" href="#sponsor" onClick={(ev) => { ev.preventDefault(); document.getElementById('sponsor')?.scrollIntoView({ behavior: 'smooth' }); }}>{getSponsored(teacherId).filter((e) => e.sponsor.status === 'invited').length} new sponsor invitation ↓</a>}
         </div>
         <div className="meter" aria-label="Workload this term">

@@ -1849,3 +1849,18 @@ button.lp-tag.on { background: var(--b-purple); border-color: var(--b-purple); c
 .lpb-n { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
 @media (max-width: 860px) { .lp-grid { grid-template-columns: 1fr; } }
 .tag-box .linkish { font-size: 12.5px; }
+
+/* N12: one task, the whole class */
+.ct-open { margin-top: 10px; margin-right: 10px; }
+.class-dlg { max-width: 600px; }
+.ct-tasks { display: grid; gap: 6px; margin: 12px 0; }
+.ct-tasks button { display: flex; flex-direction: column; align-items: flex-start; text-align: left; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 10px; background: var(--surface); }
+.ct-tasks button.on { border-color: var(--navy); box-shadow: inset 0 0 0 1px var(--navy); }
+.ct-tasks small { color: var(--muted); font-size: 12px; }
+.ct-list { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 4px; }
+.ct-list li, .ct-list label { display: flex; gap: 10px; align-items: center; }
+.ct-list li { padding: 6px 8px; border-radius: 8px; } .ct-list li:hover { background: var(--bg); }
+.ct-list .av { width: 26px; height: 26px; font-size: 11px; }
+.ct-list small { color: var(--muted); } .ct-list li.late { opacity: .6; padding-left: 34px; }
+.ct-notes { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; } .ct-notes small { color: var(--muted); margin-right: 4px; }
+.ct-done { display: flex; gap: 8px; align-items: center; }
