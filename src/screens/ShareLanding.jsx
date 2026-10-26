@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { applyLens, extraViews, getStudentMap, isGated, notify, recordView, TODAY, PERSONA_OF_STUDENT } from '../api.js';
-import { fmtDate, TYPE_LABEL } from '../format.js';
+import { applyLens, askEvidence, extraViews, getStudentMap, isGated, notify, recordView, TODAY, PERSONA_OF_STUDENT } from '../api.js';
+import { appUrl, fmtDate, TYPE_LABEL, verifyCode } from '../format.js';
+import Qr from '../components/Qr.jsx';
 import { VerifyBadge } from '../components/Badge.jsx';
 import PresentationView from '../components/PresentationView.jsx';
 import StationPanel from '../components/StationPanel.jsx';
@@ -61,14 +62,16 @@ export default function ShareLanding({ token, drafts, embedded = false }) {
             <span>{link.views + extraViews(token)} views logged</span>
             <span className="spacer" />
             <div className="seg small" role="group" aria-label="Reading mode"><button className={view === 'full' ? 'on' : ''} aria-pressed={view === 'full'} onClick={() => setView('full')}>Full portfolio</button><button className={view === 'skim' ? 'on' : ''} aria-pressed={view === 'skim'} onClick={() => setView('skim')}>60-second view</button></div>
+            <button className="ghost" onClick={() => window.print()}>Print</button>
             <button className="ghost" disabled={asked} onClick={() => { setAsked(true); notify(PERSONA_OF_STUDENT[pres.studentId], `${link.sharedWith || SHARED_WITH[token] || 'A viewer'} asked to extend link /s/${token}`, { persona: PERSONA_OF_STUDENT[pres.studentId], screen: 'links' }); }}>{asked ? 'Extension requested' : 'Request more time'}</button>
           </div>
           <div className={`landing-body theme-${pres.theme}`}>
             <VerifyScope.Provider value>
               {view === 'skim' ? <Skim map={map} lens={lens} pres={pres} onOpen={setSelected} /> : <PresentationView map={map} lens={lens} pres={pres} selectedId={selected} onSelect={setSelected} />}
-              <StationPanel event={event} map={map} onClose={() => setSelected(null)} readOnly />
+              <StationPanel event={event} map={map} onClose={() => setSelected(null)} readOnly onAsk={(id, t) => askEvidence(id, reader || link.sharedWith || SHARED_WITH[token] || 'A reader', t)} />
             </VerifyScope.Provider>
           </div>
+          <div className="print-only print-link"><Qr text={appUrl(`s/${token}`)} size={80} /><span>Read the full portfolio at /s/{token}. Each verified station can be checked at transit.wilenskycs.online with its NIST code.</span></div>
           <footer className="landing-foot">Every badge links to its verification record. Items appear only if the student made them publishable. Views of this link are logged.</footer>
         </>
       )}
@@ -108,6 +111,7 @@ function Skim({ map, lens, pres, onOpen }) {
           <p>{e.summary}</p>
           {e.endorsements[0] && <blockquote>“{e.endorsements[0].note}” <cite>{e.endorsements[0].teacher?.name}</cite></blockquote>}
           <div className="skim-foot"><VerifyBadge level={e.verification} event={e} /><button className="linkish" onClick={() => onOpen(e.id)}>See the evidence</button></div>
+          <div className="print-only skim-qr"><Qr text={appUrl(`v/${verifyCode(e.id)}`)} size={64} /><span>Verify: {verifyCode(e.id)}</span></div>
         </article>
       ))}</div>
       <h2 className="skim-h">Each line in one sentence</h2>

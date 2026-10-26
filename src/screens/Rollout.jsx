@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 // Illustrative planning figures, not a quote. Weeks are developer-weeks for one adapter.
-const SYSTEMS = [
+export const SYSTEMS = [
   { id: 'sis', name: 'SIS (PowerSchool)', what: 'Enrolment, classes, grades', weeks: 3, kind: 'API', core: true },
   { id: 'mb', name: 'ManageBac', what: 'Tasks, IA, EE, CAS log', weeks: 4, kind: 'API', core: true },
   { id: 'sports', name: 'Clubs & Sports', what: 'Rosters, fixtures, results', weeks: 2, kind: 'CSV export' },
@@ -9,12 +9,21 @@ const SYSTEMS = [
   { id: 'gc', name: 'Google Classroom', what: 'Assignments for Years 7–9', weeks: 3, kind: 'API' },
   { id: 'gh', name: 'GitHub', what: 'Student-chosen repositories', weeks: 1, kind: 'OAuth, opt-in' },
 ];
-const YEARS = [[7, 148], [8, 152], [9, 150], [10, 161], [11, 158], [12, 164], [13, 157]];
+export const YEARS = [[7, 148], [8, 152], [9, 150], [10, 161], [11, 158], [12, 164], [13, 157]];
 const START = [['2027-01', 'January 2027 (Term 2)'], ['2027-04', 'April 2027 (Term 3)'], ['2027-08', 'August 2027 (new year)']];
-const PRESETS = { dp: { years: [12, 13], systems: ['sis', 'mb'] }, upper: { years: [10, 11, 12, 13], systems: ['sis', 'mb', 'sports', 'exams'] }, all: { years: [7, 8, 9, 10, 11, 12, 13], systems: SYSTEMS.map((s) => s.id) } };
+export const PRESETS = { dp: { years: [12, 13], systems: ['sis', 'mb'] }, upper: { years: [10, 11, 12, 13], systems: ['sis', 'mb', 'sports', 'exams'] }, all: { years: [7, 8, 9, 10, 11, 12, 13], systems: SYSTEMS.map((s) => s.id) } };
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const addM = (ym, n) => { const [y, m] = ym.split('-').map(Number); const t = y * 12 + m - 1 + n; return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, '0')}`; };
 const label = (ym) => `${MON[+ym.slice(5) - 1]} ${ym.slice(0, 4)}`;
+
+// Shared with the pilot comparison: effort, start and running cost for a scope.
+export function estimate(systemIds, years, devs = 2) {
+  const chosen = SYSTEMS.filter((s) => systemIds.includes(s.id));
+  const students = YEARS.filter(([y]) => years.includes(y)).reduce((n, [, c]) => n + c, 0);
+  const weeks = chosen.reduce((n, s) => n + s.weeks, 0) + 4;
+  const young = years.some((y) => y <= 9);
+  return { chosen, students, weeks, young, staff: Math.ceil(students / 18), run: Math.round((students * 210 + chosen.length * 18000) / 1000) * 1000, months: (young ? 2 : 1) + Math.ceil(weeks / devs / 4.3) + 1 };
+}
 
 // L3: tick what is in scope and see the build effort, the timeline and the running cost change with it.
 export default function Rollout({ version }) {

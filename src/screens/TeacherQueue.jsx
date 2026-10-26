@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { declineRequest, endorse, getRequests, getStore, getTeacher, getLine } from '../api.js';
 import { fmtDate, TYPE_LABEL } from '../format.js';
 import { VerifyBadge } from '../components/Badge.jsx';
+import SponsorPanel from '../components/SponsorPanel.jsx';
+import { getSponsored } from '../api.js';
 
 const CHIPS = ['Independent work', 'Beyond the syllabus', 'Strong collaboration', 'Real-world impact', 'Clear progress'];
 
@@ -29,6 +31,7 @@ export default function TeacherQueue({ teacherId, toast, version }) {
           <div className="kicker">Endorsement queue</div>
           <h1>{t.name}</h1>
           <p>{t.role} · items from your students and from ManageBac that need a teacher’s eye</p>
+          {getSponsored(teacherId).some((e) => e.sponsor.status === 'invited') && <a className="sp-jump" href="#sponsor" onClick={(ev) => { ev.preventDefault(); document.getElementById('sponsor')?.scrollIntoView({ behavior: 'smooth' }); }}>{getSponsored(teacherId).filter((e) => e.sponsor.status === 'invited').length} new sponsor invitation ↓</a>}
         </div>
         <div className="meter" aria-label="Workload this term">
           <div><b>{pending.length}</b><span>waiting</span></div>
@@ -59,7 +62,7 @@ export default function TeacherQueue({ teacherId, toast, version }) {
                 <div className="q-meta">
                   <span className="pres-avatar xs" style={{ background: r.student.avatar.colour }}>{r.student.avatar.initials}</span>
                   <b>{r.student.name}</b><span>Year {r.student.grade + 1}</span>
-                  <span className="q-src">{r.source === 'lms' ? 'From ManageBac' : 'Requested by the student'} · {fmtDate(r.date)}</span>
+                  <span className="q-src">{r.source === 'lms' ? 'From ManageBac' : r.source === 'sponsor' ? 'Finished project you sponsored' : 'Requested by the student'} · {fmtDate(r.date)}</span>
                   {r.fresh && <span className="new-pill">NEW</span>}
                 </div>
                 <h3>{e.title}</h3>
@@ -81,6 +84,8 @@ export default function TeacherQueue({ teacherId, toast, version }) {
           );
         })}
       </div>
+
+      <SponsorPanel teacherId={teacherId} toast={toast} />
 
       {done.length > 0 && (
         <section className="q-done">

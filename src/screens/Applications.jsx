@@ -1,11 +1,14 @@
 import { extraViews, getApplications, getStudent, getStudents, TODAY } from '../api.js';
 import { fmtDate } from '../format.js';
+import { useState } from 'react';
+import { CommentDialog } from '../components/DraftComments.jsx';
 
 const days = (d) => Math.round((new Date(d) - new Date(TODAY)) / 86400000);
 const STATUS = { draft: ['Draft', 'st-draft'], shared: ['Shared', 'st-shared'], viewed: ['Viewed', 'st-viewed'] };
 
 // C1: one record, many tailored applications. Each row says which presentation goes where and whether it was opened.
-export default function Applications({ go, persona, drafts, version }) {
+export default function Applications({ go, persona, drafts, version, toast }) {
+  const [commenting, setCommenting] = useState(null);
   const apps = getApplications();
   const seniors = getStudents({ includeCohort: true }).filter((s) => s.grade === 12).sort((a, b) => a.name.localeCompare(b.name));
   const presFor = (a) => a.presentationId && Object.values(drafts).flat().find((p) => p.id === a.presentationId);
@@ -43,7 +46,7 @@ export default function Applications({ go, persona, drafts, version }) {
                   <tr key={a.uni + a.course}>
                     <td><b>{a.uni}</b><small>{a.course}</small></td>
                     <td className={d <= 35 ? 'due-soon' : ''}>{fmtDate(a.deadline)}<small>{d < 0 ? 'passed' : `in ${d} days`}</small></td>
-                    <td>{p ? <>{p.title}<small>{l ? `/s/${l.token}` : 'no link yet'}</small></> : <span className="muted">{getStudent(a.studentId)?.cohortOnly ? 'From the student’s own draft' : 'Not chosen yet'}</span>}</td>
+                    <td>{p ? <>{p.title}<small>{l ? `/s/${l.token}` : 'no link yet'}</small><button className="linkish" onClick={() => setCommenting(p)}>Comment on draft</button></> : <span className="muted">{getStudent(a.studentId)?.cohortOnly ? 'From the student’s own draft' : 'Not chosen yet'}</span>}</td>
                     <td><span className={`app-st ${STATUS[st][1]}`}>{STATUS[st][0]}</span>{views > 0 && <small>{views} view{views > 1 ? 's' : ''}</small>}
                       {l && <button className="linkish" onClick={() => { location.hash = `#/s/${l.token}`; }}>Open as reader</button>}</td>
                   </tr>
@@ -53,6 +56,7 @@ export default function Applications({ go, persona, drafts, version }) {
           </section>
         );
       })}
+      {commenting && <CommentDialog pres={commenting} toast={toast} onClose={() => setCommenting(null)} />}
     </div>
   );
 }

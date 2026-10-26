@@ -425,7 +425,7 @@ export function getActivity(studentId) {
   for (const e of store.events.filter((x) => x.studentId === studentId && x.date <= TODAY && x.type !== 'goal')) {
     const sys = e.source?.system;
     if (sys && sys !== 'Manual entry' && sys !== 'Phone capture') hist.push({ ts: `${e.date}T${SYS_TIME[sys] || '06:00'}:00`, actor: sys, kind: 'sync', text: `Imported “${e.title}”${e.source.ref ? ` (${e.source.ref})` : ''}` });
-    else if (!e.id.startsWith('ev-9')) hist.push({ ts: `${e.date}T18:30:00`, actor: s.name, kind: 'station', text: `Added “${e.title}”` });
+    else if (!e.id.startsWith('ev-9') && !e.wasGoal) hist.push({ ts: `${e.date}T18:30:00`, actor: s.name, kind: 'station', text: `Added “${e.title}”` });
   }
   for (const n of store.endorsements) { const e = getEvent(n.eventId); if (e?.studentId === studentId && !n.live) hist.push({ ts: `${n.date}T15:40:00`, actor: teacherById[n.teacherId]?.name, kind: 'endorse', text: `Endorsed “${e.title}”` }); }
   for (const p of presentationsData.filter((x) => x.studentId === studentId)) for (const l of p.shareLinks) {
@@ -559,3 +559,162 @@ export function markMilestone(studentId, id) { ((store.dpDone ||= {})[studentId]
 // ── Counsellor: activities list drafts (Common App style, 10 slots) ────
 export const getActivityList = (studentId) => store.activityLists?.[studentId];
 export function saveActivityList(studentId, list) { (store.activityLists ||= {})[studentId] = list; emit(); }
+
+// ── Wave 4: goals, term in review, suggested interchanges ─────────────
+// A goal is a dashed station with a target date. It turns solid when the student says it happened.
+export function addGoal(studentId, f, by) {
+  const e = { id: `ev-${evSeq++}`, studentId, title: f.title, date: f.date, lineIds: [f.lineId], type: 'goal', summary: f.summary || 'Planned goal.', about: '', evidence: [], verification: 'student-added', visibility: 'advisor', source: { system: 'Manual entry', ref: null }, checkIn: f.checkIn || null, setBy: by || null, ...(f.sponsor ? { sponsor: { teacherId: f.sponsor, status: 'invited', note: f.sponsorNote || '', expectations: '', checkIns: [], invitedOn: TODAY } } : {}) };
+  store.events.push(e);
+  const s = getStudent(studentId);
+  log(studentId, by ? teacherById[by]?.name : s.name, 'goal', `Planned “${e.title}” for ${e.date}${f.checkIn ? ', with an advisor check-in' : ''}`);
+  if (by && PERSONA_OF_STUDENT[studentId]) notify(PERSONA_OF_STUDENT[studentId], `${teacherById[by].name} added a goal you agreed together: “${e.title}”`, { persona: PERSONA_OF_STUDENT[studentId], screen: 'map', param: e.id });
+  if (f.sponsor) notify(PERSONA_OF_TEACHER[f.sponsor], `${s.name.split(' ')[0]} invited you to sponsor a planned project: “${e.title}”`, { persona: PERSONA_OF_TEACHER[f.sponsor], screen: 'queue' });
+  if (!by && f.checkIn && PERSONA_OF_TEACHER[s.advisorId]) notify(PERSONA_OF_TEACHER[s.advisorId], `${s.name.split(' ')[0]} set a goal and asked for a check-in: “${e.title}”`, { persona: PERSONA_OF_TEACHER[s.advisorId], screen: 'student', param: studentId });
+  emit();
+  return e;
+}
+export function completeGoal(id, type = 'project') {
+  const e = getEvent(id); if (!e) return;
+  e.type = type; e.date = e.date > TODAY ? TODAY : e.date; e.summary = e.summary === 'Planned goal.' ? 'A goal that became a station.' : e.summary; e.wasGoal = true;
+  log(e.studentId, getStudent(e.studentId).name, 'goal', `Marked the goal “${e.title}” as done`);
+  // A sponsored plan goes straight back to its sponsor for a one-click endorsement.
+  if (e.sponsor?.status === 'accepted') { e.sponsor.status = 'done'; const rq = requestEndorsement(e.id, e.sponsor.teacherId, 'Finished the project you sponsored.'); rq.source = 'sponsor'; }
+  emit();
+}
+
+export const TERM_START = '2026-08-17';
+export function termReview(studentId) {
+  const map = getStudentMap(studentId);
+  const evs = map.events.filter((e) => e.date >= TERM_START && e.date <= TODAY && e.type !== 'goal');
+  const prev = map.events.filter((e) => e.date >= '2026-04-20' && e.date < TERM_START && e.type !== 'goal');
+  const roots = (e) => [...new Set(e.lineIds.map(rootLine))];
+  const interchanges = evs.filter((e) => roots(e).length > 1);
+  const grew = map.lines.map((l) => ({ l, n: evs.filter((e) => e.lineIds.includes(l.id)).length })).filter((x) => x.n).sort((a, b) => b.n - a.n);
+  const refl = store.reflections.filter((r) => r.date >= TERM_START && map.events.some((e) => e.id === r.eventId)).length + evs.filter((e) => e.type === 'reflection').length;
+  const endorsed = store.endorsements.filter((n) => n.date >= TERM_START && evs.some((e) => e.id === n.eventId)).length;
+  const goals = map.events.filter((e) => e.type === 'goal' && e.date > TODAY).sort((a, b) => a.date.localeCompare(b.date));
+  return { stations: evs, prevCount: prev.length, interchanges, grew, reflections: refl, endorsed, goals, quiet: map.lines.filter((l) => l.status !== 'ended' && !evs.some((e) => e.lineIds.includes(l.id)) && map.events.some((e) => e.lineIds.includes(l.id))) };
+}
+
+// S10: two stations on different lines that look related. Words shared in title and summary, close in time.
+const STOP = new Set(['about', 'after', 'their', 'there', 'which', 'while', 'with', 'from', 'into', 'class', 'first', 'school', 'students', 'student', 'project', 'started', 'joined', 'term', 'weeks', 'using', 'every', 'built']);
+const words = (e) => new Set(`${e.title} ${e.summary}`.toLowerCase().normalize('NFKD').replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter((w) => w.length > 3 && !STOP.has(w)).map((w) => w.replace(/s$/, '')));
+export function suggestInterchanges(studentId) {
+  const ignored = store.ignoredSuggestions || {};
+  const evs = store.events.filter((e) => e.studentId === studentId && e.type !== 'goal' && e.type !== 'reflection' && e.date <= TODAY);
+  const out = [];
+  for (let i = 0; i < evs.length; i++) for (let j = i + 1; j < evs.length; j++) {
+    const a = evs[i], b = evs[j];
+    const ra = new Set(a.lineIds.map(rootLine)), rb = new Set(b.lineIds.map(rootLine));
+    if ([...rb].every((x) => ra.has(x)) || [...ra].every((x) => rb.has(x))) continue;
+    const gap = Math.abs(new Date(a.date) - new Date(b.date)) / 86400000;
+    if (gap > 500) continue;
+    const wa = words(a), shared = [...words(b)].filter((w) => wa.has(w));
+    if (shared.length < 2) continue;
+    const key = `${a.id}|${b.id}`;
+    if (ignored[key]) continue;
+    // Join the later station to the earlier station's line.
+    const [early, late] = a.date <= b.date ? [a, b] : [b, a];
+    const lineId = early.lineIds.find((id) => !late.lineIds.map(rootLine).includes(rootLine(id)));
+    if (!lineId) continue;
+    out.push({ key, a: early, b: late, lineId, shared, score: shared.length * 10 - gap / 30 });
+  }
+  return out.sort((x, y) => y.score - x.score).slice(0, 3);
+}
+export function acceptInterchange(sug) {
+  const e = getEvent(sug.b.id); if (!e.lineIds.includes(sug.lineId)) e.lineIds = [...e.lineIds, sug.lineId];
+  (store.ignoredSuggestions ||= {})[sug.key] = 'accepted';
+  log(e.studentId, getStudent(e.studentId).name, 'line', `Joined “${e.title}” to the ${lineById(sug.lineId)?.name} line (suggested interchange)`);
+  emit();
+}
+export function ignoreInterchange(key) { (store.ignoredSuggestions ||= {})[key] = 'ignored'; emit(); }
+
+// A4: a student measured only against their own past terms.
+export function growth(studentId) {
+  const map = getStudentMap(studentId, 'advisor');
+  const inRange = (d, a, b) => d >= a && d < b;
+  const count = (a, b) => ({
+    stations: map.events.filter((e) => e.type !== 'goal' && e.type !== 'reflection' && inRange(e.date, a, b)).length,
+    reflections: map.events.filter((e) => e.type === 'reflection' && inRange(e.date, a, b)).length + map.events.reduce((n, e) => n + e.reflections.filter((r) => inRange(r.date, a, b)).length, 0),
+  });
+  return { now: count(TERM_START, '2026-12-31'), before: count('2026-04-20', TERM_START) };
+}
+
+// ── C5: counsellor comments pinned on a student's draft presentation ───
+export const getComments = (presentationId) => store.comments.filter((c) => c.presentationId === presentationId);
+export function addComment(presentationId, studentId, text, eventId, by = 't-09') {
+  const c = { id: `cm-${seq++}`, presentationId, studentId, eventId: eventId || null, text, by, date: TODAY, resolved: false };
+  store.comments.push(c);
+  notify(PERSONA_OF_STUDENT[studentId], `${teacherById[by].name} commented on your draft`, { persona: PERSONA_OF_STUDENT[studentId], screen: 'studio' });
+  emit();
+  return c;
+}
+export function resolveComment(id) { const c = store.comments.find((x) => x.id === id); if (c) { c.resolved = !c.resolved; emit(); } }
+store.comments.push(
+  { id: 'cm-s1', presentationId: 'pr-02', studentId: 'st-01', eventId: 'ev-042', text: 'Lead with the sensor network. It is your strongest verified piece and it sets up the Data Science story.', by: 't-09', date: '2026-10-22', resolved: false },
+  { id: 'cm-s2', presentationId: 'pr-02', studentId: 'st-01', eventId: null, text: 'Swimming can stay, but one station is enough. Admissions readers skim.', by: 't-09', date: '2026-10-22', resolved: false },
+);
+
+// ── E4: a reader asks for more evidence; the student decides ───────────
+export function askEvidence(eventId, from, text) {
+  const e = getEvent(eventId);
+  const r = { id: `er-${seq++}`, eventId, studentId: e.studentId, from, text, date: TODAY, status: 'open' };
+  store.evidenceRequests.unshift(r);
+  notify(PERSONA_OF_STUDENT[e.studentId], `${from} asked to see more on “${e.title}”`, { persona: PERSONA_OF_STUDENT[e.studentId], screen: 'inbox' });
+  log(e.studentId, from, 'request', `Asked for more evidence on “${e.title}”`);
+  emit();
+  return r;
+}
+export const getEvidenceRequests = (studentId) => store.evidenceRequests.filter((r) => r.studentId === studentId);
+export function answerEvidence(id, share) {
+  const r = store.evidenceRequests.find((x) => x.id === id); if (!r) return;
+  r.status = share ? 'shared' : 'declined';
+  log(r.studentId, getStudent(r.studentId).name, 'link', share ? `Shared more evidence on “${getEvent(r.eventId).title}” with ${r.from}` : `Declined a request from ${r.from}`);
+  emit();
+}
+store.evidenceRequests.push({ id: 'er-s1', eventId: 'ev-042', studentId: 'st-01', from: 'Northbridge University admissions', text: 'Could we see the code for the dashboard?', date: '2026-10-24', status: 'open' });
+
+// ── K5: requirements appear on maps as dashed stations, automatically ──
+const REQ_LINE = { 'st-01': 'science', 'st-02': 'music', 'st-04': 'computing', 'st-05': 'languages', 'st-07': 'computing', 'st-08': 'science' };
+for (const r of getDpCore()) {
+  const next = r.milestones.filter((m) => m.status === 'upcoming' && !m.eventId).slice(0, 2);
+  for (const m of next) {
+    const want = m.part === 'TOK' ? 'service' : REQ_LINE[r.student.id];
+    const lineId = r.student.laneOrder.includes(want) ? want : r.student.laneOrder[0];
+    store.events.push({ id: `ev-rq-${r.student.id}-${m.id}`, studentId: r.student.id, title: `${m.part}: ${m.name.toLowerCase()}`, date: m.due, lineIds: [lineId], type: 'goal', summary: `DP core requirement from ManageBac. Supervisor: ${r.supervisor?.name}.`, about: '', evidence: [], verification: 'school-verified', visibility: 'advisor', source: { system: 'ManageBac', ref: `dp-${m.id}` }, requirement: true });
+  }
+}
+for (const [sid, lineId, title, date] of [['st-03', 'service', 'Service as Action: two more experiences', '2027-03-01'], ['st-06', 'music', 'MYP Personal Project: proposal', '2026-12-04']]) {
+  if (getStudent(sid)?.laneOrder.includes(lineId)) store.events.push({ id: `ev-rq-${sid}-${lineId}`, studentId: sid, title, date, lineIds: [lineId], type: 'goal', summary: 'MYP requirement from ManageBac.', about: '', evidence: [], verification: 'school-verified', visibility: 'advisor', source: { system: 'ManageBac', ref: 'myp-req' }, requirement: true });
+}
+
+// ── L: school-wide audit log ──────────────────────────────────────────
+export function auditLog() {
+  return store.students.flatMap((s) => getActivity(s.id).map((a) => ({ ...a, studentId: s.id, student: s.name }))).sort((a, b) => (b.live ? 1 : 0) - (a.live ? 1 : 0) || b.ts.localeCompare(a.ts));
+}
+
+// ── Sponsors: a teacher attached to planned work before it happens, even outside any school system ─
+export const getSponsored = (teacherId) => store.events.filter((e) => e.sponsor?.teacherId === teacherId).map((e) => ({ ...e, student: getStudent(e.studentId) }));
+export function answerSponsor(eventId, ok, expectations) {
+  const e = getEvent(eventId); const t = teacherById[e.sponsor.teacherId];
+  e.sponsor = { ...e.sponsor, status: ok ? 'accepted' : 'declined', expectations: expectations || '', answeredOn: TODAY };
+  if (ok) e.visibility = e.visibility === 'private' ? 'advisor' : e.visibility;
+  notify(PERSONA_OF_STUDENT[e.studentId], ok ? `${t.name} will sponsor “${e.title}”` : `${t.name} can't sponsor “${e.title}”`, { persona: PERSONA_OF_STUDENT[e.studentId], screen: 'map', param: e.id });
+  log(e.studentId, t.name, 'endorse', ok ? `Agreed to sponsor “${e.title}”` : `Declined to sponsor “${e.title}”`);
+  emit();
+}
+export function addCheckIn(eventId, text, by) {
+  const e = getEvent(eventId);
+  e.sponsor.checkIns = [...e.sponsor.checkIns, { date: TODAY, text, by }];
+  const who = by === 'student' ? getStudent(e.studentId).name : teacherById[by]?.name;
+  if (by === 'student') notify(PERSONA_OF_TEACHER[e.sponsor.teacherId], `${who.split(' ')[0]} posted an update on “${e.title}”`, { persona: PERSONA_OF_TEACHER[e.sponsor.teacherId], screen: 'queue' });
+  else notify(PERSONA_OF_STUDENT[e.studentId], `${who} checked in on “${e.title}”`, { persona: PERSONA_OF_STUDENT[e.studentId], screen: 'map', param: e.id });
+  log(e.studentId, who, 'prompt', `Check-in on “${e.title}”: ${text}`);
+  emit();
+}
+store.events.push(
+  { id: 'ev-sp-1', studentId: 'st-01', title: 'Water-quality buoy for Bang Krachao', date: '2027-02-20', lineIds: ['computing', 'environment'], type: 'goal', summary: 'An independent project: a solar buoy that logs canal water quality and posts it online.', about: '', evidence: [], verification: 'student-added', visibility: 'advisor', source: { system: 'Manual entry', ref: null },
+    sponsor: { teacherId: 't-01', status: 'accepted', note: 'Could you supervise this? It builds on the sensor network.', expectations: 'Working prototype by January; a short write-up of the calibration.', invitedOn: '2026-10-02', answeredOn: '2026-10-03', checkIns: [{ date: '2026-10-17', text: 'Hull printed and sealed. Waiting on the turbidity sensor.', by: 'student' }, { date: '2026-10-18', text: 'Good progress. Test it in the pool before the canal.', by: 't-01' }] } },
+  { id: 'ev-sp-2', studentId: 'st-02', title: 'Global Game Jam 2027', date: '2027-01-24', lineIds: ['computing', 'music'], type: 'goal', summary: 'A 48-hour game jam at a Bangkok site, outside school. Planning to write the audio engine.', about: '', evidence: [], verification: 'student-added', visibility: 'advisor', source: { system: 'Manual entry', ref: null },
+    sponsor: { teacherId: 't-01', status: 'invited', note: 'Would you be my sponsor so it can count on my map? I will post a build after each day.', expectations: '', invitedOn: '2026-10-24', checkIns: [] } },
+);

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { applyLens, getCohort, getTeacher, sendPrompt, TODAY } from '../api.js';
+import { applyLens, getCohort, getTeacher, growth, sendPrompt, TODAY } from '../api.js';
 import { fmtDate } from '../format.js';
 import MetroMap from './MetroMap.jsx';
 
@@ -20,7 +20,7 @@ export default function AdvisorGrid({ advisorId, onOpen, toast, version }) {
           <span><b>{cohort.reduce((n, c) => n + c.openSignals, 0)}</b> open reflection signals</span>
         </div>
       </div>
-      <p className="fineprint">Advisor view shows advisor, school and publishable items. Students are listed alphabetically; the grid never ranks or compares them.</p>
+      <p className="fineprint">Advisor view shows advisor, school and publishable items. Students are listed alphabetically; the grid never ranks or compares them. Each card compares a student only with their own last term.</p>
       <div className="adv-grid">
         {cohort.map((c) => {
           const lens = applyLens(c, null);
@@ -39,6 +39,9 @@ export default function AdvisorGrid({ advisorId, onOpen, toast, version }) {
                 <span><b>{c.lines.length}</b> lines</span>
                 <span title="Reflections the student has shared with their advisor. Private reflections are not counted."><b>{c.reflectionCount}</b> shared with advisor</span>
               </div>
+              {(() => { const g = growth(c.student.id); const d = g.now.reflections - g.before.reflections; const ds = g.now.stations - g.before.stations; return (
+                <div className="adv-growth">Against last term: {ds > 0 ? <b>{ds} more station{ds > 1 ? 's' : ''}</b> : ds < 0 ? `${-ds} fewer station${ds < -1 ? 's' : ''}` : 'same stations'}, {d > 0 ? <b>{d} more reflection{d > 1 ? 's' : ''}</b> : d < 0 ? `${-d} fewer reflection${d < -1 ? 's' : ''}` : 'same reflections'}</div>
+              ); })()}
               {(fresh.length > 0 || c.openSignals > 0) && (
                 <div className="adv-news">
                   {fresh.map((e) => <span key={e.id} className="news-new">New: {e.title}</span>)}

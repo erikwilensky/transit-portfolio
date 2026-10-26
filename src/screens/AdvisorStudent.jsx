@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
-import { addNote, applyLens, getNotes, getPrompts, getStudentMap, sendPrompt, TODAY } from '../api.js';
-import { fmtDate } from '../format.js';
+import { addNote, applyLens, getNotes, getPrompts, getStudentMap, growth, log, sendPrompt, TODAY } from '../api.js';
+import { appUrl, fmtDate } from '../format.js';
+import MeetingMode from '../components/MeetingMode.jsx';
+import Qr from '../components/Qr.jsx';
 import MetroMap from '../components/MetroMap.jsx';
 import StationPanel from '../components/StationPanel.jsx';
 
@@ -14,6 +16,9 @@ export default function AdvisorStudent({ studentId, version, toast, go, persona 
   const [note, setNote] = useState('');
   const [promptText, setPromptText] = useState('');
   const notes = getNotes(studentId);
+  const [meeting, setMeeting] = useState(false);
+  const [parent, setParent] = useState(false);
+  const g = growth(studentId);
   const prompts = getPrompts(studentId);
   const s = map.student;
   const first = s.name.split(' ')[0];
@@ -36,6 +41,8 @@ export default function AdvisorStudent({ studentId, version, toast, go, persona 
         <button className="cb-back" onClick={() => go(persona.id, 'advisory')}>‹ Advisory 4B</button>
         <span className="pres-avatar" style={{ background: s.avatar.colour }}>{s.avatar.initials}</span>
         <div><h1>{s.name}</h1><p>Year {s.grade + 1} · {s.programme} · advisor view (advisor, school and publishable items)</p></div>
+        <span className="spacer" />
+        <button className="primary" onClick={() => setMeeting(true)}>Start meeting mode</button>
       </div>
       <div className="as-body">
         <div className="as-map">
@@ -47,12 +54,32 @@ export default function AdvisorStudent({ studentId, version, toast, go, persona 
             <h3>Meeting agenda</h3>
             <ol className="agenda">{agenda.map((a, i) => <li key={i}>{a}</li>)}</ol>
           </section>
+          <section className="card-sec growth">
+            <h3>{first} against {first}’s own last term</h3>
+            <div className="gr-row">
+              {[['stations', 'stations'], ['reflections', 'reflections']].map(([k, l]) => { const d = g.now[k] - g.before[k]; return <div key={k}><b>{g.now[k]}</b><span>{l} this term</span><small className={d > 0 ? 'up' : ''}>{d === 0 ? 'same as last term' : `${Math.abs(d)} ${d > 0 ? 'more' : 'fewer'} than last term`}</small></div>; })}
+            </div>
+            <p className="fineprint">Progress is only ever compared with the student’s own past, never with classmates.</p>
+          </section>
           <section className="card-sec">
             <h3>Send a reflection prompt</h3>
             <p className="fineprint">{event ? `Attached to “${event.title}”.` : 'Tap a station on the map to attach the prompt to it.'}</p>
             <textarea rows={2} value={promptText} onChange={(e) => setPromptText(e.target.value)} placeholder={`e.g. What did this teach you, ${first}?`} />
             <button className="primary" disabled={!event || promptText.trim().length < 8} onClick={() => { sendPrompt(studentId, event.id, promptText.trim(), persona.teacherId); setPromptText(''); toast(`Prompt sent. A signal now shows on ${first}'s map.`); }}>Send prompt</button>
             {prompts.length > 0 && <ul className="prompt-hist">{prompts.map((p) => <li key={p.id}><span className={`ph-dot${p.answered ? ' ok' : ''}`} />{p.text}<small>{fmtDate(p.date)} · {p.answered ? 'answered' : 'open'}</small></li>)}</ul>}
+          </section>
+          <section className="card-sec">
+            <h3>Parent conference link</h3>
+            {parent ? (
+              <div className="pc-link">
+                <Qr text={appUrl(`p/${studentId}`)} size={96} />
+                <div><code>/p/{studentId}</code><small>Works for 7 days. Shows only what {first} made publishable, plus your agenda.</small>
+                  <a className="ghost" href={appUrl(`p/${studentId}`)} target="_blank" rel="noreferrer">Open as a parent</a></div>
+              </div>
+            ) : (
+              <><p className="fineprint">A short-lived link for parents before the conference. It shows what {first} chose to share publicly, never advisor notes or private reflections.</p>
+                <button className="ghost" onClick={() => { setParent(true); log(studentId, persona.name, 'link', 'Made a 7-day parent conference link'); toast('Parent link ready for 7 days'); }}>Make a parent link</button></>
+            )}
           </section>
           <section className="card-sec">
             <h3>Advisor notes <small>only advisors see these</small></h3>
@@ -62,6 +89,7 @@ export default function AdvisorStudent({ studentId, version, toast, go, persona 
           </section>
         </aside>
       </div>
+      {meeting && <MeetingMode studentId={studentId} agenda={agenda} advisorId={persona.teacherId} version={version} toast={toast} onClose={() => setMeeting(false)} />}
     </div>
   );
 }

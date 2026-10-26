@@ -22,7 +22,7 @@ export default function DpCore({ toast, go, version }) {
         <div>
           <div className="kicker">DP core · from ManageBac</div>
           <h1>Extended Essay, TOK and IA milestones</h1>
-          <p>Every Diploma student’s core deadlines in one place. Handed-in work becomes a station on the student’s map; a dashed station marks what is still to come.</p>
+          <p>Every Diploma student’s core deadlines in one place. Handed-in work becomes a station on the student’s map, and the next two milestones appear there automatically as dashed stations, so nobody keeps a separate checklist.</p>
         </div>
         <div className="meter">
           <div><b>{late.length}</b><span>overdue now</span></div>

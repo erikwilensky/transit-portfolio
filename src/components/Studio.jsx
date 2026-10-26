@@ -9,6 +9,7 @@ import StationPanel from './StationPanel.jsx';
 import CustomView from '../custom/CustomView.jsx';
 import CustomBuilder, { useDesignHistory } from '../custom/CustomBuilder.jsx';
 import { defaultDesign } from '../custom/design.js';
+import { CommentStrip } from './DraftComments.jsx';
 
 export default function Studio({ map, drafts, audience, setAudience, tier, setTier, updateDraft, onShare, toast }) {
   const pres = drafts.find((p) => p.audience === audience) || drafts[0];
@@ -48,6 +49,7 @@ export default function Studio({ map, drafts, audience, setAudience, tier, setTi
         <button className="collapse-btn" onClick={() => setCollapsed(!collapsed)} aria-pressed={collapsed}>{collapsed ? 'Show controls' : 'Hide controls'}</button>
       </div>
       <p className="lens-blurb">{LENSES[pres.audience].blurb}</p>
+      <CommentStrip presId={pres.id} onPick={setSelected} />
 
       <div className={`studio-body tier-${tier}${custom ? ' custom' : ''}${collapsed ? ' collapsed' : ''}`}>
         <aside className="studio-controls" aria-label={`${custom ? 'custom page' : tier} controls`}>

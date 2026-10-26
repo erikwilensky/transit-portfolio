@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { VerifyBadge } from './Badge.jsx';
 import RecordInspector from './RecordInspector.jsx';
-import { setVisibility } from '../api.js';
+import { addCheckIn, completeGoal, getTeacher, setVisibility, TODAY } from '../api.js';
 import { fmtDate, fmtTerm, TYPE_LABEL, VIS_LABEL, VERIFY_HELP } from '../format.js';
 
 const KIND_ICON = { link: '↗', file: '▤', image: '▣', grade: '✓', certificate: '★' };
 
-export default function StationPanel({ event, map, onClose, readOnly = false }) {
+export default function StationPanel({ event, map, onClose, readOnly = false, onAsk }) {
   const open = !!event;
   const [inspect, setInspect] = useState(null);
   return (
@@ -26,6 +26,7 @@ export default function StationPanel({ event, map, onClose, readOnly = false }) 
           </div>
           <p className="panel-summary">{event.summary}</p>
           {event.about && <p className="panel-about">{event.about}</p>}
+          {event.type === 'goal' && <GoalBox event={event} readOnly={readOnly} />}
           <VerifyBadge level={event.verification} large event={event} />
           <span className="vhelp">{VERIFY_HELP[event.verification]}</span>
 
@@ -70,10 +71,52 @@ export default function StationPanel({ event, map, onClose, readOnly = false }) 
               </select>)}</dd></>}
           </dl>
           <button className="ghost small-btn" onClick={() => setInspect(event.id)}>View record</button>
+          {onAsk && <AskBox key={event.id} first={map.student.name.split(' ')[0]} onAsk={(t) => onAsk(event.id, t)} />}
           {!readOnly && <p className="fineprint">Verified facts can be included, excluded or reordered in a presentation, never edited.</p>}
         </div>
       )}
       {inspect && <RecordInspector eventId={inspect} onClose={() => setInspect(null)} />}
     </aside>
+  );
+}
+
+const SP_STATUS = { invited: 'Invitation sent', accepted: 'Sponsoring', declined: 'Declined', done: 'Waiting for endorsement' };
+
+// A planned station: its target, its sponsor and the check-ins along the way.
+function GoalBox({ event, readOnly }) {
+  const [text, setText] = useState('');
+  const sp = event.sponsor;
+  const t = sp && getTeacher(sp.teacherId);
+  const days = Math.round((new Date(event.date) - new Date(TODAY)) / 86400000);
+  return (
+    <section className="goal-box">
+      <div className="goal-when">{event.requirement ? 'Requirement from ManageBac' : 'Planned'} · {days >= 0 ? `in ${days} days` : `${-days} days ago`}</div>
+      {sp && (
+        <div className="sponsor">
+          <div className="sp-top"><b>Sponsor: {t.name}</b><span className={`app-st sp-${sp.status}`}>{SP_STATUS[sp.status]}</span></div>
+          {sp.expectations && <p className="sp-exp"><small>Expectations</small>{sp.expectations}</p>}
+          {sp.checkIns.length > 0 && <ul className="sp-log">{sp.checkIns.map((c, i) => <li key={i}><small>{fmtDate(c.date)} · {c.by === 'student' ? 'You' : getTeacher(c.by)?.name}</small>{c.text}</li>)}</ul>}
+          {!readOnly && sp.status === 'accepted' && (
+            <div className="sp-add"><input value={text} onChange={(e) => setText(e.target.value)} placeholder={`Post an update for ${t.name.split(' ')[0]} ${t.name.split(' ').at(-1)}`} aria-label="Update for your sponsor" /><button className="ghost" disabled={text.trim().length < 4} onClick={() => { addCheckIn(event.id, text.trim(), 'student'); setText(''); }}>Post</button></div>
+          )}
+        </div>
+      )}
+      {!readOnly && !event.requirement && <button className="primary small-btn" onClick={() => completeGoal(event.id)}>It happened: make it a station</button>}
+      {!readOnly && sp?.status === 'accepted' && <p className="fineprint">Marking it done sends it to {t.name} to endorse in one click.</p>}
+    </section>
+  );
+}
+
+// E4 (reader side): ask the student for more evidence on one station.
+function AskBox({ first, onAsk }) {
+  const [text, setText] = useState('');
+  const [sent, setSent] = useState(false);
+  if (sent) return <p className="ask-sent">Sent. {first} decides whether to share more.</p>;
+  return (
+    <section className="ask-box">
+      <h3>Want to see more?</h3>
+      <textarea rows={2} value={text} onChange={(e) => setText(e.target.value)} placeholder="e.g. Could we see the code?" aria-label={`Ask ${first} for more evidence`} />
+      <button className="ghost small-btn" disabled={text.trim().length < 4} onClick={() => { onAsk(text.trim()); setSent(true); }}>Ask {first}</button>
+    </section>
   );
 }

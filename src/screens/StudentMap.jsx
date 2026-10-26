@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { applyLens, getStore, getStudentMap } from '../api.js';
+import { applyLens, getStore, getStudentMap, suggestInterchanges } from '../api.js';
 import LineDialog from '../components/LineDialog.jsx';
 import PhoneCapture from '../components/PhoneCapture.jsx';
 import MetroMap from '../components/MetroMap.jsx';
 import StationPanel from '../components/StationPanel.jsx';
 import ReflectComposer from '../components/ReflectComposer.jsx';
 import AddStation from '../components/AddStation.jsx';
+import GoalDialog from '../components/GoalDialog.jsx';
+import TermReview from '../components/TermReview.jsx';
 import { MapLegend, VerifyLegend } from '../components/Badge.jsx';
 import { TOUR_REFLECTION, TOUR_STATION, tourEvent } from '../tourStory.js';
 
@@ -29,6 +31,9 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
   const [lineMode, setLineMode] = useState(null);
   const [menu, setMenu] = useState(false);
   const [phone, setPhone] = useState(false);
+  const [goal, setGoal] = useState(false);
+  const [review, setReview] = useState(false);
+  const sugCount = useMemo(() => suggestInterchanges(studentId).length, [studentId, map]);
   // X2: the same record as another viewer is allowed to read it (filtered in api.js, not here).
   const seen = useMemo(() => (seeAs === 'student' ? map : getStudentMap(studentId, seeAs)), [map, seeAs, studentId]);
   // X3: time travel. Days from the first station to today.
@@ -79,10 +84,12 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
             {openSignals.length > 0 && <button className="sig-chip" onClick={() => setSignal(openSignals[0])}><span className="sig-dot" aria-hidden="true" />{openSignals.length} open signal{openSignals.length > 1 ? 's' : ''}</button>}
           </div>
           <div className="home-actions">
+            <button className="ghost" onClick={() => setReview(true)}>Term in review{sugCount > 0 && <span className="badge-n" aria-label={`${sugCount} suggestions`}>{sugCount}</span>}</button>
             <button className="ghost" onClick={() => setPhone(true)}>Capture on phone</button>
             <div className="menu-wrap">
-              <button className="ghost" onClick={() => setMenu(!menu)} aria-expanded={menu}>Lines ▾</button>
+              <button className="ghost" onClick={() => setMenu(!menu)} aria-expanded={menu}>Plan ▾</button>
               {menu && <div className="menu" role="menu" style={{ width: 240 }}>
+                <button role="menuitem" onClick={() => { setMenu(false); setGoal(true); }}><span><b>Plan a goal</b><small>A dashed station, with a sponsor if you like</small></span></button>
                 <button role="menuitem" onClick={() => { setMenu(false); setLineMode('branch'); }}><span><b>Start a branch</b><small>A sub-line under a school line</small></span></button>
                 <button role="menuitem" onClick={() => { setMenu(false); setLineMode('end'); }}><span><b>End a line</b><small>Terminus, then a reflection</small></span></button>
               </div>}
@@ -126,6 +133,8 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
         if (r?.id) markNew(r.id);
         if (r?.endedLine) setTimeout(() => { const g = getStudentMap(studentId).signals.find((x) => x.kind === 'terminus' && x.lineId === r.endedLine && x.open); if (g) setSignal(g); }, 600);
       }} />}
+      {goal && <GoalDialog map={map} studentId={studentId} onClose={() => setGoal(false)} onDone={(e, msg) => { setGoal(false); toast(msg); markNew(e.id); setSelected(e.id); }} />}
+      {review && <TermReview map={map} studentId={studentId} toast={toast} onClose={() => setReview(false)} onOpen={(id) => { setReview(false); setSelected(id); }} />}
       {phone && <PhoneCapture map={map} studentId={studentId} onClose={() => setPhone(false)} onSent={() => { setPhone(false); go(persona.id, 'inbox'); }} />}
       {adding && (
         <AddStation map={map} studentId={studentId} prefill={adding} onClose={() => { setAdding(null); setTourStage(null); }}

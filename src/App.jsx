@@ -32,15 +32,18 @@ import CohortSearch from './screens/CohortSearch.jsx';
 import DpCore from './screens/DpCore.jsx';
 import Governance from './screens/Governance.jsx';
 import Rollout from './screens/Rollout.jsx';
+import ParentView from './screens/ParentView.jsx';
+import Pilot from './screens/Pilot.jsx';
+import AuditLog from './screens/AuditLog.jsx';
 import Logo from './components/Logo.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { VerifyProvider } from './components/VerifyModal.jsx';
 import { TOURS } from './tour.js';
 
-// Routes: #/<persona>/<screen>/<param>, plus public #/s/<token> and #/v/<code>.
+// Routes: #/<persona>/<screen>/<param>, plus public #/s/<token>, #/v/<code> and #/p/<student> (parent link).
 const parse = () => {
   const [a, b, c] = location.hash.replace(/^#\/?/, '').split('/');
-  if (a === 's' || a === 'v') return { publicKind: a, param: b };
+  if (a === 's' || a === 'v' || a === 'p') return { publicKind: a, param: b };
   const p = personaById(a);
   const screens = NAV[p.kind].map(([id]) => id).concat(p.kind === 'advisor' ? ['student'] : []);
   return { persona: p.id, screen: screens.includes(b) ? b : home(p), param: c || null };
@@ -77,6 +80,7 @@ export default function App() {
 
   if (route.publicKind === 's') return <VerifyProvider><ShareLanding token={route.param} drafts={drafts} version={version} /></VerifyProvider>;
   if (route.publicKind === 'v') return <VerifyPage code={route.param} />;
+  if (route.publicKind === 'p') return <VerifyProvider><ParentView studentId={route.param} /></VerifyProvider>;
 
   const persona = personaById(route.persona);
   const studentId = persona.studentId;
@@ -188,6 +192,8 @@ export default function App() {
           {persona.kind === 'coordinator' && route.screen === 'core' && <DpCore {...ctx} />}
           {persona.kind === 'coordinator' && route.screen === 'governance' && <Governance {...ctx} />}
           {persona.kind === 'leadership' && route.screen === 'rollout' && <Rollout {...ctx} />}
+          {persona.kind === 'leadership' && route.screen === 'pilot' && <Pilot {...ctx} />}
+          {persona.kind === 'leadership' && route.screen === 'audit' && <AuditLog {...ctx} />}
           {persona.kind === 'external' && <ShareLanding token={persona.token} drafts={drafts} version={version} embedded />}
           <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} />
           </ErrorBoundary>

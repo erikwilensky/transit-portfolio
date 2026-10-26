@@ -4,6 +4,7 @@ import { ago, fmtDate, TYPE_LABEL, VIS_LABEL } from '../format.js';
 import MetroMap from './MetroMap.jsx';
 import StationPanel from './StationPanel.jsx';
 import { VerifyBadge } from './Badge.jsx';
+import ReaderRequests from './ReaderRequests.jsx';
 
 const GLYPH = { sis: 'SIS', lms: 'LMS', cas: 'CAS', clubs: 'CLB', github: 'GH', exams: 'EXM' };
 
@@ -76,6 +77,7 @@ export default function IntegrationsPanel({ map, lens, newIds, onAdded, toast, v
             <h2>{first}'s inbox</h2>
             <span className="fineprint">Synced items wait here. {first} chooses which line each one joins, or skips it.</span>
           </div>
+          <ReaderRequests studentId={studentId} toast={toast} />
           {inbox.length === 0 && <div className="inbox-empty">{totalPending ? 'Press Sync to pull new items from the school systems.' : 'Inbox clear.'}</div>}
           {inbox.map((c) => <Candidate key={c.id} c={c} map={map} onAdd={(lineIds, vis) => { const e = acceptCandidate(c.id, lineIds, vis); if (e) onAdded(e); }} onSkip={() => dismissCandidate(c.id)} />)}
           {dismissed.length > 0 && (
