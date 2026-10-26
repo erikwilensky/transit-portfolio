@@ -71,8 +71,8 @@ export default function ShareLanding({ token, drafts, embedded = false }) {
               <StationPanel event={event} map={map} onClose={() => setSelected(null)} readOnly onAsk={(id, t) => askEvidence(id, reader || link.sharedWith || SHARED_WITH[token] || 'A reader', t)} />
             </VerifyScope.Provider>
           </div>
-          <div className="print-only print-link"><Qr text={appUrl(`s/${token}`)} size={80} /><span>Read the full portfolio at /s/{token}. Each verified station can be checked at transit.wilenskycs.online with its NIST code.</span></div>
-          <footer className="landing-foot">Every badge links to its verification record. Items appear only if the student made them publishable. Views of this link are logged.</footer>
+          <div className="print-only print-link"><Qr text={appUrl(`s/${token}`)} size={80} /><span>Read the full portfolio at /s/{token}. Check any verified station by typing its NIST code at transit.wilenskycs.online/#/v.</span></div>
+          <footer className="landing-foot">Every badge links to its verification record, and printed codes can be typed in at <a href="#/v">/v</a>. Items appear only if the student made them publishable. Views of this link are logged.</footer>
         </>
       )}
     </div>

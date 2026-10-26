@@ -1558,3 +1558,10 @@ button.cas-proj:focus-visible { outline: 2px solid var(--b-purple); }
 .cite-btn { all: unset; cursor: pointer; padding: 0 2px; border-radius: 3px; text-decoration: underline; text-underline-offset: 2px; }
 .cite-btn:hover, .cite-btn:focus-visible { background: color-mix(in srgb, var(--b-purple) 18%, transparent); outline: none; }
 .letter-ta[readonly] { opacity: .8; }
+
+/* F14: type a verification code */
+.code-form { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
+.code-form label { font-size: 13.5px; font-weight: 600; color: var(--muted); }
+.code-form > div { display: flex; gap: 8px; }
+.code-form input { flex: 1; min-width: 0; border: 1.5px solid var(--rule); background: var(--surface); color: var(--ink); border-radius: 10px; padding: 10px 12px; font: 500 17px ui-monospace, Menlo, monospace; letter-spacing: .06em; text-transform: uppercase; }
+.code-form input:focus { border-color: var(--b-purple); outline: none; }
