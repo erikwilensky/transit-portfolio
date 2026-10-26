@@ -463,6 +463,54 @@
           "ref": "jlpt-reg"
         }
       }
+    },
+    {
+      "sourceId": "exams",
+      "event": {
+        "id": "ev-047",
+        "studentId": "st-01",
+        "title": "Data Science summer school: certificate",
+        "date": "2026-07-11",
+        "lineIds": [
+          "maya-datasci"
+        ],
+        "type": "award",
+        "summary": "Certificate of completion, two-week Data Science summer school, issued by the course provider and recorded by the exams office.",
+        "evidence": [
+          {
+            "kind": "certificate",
+            "url": "#",
+            "caption": "Certificate of completion"
+          }
+        ],
+        "verification": "school-verified",
+        "visibility": "advisor",
+        "source": {
+          "system": "Exam boards",
+          "ref": "ext-cert-2207"
+        }
+      }
+    },
+    {
+      "sourceId": "clubs",
+      "event": {
+        "id": "ev-048",
+        "studentId": "st-01",
+        "title": "Smart City hackathon: 1st place (team result)",
+        "date": "2026-10-25",
+        "lineIds": [
+          "computing"
+        ],
+        "type": "competition",
+        "summary": "Results sheet from the organisers: NIST team placed 1st of 31.",
+        "evidence": [],
+        "verification": "school-verified",
+        "visibility": "advisor",
+        "source": {
+          "system": "Clubs & Sports",
+          "ref": "comp-scity-26"
+        }
+      }
     }
   ]
 }

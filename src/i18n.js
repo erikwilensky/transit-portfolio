@@ -19,7 +19,7 @@ const TH = {
   'Added by the student; not yet endorsed.': 'นักเรียนเพิ่มเอง ยังไม่ได้รับการรับรองจากครู',
   'See the verification record': 'ดูบันทึกการยืนยัน',
   // station panel
-  Evidence: 'หลักฐาน', 'Teacher endorsement': 'คำรับรองจากครู', 'Signal:': 'คำถามชวนคิด:', Source: 'แหล่งที่มา', 'View record': 'ดูบันทึก',
+  Evidence: 'หลักฐาน', 'Merged with': 'รวมกับ', 'Teacher endorsement': 'คำรับรองจากครู', 'Signal:': 'คำถามชวนคิด:', Source: 'แหล่งที่มา', 'View record': 'ดูบันทึก',
   image: 'รูปภาพ', open: 'เปิด', link: 'ลิงก์', file: 'ไฟล์', grade: 'ผลการเรียน', certificate: 'เกียรติบัตร', Close: 'ปิด',
   Planned: 'วางแผนไว้', 'Requirement from ManageBac': 'ข้อกำหนดจาก ManageBac', 'Sponsor:': 'ครูที่ปรึกษาโครงการ:', Expectations: 'สิ่งที่คาดหวัง',
   'Invitation sent': 'ส่งคำเชิญแล้ว', Sponsoring: 'กำลังดูแล', Declined: 'ปฏิเสธ', 'Waiting for endorsement': 'รอการรับรอง', You: 'นักเรียน',

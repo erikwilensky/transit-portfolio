@@ -74,6 +74,7 @@ export default function StationPanel({ event, map, onClose, readOnly = false, on
 
           <dl className="meta">
             <dt>{t('Source')}</dt><dd>{event.source.system}{event.source.ref ? ` · ${event.source.ref}` : ''}</dd>
+            {event.mergedFrom?.length > 0 && <><dt>{t('Merged with')}</dt><dd>{event.mergedFrom.map((m) => `${m.system} · ${m.ref}`).join(', ')}{event.source.original ? ` (first added by ${event.source.original === 'Manual entry' ? 'the student' : event.source.original})` : ''}</dd></>}
             {!readOnly && <><dt>Visibility</dt><dd>{event.type === 'goal' ? <span className={`vis vis-${event.visibility}`}>{VIS_LABEL[event.visibility]}</span> : (
               <select className="vis-select" value={event.visibility} onChange={(ev) => setVisibility(event.id, ev.target.value)} aria-label="Who can see this station">
                 {Object.entries(VIS_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}

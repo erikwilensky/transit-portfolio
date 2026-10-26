@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { snapshot, acceptCandidate, disconnectGithub, dismissCandidate, getDismissed, getGithub, getInbox, getIntegrations, restoreCandidate, setGithub, simulateWeek, sync } from '../api.js';
-import { ago, fmtDate, TYPE_LABEL, VIS_LABEL } from '../format.js';
+import { snapshot, acceptCandidate, findDuplicate, mergeCandidate, disconnectGithub, dismissCandidate, getDismissed, getGithub, getInbox, getIntegrations, restoreCandidate, setGithub, simulateWeek, sync } from '../api.js';
+import { ago, fmtDate, TYPE_LABEL, VERIFY_LABEL, VIS_LABEL } from '../format.js';
 import MetroMap from './MetroMap.jsx';
 import StationPanel from './StationPanel.jsx';
 import { VerifyBadge } from './Badge.jsx';
@@ -90,7 +90,7 @@ export default function IntegrationsPanel({ map, lens, newIds, onAdded, toast, v
           </div>
           <ReaderRequests studentId={studentId} toast={toast} />
           {inbox.length === 0 && <div className="inbox-empty">{totalPending ? 'Press Sync to pull new items from the school systems.' : 'Inbox clear.'}</div>}
-          {inbox.map((c) => <Candidate key={c.id} c={c} map={map} onAdd={(lineIds, vis) => { const e = acceptCandidate(c.id, lineIds, vis); if (e) onAdded(e); }} onSkip={() => { const snap = snapshot(); dismissCandidate(c.id); toast(`Skipped “${c.title}”`, snap); }} />)}
+          {inbox.map((c) => <Candidate key={c.id} c={c} map={map} onMerge={(eventId) => { const snap = snapshot(); const r = mergeCandidate(c.id, eventId); if (r) toast(r.stronger ? `Merged. “${r.event.title}” is now ${VERIFY_LABEL[r.event.verification].toLowerCase()}` : `Merged into “${r.event.title}”`, snap); }} onAdd={(lineIds, vis) => { const e = acceptCandidate(c.id, lineIds, vis); if (e) onAdded(e); }} onSkip={() => { const snap = snapshot(); dismissCandidate(c.id); toast(`Skipped “${c.title}”`, snap); }} />)}
           {dismissed.length > 0 && (
             <details className="skipped">
               <summary>Skipped ({dismissed.length})</summary>
@@ -107,7 +107,10 @@ export default function IntegrationsPanel({ map, lens, newIds, onAdded, toast, v
   );
 }
 
-function Candidate({ c, map, onAdd, onSkip }) {
+const RANK_OF = (e) => ({ 'student-added': 0, 'teacher-endorsed': 1, 'school-verified': 2 }[e.verification]);
+
+function Candidate({ c, map, onAdd, onSkip, onMerge }) {
+  const dup = findDuplicate(c);
   const [lines, setLines] = useState(c.suggestedLineIds.filter((id) => map.lines.some((l) => l.id === id)));
   const [vis, setVis] = useState('advisor');
   const toggle = (id) => setLines(lines.includes(id) ? lines.filter((x) => x !== id) : [...lines, id]);
@@ -117,6 +120,14 @@ function Candidate({ c, map, onAdd, onSkip }) {
       <h3>{c.title}</h3>
       <p>{c.summary}</p>
       <VerifyBadge level={c.verification} />
+      {dup && (
+        <div className="cand-dup" role="note">
+          <b>Looks like a station you already have</b>
+          <span>“{dup.title}”, {fmtDate(dup.date)} · {VERIFY_LABEL[dup.verification]}</span>
+          <small>Merging keeps your title, words and visibility, adds this record as evidence{RANK_OF(c) > RANK_OF(dup) ? `, and upgrades it to ${VERIFY_LABEL[c.verification].toLowerCase()}` : ''}.</small>
+          <div className="cd-btns"><button className="primary" onClick={() => onMerge(dup.id)}>Merge them</button><span className="fineprint">or add it as a separate station below</span></div>
+        </div>
+      )}
       <div className="cand-label">{c.suggestedLineIds.length ? 'Line (suggested, change if you like)' : 'No line suggested: pick one, or skip it'}</div>
       <div className="chips">
         {map.lines.filter((l) => l.status !== 'ended').map((l) => (

@@ -975,3 +975,38 @@ export function getDigest(studentId, days = 7) {
   const coming = map.events.filter((e) => e.type === 'goal' && e.date > TODAY && e.date <= soon);
   return { from, stations, reflections, endorsed, views, coming, map };
 }
+
+// ── N4: spot duplicates when a synced item matches a station the student already has ──
+const DUP_STOP = new Set(['with', 'from', 'that', 'this', 'term', 'place', 'first', 'second', 'result', 'team', 'certificate']);
+const titleWords = (t) => new Set(t.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter((w) => w.length >= 4 && !DUP_STOP.has(w)));
+const RANK = { 'student-added': 0, 'teacher-endorsed': 1, 'school-verified': 2 };
+export function findDuplicate(c) {
+  const cw = titleWords(c.title);
+  let best = null;
+  for (const e of store.events) {
+    if (e.studentId !== c.studentId || e.type === 'goal' || e.mergedFrom?.some((m) => m.ref === c.source?.ref)) continue;
+    const days = Math.abs(new Date(e.date) - new Date(c.date)) / 86400000;
+    if (days > 21) continue;
+    const ew = titleWords(e.title);
+    const shared = [...cw].filter((w) => ew.has(w)).length;
+    const score = shared / Math.max(1, Math.min(cw.size, ew.size));
+    if (shared >= 2 || score >= 0.5) if (!best || score > best.score) best = { event: e, score };
+  }
+  return best?.event || null;
+}
+export function mergeCandidate(candId, eventId) {
+  const c = store.inbox.find((x) => x.id === candId);
+  const e = getEvent(eventId);
+  if (!c || !e) return null;
+  store.inbox = store.inbox.filter((x) => x.id !== candId);
+  const stronger = RANK[c.verification] > RANK[e.verification];
+  const was = e.verification;
+  if (stronger) { e.verification = c.verification; e.source = { ...c.source, original: e.source?.system }; }
+  e.evidence = [...e.evidence, ...c.evidence.filter((v) => !e.evidence.some((x) => x.caption === v.caption))];
+  e.mergedFrom = [...(e.mergedFrom || []), { system: c.source.system, ref: c.source.ref, date: TODAY, title: c.title }];
+  // A school record now backs it, so an open endorsement request is no longer needed.
+  if (stronger && c.verification === 'school-verified') store.requests.forEach((r) => { if (r.eventId === e.id && r.status === 'pending') r.status = 'withdrawn'; });
+  log(e.studentId, getStudent(e.studentId).name, 'station', `Merged “${c.title}” from ${c.source.system} into “${e.title}”${stronger ? ` (${was} → ${e.verification})` : ''}`);
+  emit();
+  return { event: e, stronger };
+}
