@@ -39,6 +39,7 @@ export default function CasDashboard({ version, persona, toast }) {
         </div>
       </header>
       <div className="cas-wrap">
+        <p className="swipe-hint" aria-hidden="true">Swipe the table sideways for all seven outcomes →</p>
         <div className="cas-table" role="table" aria-label="CAS learning outcomes by student">
           <div className="cas-row head" role="row">
             <span role="columnheader">Student</span>

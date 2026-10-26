@@ -60,6 +60,7 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
   const [kind, setKind] = useState('');
   const [ver, setVer] = useState('');
   const [year, setYear] = useState('');
+  const [opts, setOpts] = useState(false); // P3: on a phone, the view options fold away
   const [view, setView] = useState(() => (typeof window !== 'undefined' && window.innerWidth < 600 ? 'list' : 'map'));
   const filtering = q.trim() || kind || ver || year;
   const base = useMemo(() => applyLens(shown, null, { hiddenLines: hidden }), [shown, hidden]);
@@ -121,6 +122,8 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
             <button className="primary" onClick={() => setAdding({})}>＋ Add a station</button>
           </div>
         </div>
+        <button className="ghost opts-toggle" aria-expanded={opts} onClick={() => setOpts(!opts)}>{opts ? 'Fewer options ▴' : `View options${filtering || hidden.length || seeAs !== 'student' ? ' (on)' : ''} ▾`}</button>
+        <div className={`map-opts${opts ? ' open' : ''}`}>
         <div className="see-as" role="group" aria-label="See my map as">
           <span>See as</span>
           <div className="seg small">{SEE.map(([k, l]) => <button key={k} className={seeAs === k ? 'on' : ''} aria-pressed={seeAs === k} onClick={() => { setSeeAs(k); setSelected(null); }}>{l}</button>)}</div>
@@ -139,6 +142,7 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
             <button key={l.id} className={`line-chip${hidden.includes(l.id) ? ' off' : ''}${l.status === 'ended' ? ' ended' : ''}`} style={{ '--c': l.colour }} aria-pressed={!hidden.includes(l.id)}
               onClick={() => setHidden(hidden.includes(l.id) ? hidden.filter((x) => x !== l.id) : [...hidden, l.id])}><i />{l.name}</button>
           ))}
+        </div>
         </div>
       </div>
       <div className="home-map">
