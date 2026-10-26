@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { addNote, applyLens, getNotes, getPrompts, getStudentMap, growth, log, sendPrompt, snapshot, TODAY } from '../api.js';
+import { addNote, applyLens, getNotes, getReportComment, getPrompts, getStudentMap, growth, log, sendPrompt, snapshot, TODAY } from '../api.js';
 import { appUrl, fmtDate } from '../format.js';
 import MeetingMode from '../components/MeetingMode.jsx';
+import ReportComment from '../components/ReportComment.jsx';
 import Qr from '../components/Qr.jsx';
 import MetroMap from '../components/MetroMap.jsx';
 import StationPanel from '../components/StationPanel.jsx';
@@ -18,6 +19,8 @@ export default function AdvisorStudent({ studentId, version, toast, go, persona 
   const notes = getNotes(studentId);
   const [meeting, setMeeting] = useState(false);
   const [parent, setParent] = useState(false);
+  const [report, setReport] = useState(false);
+  const rc = getReportComment(studentId);
   const g = growth(studentId);
   const prompts = getPrompts(studentId);
   const s = map.student;
@@ -68,6 +71,11 @@ export default function AdvisorStudent({ studentId, version, toast, go, persona 
             <button className="primary" disabled={!event || promptText.trim().length < 8} onClick={() => { const snap = snapshot(); sendPrompt(studentId, event.id, promptText.trim(), persona.teacherId); setPromptText(''); toast(`Prompt sent. A signal now shows on ${first}'s map.`, snap); }}>Send prompt</button>
             {prompts.length > 0 && <ul className="prompt-hist">{prompts.map((p) => <li key={p.id}><span className={`ph-dot${p.answered ? ' ok' : ''}`} />{p.text}<small>{fmtDate(p.date)} · {p.answered ? 'answered' : 'open'}</small></li>)}</ul>}
           </section>
+          <section className="card-sec rc-card">
+            <h3>End-of-term report comment</h3>
+            <p className="fineprint">{rc?.status === 'sent' ? `Sent to the SIS on ${fmtDate(rc.sentAt.slice(0, 10))}.` : rc?.text ? 'Draft saved, not sent yet.' : `Draft it from ${first}’s stations and reflections this term, with citations, then edit and send it to the SIS.`}</p>
+            <button className={rc?.status === 'sent' ? 'ghost' : 'primary'} onClick={() => setReport(true)}>{rc?.status === 'sent' ? 'View the comment' : rc?.text ? 'Continue the draft' : 'Draft a report comment'}</button>
+          </section>
           <section className="card-sec">
             <h3>Parent conference link</h3>
             {parent ? (
@@ -89,6 +97,7 @@ export default function AdvisorStudent({ studentId, version, toast, go, persona 
           </section>
         </aside>
       </div>
+      {report && <ReportComment map={map} persona={persona} toast={toast} onClose={() => setReport(false)} onOpen={(id) => { setReport(false); setSelected(id); }} />}
       {meeting && <MeetingMode studentId={studentId} agenda={agenda} advisorId={persona.teacherId} version={version} toast={toast} onClose={() => setMeeting(false)} />}
     </div>
   );

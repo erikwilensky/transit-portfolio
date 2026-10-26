@@ -1816,3 +1816,10 @@ p b, p strong, td b { font-weight: 600; }
 .cand-dup { display: grid; gap: 4px; margin: 8px 0; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--b-sky) 16%, var(--surface)); border: 1px solid color-mix(in srgb, var(--b-sky) 60%, transparent); }
 .cand-dup small { color: var(--muted); }
 .cd-btns { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
+
+/* N5: report comments */
+.report-dlg { max-width: 680px; }
+.rc-empty { display: grid; gap: 10px; justify-items: start; }
+.rc-text { width: 100%; font: inherit; font-size: 15px; line-height: 1.55; border: 1px solid var(--rule); border-radius: 10px; padding: 10px 12px; background: var(--bg); color: var(--ink); resize: vertical; }
+.rc-meta { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--muted); margin-top: 4px; } .rc-meta .over { color: var(--b-red); font-weight: 600; }
+.rc-cites { margin: 10px 0 0; padding-left: 22px; font-size: 13.5px; display: grid; gap: 2px; } .rc-cites small { color: var(--muted); } .rc-cites li.unused { opacity: .55; }

@@ -342,6 +342,7 @@ if (!store.consentReqs) store.consentReqs = [
   { id: 'cr-3', studentId: 'st-09', kind: 'photos', title: 'Photos where Pim can be recognised', detail: 'Allow photos of Pim to appear as evidence on her stations. Off unless you say yes.', asked: '2026-10-20', status: 'pending' },
 ];
 if (!store.family) store.family = { lang: 'en', email: true };
+if (!store.reportComments) store.reportComments = {};
 // ── Advisor ───────────────────────────────────────────────────────────
 export function getCohort(advisorId) {
   return store.students.filter((s) => s.advisorId === advisorId).map((s) => {
@@ -1009,4 +1010,16 @@ export function mergeCandidate(candId, eventId) {
   log(e.studentId, getStudent(e.studentId).name, 'station', `Merged “${c.title}” from ${c.source.system} into “${e.title}”${stronger ? ` (${was} → ${e.verification})` : ''}`);
   emit();
   return { event: e, stronger };
+}
+
+// ── N5: end-of-term report comments, drafted from the map ──────────────
+export const getReportComment = (studentId) => store.reportComments[studentId] || null;
+export function saveReportComment(studentId, patch, by) {
+  const was = store.reportComments[studentId];
+  store.reportComments[studentId] = { ...(was || { status: 'draft' }), ...patch, savedAt: nowIso() };
+  if (patch.status === 'sent' && was?.status !== 'sent') {
+    log(studentId, by, 'report', 'Sent the end-of-term report comment to the SIS');
+    notify(PERSONA_OF_STUDENT[studentId], 'Your advisor’s end-of-term report comment is in the SIS');
+  }
+  emit();
 }
