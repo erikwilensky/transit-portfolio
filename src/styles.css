@@ -1531,3 +1531,20 @@ a.ghost { text-decoration: none; display: inline-flex; align-items: center; font
 .int-foot { gap: 6px; } .int-foot .pending { margin-right: auto; }
 .int-foot button.primary { background: var(--navy); border-color: var(--navy); color: #fff; }
 .int-foot button { white-space: nowrap; } .int-foot .pending { font-size: 12.5px; }
+
+/* F12: CAS drill-through, nudges and project status */
+button.cas-proj { all: unset; box-sizing: border-box; display: flex; flex-direction: column; gap: 2px; padding: 6px; font-size: 12px; cursor: pointer; border-radius: 8px; align-items: flex-start; }
+button.cas-proj:hover, button.cas-proj.sel { background: var(--surface-2, var(--bg)); box-shadow: inset 0 0 0 1.5px var(--b-purple); }
+button.cas-proj:focus-visible { outline: 2px solid var(--b-purple); }
+.linkish-row { all: unset; cursor: pointer; display: block; width: 100%; border-radius: 6px; }
+.linkish-row:hover b { color: var(--b-purple); text-decoration: underline; } .linkish-row:focus-visible { outline: 2px solid var(--b-purple); outline-offset: 2px; }
+.cas-form { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.cas-form label { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.cas-form input, .cas-form select, .cas-nudge textarea { border: 1px solid var(--rule); background: var(--bg); color: var(--ink); border-radius: 8px; padding: 7px 9px; font: inherit; font-size: 14px; font-weight: 400; width: 100%; }
+.cas-form .small-btn, .cas-nudge .small-btn { align-self: flex-start; margin-top: 0; }
+.cas-nudge { margin-top: 14px; border-top: 1px solid var(--rule); padding-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.cas-nudge h4 { margin: 0; font-size: 14px; }
+.nudge-hist { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.nudge-hist small { display: block; color: var(--muted); font-size: 11.5px; }
+.cas-panel { position: fixed; inset: 64px 0 0 auto; width: min(420px, 100%); z-index: 60; pointer-events: none; }
+.cas-panel .station-panel { pointer-events: auto; }

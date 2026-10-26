@@ -1,16 +1,18 @@
-import { useState } from 'react';
-import { getStore, getStudents, TODAY } from '../api.js';
+import { useMemo, useState } from 'react';
+import { CAS_STATUSES, casNudge, getCasNudges, getCasProject, getStore, getStudentMap, getStudents, setCasProject, TODAY } from '../api.js';
 import { fmtDate } from '../format.js';
 import { OUTCOMES } from '../components/AddStation.jsx';
+import StationPanel from '../components/StationPanel.jsx';
 
 const STRAND = { C: 'Creativity', A: 'Activity', S: 'Service' };
-const PROJECT = { 'st-01': ['Complete', 'Friday STEM club for Y7 girls'], 'st-02': ['Planning', 'Sound desk crew for school events'], 'st-04': ['In progress', 'Coaching junior football'], 'st-05': ['Complete', 'Community art workshop'], 'st-07': ['Not started', null], 'st-08': ['In progress', 'Campus garden'] };
 
 // The CAS coordinator's grid: the seven learning outcomes for every DP student, filled from tagged stations.
-export default function CasDashboard({ version }) {
+export default function CasDashboard({ version, persona, toast }) {
   const students = getStudents({ includeCohort: true }).filter((s) => s.grade >= 11).sort((a, b) => a.name.localeCompare(b.name));
   const events = getStore().events;
-  const [cell, setCell] = useState(null); // { studentId, lo } | { studentId, strand }
+  const [cell, setCell] = useState(null); // { studentId, lo } | { studentId, strand } | { studentId, project }
+  const [open, setOpen] = useState(null);
+  const openMap = useMemo(() => open && getStudentMap(open.studentId, 'school'), [open, version]); // eslint-disable-line react-hooks/exhaustive-deps
   const rows = students.map((s) => {
     const cas = events.filter((e) => e.studentId === s.id && e.cas);
     const by = (lo) => cas.filter((e) => e.cas.outcomes.includes(lo));
@@ -19,7 +21,7 @@ export default function CasDashboard({ version }) {
   });
   const list = cell && (() => {
     const r = rows.find((x) => x.s.id === cell.studentId);
-    return cell.lo ? r.by(cell.lo) : r.strands[cell.strand];
+    return cell.lo ? r.by(cell.lo) : cell.strand ? r.strands[cell.strand] : r.cas;
   })();
   const fresh = (e) => e.date >= '2026-10-24' && e.date <= TODAY;
 
@@ -65,22 +67,53 @@ export default function CasDashboard({ version }) {
                   </button>
                 ))}
               </span>
-              <span role="cell" className="cas-proj"><span className={`proj proj-${(PROJECT[r.s.id]?.[0] || 'Not started').replace(' ', '-').toLowerCase()}`}>{PROJECT[r.s.id]?.[0] || 'Not started'}</span><small>{PROJECT[r.s.id]?.[1] || ''}</small></span>
+              <button role="cell" className={`cas-proj${cell?.studentId === r.s.id && cell.project ? ' sel' : ''}`} onClick={() => setCell({ studentId: r.s.id, project: true })} aria-label={`${r.s.name}'s CAS project: ${getCasProject(r.s.id).status}. Update`}><span className={`proj proj-${getCasProject(r.s.id).status.replace(' ', '-').toLowerCase()}`}>{getCasProject(r.s.id).status}</span><small>{getCasProject(r.s.id).title}</small></button>
             </div>
           ))}
         </div>
         <aside className="cas-side">
           {!cell && <p className="fineprint">Tap a cell to see the evidence behind it.</p>}
-          {cell && (
-            <>
-              <h3>{students.find((s) => s.id === cell.studentId).name}</h3>
-              <p className="kicker">{cell.lo ? `LO${cell.lo} · ${OUTCOMES[cell.lo - 1]}` : `${STRAND[cell.strand]} strand`}</p>
-              {!list.length && <p className="fineprint">No stations yet. A gentle prompt from the advisor may help.</p>}
-              <ul className="ev-list">{list.map((e) => <li key={e.id} className={fresh(e) ? 'new' : ''}><b>{e.title}</b><small>{fmtDate(e.date)} · {STRAND[e.cas.strand]} · {e.verification.replace('-', ' ')}</small></li>)}</ul>
-            </>
-          )}
+          {cell && <Side key={`${cell.studentId}-${cell.lo || cell.strand || 'p'}`} cell={cell} student={students.find((s) => s.id === cell.studentId)} list={list} fresh={fresh} persona={persona} toast={toast} onOpen={(e) => setOpen({ studentId: cell.studentId, id: e.id })} />}
         </aside>
       </div>
+      {open && <div className="cas-panel"><StationPanel event={openMap.events.find((e) => e.id === open.id)} map={openMap} onClose={() => setOpen(null)} readOnly /></div>}
     </div>
+  );
+}
+
+// F12: the evidence opens; a gap gets a nudge; the project gets a status.
+function Side({ cell, student, list, fresh, persona, toast, onOpen }) {
+  const first = student.name.split(' ')[0];
+  const about = cell.lo ? `LO${cell.lo} (${OUTCOMES[cell.lo - 1]})` : cell.strand ? `the ${STRAND[cell.strand]} strand` : 'the CAS project';
+  const [text, setText] = useState(list.length ? `Nice work on ${about}. Could you add a reflection on what you learned?` : `I can’t see anything for ${about} yet. Is there something you did that counts? Tag it, or let’s talk about ideas.`);
+  const proj = getCasProject(student.id);
+  const [status, setStatus] = useState(proj.status);
+  const [title, setTitle] = useState(proj.title);
+  const nudges = getCasNudges(student.id);
+  return (
+    <>
+      <h3>{student.name}</h3>
+      <p className="kicker">{cell.lo ? `LO${cell.lo} · ${OUTCOMES[cell.lo - 1]}` : cell.strand ? `${STRAND[cell.strand]} strand` : 'CAS project'}</p>
+      {cell.project ? (
+        <div className="cas-form">
+          <label>Project<input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What is the project?" /></label>
+          <label>Status<select value={status} onChange={(e) => setStatus(e.target.value)}>{CAS_STATUSES.map((x) => <option key={x}>{x}</option>)}</select></label>
+          <button className="primary small-btn" disabled={status === proj.status && title === proj.title} onClick={() => { setCasProject(student.id, status, title.trim(), persona.name); toast(`${first}’s CAS project is now ${status.toLowerCase()}`); }}>Save</button>
+          {proj.updated && <p className="fineprint">Last updated {fmtDate(proj.updated)}.</p>}
+          {list.length > 0 && <p className="fineprint">{list.length} CAS station{list.length === 1 ? '' : 's'} so far.</p>}
+        </div>
+      ) : (
+        <>
+          {!list.length && <p className="fineprint">No stations yet.</p>}
+          <ul className="ev-list cas-evs">{list.map((e) => <li key={e.id} className={fresh(e) ? 'new' : ''}><button className="linkish-row" onClick={() => onOpen(e)}><b>{e.title}</b><small>{fmtDate(e.date)} · {STRAND[e.cas.strand]} · {e.verification.replace('-', ' ')}</small></button></li>)}</ul>
+        </>
+      )}
+      <div className="cas-nudge">
+        <h4>Nudge {first}</h4>
+        <textarea rows={3} value={text} onChange={(e) => setText(e.target.value)} aria-label={`Message to ${first}`} />
+        <button className="ghost small-btn" disabled={text.trim().length < 8} onClick={() => { casNudge(student.id, about, text.trim(), persona.name); toast(`Nudge sent to ${first}`); }}>Send nudge</button>
+        {nudges.length > 0 && <ul className="nudge-hist">{nudges.map((n) => <li key={n.id}><small>{fmtDate(n.date)} · about {n.about}</small>{n.text}</li>)}</ul>}
+      </div>
+    </>
   );
 }

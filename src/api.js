@@ -278,6 +278,26 @@ export function simulateWeek(studentId) {
   return made;
 }
 
+// F12: the CAS coordinator nudges a student about a gap, and keeps each CAS project's status.
+if (!store.casProjects) store.casProjects = { 'st-01': { status: 'Complete', title: 'Friday STEM club for Y7 girls' }, 'st-02': { status: 'Planning', title: 'Sound desk crew for school events' }, 'st-04': { status: 'In progress', title: 'Coaching junior football' }, 'st-05': { status: 'Complete', title: 'Community art workshop' }, 'st-07': { status: 'Not started', title: '' }, 'st-08': { status: 'In progress', title: 'Campus garden' } };
+if (!store.casNudges) store.casNudges = [];
+export const CAS_STATUSES = ['Not started', 'Planning', 'In progress', 'Complete'];
+export const getCasProject = (sid) => store.casProjects[sid] || { status: 'Not started', title: '' };
+export function setCasProject(sid, status, title, by) {
+  const was = getCasProject(sid).status;
+  store.casProjects[sid] = { status, title, updated: TODAY };
+  log(sid, by, 'goal', `CAS project${title ? ` “${title}”` : ''}: ${was} → ${status}`);
+  if (was !== status) notify(PERSONA_OF_STUDENT[sid], `${by} marked your CAS project as ${status.toLowerCase()}`, { persona: PERSONA_OF_STUDENT[sid], screen: 'map' });
+  emit();
+}
+export const getCasNudges = (sid) => store.casNudges.filter((n) => n.studentId === sid);
+export function casNudge(sid, about, text, by) {
+  store.casNudges.push({ id: `cn-${seq++}`, studentId: sid, about, text, by, date: TODAY });
+  notify(PERSONA_OF_STUDENT[sid], `${by}: ${text}`, { persona: PERSONA_OF_STUDENT[sid], screen: 'map' });
+  log(sid, by, 'prompt', `CAS nudge about ${about}: “${text}”`);
+  emit();
+}
+
 // ── Advisor ───────────────────────────────────────────────────────────
 export function getCohort(advisorId) {
   return store.students.filter((s) => s.advisorId === advisorId).map((s) => {
