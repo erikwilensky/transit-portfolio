@@ -3,7 +3,7 @@ import { addSchoolLine, decideBranch, getAllLines, getLine, getSchoolLines, getS
 import { fmtDate } from '../format.js';
 
 // Colours a school line may use: the brand palette plus a few harmonised extras.
-const SWATCHES = ['#4F529B', '#0072CE', '#008A60', '#FFB81C', '#E73C3E', '#D6457F', '#1FA3A8', '#FF8F1C', '#8A5A44', '#002855', '#6B8E23', '#78D5E1'];
+const SWATCHES = ['#002855', '#4F529B', '#78D5E1', '#008A60', '#E73C3E', '#FF8F1C', '#FFB81C'];
 const MAX = 10;
 const tidy = (s) => s.trim().replace(/\s+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 

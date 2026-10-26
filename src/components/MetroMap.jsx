@@ -196,6 +196,8 @@ export default function MetroMap({ map, lens, selectedId, onSelect, onSignal, mi
               <path key={i} d={s.d} stroke={l.colour} strokeWidth={ln.width} fill="none" strokeLinecap="round" strokeLinejoin="round"
                 strokeDasharray={s.dashed ? `${ln.width * 1.4} ${ln.width * 1.3}` : undefined} />
             ))}
+            {/* P6: lines that share a brand colour are told apart by pattern: a cased line has a light centre. */}
+            {l.pattern === 'cased' && segs.filter((s) => !s.dashed).map((s, i) => <path key={`c${i}`} d={s.d} className="line-case" strokeWidth={ln.width * 0.38} fill="none" strokeLinecap="round" strokeLinejoin="round" />)}
             {terminus && <line x1={terminus.x} x2={terminus.x} y1={terminus.y - ln.width * 1.8} y2={terminus.y + ln.width * 1.8} stroke={l.colour} strokeWidth={ln.width} strokeLinecap="round" />}
             {!mini && terminus && !map.signals && <Signal x={terminus.x + 16} y={terminus.y} />}
             {!mini && start && ln.state === 'full' && !map.signals && <Signal x={start.x} y={start.y} />}

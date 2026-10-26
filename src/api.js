@@ -470,13 +470,14 @@ export const getApplications = () => store.applications;
 
 // ── Student: lines (branch, end), onboarding, phone capture ───────────
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-const BRANCH_TINT = { science: '#7C80C7', computing: '#3F93DE', environment: '#2FAE80', sport: '#E3A21A', service: '#EE6A6C', music: '#B04A85', design: '#3DB6BA', languages: '#E07B10', art: '#A27560' };
+// P6: a sub-line is a lighter tint of its parent (a deeper shade for the light sky and gold, so it still reads on white).
+const BRANCH_TINT = { science: '#8D8FBE', computing: '#3FA9BC', environment: '#4DAD8C', sport: '#E0A010', service: '#EE7B7D', music: '#FFB160', design: '#3FA9BC', languages: '#8D8FBE', art: '#E0A010' };
 
 // A student names a sub-line under a fixed school line. It waits for the coordinator to approve the name.
 export function addBranch(studentId, parentLineId, name, first) {
   const s = getStudent(studentId);
   const id = `${studentId}-${slug(name)}`;
-  if (!lineById(id)) store.lines.push({ id, name, colour: BRANCH_TINT[parentLineId] || '#7C80C7', parentLineId, status: 'active', studentId, approval: 'pending', requestedOn: TODAY });
+  if (!lineById(id)) store.lines.push({ id, name, colour: BRANCH_TINT[parentLineId] || '#8D8FBE', parentLineId, status: 'active', studentId, approval: 'pending', requestedOn: TODAY });
   const at = s.laneOrder.indexOf(parentLineId);
   if (!s.laneOrder.includes(id)) s.laneOrder.splice(at < 0 ? s.laneOrder.length : at + 1, 0, id);
   const e = addStation(studentId, { ...first, lineIds: [parentLineId, id], visibility: first.visibility || 'advisor' });

@@ -1678,3 +1678,4 @@ button, a, .station, .sl-row { -webkit-tap-highlight-color: transparent; }
 @media (max-width: 700px) { .pr-route small { display: none; } .presenter .pr-qa { display: none; } }
 @media (max-width: 700px) { .presenter { flex-wrap: wrap; justify-content: flex-end; } .pr-main { flex-basis: 100%; } .pr-text span { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; } .tour-card { padding-bottom: 230px; } }
 .menu .tr-head .tour-play { font-size: 13.5px; }
+.line-case { stroke: var(--surface); }

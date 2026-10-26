@@ -9,7 +9,7 @@
   {
     "id": "computing",
     "name": "Computing",
-    "colour": "#0072CE",
+    "colour": "#78D5E1",
     "parentLineId": null,
     "status": "active"
   },
@@ -25,7 +25,8 @@
     "name": "Sport",
     "colour": "#FFB81C",
     "parentLineId": null,
-    "status": "active"
+    "status": "active",
+    "pattern": "cased"
   },
   {
     "id": "service",
@@ -37,35 +38,37 @@
   {
     "id": "music",
     "name": "Music",
-    "colour": "#D6457F",
+    "colour": "#FF8F1C",
     "parentLineId": null,
     "status": "active"
   },
   {
     "id": "design",
     "name": "Design",
-    "colour": "#1FA3A8",
+    "colour": "#78D5E1",
     "parentLineId": null,
-    "status": "active"
+    "status": "active",
+    "pattern": "cased"
   },
   {
     "id": "languages",
     "name": "Languages",
-    "colour": "#FF8F1C",
+    "colour": "#4F529B",
     "parentLineId": null,
-    "status": "active"
+    "status": "active",
+    "pattern": "cased"
   },
   {
     "id": "art",
     "name": "Art",
-    "colour": "#8A5A44",
+    "colour": "#FFB81C",
     "parentLineId": null,
     "status": "active"
   },
   {
     "id": "maya-datasci",
     "name": "Data Science",
-    "colour": "#8C7FD6",
+    "colour": "#8D8FBE",
     "parentLineId": "science",
     "status": "active",
     "studentId": "st-01"
@@ -73,7 +76,7 @@
   {
     "id": "maya-swim",
     "name": "Swimming",
-    "colour": "#FFB81C",
+    "colour": "#E0A010",
     "parentLineId": "sport",
     "status": "ended",
     "studentId": "st-01"
@@ -81,7 +84,7 @@
   {
     "id": "arun-musictech",
     "name": "Music Technology",
-    "colour": "#A23B72",
+    "colour": "#FFB160",
     "parentLineId": "music",
     "status": "active",
     "studentId": "st-02"
@@ -89,7 +92,7 @@
   {
     "id": "arun-french",
     "name": "French",
-    "colour": "#FF8F1C",
+    "colour": "#8D8FBE",
     "parentLineId": "languages",
     "status": "ended",
     "studentId": "st-02"
@@ -97,7 +100,7 @@
   {
     "id": "lena-japanese",
     "name": "Japanese",
-    "colour": "#C2410C",
+    "colour": "#8D8FBE",
     "parentLineId": "languages",
     "status": "active",
     "studentId": "st-03"
@@ -105,7 +108,7 @@
   {
     "id": "lena-ceramics",
     "name": "Ceramics",
-    "colour": "#8A5A44",
+    "colour": "#E0A010",
     "parentLineId": "art",
     "status": "ended",
     "studentId": "st-03"

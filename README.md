@@ -46,3 +46,26 @@ Synced items live in memory only; reload to reset the demo.
 ## Custom audience
 
 The Custom audience opens a page builder (`src/custom/`). Students start from one of eight themes or set their own colours, font pair, corner radius, background pattern, card style, spacing and page width. They add any of 13 blocks (hero, text, metro map, feature station, stations, gallery, quote, stats, timeline, lines, skills, next stops, divider), drag them into place, drag a block's edge to resize it on a 6-column grid, and edit their own text in place. Undo and redo are built in. Blocks reference verified stations by id and never edit them, and the public view applies the same visibility rules.
+
+## Brand colours (NIST Brandbook 2024)
+
+The app uses navy `#002855` and the six secondary colours `#4F529B`, `#78D5E1`, `#008A60`, `#E73C3E`, `#FF8F1C` and `#FFB81C`. The tertiary `#45C4C9` is for internal documents only and is not used.
+
+| Line | Colour | Pattern |
+|---|---|---|
+| Science | `#4F529B` | solid |
+| Computing | `#78D5E1` | solid |
+| Environment | `#008A60` | solid |
+| Service | `#E73C3E` | solid |
+| Music | `#FF8F1C` | solid |
+| Art | `#FFB81C` | solid |
+| Design | `#78D5E1` | cased (light centre) |
+| Languages | `#4F529B` | cased |
+| Sport | `#FFB81C` | cased |
+
+Exceptions, kept on purpose:
+
+- **Sub-lines** (a student's branch, such as Data Science under Science) use a tint of the parent colour: `#8D8FBE`, `#4DAD8C`, `#EE7B7D` and `#FFB160`. Under the light sky and gold, a tint would vanish on white, so those branches use a deeper shade instead (`#3FA9BC`, `#E0A010`).
+- **Neutrals** for text, rules and surfaces (greys and the dark-mode backgrounds) are not brand colours and are not listed.
+- **Charts** use the validated `--dv1..3` series colours from the palette above.
+- **Custom page themes** (Forest, Rose and so on) belong to students and may be off-brand. A NIST theme is offered.
