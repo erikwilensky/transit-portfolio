@@ -55,7 +55,7 @@ const parse = () => {
 };
 
 // F2: presentations (drafts, letters, custom pages, share links) are saved in this browser too.
-const DRAFTS_KEY = 'tp-drafts-v5';
+const DRAFTS_KEY = 'tp-drafts-v6';
 const freshDrafts = () => Object.fromEntries(getStudents().map((s) => [s.id, structuredClone(getPresentations(s.id))]));
 const loadDrafts = () => { try { const raw = localStorage.getItem(DRAFTS_KEY); return raw ? { ...freshDrafts(), ...JSON.parse(raw) } : null; } catch { return null; } };
 

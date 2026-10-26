@@ -46,7 +46,7 @@
       "service",
       "maya-swim"
     ],
-    "theme": "ivy",
+    "theme": "nist",
     "layout": "narrative",
     "showMap": false,
     "narratives": {
@@ -81,7 +81,7 @@
       ]
     },
     "order": null,
-    "theme": "ivy",
+    "theme": "nist",
     "layout": "letter",
     "showMap": false,
     "focusLines": [
@@ -122,7 +122,7 @@
       ]
     },
     "order": null,
-    "theme": "slate",
+    "theme": "nist",
     "layout": "cv",
     "showMap": false,
     "narratives": {},
@@ -176,7 +176,7 @@
       ]
     },
     "order": null,
-    "theme": "ivy",
+    "theme": "nist",
     "layout": "narrative",
     "showMap": false,
     "narratives": {
@@ -209,7 +209,7 @@
       ]
     },
     "order": null,
-    "theme": "ivy",
+    "theme": "nist",
     "layout": "letter",
     "showMap": false,
     "focusLines": [
@@ -242,7 +242,7 @@
       ]
     },
     "order": null,
-    "theme": "slate",
+    "theme": "nist",
     "layout": "cv",
     "showMap": false,
     "narratives": {},
@@ -288,7 +288,7 @@
       ]
     },
     "order": null,
-    "theme": "ivy",
+    "theme": "nist",
     "layout": "narrative",
     "showMap": false,
     "narratives": {
@@ -312,7 +312,7 @@
       ]
     },
     "order": null,
-    "theme": "ivy",
+    "theme": "nist",
     "layout": "letter",
     "showMap": false,
     "focusLines": [
@@ -344,7 +344,7 @@
       ]
     },
     "order": null,
-    "theme": "slate",
+    "theme": "nist",
     "layout": "cv",
     "showMap": false,
     "narratives": {},
@@ -364,7 +364,7 @@
       ]
     },
     "order": null,
-    "theme": "metro",
+    "theme": "nist",
     "layout": "impact",
     "showMap": false,
     "narratives": {},
@@ -384,7 +384,7 @@
       ]
     },
     "order": null,
-    "theme": "metro",
+    "theme": "nist",
     "layout": "impact",
     "showMap": false,
     "narratives": {},
@@ -404,7 +404,7 @@
       ]
     },
     "order": null,
-    "theme": "metro",
+    "theme": "nist",
     "layout": "impact",
     "showMap": false,
     "narratives": {},

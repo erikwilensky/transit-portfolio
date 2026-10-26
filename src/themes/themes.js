@@ -1,5 +1,7 @@
 // Presentation themes. Each maps to a CSS class that sets colour tokens.
 export const THEMES = {
+  // P10: the school's own look, used by default for presentations that leave the school.
+  nist: { label: 'NIST', note: 'School brand, for outside readers', swatch: ['#ffffff', '#002855', '#78D5E1'] },
   metro: { label: 'Metro', note: 'Bright, balanced', swatch: ['#f7f6f2', '#1b1d22', '#1E6FD9'] },
   ivy: { label: 'Ivy', note: 'Calm, for universities', swatch: ['#f6f1e7', '#2a2420', '#6B3FB0'] },
   slate: { label: 'Slate', note: 'Crisp, for employers', swatch: ['#eef1f4', '#111827', '#00A39E'] },

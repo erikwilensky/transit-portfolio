@@ -1,3 +1,4 @@
+import Logo from './Logo.jsx';
 import { useMemo } from 'react';
 import MetroMap from './MetroMap.jsx';
 import { VerifyBadge, VerifyLegend } from './Badge.jsx';
@@ -204,7 +205,7 @@ export default function PresentationView({ map, lens, pres, selectedId, onSelect
         )}
       </div>
 
-      <footer className="pres-foot"><VerifyLegend /><span>Every item shows how it was verified. Students choose and order items but cannot edit verified facts.</span></footer>
+      <footer className="pres-foot"><VerifyLegend /><span>Every item shows how it was verified. Students choose and order items but cannot edit verified facts.</span>{pres.theme === 'nist' && <Logo className="pres-mark" />}</footer>
     </div>
   );
 }

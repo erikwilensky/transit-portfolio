@@ -250,10 +250,10 @@ code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-si
 .theme-night .interchange { stroke: #0e1013; }
 :root[data-theme="dark"] .theme-metro { --bg: #121418; }
 /* A presentation theme owns its colours, whatever the app theme is (light text never lands on a cream card). */
-.theme-metro, .theme-ivy, .theme-slate, .theme-night { color: var(--ink); }
-.landing-body.theme-ivy, .landing-body.theme-slate, .landing-body.theme-night { background: var(--bg); }
-.theme-ivy, .theme-slate { --v-solid: #002855; color-scheme: light; }
-:root[data-theme="dark"] :is(.theme-ivy, .theme-slate) :is(.vb-check, .linkish) { color: var(--b-purple); }
+.theme-metro, .theme-ivy, .theme-slate, .theme-night, .theme-nist { color: var(--ink); }
+.landing-body.theme-ivy, .landing-body.theme-slate, .landing-body.theme-night, .landing-body.theme-nist { background: var(--bg); }
+.theme-ivy, .theme-slate, .theme-nist { --v-solid: #002855; color-scheme: light; }
+:root[data-theme="dark"] :is(.theme-ivy, .theme-slate, .theme-nist) :is(.vb-check, .linkish) { color: var(--b-purple); }
 
 /* Code view */
 .code-view { display: flex; flex-direction: column; height: 100%; min-height: 560px; background: #0f1115; color: #d7dae0; }
@@ -1691,3 +1691,12 @@ p b, p strong, td b { font-weight: 600; }
 .page-head p, .kicker + h1 + p { font-weight: 300; }
 .tc-roles .av, .topnav .av, .persona-menu .av { box-shadow: 0 0 0 1.5px rgba(255,255,255,.55); }
 .act-filter { margin-bottom: 6px; }
+
+/* P10: the NIST presentation theme. Navy and white, Switzer, images framed by the triangle edge, the school mark in the footer. */
+.theme-nist { --bg: #f4f6fa; --surface: #ffffff; --surface-2: #eaeef5; --ink: #002855; --muted: #56627A; --rule: #d9dfe9; --col-a: #f4f6fa; --col-b: #edf1f7; --halo: #f4f6fa; --accent: #4F529B; --head-font: "Switzer", Arial, sans-serif; }
+.theme-nist .pres-head { border-top: 6px solid #002855; padding-top: 14px; position: relative; }
+.theme-nist .pres-head::after { content: ''; position: absolute; right: 0; top: 14px; width: 54px; height: 47px; background: #78D5E1; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.theme-nist .pres-kicker { color: #4F529B; }
+.theme-nist :is(.p-img, .narr-img, .tl-img) { clip-path: polygon(0 0, 100% 0, 100% 62%, 78% 100%, 0 100%); }
+.theme-nist .pres-foot { align-items: center; }
+.pres-mark { margin-left: auto; color: #002855; display: inline-flex; } .pres-mark svg { height: 34px; width: auto; display: block; }
