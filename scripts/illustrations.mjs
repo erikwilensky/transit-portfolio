@@ -151,3 +151,7 @@ const { ENRICH } = await import('./enrich.mjs');
 let n = 0;
 for (const [id, e] of Object.entries(ENRICH)) if (e.img) { writeFileSync(new URL(`${id}.svg`, dir), templates[e.img[0]](e.img[2])); n++; }
 console.log(Object.keys(scenes).length + n, 'illustrations');
+// Cohort students' stories (scripts/stories-data.mjs)
+const { STORIES, NAMED } = await import('./stories-data.mjs');
+for (const [name, [tpl, args]] of Object.entries(NAMED)) writeFileSync(new URL(`${name}.svg`, dir), templates[tpl](args));
+for (const [id, x] of Object.entries(STORIES)) if (x.img && !x.img[0].startsWith('@')) writeFileSync(new URL(`${id}.svg`, dir), templates[x.img[0]](x.img[2]));

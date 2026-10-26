@@ -152,5 +152,54 @@
     "teacherId": "t-06",
     "note": "Remarkable discipline and visible growth.",
     "date": "2026-01-15"
+  },
+  {
+    "id": "en-023",
+    "eventId": "ev-309",
+    "teacherId": "t-05",
+    "note": "Noor’s rhythm and tone were excellent. She practised the chanting until it sounded natural, not memorised.",
+    "date": "2023-10-27"
+  },
+  {
+    "id": "en-024",
+    "eventId": "ev-315",
+    "teacherId": "t-08",
+    "note": "Noor’s word list changed how the centre welcomes children. A real, lasting contribution.",
+    "date": "2025-04-09"
+  },
+  {
+    "id": "en-025",
+    "eventId": "ev-317",
+    "teacherId": "t-06",
+    "note": "The most ambitious piece in the show. Noor found a visual form for an idea most artists only write about.",
+    "date": "2025-09-28"
+  },
+  {
+    "id": "en-026",
+    "eventId": "ev-319",
+    "teacherId": "t-08",
+    "note": "A complete CAS project: Noor planned, ran, adapted and evaluated it herself.",
+    "date": "2026-07-24"
+  },
+  {
+    "id": "en-027",
+    "eventId": "ev-322",
+    "teacherId": "t-07",
+    "note": "Ploy earned her place through reading the game, not just effort. Coaches noticed her organising the back line by mid-season.",
+    "date": "2025-10-28"
+  },
+  {
+    "id": "en-028",
+    "eventId": "ev-336",
+    "teacherId": "t-01",
+    "note": "A real client, a real deployment and real users. Exactly what the IA should be.",
+    "date": "2026-07-22"
+  },
+  {
+    "id": "en-029",
+    "eventId": "ev-340",
+    "teacherId": "t-08",
+    "note": "Sienna handled every part of this herself, including a difficult conversation with the park office. Superbly organised.",
+    "date": "2025-05-15"
   }
 ]

@@ -383,7 +383,7 @@
       "system": "Manual entry",
       "ref": null
     },
-    "about": "End-of-Grade-9 reflection written for Maya's advisor. She looked back at three projects and noticed that each one turned on careful counting."
+    "about": "End-of-Year-10 reflection written for Maya's advisor. She looked back at three projects and noticed that each one turned on careful counting."
   },
   {
     "id": "ev-013",
@@ -1679,7 +1679,7 @@
       "system": "Exam boards",
       "ref": "pno-6"
     },
-    "about": "Arun passed Year 7 piano with Distinction, scoring 132/150. His pieces included a Bach invention and a jazz standard."
+    "about": "Arun passed Grade 6 piano with Distinction, scoring 132/150. His pieces included a Bach invention and a jazz standard."
   },
   {
     "id": "ev-116",
@@ -2086,7 +2086,7 @@
       "music"
     ],
     "type": "goal",
-    "summary": "Planned: sit Year 9 piano.",
+    "summary": "Planned: sit Grade 8 piano.",
     "evidence": [
       {
         "kind": "file",
@@ -2100,7 +2100,7 @@
       "system": "Manual entry",
       "ref": null
     },
-    "about": "Planned: Year 9 piano in June 2027, with a jazz piece as an own-choice item."
+    "about": "Planned: Grade 8 piano in June 2027, with a jazz piece as an own-choice item."
   },
   {
     "id": "ev-129",
@@ -2602,38 +2602,51 @@
   {
     "id": "ev-300",
     "studentId": "st-04",
-    "title": "Reading buddies with Y4",
+    "title": "Reading buddies with Year 4",
     "date": "2025-02-06",
     "lineIds": [
       "service"
     ],
-    "type": "assessment",
-    "summary": "Service record from the school systems.",
-    "evidence": [],
+    "type": "service",
+    "summary": "Read with two Year 4 boys every Thursday lunchtime for a term.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-300.svg",
+        "caption": "Thursday lunchtime in the primary library"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Reading log, Term 2"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
-      "system": "ManageBac",
-      "ref": "gen-301"
-    }
+      "system": "CAS log",
+      "ref": "sa-y10-rb"
+    },
+    "about": "Kai read with two Year 4 boys in the primary library every Thursday lunchtime for a term. Neither liked reading, so he started with football magazines and comics, and by the end both had finished a chapter book."
   },
   {
     "id": "ev-301",
     "studentId": "st-04",
-    "title": "Reflection: term check-in",
+    "title": "Reflection: am I a science person?",
     "date": "2025-04-09",
     "lineIds": [
       "science"
     ],
     "type": "reflection",
-    "summary": "Term check-in reflection.",
+    "summary": "End-of-term reflection on choosing between the sciences.",
     "evidence": [],
     "verification": "student-added",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "A reflection written for Kai’s advisor in Year 10, when he was deciding which sciences to keep for the Diploma."
   },
   {
     "id": "ev-302",
@@ -2643,15 +2656,27 @@
     "lineIds": [
       "service"
     ],
-    "type": "class",
-    "summary": "Service record from the school systems.",
-    "evidence": [],
+    "type": "service",
+    "summary": "Walked and socialised dogs at a shelter in Bang Na on Saturday mornings.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-302.svg",
+        "caption": "Saturday walk with Lucky"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Volunteer hours sheet"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
-      "system": "ManageBac",
-      "ref": "gen-303"
-    }
+      "system": "CAS log",
+      "ref": "sa-y10-dogs"
+    },
+    "about": "Kai volunteered at a dog shelter in Bang Na on Saturday mornings for three months, walking and socialising dogs that were nervous of people so that they could be rehomed. Eleven of “his” dogs found homes."
   },
   {
     "id": "ev-303",
@@ -2662,32 +2687,61 @@
       "science"
     ],
     "type": "assessment",
-    "summary": "Science record from the school systems.",
-    "evidence": [],
+    "summary": "Acid–base titration practical; 6/8 on criterion B.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-303.svg",
+        "caption": "Titration results table"
+      },
+      {
+        "kind": "grade",
+        "url": null,
+        "caption": "MYP criterion B: 6/8"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Lab report (PDF)"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
       "system": "ManageBac",
-      "ref": "gen-304"
-    }
+      "ref": "y11-chem-t1"
+    },
+    "about": "A Year 11 Chemistry practical: finding the concentration of an unknown sodium hydroxide solution by titration with hydrochloric acid. Kai planned the method himself and repeated until three titres agreed within 0.10 cm³."
   },
   {
     "id": "ev-304",
     "studentId": "st-04",
-    "title": "Biology field study",
+    "title": "Biology field study: Bang Krachao",
     "date": "2025-10-25",
     "lineIds": [
       "science"
     ],
-    "type": "service",
-    "summary": "Science record from the school systems.",
-    "evidence": [],
+    "type": "project",
+    "summary": "Kick-sampled stream invertebrates to compare water quality at three sites.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-304.svg",
+        "caption": "Kick-sampling at site 2"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Field data sheet"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
       "system": "ManageBac",
-      "ref": "gen-305"
-    }
+      "ref": "y11-bio-fs"
+    },
+    "about": "A Year 11 Biology field day in Bang Krachao, the green “lung” across the river. Kai’s group kick-sampled freshwater invertebrates at three sites and used a biotic index to compare water quality upstream and downstream of a market."
   },
   {
     "id": "ev-305",
@@ -2698,32 +2752,62 @@
       "science"
     ],
     "type": "assessment",
-    "summary": "Science record from the school systems.",
-    "evidence": [],
+    "summary": "Tested how length affects period; 7/8 on criterion C.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-305.svg",
+        "caption": "T² against length"
+      },
+      {
+        "kind": "grade",
+        "url": null,
+        "caption": "Criterion C: 7/8"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Investigation report"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
       "system": "ManageBac",
-      "ref": "gen-306"
-    }
+      "ref": "y11-phy-pend"
+    },
+    "about": "An independent Physics investigation into how the length of a pendulum affects its period. Kai measured 10 lengths with five repeats each, plotted T² against L and used the gradient to estimate g as 9.78 m s⁻²."
   },
   {
     "id": "ev-306",
     "studentId": "st-04",
-    "title": "Chemistry titration lab",
+    "title": "Light-gate timer for the physics lab",
     "date": "2026-04-08",
     "lineIds": [
-      "science"
+      "science",
+      "computing"
     ],
     "type": "project",
-    "summary": "Science record from the school systems.",
-    "evidence": [],
-    "verification": "school-verified",
+    "summary": "Built an Arduino light gate so pendulum timings no longer depend on a stopwatch.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-306.svg",
+        "caption": "Light gate on the pendulum stand"
+      },
+      {
+        "kind": "link",
+        "url": "https://example.org/lightgate",
+        "caption": "Code on GitHub"
+      }
+    ],
+    "verification": "student-added",
     "visibility": "publishable",
     "source": {
-      "system": "ManageBac",
-      "ref": "gen-307"
-    }
+      "system": "Manual entry",
+      "ref": "self"
+    },
+    "about": "After the pendulum investigation Kai built a light gate from an infrared LED, a phototransistor and an Arduino, so the physics department could time swings to the millisecond. The department now uses two of them in Year 10 practicals."
   },
   {
     "id": "ev-307",
@@ -2733,33 +2817,57 @@
     "lineIds": [
       "sport"
     ],
-    "type": "project",
-    "summary": "Sport record from the school systems.",
-    "evidence": [],
+    "type": "sport",
+    "summary": "Joined the bouldering club; climbing V4 by the end of term.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/climb.svg",
+        "caption": "Working a V4 on the school wall"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Grade progression log"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
-      "system": "ManageBac",
-      "ref": "gen-308"
-    }
+      "system": "Clubs & Sports",
+      "ref": "climb-sr"
+    },
+    "about": "Kai joined the senior climbing club, which trains twice a week on the school wall and once a month at a bouldering gym in Ekkamai. He started at V1 and was climbing V4 problems by the end of the term."
   },
   {
     "id": "ev-308",
     "studentId": "st-04",
-    "title": "Chemistry titration lab",
+    "title": "Started IB Physics HL",
     "date": "2026-08-18",
     "lineIds": [
       "science"
     ],
-    "type": "assessment",
-    "summary": "Science record from the school systems.",
-    "evidence": [],
+    "type": "class",
+    "summary": "Depot: IB Physics HL.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-308.svg",
+        "caption": "IB Physics HL"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Course outline"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
-      "system": "ManageBac",
-      "ref": "gen-309"
-    }
+      "system": "SIS",
+      "ref": "enrol-phy-hl"
+    },
+    "about": "Kai began IB Physics at Higher Level, alongside Chemistry SL and Computer Science HL, after the pendulum investigation convinced him to keep it."
   },
   {
     "id": "ev-309",
@@ -2769,69 +2877,100 @@
     "lineIds": [
       "languages"
     ],
-    "type": "project",
-    "summary": "Languages record from the school systems.",
-    "evidence": [],
-    "verification": "school-verified",
+    "type": "competition",
+    "summary": "Recited an extract from Sunthorn Phu at Thai Language Day.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-309.svg",
+        "caption": "Thai Language Day final"
+      },
+      {
+        "kind": "link",
+        "url": "https://example.org/thai-day",
+        "caption": "Recital video"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Poem with my annotations"
+      }
+    ],
+    "verification": "teacher-endorsed",
     "visibility": "publishable",
     "source": {
       "system": "ManageBac",
-      "ref": "gen-310"
-    }
+      "ref": "y10-thai-day"
+    },
+    "about": "At Thai Language Day in Year 10, Noor recited an extract from Sunthorn Phu’s Phra Aphai Mani in the traditional chanted style, after six weeks of coaching from Kru Napat. She was the only non-native speaker to reach the final."
   },
   {
     "id": "ev-310",
     "studentId": "st-05",
-    "title": "Reflection: term check-in",
+    "title": "Reflection: three languages, one sketchbook",
     "date": "2024-04-03",
     "lineIds": [
       "art"
     ],
     "type": "reflection",
-    "summary": "Term check-in reflection.",
+    "summary": "Term reflection on drawing in Arabic, Thai and English.",
     "evidence": [],
     "verification": "student-added",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "A Year 10 term reflection for Noor’s advisor about the sketchbook she keeps in three scripts."
   },
   {
     "id": "ev-311",
     "studentId": "st-05",
-    "title": "Portrait series",
+    "title": "Portrait series: Faces of Soi 31",
     "date": "2024-09-24",
     "lineIds": [
       "art"
     ],
-    "type": "service",
-    "summary": "Art record from the school systems.",
-    "evidence": [],
+    "type": "project",
+    "summary": "Six charcoal portraits of older neighbours, each with their own words.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/sketchbook.svg",
+        "caption": "Portrait 4: Khun Sompong"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Artist statement"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
       "system": "ManageBac",
-      "ref": "gen-312"
-    }
+      "ref": "y11-art-port"
+    },
+    "about": "For a Year 11 Visual Arts unit Noor drew six charcoal portraits of older people on her soi: a noodle seller, a motorbike-taxi driver, the man who fixes umbrellas. She recorded a sentence from each in their own language and lettered it under the portrait."
   },
   {
     "id": "ev-312",
     "studentId": "st-05",
-    "title": "Reflection: term check-in",
+    "title": "Reflection: what the canal looks like up close",
     "date": "2024-10-19",
     "lineIds": [
       "environment"
     ],
     "type": "reflection",
-    "summary": "Term check-in reflection.",
+    "summary": "Reflection after sketching Khlong Saen Saep for the printmaking unit.",
     "evidence": [],
     "verification": "student-added",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "A Year 11 reflection written after a sketching trip to Khlong Saen Saep."
   },
   {
     "id": "ev-313",
@@ -2841,86 +2980,135 @@
     "lineIds": [
       "art"
     ],
-    "type": "service",
-    "summary": "Art record from the school systems.",
-    "evidence": [],
+    "type": "club",
+    "summary": "Three-day linocut workshop at a print studio in Charoen Krung.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-313.svg",
+        "caption": "Reduction print, third colour"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Print edition record"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
-      "system": "ManageBac",
-      "ref": "gen-314"
-    }
+      "system": "Clubs & Sports",
+      "ref": "art-print-w"
+    },
+    "about": "A three-day linocut workshop at a print studio in Charoen Krung during the December break. Noor carved a three-colour reduction print of a canal boat from her sketches and printed an edition of twelve."
   },
   {
     "id": "ev-314",
     "studentId": "st-05",
-    "title": "Reflection: term check-in",
+    "title": "Reflection: listening before helping",
     "date": "2025-04-02",
     "lineIds": [
       "service"
     ],
     "type": "reflection",
-    "summary": "Term check-in reflection.",
+    "summary": "Reflection on the first term at the homework club.",
     "evidence": [],
     "verification": "student-added",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "A Year 11 reflection for Noor’s CAS adviser after her first weeks at a community homework club."
   },
   {
     "id": "ev-315",
     "studentId": "st-05",
-    "title": "Reading buddies with Y4",
+    "title": "Homework club at a community learning centre",
     "date": "2025-04-09",
     "lineIds": [
-      "service"
+      "service",
+      "languages"
     ],
-    "type": "assessment",
-    "summary": "Service record from the school systems.",
-    "evidence": [],
-    "verification": "school-verified",
+    "type": "service",
+    "summary": "Helped Arabic-speaking children with homework every Saturday for two terms.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-315.svg",
+        "caption": "Saturday homework club"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Session log"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Trilingual maths word list"
+      }
+    ],
+    "verification": "teacher-endorsed",
     "visibility": "publishable",
     "source": {
-      "system": "ManageBac",
-      "ref": "gen-316"
-    }
+      "system": "CAS log",
+      "ref": "cas-hw-club"
+    },
+    "about": "Every Saturday for two terms Noor volunteered at a community learning centre in Bangkok, helping Arabic-speaking children aged 8–12 with English and maths homework. She made a trilingual word list that the centre now gives every new volunteer."
   },
   {
     "id": "ev-316",
     "studentId": "st-05",
-    "title": "Reflection: term check-in",
+    "title": "Reflection: end of Year 11",
     "date": "2025-05-31",
     "lineIds": [
       "service"
     ],
     "type": "reflection",
-    "summary": "Term check-in reflection.",
+    "summary": "End-of-year reflection before starting the Diploma.",
     "evidence": [],
     "verification": "student-added",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "A reflection written at the end of Year 11 for Noor’s advisor, Mr Whitfield."
   },
   {
     "id": "ev-317",
     "studentId": "st-05",
-    "title": "Art exhibition piece",
+    "title": "Exhibition piece: “Letters Home”",
     "date": "2025-09-28",
     "lineIds": [
-      "art"
+      "art",
+      "languages"
     ],
     "type": "project",
-    "summary": "Art record from the school systems.",
-    "evidence": [],
-    "verification": "school-verified",
+    "summary": "Mixed-media piece of layered Arabic and Thai script, shown in the Year 12 exhibition.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/mural.svg",
+        "caption": "“Letters Home”, installed"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Exhibition label and statement"
+      },
+      {
+        "kind": "link",
+        "url": "https://example.org/letters-home",
+        "caption": "Exhibition walkthrough video"
+      }
+    ],
+    "verification": "teacher-endorsed",
     "visibility": "publishable",
     "source": {
       "system": "ManageBac",
-      "ref": "gen-318"
+      "ref": "y12-va-exh"
     },
     "cas": {
       "strand": "C",
@@ -2928,152 +3116,227 @@
         3,
         7
       ]
-    }
+    },
+    "about": "For the Year 12 group exhibition Noor made “Letters Home”, a 1.2 m mixed-media piece of layered tracing paper. Her grandmother’s letters in Arabic sit under Noor’s replies in Thai, so neither can be read on its own."
   },
   {
     "id": "ev-318",
     "studentId": "st-05",
-    "title": "Reflection: term check-in",
+    "title": "Reflection: making art about exile",
     "date": "2026-07-07",
     "lineIds": [
       "art"
     ],
     "type": "reflection",
-    "summary": "Term check-in reflection.",
+    "summary": "Summer reflection linking her art to the Extended Essay.",
     "evidence": [],
     "verification": "student-added",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "A reflection written over the summer before Year 13, connecting Noor’s art to her Extended Essay on exile poetry."
   },
   {
     "id": "ev-319",
     "studentId": "st-05",
-    "title": "Eco-committee meeting series",
+    "title": "CAS: community art workshop series",
     "date": "2026-07-24",
     "lineIds": [
-      "environment"
+      "service",
+      "environment",
+      "art"
     ],
-    "type": "class",
-    "summary": "Environment record from the school systems.",
-    "evidence": [],
-    "verification": "school-verified",
+    "type": "service",
+    "summary": "Ran six printmaking workshops for families using recycled materials.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-319.svg",
+        "caption": "Workshop 4: polystyrene prints"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Workshop plan"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "CAS project report"
+      }
+    ],
+    "verification": "teacher-endorsed",
     "visibility": "publishable",
     "source": {
-      "system": "ManageBac",
-      "ref": "gen-320"
-    }
+      "system": "CAS log",
+      "ref": "cas-comm-art"
+    },
+    "about": "Noor’s CAS project: six Saturday workshops at the community learning centre where families made prints from recycled packaging, polystyrene trays and bottle caps. 46 children and parents took part, and the prints were shown at the centre’s open day."
   },
   {
     "id": "ev-320",
     "studentId": "st-06",
-    "title": "Songwriting project",
+    "title": "Songwriting project: “Ferry at Six”",
     "date": "2025-09-26",
     "lineIds": [
       "music"
     ],
     "type": "assessment",
-    "summary": "Music record from the school systems.",
-    "evidence": [],
+    "summary": "First song for MYP Music, about the evening ferry; 7/8 on criterion C.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-320.svg",
+        "caption": "Recording session"
+      },
+      {
+        "kind": "grade",
+        "url": null,
+        "caption": "MYP Music criterion C: 7/8"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Lyrics and chord chart"
+      },
+      {
+        "kind": "link",
+        "url": "https://example.org/ferry",
+        "caption": "Recording"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
       "system": "ManageBac",
-      "ref": "gen-321"
-    }
+      "ref": "y10-mus-song"
+    },
+    "about": "For a Year 10 Music unit Ploy wrote and recorded “Ferry at Six”, a verse–chorus song about taking the Chao Phraya ferry home with her grandmother. She sang, played guitar and layered a second vocal harmony."
   },
   {
     "id": "ev-321",
     "studentId": "st-06",
-    "title": "Reflection: term check-in",
+    "title": "Reflection: the youngest on the team",
     "date": "2025-10-24",
     "lineIds": [
       "sport"
     ],
     "type": "reflection",
-    "summary": "Term check-in reflection.",
+    "summary": "First-term reflection on joining the U16 girls’ football team.",
     "evidence": [],
     "verification": "student-added",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "A reflection written for Ploy’s advisor after her first half-term on the U16 girls’ team."
   },
   {
     "id": "ev-322",
     "studentId": "st-06",
-    "title": "Football team season",
+    "title": "Football: U16 girls’ season",
     "date": "2025-10-28",
     "lineIds": [
       "sport"
     ],
-    "type": "project",
-    "summary": "Sport record from the school systems.",
-    "evidence": [],
-    "verification": "school-verified",
+    "type": "sport",
+    "summary": "Started as a substitute and finished the season at left back.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/football.svg",
+        "caption": "League match, left back"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Season stats"
+      }
+    ],
+    "verification": "teacher-endorsed",
     "visibility": "publishable",
     "source": {
-      "system": "ManageBac",
-      "ref": "gen-323"
-    }
+      "system": "Clubs & Sports",
+      "ref": "fb-u16g-25"
+    },
+    "about": "Ploy joined the U16 girls’ football team in Year 10. She started the season as a substitute and played every minute of the last six league matches at left back. The team finished third in the Bangkok schools league."
   },
   {
     "id": "ev-323",
     "studentId": "st-06",
-    "title": "Reflection: term check-in",
+    "title": "Reflection: writing songs in Thai or English?",
     "date": "2025-11-25",
     "lineIds": [
       "music"
     ],
     "type": "reflection",
-    "summary": "Term check-in reflection.",
+    "summary": "Reflection on which language her songs come out in.",
     "evidence": [],
     "verification": "student-added",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "A Year 10 reflection on songwriting, written for Ploy’s Music teacher and advisor."
   },
   {
     "id": "ev-324",
     "studentId": "st-06",
-    "title": "Choir concert",
+    "title": "Choir concert and poster",
     "date": "2026-02-12",
     "lineIds": [
       "music",
       "design"
     ],
-    "type": "service",
-    "summary": "Music record from the school systems.",
-    "evidence": [],
+    "type": "club",
+    "summary": "Sang alto in the February concert and designed its poster.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-324.svg",
+        "caption": "February choir concert"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Concert poster"
+      },
+      {
+        "kind": "link",
+        "url": "https://example.org/choir-feb",
+        "caption": "Concert recording"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
-      "system": "ManageBac",
-      "ref": "gen-325"
-    }
+      "system": "Clubs & Sports",
+      "ref": "choir-feb26"
+    },
+    "about": "Ploy sang alto in the senior choir’s February concert and designed the concert poster, which was printed for the whole school and used on the school’s social media."
   },
   {
     "id": "ev-325",
     "studentId": "st-06",
-    "title": "Reflection: term check-in",
+    "title": "Reflection: the match I didn’t play",
     "date": "2026-03-05",
     "lineIds": [
       "sport"
     ],
     "type": "reflection",
-    "summary": "Term check-in reflection.",
+    "summary": "Reflection on being dropped for the cup quarter-final.",
     "evidence": [],
     "verification": "student-added",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "A reflection Ploy wrote after she was left out of the cup quarter-final."
   },
   {
     "id": "ev-326",
@@ -3084,32 +3347,55 @@
       "design"
     ],
     "type": "project",
-    "summary": "Design record from the school systems.",
-    "evidence": [],
+    "summary": "Designed a practice-room booking app for the music department.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-326.svg",
+        "caption": "Booking screen, version 3"
+      },
+      {
+        "kind": "grade",
+        "url": null,
+        "caption": "MYP Design criterion B: 7/8"
+      },
+      {
+        "kind": "link",
+        "url": "https://example.org/rooms-figma",
+        "caption": "Figma prototype"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Client interview notes"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
       "system": "ManageBac",
-      "ref": "gen-327"
-    }
+      "ref": "y10-des-app"
+    },
+    "about": "For a Year 10 Design unit Ploy interviewed Ms Marín about how students book practice rooms (a paper sheet on the door) and designed a mobile booking app prototype in Figma. She tested it with eight students and redesigned the calendar view twice."
   },
   {
     "id": "ev-327",
     "studentId": "st-06",
-    "title": "Reflection: term check-in",
+    "title": "Reflection: end of Year 10",
     "date": "2026-05-18",
     "lineIds": [
       "music"
     ],
     "type": "reflection",
-    "summary": "Term check-in reflection.",
+    "summary": "End-of-year reflection across music, design and football.",
     "evidence": [],
     "verification": "student-added",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "An end-of-Year-10 reflection for Ploy’s advisor."
   },
   {
     "id": "ev-328",
@@ -3119,141 +3405,241 @@
     "lineIds": [
       "design"
     ],
-    "type": "class",
-    "summary": "Design record from the school systems.",
-    "evidence": [],
+    "type": "project",
+    "summary": "Year 11 Design: a bamboo pendant lamp, now in prototyping.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/lamp.svg",
+        "caption": "Weave test 3 under the light"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Design folio (in progress)"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
       "system": "ManageBac",
-      "ref": "gen-329"
-    }
+      "ref": "y11-des-lamp"
+    },
+    "about": "Ploy’s Year 11 Design project is a pendant lamp made from bamboo strips, inspired by fish traps from her grandfather’s village in Ayutthaya. She has tested three weaves for light pattern and strength and is building a full-size prototype."
   },
   {
     "id": "ev-329",
     "studentId": "st-07",
-    "title": "CS class: algorithms unit",
+    "title": "Year 10 CS: algorithms unit",
     "date": "2023-09-18",
     "lineIds": [
       "computing"
     ],
-    "type": "project",
-    "summary": "Computing record from the school systems.",
-    "evidence": [],
+    "type": "assessment",
+    "summary": "Built a sorting visualiser in Python; 7/8 on criterion B.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-329.svg",
+        "caption": "Merge sort, mid-animation"
+      },
+      {
+        "kind": "grade",
+        "url": null,
+        "caption": "MYP criterion B: 7/8"
+      },
+      {
+        "kind": "link",
+        "url": "https://example.org/sortvis",
+        "caption": "Code on GitHub"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
       "system": "ManageBac",
-      "ref": "gen-330"
-    }
+      "ref": "y10-cs-alg"
+    },
+    "about": "In the Year 10 algorithms unit Mateo implemented bubble, insertion and merge sort in Python and built a turtle-graphics visualiser that animates each one, then timed them on lists of up to 10,000 items."
   },
   {
     "id": "ev-330",
     "studentId": "st-07",
-    "title": "Reflection: term check-in",
+    "title": "Reflection: why I like making things faster",
     "date": "2024-03-28",
     "lineIds": [
       "computing"
     ],
     "type": "reflection",
-    "summary": "Term check-in reflection.",
+    "summary": "Year 10 reflection on what draws him to algorithms.",
     "evidence": [],
     "verification": "student-added",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "A Year 10 reflection for Mateo’s advisor about the algorithms unit."
   },
   {
     "id": "ev-331",
     "studentId": "st-07",
-    "title": "Science fair entry",
+    "title": "Science fair: does music tempo change running pace?",
     "date": "2025-06-06",
     "lineIds": [
-      "science"
+      "science",
+      "sport"
     ],
-    "type": "service",
-    "summary": "Science record from the school systems.",
-    "evidence": [],
+    "type": "competition",
+    "summary": "Tested 12 teammates running to music at three tempos; Bronze.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-331.svg",
+        "caption": "Cadence against music tempo"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Science fair poster (PDF)"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Run data"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
       "system": "ManageBac",
-      "ref": "gen-332"
-    }
+      "ref": "y11-scifair"
+    },
+    "about": "For the Year 11 science fair Mateo had 12 teammates run 800 m three times, listening to music at 120, 150 and 180 beats per minute, with a GPS watch recording pace and cadence. Cadence followed tempo closely; pace barely changed. The project won Bronze."
   },
   {
     "id": "ev-332",
     "studentId": "st-07",
-    "title": "Python data project",
+    "title": "Football passing networks in Python",
     "date": "2025-08-27",
     "lineIds": [
       "computing",
       "sport"
     ],
-    "type": "assessment",
-    "summary": "Computing record from the school systems.",
-    "evidence": [],
-    "verification": "school-verified",
+    "type": "project",
+    "summary": "Logged every pass in five of his team’s matches and drew the network.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-332.svg",
+        "caption": "Passes by player, match 3"
+      },
+      {
+        "kind": "link",
+        "url": "https://example.org/passnet",
+        "caption": "Notebook on GitHub"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Write-up for the coach"
+      }
+    ],
+    "verification": "student-added",
     "visibility": "publishable",
     "source": {
-      "system": "ManageBac",
-      "ref": "gen-333"
-    }
+      "system": "Manual entry",
+      "ref": "self"
+    },
+    "about": "Mateo logged every pass in five of the U18 boys’ matches from video, then used Python and networkx to draw passing networks. They showed the team relied on one central midfielder, and the coach changed the formation for the next match."
   },
   {
     "id": "ev-333",
     "studentId": "st-07",
-    "title": "Lab report: osmosis",
+    "title": "IB Biology SL: osmosis lab",
     "date": "2025-10-15",
     "lineIds": [
       "science"
     ],
-    "type": "class",
-    "summary": "Science record from the school systems.",
-    "evidence": [],
+    "type": "assessment",
+    "summary": "Potato cylinders in sucrose solutions; first Diploma lab report.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-333.svg",
+        "caption": "Osmosis results"
+      },
+      {
+        "kind": "grade",
+        "url": null,
+        "caption": "IB Biology SL: 6"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Lab report"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
       "system": "ManageBac",
-      "ref": "gen-334"
-    }
+      "ref": "dp-bio-osm"
+    },
+    "about": "Mateo’s first IB Biology lab report: he measured the mass change of potato cylinders in six sucrose concentrations to estimate the water potential of potato tissue."
   },
   {
     "id": "ev-334",
     "studentId": "st-07",
-    "title": "Reflection: term check-in",
+    "title": "Reflection: end of Year 12",
     "date": "2026-06-26",
     "lineIds": [
       "science"
     ],
     "type": "reflection",
-    "summary": "Term check-in reflection.",
+    "summary": "Year 12 reflection, and admitting CAS has stalled.",
     "evidence": [],
     "verification": "student-added",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "An end-of-Year-12 reflection for Mateo’s advisor."
   },
   {
     "id": "ev-335",
     "studentId": "st-07",
-    "title": "Science fair entry",
+    "title": "Summer research placement: GPU lab",
     "date": "2026-07-11",
     "lineIds": [
+      "computing",
       "science"
     ],
-    "type": "service",
-    "summary": "Science record from the school systems.",
-    "evidence": [],
-    "verification": "school-verified",
+    "type": "project",
+    "summary": "Two weeks in a university parallel-computing lab, benchmarking sorts on a GPU.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-335.svg",
+        "caption": "GPU vs CPU sort time"
+      },
+      {
+        "kind": "certificate",
+        "url": "#",
+        "caption": "Placement certificate"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Placement report"
+      }
+    ],
+    "verification": "student-added",
     "visibility": "publishable",
     "source": {
-      "system": "ManageBac",
-      "ref": "gen-336"
+      "system": "Manual entry",
+      "ref": "self"
     },
     "cas": {
       "strand": "S",
@@ -3261,79 +3647,128 @@
         7,
         5
       ]
-    }
+    },
+    "about": "A two-week summer placement in a university parallel-computing lab in Bangkok. Mateo benchmarked radix sort and bitonic sort on a GPU against a CPU baseline, the data that became the starting point for his Extended Essay."
   },
   {
     "id": "ev-336",
     "studentId": "st-07",
-    "title": "Library web app",
+    "title": "Library reservation web app",
     "date": "2026-07-22",
     "lineIds": [
       "computing"
     ],
-    "type": "assessment",
-    "summary": "Computing record from the school systems.",
-    "evidence": [],
-    "verification": "school-verified",
+    "type": "project",
+    "summary": "A web app the library now uses to reserve and renew books.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-336.svg",
+        "caption": "Reservation screen"
+      },
+      {
+        "kind": "link",
+        "url": "https://example.org/library",
+        "caption": "Live app"
+      },
+      {
+        "kind": "link",
+        "url": "https://example.org/library-src",
+        "caption": "Source code"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Librarian feedback"
+      }
+    ],
+    "verification": "teacher-endorsed",
     "visibility": "publishable",
     "source": {
       "system": "ManageBac",
-      "ref": "gen-337"
-    }
+      "ref": "dp-cs-ia"
+    },
+    "about": "For his IB Computer Science internal assessment Mateo built a web app for the school library: students reserve books, get a LINE message when they are ready and renew from their phones. The library has used it since August, with 640 reservations so far."
   },
   {
     "id": "ev-337",
     "studentId": "st-07",
-    "title": "CS class: algorithms unit",
+    "title": "IB CS: algorithms problem sets",
     "date": "2026-09-13",
     "lineIds": [
       "computing"
     ],
     "type": "assessment",
-    "summary": "Computing record from the school systems.",
-    "evidence": [],
+    "summary": "Year 13 algorithms unit: graph search and dynamic programming.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-337.svg",
+        "caption": "Dijkstra, timed task"
+      },
+      {
+        "kind": "grade",
+        "url": null,
+        "caption": "Problem set 4: 20/20"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
       "system": "ManageBac",
-      "ref": "gen-338"
-    }
+      "ref": "dp-cs-ps"
+    },
+    "about": "Year 13 Computer Science HL unit on graph algorithms and dynamic programming. Mateo scored full marks on the timed implementation task and helped run the revision session for the SL class."
   },
   {
     "id": "ev-338",
     "studentId": "st-08",
-    "title": "Portrait series",
+    "title": "Underwater sketchbook",
     "date": "2025-01-28",
     "lineIds": [
-      "art"
+      "art",
+      "science"
     ],
-    "type": "service",
-    "summary": "Art record from the school systems.",
-    "evidence": [],
-    "verification": "school-verified",
+    "type": "project",
+    "summary": "Ink drawings of reef fish from aquarium visits and snorkelling trips.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/sketchbook.svg",
+        "caption": "Page 12: blue-ringed angelfish"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Sketchbook scans"
+      }
+    ],
+    "verification": "student-added",
     "visibility": "publishable",
     "source": {
-      "system": "ManageBac",
-      "ref": "gen-339"
-    }
+      "system": "Manual entry",
+      "ref": "self"
+    },
+    "about": "Over Year 10 Sienna filled a sketchbook with ink-and-wash drawings of reef fish, sketched at the aquarium and from memory after snorkelling. Each page has the species’ common, Thai and Latin names."
   },
   {
     "id": "ev-339",
     "studentId": "st-08",
-    "title": "Reflection: term check-in",
+    "title": "Reflection: the bleached reef",
     "date": "2025-04-27",
     "lineIds": [
       "environment"
     ],
     "type": "reflection",
-    "summary": "Term check-in reflection.",
+    "summary": "Reflection after seeing coral bleaching on a family trip.",
     "evidence": [],
     "verification": "student-added",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "A reflection Sienna wrote for her advisor after a family snorkelling trip in Year 10."
   },
   {
     "id": "ev-340",
@@ -3343,33 +3778,51 @@
     "lineIds": [
       "service"
     ],
-    "type": "assessment",
-    "summary": "Service record from the school systems.",
-    "evidence": [],
-    "verification": "school-verified",
+    "type": "service",
+    "summary": "Organised a 5 km fun run that raised ฿86,400 for a marine rescue centre.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-340.svg",
+        "caption": "Start line, 7:00"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Budget and donations"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Risk assessment"
+      }
+    ],
+    "verification": "teacher-endorsed",
     "visibility": "publishable",
     "source": {
-      "system": "ManageBac",
-      "ref": "gen-341"
-    }
+      "system": "CAS log",
+      "ref": "sa-y10-run"
+    },
+    "about": "Sienna organised a 5 km fun run around the school field and the neighbouring park. 212 runners took part and the event raised ฿86,400 for a marine animal rescue centre. She wrote the risk assessment, recruited 18 marshals and ran registration."
   },
   {
     "id": "ev-341",
     "studentId": "st-08",
-    "title": "Reflection: term check-in",
+    "title": "Reflection: why marine biology",
     "date": "2025-07-23",
     "lineIds": [
       "science"
     ],
     "type": "reflection",
-    "summary": "Term check-in reflection.",
+    "summary": "Summer reflection on choosing a direction.",
     "evidence": [],
     "verification": "student-added",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "A reflection written over the summer before Year 11."
   },
   {
     "id": "ev-342",
@@ -3377,124 +3830,187 @@
     "title": "Plastic-free week campaign",
     "date": "2025-12-26",
     "lineIds": [
-      "environment"
+      "environment",
+      "service"
     ],
-    "type": "service",
-    "summary": "Environment record from the school systems.",
-    "evidence": [],
+    "type": "project",
+    "summary": "Led a canteen plastic-free week; single-use plastic fell by 71%.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/beach-cleanup.svg",
+        "caption": "Waste audit, Friday"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Campaign plan"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Waste audit before and after"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
       "system": "ManageBac",
-      "ref": "gen-343"
-    }
+      "ref": "eco-pfw-25"
+    },
+    "about": "With the eco-committee Sienna ran a plastic-free week in the canteen: reusable cups, a container deposit scheme and a waste audit before and after. Single-use plastic collected from the canteen fell from 38 kg to 11 kg, and the canteen kept the cup scheme."
   },
   {
     "id": "ev-343",
     "studentId": "st-08",
-    "title": "Reflection: term check-in",
+    "title": "Reflection: what the campaign changed",
     "date": "2026-01-04",
     "lineIds": [
       "service"
     ],
     "type": "reflection",
-    "summary": "Term check-in reflection.",
+    "summary": "Reflection on what lasted after plastic-free week.",
     "evidence": [],
     "verification": "student-added",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "A reflection written for Sienna’s CAS adviser in January of Year 11."
   },
   {
     "id": "ev-344",
     "studentId": "st-08",
-    "title": "Animal shelter weekends",
+    "title": "Koh Tao clean-up dives",
     "date": "2026-03-18",
     "lineIds": [
-      "service"
+      "service",
+      "environment"
     ],
-    "type": "project",
-    "summary": "Service record from the school systems.",
-    "evidence": [],
+    "type": "service",
+    "summary": "Four clean-up dives on the school reef trip, logging every item.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/ev-344.svg",
+        "caption": "Clean-up dive 3"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Debris log"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
-      "system": "ManageBac",
-      "ref": "gen-345"
-    }
+      "system": "CAS log",
+      "ref": "cas-kt-dive"
+    },
+    "about": "On the Year 11 reef trip to Koh Tao, Sienna joined four clean-up dives with a local dive school, removing 64 kg of debris, mostly fishing line, and logging every item for an ocean-debris database."
   },
   {
     "id": "ev-345",
     "studentId": "st-08",
-    "title": "Reflection: term check-in",
+    "title": "Reflection: first data of my own",
     "date": "2026-03-25",
     "lineIds": [
       "science"
     ],
     "type": "reflection",
-    "summary": "Term check-in reflection.",
+    "summary": "Reflection after the reef logger’s first download.",
     "evidence": [],
     "verification": "student-added",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "A reflection written after Sienna downloaded the first month of data from her reef temperature logger."
   },
   {
     "id": "ev-346",
     "studentId": "st-08",
-    "title": "Plastic-free week campaign",
+    "title": "Campus garden: first planting",
     "date": "2026-07-11",
     "lineIds": [
-      "environment"
+      "environment",
+      "service"
     ],
-    "type": "project",
-    "summary": "Environment record from the school systems.",
-    "evidence": [],
+    "type": "service",
+    "summary": "Started a CAS garden behind the science block; 14 raised beds.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/compost-bin.svg",
+        "caption": "Raised beds, week one"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Garden plan"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Volunteer rota"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
-      "system": "ManageBac",
-      "ref": "gen-347"
-    }
+      "system": "CAS log",
+      "ref": "cas-garden"
+    },
+    "about": "Sienna’s CAS project: turning an unused strip behind the science block into a garden. During summer school she and nine volunteers built 14 raised beds from old pallets and planted herbs, lemongrass and morning glory for the canteen."
   },
   {
     "id": "ev-347",
     "studentId": "st-08",
-    "title": "Reflection: term check-in",
+    "title": "Reflection: choosing my EE topic",
     "date": "2026-10-08",
     "lineIds": [
       "environment"
     ],
     "type": "reflection",
-    "summary": "Term check-in reflection.",
+    "summary": "Reflection on narrowing an Extended Essay topic.",
     "evidence": [],
     "verification": "student-added",
     "visibility": "publishable",
     "source": {
       "system": "Manual entry",
       "ref": null
-    }
+    },
+    "about": "A reflection written for Sienna’s Extended Essay supervisor, Mr Okafor."
   },
   {
     "id": "ev-348",
     "studentId": "st-08",
-    "title": "Chemistry titration lab",
+    "title": "Marine club: water-quality testing",
     "date": "2026-10-15",
     "lineIds": [
       "science"
     ],
     "type": "club",
-    "summary": "Science record from the school systems.",
-    "evidence": [],
+    "summary": "Started monthly water testing at three sites for the marine club.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/aq-sensor.svg",
+        "caption": "Sampling at site B"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Water test results"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
-      "system": "ManageBac",
-      "ref": "gen-349"
+      "system": "Clubs & Sports",
+      "ref": "marine-wq"
     },
     "cas": {
       "strand": "C",
@@ -3502,7 +4018,8 @@
         6,
         2
       ]
-    }
+    },
+    "about": "Sienna set up monthly water-quality testing for the marine club: pH, nitrate, phosphate and turbidity at three sites on the Chao Phraya. Club members now rotate the sampling and she checks the data."
   },
   {
     "id": "ev-306a",
@@ -3514,7 +4031,18 @@
     ],
     "type": "sport",
     "summary": "Started in midfield; the U16 team won 2–1 to reach the BISAC final.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Match report"
+      },
+      {
+        "kind": "link",
+        "url": "https://example.org/semi",
+        "caption": "Match highlights"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {

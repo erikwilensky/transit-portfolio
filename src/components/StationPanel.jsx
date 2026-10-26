@@ -3,7 +3,9 @@ import { VerifyBadge } from './Badge.jsx';
 import RecordInspector from './RecordInspector.jsx';
 import { ATL, LEARNER_PROFILE, setTags, addCheckIn, addReflection, completeGoal, deleteStation, editStation, getTeacher, getTeachers, requestEndorsement, requestFor, resubmit, setVisibility, snapshot, TODAY } from '../api.js';
 import { createPortal } from 'react-dom';
-import { fmtTerm, TYPE_LABEL, VIS_LABEL, VERIFY_HELP } from '../format.js';
+import EvidenceDoc, { docLabel } from './EvidenceDoc.jsx';
+import { docFor, useEvidenceDocs } from '../evidence/load.js';
+import { fmtDate, fmtTerm, TYPE_LABEL, VIS_LABEL, VERIFY_HELP } from '../format.js';
 import { dateIn, daysIn, lineName, termText, tr, useLang } from '../i18n.js';
 
 const KIND_ICON = { link: '↗', file: '▤', image: '▣', grade: '✓', certificate: '★' };
@@ -15,6 +17,7 @@ export default function StationPanel({ event, map, onClose, readOnly = false, on
   const lang = useLang();
   const t = (s) => tr(lang, s);
   const fmtDate = (d) => dateIn(lang, d);
+  const docs = useEvidenceDocs();
   return (
     <aside className={`station-panel${open ? ' open' : ''}`} aria-hidden={!open} aria-label="Station details">
       {event && (
@@ -49,7 +52,7 @@ export default function StationPanel({ event, map, onClose, readOnly = false, on
                   <li key={i}>
                     <button className="ev-open ev-row" onClick={() => setView(ev)}>
                       <span className="ev-icon" aria-hidden="true">{KIND_ICON[ev.kind]}</span>
-                      <span><b>{ev.caption}</b><small>{t(ev.kind)} · {t('open')}</small></span>
+                      <span><b>{ev.caption}</b><small>{docLabel(docFor(docs, event, ev, map.student)) || t(ev.kind)} · {t('open')}</small></span>
                     </button>
                   </li>
                 ))}
@@ -87,7 +90,7 @@ export default function StationPanel({ event, map, onClose, readOnly = false, on
         </div>
       )}
       {inspect && <RecordInspector eventId={inspect} onClose={() => setInspect(null)} />}
-      {view && event && <EvidenceView ev={view} event={event} onClose={() => setView(null)} />}
+      {view && event && <EvidenceView ev={view} event={event} student={map.student} doc={docFor(docs, event, view, map.student)} onClose={() => setView(null)} />}
     </aside>
   );
 }
@@ -161,19 +164,22 @@ function AskBox({ first, onAsk }) {
   );
 }
 
-// F8: evidence opens. Images full size; files and links as a document stamped with where and when it came from.
-function EvidenceView({ ev, event, onClose }) {
+// F8: evidence opens. Images full size; everything else as the real thing it stands for
+// (a certificate, a result slip, a repository, a report), stamped with where it came from.
+function EvidenceView({ ev, event, student, doc, onClose }) {
+  const poster = event.evidence.find((x) => x.kind === 'image')?.url;
   return createPortal(
     <div className="modal-back ev-back" onClick={onClose} onKeyDown={(k) => k.key === 'Escape' && onClose()}>
-      <div className={`ev-view ${ev.kind === 'image' ? 'img' : 'doc'}`} role="dialog" aria-label={ev.caption} onClick={(x) => x.stopPropagation()}>
+      <div className={`ev-view ${ev.kind === 'image' ? 'img' : 'doc'}${doc ? ` wide-${doc.t}` : ''}`} role="dialog" aria-label={ev.caption} onClick={(x) => x.stopPropagation()}>
         <button className="panel-close" onClick={onClose} aria-label="Close" autoFocus>×</button>
         {ev.kind === 'image' ? <img src={ev.url} alt={ev.caption} /> : (
           <div className="ev-doc">
             <div className="ev-doc-stamp">{event.source?.system || 'Uploaded'}{event.source?.ref ? ` · ${event.source.ref}` : ''} · {fmtDate(event.date)}</div>
             <h2>{ev.caption}</h2>
-            <p className="fineprint">{ev.kind === 'link' ? 'Linked page' : ev.kind === 'grade' ? 'Gradebook extract' : ev.kind === 'certificate' ? 'Certificate' : 'Document'} attached to “{event.title}”.</p>
-            <div className="ev-doc-body">{(event.about || event.summary).split('. ').map((x, i) => <p key={i}>{x.replace(/\.$/, '')}.</p>)}<div className="ev-doc-lines" aria-hidden="true">{Array.from({ length: 6 }, (_, i) => <i key={i} style={{ width: `${92 - (i * 13) % 40}%` }} />)}</div></div>
-            <p className="fineprint">Demo document. In the real product this opens the file from {event.source?.system || 'the student’s upload'}.</p>
+            <p className="fineprint">{docLabel(doc) || (ev.kind === 'link' ? 'Linked page' : ev.kind === 'grade' ? 'Gradebook extract' : ev.kind === 'certificate' ? 'Certificate' : 'Document')} attached to “{event.title}”{ev.kind === 'link' && ev.url && ev.url !== '#' ? <> · <span className="ev-url">{ev.url.replace(/^https?:\/\//, '')}</span></> : null}</p>
+            {doc ? <EvidenceDoc d={doc} event={event} student={student} poster={poster} /> : (
+              <div className="ev-doc-body">{(event.about || event.summary).split('. ').map((x, i) => <p key={i}>{x.replace(/\.$/, '')}.</p>)}</div>
+            )}
           </div>
         )}
         <div className="ev-cap">{ev.caption}</div>

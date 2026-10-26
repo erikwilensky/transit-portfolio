@@ -521,15 +521,15 @@ export function restartLine(studentId, lineId) {
 
 // Year 7 starters: what arrives from school systems once a new student picks their interests.
 export const STARTERS = {
-  science: { title: 'Lab safety certificate', type: 'class', source: { system: 'ManageBac', ref: 'g6-sci-01' }, summary: 'Passed the Year 7 lab safety quiz.', img: 'cert' },
-  sport: { title: 'Joined the U12 swim squad', type: 'sport', source: { system: 'Clubs & Sports', ref: 'swim-u12' }, summary: 'Tuesday and Thursday training.', img: 'pool' },
-  art: { title: 'First sketchbook page', type: 'project', source: { system: 'ManageBac', ref: 'g6-art-02' }, summary: 'Observational drawing of a shell.', img: 'sketchbook' },
-  music: { title: 'Joined the junior choir', type: 'club', source: { system: 'Clubs & Sports', ref: 'choir-jr' }, summary: 'Rehearsals on Wednesdays.', img: 'piano-stage' },
-  computing: { title: 'Scratch: animated name', type: 'class', source: { system: 'ManageBac', ref: 'g6-cs-01' }, summary: 'First Scratch project in Design & Tech.', img: 'code' },
-  environment: { title: 'Eco-club welcome walk', type: 'club', source: { system: 'Clubs & Sports', ref: 'eco-jr' }, summary: 'Mapped the recycling bins on campus.', img: 'compost-bin' },
-  service: { title: 'Reading buddy for Year 2', type: 'service', source: { system: 'CAS log', ref: 'sa-g6-01' }, summary: 'Service as action: reading with a Year 2 class.', img: 'stem-club' },
-  languages: { title: 'Thai placement: Level 2', type: 'assessment', source: { system: 'SIS', ref: 'thai-place' }, summary: 'Placed in Thai as an additional language, Level 2.', img: 'welcome-pack' },
-  design: { title: 'Design cycle: pencil holder', type: 'project', source: { system: 'ManageBac', ref: 'g6-des-01' }, summary: 'First MYP design cycle project.', img: 'phone-stands' },
+  science: { title: 'Lab safety certificate', type: 'class', source: { system: 'ManageBac', ref: 'g6-sci-01' }, summary: 'Passed the Year 7 lab safety quiz.', ev: [['certificate', 'Lab safety certificate']], img: 'cert' },
+  sport: { title: 'Joined the U12 swim squad', type: 'sport', source: { system: 'Clubs & Sports', ref: 'swim-u12' }, summary: 'Tuesday and Thursday training.', ev: [['file', 'U12 training timetable']], img: 'pool' },
+  art: { title: 'First sketchbook page', type: 'project', source: { system: 'ManageBac', ref: 'g6-art-02' }, summary: 'Observational drawing of a shell.', ev: [['file', 'Art teacher feedback']], img: 'sketchbook' },
+  music: { title: 'Joined the junior choir', type: 'club', source: { system: 'Clubs & Sports', ref: 'choir-jr' }, summary: 'Rehearsals on Wednesdays.', ev: [['file', 'Junior choir rehearsal schedule']], img: 'piano-stage' },
+  computing: { title: 'Scratch: animated name', type: 'class', source: { system: 'ManageBac', ref: 'g6-cs-01' }, summary: 'First Scratch project in Design & Tech.', ev: [['link', 'Play my Scratch project', 'https://example.org/scratch-pim']], img: 'code' },
+  environment: { title: 'Eco-club welcome walk', type: 'club', source: { system: 'Clubs & Sports', ref: 'eco-jr' }, summary: 'Mapped the recycling bins on campus.', ev: [['file', 'Campus recycling bin map']], img: 'compost-bin' },
+  service: { title: 'Reading buddy for Year 2', type: 'service', source: { system: 'CAS log', ref: 'sa-g6-01' }, summary: 'Service as action: reading with a Year 2 class.', ev: [['file', 'Reading buddy log']], img: 'stem-club' },
+  languages: { title: 'Thai placement: Level 2', type: 'assessment', source: { system: 'SIS', ref: 'thai-place' }, summary: 'Placed in Thai as an additional language, Level 2.', ev: [['grade', 'Thai placement: Level 2']], img: 'welcome-pack' },
+  design: { title: 'Design cycle: pencil holder', type: 'project', source: { system: 'ManageBac', ref: 'g6-des-01' }, summary: 'First MYP design cycle project.', ev: [['file', 'Design cycle worksheet']], img: 'phone-stands' },
 };
 const STARTER_IMG = { cert: null, pool: null, code: null, sketchbook: 'sketchbook', 'piano-stage': 'piano-stage', 'compost-bin': 'compost-bin', 'stem-club': 'stem-club', 'welcome-pack': 'welcome-pack', 'phone-stands': 'phone-stands' };
 export function completeOnboarding(studentId, lineIds, template) {
@@ -541,7 +541,7 @@ export function completeOnboarding(studentId, lineIds, template) {
     const st = STARTERS[l]; if (!st) return;
     const img = STARTER_IMG[st.img];
     store.events.push({ id: `ev-${evSeq++}`, studentId, title: st.title, date: `2026-08-${String(14 + i * 3).padStart(2, '0')}`, lineIds: [l], type: st.type, summary: st.summary,
-      evidence: img ? [{ kind: 'image', url: `evidence/${img}.svg`, caption: st.title }] : [], verification: 'school-verified', visibility: 'advisor', source: st.source });
+      evidence: [...(img ? [{ kind: 'image', url: `evidence/${img}.svg`, caption: st.title }] : []), ...(st.ev || []).map(([kind, caption, url]) => ({ kind, caption, url: url || (kind === 'grade' ? null : '#') }))], verification: 'school-verified', visibility: 'advisor', source: st.source });
   });
   log(studentId, s.name, 'onboarding', `Picked ${lineIds.length} starter lines and the “${template}” template`);
   emit();
@@ -658,8 +658,15 @@ const SEED_EVENTS = [
   ['ev-708', 'st-05', 'Calligraphy workshop series', '2026-10-17', ['art', 'st-05-calligraphy'], 'club', 'student-added', 'Manual entry', 'self', 'Six Saturday workshops in Arabic calligraphy, ending with a small exhibition.'],
   ['ev-709', 'st-07', 'Started IB Computer Science HL', '2025-08-21', ['computing'], 'class', 'school-verified', 'SIS', 'enrol-cshl', 'Enrolled in IB Computer Science HL with Ms Nair.'],
 ];
+const SEED_EVIDENCE = { // opened as documents from src/evidence/
+  'ev-701': [['file', 'Course outline']], 'ev-704': [['file', 'Course outline']], 'ev-709': [['file', 'Course outline']],
+  'ev-702': [['link', 'Code on GitHub', 'https://example.org/robot-arm'], ['file', 'Build log']],
+  'ev-703': [['certificate', 'Regional award certificate'], ['link', 'Match video', 'https://example.org/vex']],
+  'ev-705': [['link', 'Logger dashboard', 'https://example.org/reeflog'], ['file', 'Build notes']],
+  'ev-706': [['link', 'Live calculator', 'https://example.org/carbon']], 'ev-707': [['file', 'Spawning survey data']], 'ev-708': [['file', 'Workshop handout']],
+};
 for (const [id, studentId, title, date, lineIds, type, verification, system, ref, about] of SEED_EVENTS) {
-  store.events.push({ id, studentId, title, date, lineIds, type, summary: about, about, evidence: [], verification, visibility: 'publishable', source: { system, ref } });
+  store.events.push({ id, studentId, title, date, lineIds, type, summary: about, about, evidence: (SEED_EVIDENCE[id] || []).map(([kind, caption, url]) => ({ kind, caption, url: url || '#' })), verification, visibility: 'publishable', source: { system, ref } });
   const s = getStudent(studentId); for (const lid of lineIds) if (!SEED_LINES.some((l) => l.id === lid) && !s.laneOrder.includes(lid)) s.laneOrder.push(lid);
   if (verification === 'teacher-endorsed') store.endorsements.push({ id: `en-${id}`, eventId: id, teacherId: 't-01', note: 'Independent work, well beyond the syllabus.', date });
 }
