@@ -1,10 +1,12 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 
-// Screens in the top bar. Whatever does not fit goes under "More", so nothing is hidden without a cue.
+// Screens in the top bar. At most four sit in the bar (five when there are only five); the rest,
+// and whatever does not fit, go under "More", so nothing is hidden without a cue.
 export default function NavBar({ items, isOn, onGo, hrefOf, moreLabel = 'More' }) {
   const wrap = useRef(null);
   const measure = useRef(null);
-  const [fit, setFit] = useState(items.length);
+  const cap = items.length > 5 ? 4 : items.length;
+  const [fit, setFit] = useState(cap);
   const [open, setOpen] = useState(false);
   useLayoutEffect(() => {
     const calc = () => {
@@ -13,16 +15,16 @@ export default function NavBar({ items, isOn, onGo, hrefOf, moreLabel = 'More' }
       const widths = [...measure.current.children].map((c) => c.getBoundingClientRect().width + 2);
       const more = widths.pop();
       const total = widths.reduce((a, b) => a + b, 0);
-      if (total <= avail) { setFit(items.length); return; }
+      if (total <= avail) { setFit(cap); return; }
       let used = more, n = 0;
       while (n < widths.length && used + widths[n] <= avail) used += widths[n++];
-      setFit(Math.max(1, n));
+      setFit(Math.max(1, Math.min(cap, n)));
     };
     calc();
     const ro = new ResizeObserver(calc); ro.observe(wrap.current);
     document.fonts?.ready.then(calc);
     return () => ro.disconnect();
-  }, [items]);
+  }, [items, cap]);
   const shown = items.slice(0, fit), rest = items.slice(fit);
   const activeRest = rest.find(([id]) => isOn(id));
   const link = ([id, label], extra = {}) => (

@@ -21,7 +21,7 @@ export const NAV = {
   teacher: [['queue', 'Endorsements'], ['crosslinks', 'Cross-subject'], ['depot', 'Class depot']],
   counsellor: [['applications', 'Applications'], ['letter', 'Reference letter'], ['activities', 'Activities list'], ['search', 'Cohort search']],
   coordinator: [['cas', 'CAS outcomes'], ['schoolline', 'One line'], ['core', 'DP core'], ['governance', 'Lines']],
-  leadership: [['dashboard', 'Dashboard'], ['pdpa', 'Privacy & PDPA'], ['rollout', 'Rollout'], ['schoolmetro', 'School metro'], ['profile', 'Learner profile'], ['pilot', 'Pilot options'], ['audit', 'Audit log'], ['scan', 'Scan-in']],
+  leadership: [['dashboard', 'Dashboard'], ['schoolmetro', 'School metro'], ['profile', 'Learner profile'], ['pdpa', 'Privacy & PDPA'], ['rollout', 'Rollout'], ['pilot', 'Pilot options'], ['audit', 'Audit log'], ['scan', 'Scan-in']],
   parent: [['family', 'Family view'], ['consent', 'Consent'], ['digest', 'Weekly digest']],
   external: [['reader', 'Shared portfolio']],
 };

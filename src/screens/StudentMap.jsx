@@ -63,9 +63,11 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
   const [ver, setVer] = useState('');
   const [year, setYear] = useState('');
   const [lp, setLp] = useState(''); // N6: a learner-profile lens, such as risk-taker moments
-  const [opts, setOpts] = useState(false); // P3: on a phone, the view options fold away
+  const [opts, setOpts] = useState(false); // filters fold away until asked for
+  const [replay, setReplay] = useState(false); // the time scrubber shows once someone presses Replay
   const [view, setView] = useState(() => (typeof window !== 'undefined' && window.innerWidth < 600 && level === 'full' ? 'list' : 'map'));
   const filtering = q.trim() || kind || ver || year || lp;
+  const activeN = [kind, ver, year, lp].filter(Boolean).length + hidden.length;
   const base = useMemo(() => applyLens(shown, null, { hiddenLines: hidden }), [shown, hidden]);
   const lens = useMemo(() => {
     if (!filtering) return base;
@@ -112,53 +114,58 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
             {openSignals.length > 0 && <button className="sig-chip" onClick={() => setSignal(openSignals[0])}><span className="sig-dot" aria-hidden="true" />{openSignals.length} open signal{openSignals.length > 1 ? 's' : ''}</button>}
           </div>
           <div className="home-actions">
-            {!simple && <><button className="ghost" onClick={() => setReview(true)}>Term in review{sugCount > 0 && <span className="badge-n" aria-label={`${sugCount} suggestions`}>{sugCount}</span>}</button>
-            <button className="ghost" onClick={() => setPhone(true)}>Capture on phone</button>
-            <div className="menu-wrap">
-              <button className="ghost" onClick={() => setMenu(!menu)} aria-expanded={menu}>Plan ▾</button>
-              {menu && <div className="menu" role="menu" style={{ width: 240 }}>
+            {!simple && <div className="menu-wrap">
+              <button className="ghost" onClick={() => setMenu(!menu)} aria-expanded={menu} aria-haspopup="menu">Plan &amp; review{sugCount > 0 && <span className="badge-n" aria-label={`${sugCount} suggestions`}>{sugCount}</span>} ▾</button>
+              {menu && <div className="menu" role="menu" style={{ width: 270 }}>
+                <button role="menuitem" onClick={() => { setMenu(false); setReview(true); }}><span><b>Term in review{sugCount > 0 && <span className="badge-n">{sugCount}</span>}</b><small>What changed this term, and links to make</small></span></button>
+                <button role="menuitem" onClick={() => { setMenu(false); setPhone(true); }}><span><b>Capture on phone</b><small>Snap it now, sort it later</small></span></button>
+                <div className="menu-title">Plan</div>
                 <button role="menuitem" onClick={() => { setMenu(false); setGoal(true); }}><span><b>Plan a goal</b><small>A dashed station, with a sponsor if you like</small></span></button>
                 <button role="menuitem" onClick={() => { setMenu(false); setLineMode('branch'); }}><span><b>Start a branch</b><small>A sub-line under a school line</small></span></button>
                 <button role="menuitem" onClick={() => { setMenu(false); setLineMode('end'); }}><span><b>End a line</b><small>Terminus, then a reflection</small></span></button>
               </div>}
-            </div></>}
+            </div>}
             <button className={`primary${simple ? ' big-add' : ''}`} onClick={() => setAdding({})}>＋ {simple ? 'Add something I did' : 'Add a station'}</button>
           </div>
         </div>
         {simple && <p className="simple-hint">Each colour is something you do. Tap a dot to see it, or add something new.</p>}
-        {!simple && <button className="ghost opts-toggle" aria-expanded={opts} onClick={() => setOpts(!opts)}>{opts ? 'Fewer options ▴' : `View options${filtering || hidden.length || seeAs !== 'student' ? ' (on)' : ''} ▾`}</button>}
-        {!simple && <div className={`map-opts${opts ? ' open' : ''}`}>
-        <div className="see-as" role="group" aria-label="See my map as">
-          <span>See as</span>
-          <div className="seg small">{SEE.map(([k, l]) => <button key={k} className={seeAs === k ? 'on' : ''} aria-pressed={seeAs === k} onClick={() => { setSeeAs(k); setSelected(null); }}>{l}</button>)}</div>
-          {seeAs !== 'student' && <span className="see-note"><b>{seen.events.length}</b> of {map.events.length} stations and <b>{countRefl(seen)}</b> of {reflections} reflections visible to {seeAs === 'public' ? 'anyone with a link' : seeAs === 'school' ? 'school staff' : 'your advisor'}</span>}
-        </div>
-        {full && <div className="map-find" role="search">
-          <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search stations, reflections, lines" aria-label="Search the map" />
-          <select value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Kind"><option value="">Any kind</option>{kinds.map((k) => <option key={k} value={k}>{TYPE_LABEL[k] || k}</option>)}</select>
-          <select value={ver} onChange={(e) => setVer(e.target.value)} aria-label="Verification"><option value="">Any verification</option>{Object.entries(VERIFY_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
-          <select value={year} onChange={(e) => setYear(e.target.value)} aria-label="Year"><option value="">Any year</option>{years.map((y) => <option key={y}>{y}</option>)}</select>
-          <select value={lp} onChange={(e) => setLp(e.target.value)} aria-label="Learner profile"><option value="">Any learner profile</option>{LEARNER_PROFILE.map((k) => <option key={k} value={k}>{k} moments</option>)}</select>
-          {filtering && <span className="find-n" role="status">{lens.visible.size} match{lens.visible.size === 1 ? '' : 'es'} <button className="linkish" onClick={() => { setQ(''); setKind(''); setVer(''); setYear(''); setLp(''); }}>Clear</button></span>}
-          <div className="seg small" role="group" aria-label="Show as"><button className={view === 'map' ? 'on' : ''} aria-pressed={view === 'map'} onClick={() => setView('map')}>Map</button><button className={view === 'list' ? 'on' : ''} aria-pressed={view === 'list'} onClick={() => setView('list')}>List</button></div>
+        {!simple && <div className="map-bar">
+          <div className="see-as" role="group" aria-label="See my map as">
+            <span>See as</span>
+            <div className="seg small">{SEE.map(([k, l]) => <button key={k} className={seeAs === k ? 'on' : ''} aria-pressed={seeAs === k} onClick={() => { setSeeAs(k); setSelected(null); }}>{l}</button>)}</div>
+          </div>
+          {full && <input className="map-q" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" aria-label="Search stations, reflections and lines" />}
+          <button className={`ghost small-btn${opts ? ' on' : ''}`} aria-expanded={opts} onClick={() => setOpts(!opts)}>Filters{activeN ? ` · ${activeN}` : ''} ▾</button>
+          {full && <button className="ghost small-btn" onClick={() => { if (playing) setPlaying(false); else { setReplay(true); if (scrub === null) setScrub(0); setPlaying(true); } }}>{playing ? '❚❚ Pause' : '▶ Replay'}</button>}
+          {full && <div className="seg small" role="group" aria-label="Show as"><button className={view === 'map' ? 'on' : ''} aria-pressed={view === 'map'} onClick={() => setView('map')}>Map</button><button className={view === 'list' ? 'on' : ''} aria-pressed={view === 'list'} onClick={() => setView('list')}>List</button></div>}
         </div>}
-        <div className="chips filter" role="group" aria-label="Show or hide lines">
-          {map.lines.map((l) => (
-            <button key={l.id} className={`line-chip${hidden.includes(l.id) ? ' off' : ''}${l.status === 'ended' ? ' ended' : ''}`} style={{ '--c': l.colour }} aria-pressed={!hidden.includes(l.id)}
-              onClick={() => setHidden(hidden.includes(l.id) ? hidden.filter((x) => x !== l.id) : [...hidden, l.id])}><i className={l.pattern === 'cased' ? 'cased' : undefined} />{l.name}</button>
-          ))}
-        </div>
+        {!simple && seeAs !== 'student' && <p className="see-note"><b>{seen.events.length}</b> of {map.events.length} stations and <b>{countRefl(seen)}</b> of {reflections} reflections visible to {seeAs === 'public' ? 'anyone with a link' : seeAs === 'school' ? 'school staff' : 'your advisor'}</p>}
+        {!simple && opts && <div className="map-opts open">
+          {full && <div className="map-find">
+            <select value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Kind"><option value="">Any kind</option>{kinds.map((k) => <option key={k} value={k}>{TYPE_LABEL[k] || k}</option>)}</select>
+            <select value={ver} onChange={(e) => setVer(e.target.value)} aria-label="Verification"><option value="">Any verification</option>{Object.entries(VERIFY_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
+            <select value={year} onChange={(e) => setYear(e.target.value)} aria-label="Year"><option value="">Any year</option>{years.map((y) => <option key={y}>{y}</option>)}</select>
+            <select value={lp} onChange={(e) => setLp(e.target.value)} aria-label="Learner profile"><option value="">Any learner profile</option>{LEARNER_PROFILE.map((k) => <option key={k} value={k}>{k} moments</option>)}</select>
+          </div>}
+          <div className="chips filter" role="group" aria-label="Show or hide lines">
+            {map.lines.map((l) => (
+              <button key={l.id} className={`line-chip${hidden.includes(l.id) ? ' off' : ''}${l.status === 'ended' ? ' ended' : ''}`} style={{ '--c': l.colour }} aria-pressed={!hidden.includes(l.id)}
+                onClick={() => setHidden(hidden.includes(l.id) ? hidden.filter((x) => x !== l.id) : [...hidden, l.id])}><i className={l.pattern === 'cased' ? 'cased' : undefined} />{l.name}</button>
+            ))}
+          </div>
         </div>}
+        {filtering && <p className="find-n" role="status">{lens.visible.size} match{lens.visible.size === 1 ? '' : 'es'} <button className="linkish" onClick={() => { setQ(''); setKind(''); setVer(''); setYear(''); setLp(''); }}>Clear</button></p>}
       </div>
       <div className="home-map">
         {view === 'map' ? <MetroMap recent={simple} map={shown} lens={lens} selectedId={selected} onSelect={setSelected} onSignal={(g) => (g.open ? setSignal(g) : setSelected(g.eventId))} fitKey={studentId} newIds={newIds} />
           : <StationList events={listed} map={shown} selected={selected} onSelect={setSelected} />}
         <StationPanel event={event} map={map} onClose={() => setSelected(null)} readOnly={seeAs !== 'student'} toast={toast} />
       </div>
-      {full && <div className="scrubber">
+      {full && (replay || scrub !== null) && <div className="scrubber">
         <button className="icon-btn" onClick={() => { if (playing) setPlaying(false); else { if (scrub === null) setScrub(0); setPlaying(true); } }} aria-label={playing ? 'Pause' : 'Play the journey'}>{playing ? '❚❚' : '▶'}</button>
         <input type="range" min={0} max={span} value={scrub ?? span} onChange={(e) => { setPlaying(false); const v = +e.target.value; setScrub(v >= span ? null : v); }} aria-label="Travel through time" />
         <span className="scrub-date">{scrub === null ? 'Today' : new Date(at).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}</span>
+        <button className="icon-btn" onClick={() => { setPlaying(false); setScrub(null); setReplay(false); }} aria-label="Close the time scrubber">×</button>
       </div>}
       <div className="home-foot">{!simple && <MapLegend />}<VerifyLegend /><span className="hint">Tap a station or a signal · drag to pan · pinch or scroll to zoom</span></div>
 

@@ -48,28 +48,26 @@ export default function TeacherQueue({ teacherId, toast, version, focus }) {
         <div>
           <div className="kicker">Endorsement queue</div>
           <h1>{t.name}</h1>
-          <p>{t.role} · items from your students and from ManageBac that need a teacher’s eye</p>
+          <p>{t.role} · items that need a teacher’s eye. About 3 minutes each; {autoShare}% of stations verify themselves with no teacher needed.</p>
           <button className="ghost ct-open" onClick={() => setClassTask(true)}>Endorse a whole-class task</button>
           {getSponsored(teacherId).some((e) => e.sponsor.status === 'invited') && <a className="sp-jump" href="#sponsor" onClick={(ev) => { ev.preventDefault(); document.getElementById('sponsor')?.scrollIntoView({ behavior: 'smooth' }); }}>{getSponsored(teacherId).filter((e) => e.sponsor.status === 'invited').length} new sponsor invitation ↓</a>}
         </div>
         <div className="meter" aria-label="Workload this term">
           <div><b>{pending.length}</b><span>waiting</span></div>
           <div><b>{termEndorsed}</b><span>endorsed this term</span></div>
-          <div><b>~3 min</b><span>each, on average</span></div>
-          <div><b>{autoShare}%</b><span>of stations verified automatically, no teacher needed</span></div>
         </div>
       </header>
 
       {pending.length > 1 && (
         <div className="batch-bar">
           <label><input type="checkbox" checked={picked.length === pending.length} onChange={() => setPicked(picked.length === pending.length ? [] : pending.map((r) => r.id))} /> Select all</label>
+          <details className="kbd-hint"><summary>Keyboard shortcuts</summary><kbd>Tab</kbd> to a card, then <kbd>J</kbd> <kbd>K</kbd> to move, <kbd>E</kbd> to endorse, <kbd>A</kbd> to write what you need, <kbd>X</kbd> to select.</details>
           <span className="spacer" />
           <button className="primary" disabled={!picked.length} onClick={() => doEndorse(picked)}>Endorse {picked.length || ''} selected</button>
         </div>
       )}
       {!pending.length && <div className="empty-state"><b>All caught up.</b> New requests will appear here and in your notifications.</div>}
 
-      {pending.length > 0 && <p className="kbd-hint">Keyboard: <kbd>Tab</kbd> to a card, then <kbd>J</kbd> <kbd>K</kbd> to move, <kbd>E</kbd> to endorse, <kbd>A</kbd> to write what you need, <kbd>X</kbd> to select.</p>}
       <div className="queue-list">
         {pending.map((r) => {
           const e = r.event;
