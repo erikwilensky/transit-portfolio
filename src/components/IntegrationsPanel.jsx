@@ -99,7 +99,7 @@ export default function IntegrationsPanel({ map, lens, newIds, onAdded, toast, v
           )}
         </section>
         <div className="int-map-frame">
-          <MetroMap map={map} lens={lens} newIds={newIds} selectedId={selected} onSelect={setSelected} fitKey={studentId} />
+          <MetroMap recent map={map} lens={lens} newIds={newIds} selectedId={selected} onSelect={setSelected} fitKey={studentId} />
           <StationPanel event={event} map={map} onClose={() => setSelected(null)} />
         </div>
       </div>

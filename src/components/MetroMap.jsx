@@ -81,7 +81,7 @@ export function VerificationMark({ level, x = 0, y = 0, r = 3.6 }) {
 
 const GRADE_YEARS = (start, g) => `${start + g - 9}–${String(start + g - 8).slice(2)}`;
 
-export default function MetroMap({ map, lens, selectedId, onSelect, onSignal, mini = false, newIds, fitKey, duration = 450, showToday = true, className = '' }) {
+export default function MetroMap({ map, lens, selectedId, onSelect, onSignal, mini = false, recent = false, newIds, fitKey, duration = 450, showToday = true, className = '' }) {
   const target = useMemo(() => computeLayout(map, lens, TODAY, mini ? { laneH: 70, slotW: 40, colPad: 10, emptyW: 24, left: 20, top: 30, bottom: 30, right: 20 } : {}), [map, lens, mini]);
   const tweened = useTween(target, duration);
   // On the first frame after the data changes shape, the tween hasn't caught up yet.
@@ -102,6 +102,18 @@ export default function MetroMap({ map, lens, selectedId, onSelect, onSignal, mi
     if (!svg || !zoomRef.current) return;
     const { width: cw, height: ch } = svg.getBoundingClientRect();
     // Desktop: show the whole journey from Grade 9 when it can stay legible; phones keep a closer zoom.
+    // P4: in a small frame, open on the current year at full label size rather than shrinking the whole journey.
+    if (recent && target.width > cw) {
+      const cols = target.columns;
+      const now = cols.find((c) => target.todayX >= c.x && target.todayX < c.x + c.w) || cols.at(-1);
+      const x0 = (cols.find((c) => c.grade === now?.grade) || { x: 0 }).x;
+      const s = 1;
+      const tx = Math.max(cw - target.width * s, Math.min(0, 12 - x0 * s));
+      const ty = target.height * s < ch ? (ch - target.height * s) / 2 : 0;
+      const sel = select(svg);
+      (animate ? sel.transition().duration(400) : sel).call(zoomRef.current.transform, zoomIdentity.translate(tx, ty).scale(s));
+      return;
+    }
     let s = Math.min(cw / target.width, ch / target.height);
     if (cw >= 900) s = Math.max(s, Math.min(cw / target.width, 1));
     s = Math.max(cw < 700 ? 0.6 : 0.5, Math.min(1.15, s));

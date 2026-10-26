@@ -46,7 +46,7 @@ export default function AdvisorStudent({ studentId, version, toast, go, persona 
       </div>
       <div className="as-body">
         <div className="as-map">
-          <MetroMap map={map} lens={lens} selectedId={selected} onSelect={setSelected} onSignal={(g) => setSelected(g.eventId)} fitKey={studentId} />
+          <MetroMap recent map={map} lens={lens} selectedId={selected} onSelect={setSelected} onSignal={(g) => setSelected(g.eventId)} fitKey={studentId} />
           <StationPanel event={event} map={map} onClose={() => setSelected(null)} readOnly />
         </div>
         <aside className="as-side">
