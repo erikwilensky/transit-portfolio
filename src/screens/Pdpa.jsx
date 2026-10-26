@@ -57,7 +57,7 @@ export default function Pdpa({ drafts, version, go }) {
           </table>
         </section>
         <section className="card">
-          <h2>Parent consent by grade</h2>
+          <h2>Parent consent by year group</h2>
           <ul className="sb-legend"><li><i className="dv1" />Consent on file</li><li><i className="dv3" />Waiting for a parent</li></ul>
           <ul className="consent">{CONSENT.map((c) => (
             <li key={c.grade}><span>Y{c.grade + 1}</span>

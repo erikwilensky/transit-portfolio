@@ -249,6 +249,11 @@ code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-si
 .theme-night { --bg: #14161b; --surface: #1c1f26; --surface-2: #262a33; --ink: #eceef2; --muted: #9aa1ac; --rule: #2f343e; --col-a: #14161b; --col-b: #181b21; --halo: #14161b; --station: #f4f4f4; --accent: #FFB81C; --v-solid: #c9d3ea; }
 .theme-night .interchange { stroke: #0e1013; }
 :root[data-theme="dark"] .theme-metro { --bg: #121418; }
+/* A presentation theme owns its colours, whatever the app theme is (light text never lands on a cream card). */
+.theme-metro, .theme-ivy, .theme-slate, .theme-night { color: var(--ink); }
+.landing-body.theme-ivy, .landing-body.theme-slate, .landing-body.theme-night { background: var(--bg); }
+.theme-ivy, .theme-slate { --v-solid: #002855; color-scheme: light; }
+:root[data-theme="dark"] :is(.theme-ivy, .theme-slate) :is(.vb-check, .linkish) { color: var(--b-purple); }
 
 /* Code view */
 .code-view { display: flex; flex-direction: column; height: 100%; min-height: 560px; background: #0f1115; color: #d7dae0; }
@@ -1441,3 +1446,12 @@ a.ghost { text-decoration: none; display: inline-flex; align-items: center; font
 }
 .sp-jump { display: inline-block; margin-top: 8px; font-size: 13.5px; font-weight: 600; color: var(--navy); background: color-mix(in srgb, var(--b-gold) 35%, transparent); padding: 4px 10px; border-radius: 999px; text-decoration: none; }
 :root[data-theme="dark"] .sp-jump { color: var(--b-gold); }
+/* Top bar: screens that do not fit go under More */
+.topnav nav.navbar { flex: 1 1 0; min-width: 0; overflow: visible; position: relative; align-items: center; }
+.nav-measure { position: absolute; visibility: hidden; pointer-events: none; display: flex; gap: 2px; left: -10000px; top: 0; white-space: nowrap; }
+.nav-more > button { display: flex; align-items: center; padding: 8px 11px; border-radius: 999px; border: 0; background: none; color: rgba(255,255,255,.78); font-weight: 500; font-size: 14px; white-space: nowrap; }
+.nav-more > button:hover { background: rgba(255,255,255,.12); color: #fff; } .nav-more > button.on { background: #fff; color: var(--navy); }
+.nav-menu { left: 0; right: auto; width: 220px; }
+.topnav .nav-menu a { display: block; color: var(--ink); padding: 9px 10px; border-radius: 8px; }
+.topnav .nav-menu a:hover:not(.on) { background: var(--surface-2); color: var(--ink); } .topnav .nav-menu a.on { background: var(--navy); color: #fff; }
+@media (max-width: 900px) { .topnav nav.navbar { flex: 1 1 100%; } }

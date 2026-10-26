@@ -39,8 +39,8 @@ export default function SchoolDashboard({ go, version }) {
       </div>
       <div className="dash-grid">
         <section className="card">
-          <h2>Students active this term, by grade</h2>
-          <BarChart data={ADOPTION} unit="%" max={100} label="Percentage of students active this term by grade" />
+          <h2>Students active this term, by year group</h2>
+          <BarChart data={ADOPTION} unit="%" max={100} label="Percentage of students active this term by year group" />
           <p className="fineprint">Year 7 is the new pilot year group. Years 8 and 9 have not been onboarded yet.</p>
         </section>
         <section className="card">

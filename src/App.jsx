@@ -36,6 +36,7 @@ import ParentView from './screens/ParentView.jsx';
 import Pilot from './screens/Pilot.jsx';
 import AuditLog from './screens/AuditLog.jsx';
 import Logo from './components/Logo.jsx';
+import NavBar from './components/NavBar.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { VerifyProvider } from './components/VerifyModal.jsx';
 import { TOURS } from './tour.js';
@@ -106,12 +107,7 @@ export default function App() {
       <div className={`app kind-${persona.kind}`}>
         <header className="topnav">
           <a className="brand" href={`#/${persona.id}`} aria-label="NIST Transit Portfolio home"><Logo className="brand-logo" /><span className="brand-name"><b>Transit</b> Portfolio</span></a>
-          <nav aria-label="Screens">
-            {nav.map(([id, label]) => (
-              <a key={id} href={`#/${persona.id}/${id}`} className={route.screen === id || (id === 'advisory' && route.screen === 'student') ? 'on' : ''} aria-current={route.screen === id ? 'page' : undefined}
-                onClick={(e) => { e.preventDefault(); go(persona.id, id); }}>{label}</a>
-            ))}
-          </nav>
+          <NavBar items={nav} hrefOf={(id) => `#/${persona.id}/${id}`} isOn={(id) => route.screen === id || (id === 'advisory' && route.screen === 'student')} onGo={(id) => go(persona.id, id)} />
           <div className="nav-right">
             <div className="menu-wrap">
               <button className="persona-btn" onClick={() => setMenu(menu === 'persona' ? null : 'persona')} aria-expanded={menu === 'persona'} aria-haspopup="menu">
