@@ -1,0 +1,42 @@
+[
+  {
+    "id": "t-01",
+    "name": "Ms Priya Nair",
+    "role": "Computer Science"
+  },
+  {
+    "id": "t-02",
+    "name": "Mr David Okafor",
+    "role": "Biology"
+  },
+  {
+    "id": "t-03",
+    "name": "Ms Sofia Marín",
+    "role": "Music"
+  },
+  {
+    "id": "t-04",
+    "name": "Mr Tom Hale",
+    "role": "Design"
+  },
+  {
+    "id": "t-05",
+    "name": "Kru Napat Srisuk",
+    "role": "Languages"
+  },
+  {
+    "id": "t-06",
+    "name": "Ms Hana Sato",
+    "role": "Visual Arts"
+  },
+  {
+    "id": "t-07",
+    "name": "Mr James Whitfield",
+    "role": "Advisor, 4B"
+  },
+  {
+    "id": "t-08",
+    "name": "Ms Clara Brandt",
+    "role": "CAS Coordinator"
+  }
+]

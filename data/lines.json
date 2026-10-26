@@ -1,0 +1,113 @@
+[
+  {
+    "id": "science",
+    "name": "Science",
+    "colour": "#6B3FB0",
+    "parentLineId": null,
+    "status": "active"
+  },
+  {
+    "id": "computing",
+    "name": "Computing",
+    "colour": "#1E6FD9",
+    "parentLineId": null,
+    "status": "active"
+  },
+  {
+    "id": "environment",
+    "name": "Environment",
+    "colour": "#2E9E4F",
+    "parentLineId": null,
+    "status": "active"
+  },
+  {
+    "id": "sport",
+    "name": "Sport",
+    "colour": "#F2A100",
+    "parentLineId": null,
+    "status": "active"
+  },
+  {
+    "id": "service",
+    "name": "Service",
+    "colour": "#E2343C",
+    "parentLineId": null,
+    "status": "active"
+  },
+  {
+    "id": "music",
+    "name": "Music",
+    "colour": "#E0458B",
+    "parentLineId": null,
+    "status": "active"
+  },
+  {
+    "id": "design",
+    "name": "Design",
+    "colour": "#00A39E",
+    "parentLineId": null,
+    "status": "active"
+  },
+  {
+    "id": "languages",
+    "name": "Languages",
+    "colour": "#F06A1D",
+    "parentLineId": null,
+    "status": "active"
+  },
+  {
+    "id": "art",
+    "name": "Art",
+    "colour": "#8A5A44",
+    "parentLineId": null,
+    "status": "active"
+  },
+  {
+    "id": "maya-datasci",
+    "name": "Data Science",
+    "colour": "#C152DB",
+    "parentLineId": "science",
+    "status": "active",
+    "studentId": "st-01"
+  },
+  {
+    "id": "maya-swim",
+    "name": "Swimming",
+    "colour": "#F2A100",
+    "parentLineId": "sport",
+    "status": "ended",
+    "studentId": "st-01"
+  },
+  {
+    "id": "arun-musictech",
+    "name": "Music Technology",
+    "colour": "#A23B72",
+    "parentLineId": "music",
+    "status": "active",
+    "studentId": "st-02"
+  },
+  {
+    "id": "arun-french",
+    "name": "French",
+    "colour": "#F06A1D",
+    "parentLineId": "languages",
+    "status": "ended",
+    "studentId": "st-02"
+  },
+  {
+    "id": "lena-japanese",
+    "name": "Japanese",
+    "colour": "#C2410C",
+    "parentLineId": "languages",
+    "status": "active",
+    "studentId": "st-03"
+  },
+  {
+    "id": "lena-ceramics",
+    "name": "Ceramics",
+    "colour": "#8A5A44",
+    "parentLineId": "art",
+    "status": "ended",
+    "studentId": "st-03"
+  }
+]

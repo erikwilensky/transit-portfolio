@@ -1,0 +1,240 @@
+[
+  {
+    "id": "rf-001",
+    "eventId": "ev-010",
+    "text": "Counting fibres by hand took forever. I wondered if a program could do it.",
+    "date": "2024-05-15",
+    "prompt": "What surprised you?"
+  },
+  {
+    "id": "rf-002",
+    "eventId": "ev-012",
+    "text": "Both projects were really about counting things carefully and finding a pattern. I liked the spreadsheet part best.",
+    "date": "2024-06-20",
+    "prompt": "What connected your projects this year?"
+  },
+  {
+    "id": "rf-003",
+    "eventId": "ev-018",
+    "text": "Swimming taught me to train on a schedule. I stopped because I wanted my evenings for building things, not because I fell out of love with it.",
+    "date": "2025-03-01",
+    "prompt": "A line is ending. What are you taking with you?"
+  },
+  {
+    "id": "rf-004",
+    "eventId": "ev-042",
+    "text": "I started it as an environment project, but the hard part was the data: cleaning gaps, spotting a broken sensor from its readings. That is when I realised I want to study data.",
+    "date": "2026-03-22",
+    "prompt": "This project touches two lines. What joined them?"
+  },
+  {
+    "id": "rf-005",
+    "eventId": "ev-029",
+    "text": "Biology gave me the questions; the sensor project showed me I enjoy the analysis even more. Data Science is where those meet.",
+    "date": "2026-03-28",
+    "prompt": "A new line has branched. Why now?"
+  },
+  {
+    "id": "rf-006",
+    "eventId": "ev-034",
+    "text": "Every service project I loved ended with a dataset someone could act on.",
+    "date": "2026-10-10",
+    "prompt": "How has service changed what you want to study?"
+  },
+  {
+    "id": "rf-007",
+    "eventId": "ev-111",
+    "text": "Writing the music for my Pygame game made me want to understand production, not just playing.",
+    "date": "2025-07-15",
+    "prompt": "A new line has branched. What started it?"
+  },
+  {
+    "id": "rf-008",
+    "eventId": "ev-117",
+    "text": "Design gave me the player’s view, code made the music react, and music technology made it sound right.",
+    "date": "2026-02-14",
+    "prompt": "This project joins three lines. What did each bring?"
+  },
+  {
+    "id": "rf-009",
+    "eventId": "ev-120",
+    "text": "I chose Spanish for the DP because my cousins speak it. French taught me how to learn a language, so I am not starting from zero.",
+    "date": "2026-05-20",
+    "prompt": "A line is ending. What are you taking with you?"
+  },
+  {
+    "id": "rf-010",
+    "eventId": "ev-204",
+    "text": "Not understanding the canteen staff at first. Learning ten Thai phrases a week helped more than anything.",
+    "date": "2025-11-20",
+    "prompt": "What has been hardest, and what has helped?"
+  },
+  {
+    "id": "rf-011",
+    "eventId": "ev-207",
+    "text": "I knew what it felt like to arrive without the language.",
+    "date": "2026-02-12",
+    "prompt": "This joins two lines. What joined them?"
+  },
+  {
+    "id": "rf-012",
+    "eventId": "ev-209",
+    "text": "The drawings got better after day 60, when I stopped drawing what I thought I should.",
+    "date": "2026-03-20",
+    "prompt": "What did repetition teach you?"
+  },
+  {
+    "id": "rf-013",
+    "eventId": "ev-210",
+    "text": "The club moved to Thursdays, which clashed with Language Buddies. I chose tutoring. I still love clay.",
+    "date": "2026-04-22",
+    "prompt": "A line is ending. What are you taking with you?"
+  },
+  {
+    "id": "rf-014",
+    "eventId": "ev-213",
+    "text": "Self-study got serious enough that I wanted a teacher and a test.",
+    "date": "2026-06-20",
+    "prompt": "A new line has branched. Why now?"
+  },
+  {
+    "id": "rf-015",
+    "eventId": "ev-218",
+    "text": "I am more patient with my buddies than with myself. I am trying to fix that.",
+    "date": "2026-10-14",
+    "prompt": "What do you notice about yourself when you help others?"
+  },
+  {
+    "id": "rf-016",
+    "eventId": "ev-301",
+    "text": "Sample reflection.",
+    "date": "2025-04-09",
+    "prompt": "Term check-in"
+  },
+  {
+    "id": "rf-017",
+    "eventId": "ev-310",
+    "text": "Sample reflection.",
+    "date": "2024-07-05",
+    "prompt": "Term check-in"
+  },
+  {
+    "id": "rf-018",
+    "eventId": "ev-312",
+    "text": "Sample reflection.",
+    "date": "2024-12-22",
+    "prompt": "Term check-in"
+  },
+  {
+    "id": "rf-019",
+    "eventId": "ev-314",
+    "text": "Sample reflection.",
+    "date": "2025-04-02",
+    "prompt": "Term check-in"
+  },
+  {
+    "id": "rf-020",
+    "eventId": "ev-316",
+    "text": "Sample reflection.",
+    "date": "2025-05-31",
+    "prompt": "Term check-in"
+  },
+  {
+    "id": "rf-021",
+    "eventId": "ev-318",
+    "text": "Sample reflection.",
+    "date": "2026-06-01",
+    "prompt": "Term check-in"
+  },
+  {
+    "id": "rf-022",
+    "eventId": "ev-321",
+    "text": "Sample reflection.",
+    "date": "2025-12-08",
+    "prompt": "Term check-in"
+  },
+  {
+    "id": "rf-023",
+    "eventId": "ev-324",
+    "text": "Sample reflection.",
+    "date": "2026-02-05",
+    "prompt": "Term check-in"
+  },
+  {
+    "id": "rf-024",
+    "eventId": "ev-327",
+    "text": "Sample reflection.",
+    "date": "2026-06-11",
+    "prompt": "Term check-in"
+  },
+  {
+    "id": "rf-025",
+    "eventId": "ev-330",
+    "text": "Sample reflection.",
+    "date": "2026-08-04",
+    "prompt": "Term check-in"
+  },
+  {
+    "id": "rf-026",
+    "eventId": "ev-334",
+    "text": "Sample reflection.",
+    "date": "2023-09-18",
+    "prompt": "Term check-in"
+  },
+  {
+    "id": "rf-027",
+    "eventId": "ev-342",
+    "text": "Sample reflection.",
+    "date": "2025-06-06",
+    "prompt": "Term check-in"
+  },
+  {
+    "id": "rf-028",
+    "eventId": "ev-350",
+    "text": "Sample reflection.",
+    "date": "2025-01-02",
+    "prompt": "Term check-in"
+  },
+  {
+    "id": "rf-029",
+    "eventId": "ev-352",
+    "text": "Sample reflection.",
+    "date": "2025-04-16",
+    "prompt": "Term check-in"
+  },
+  {
+    "id": "rf-030",
+    "eventId": "ev-354",
+    "text": "Sample reflection.",
+    "date": "2025-08-11",
+    "prompt": "Term check-in"
+  },
+  {
+    "id": "rf-031",
+    "eventId": "ev-356",
+    "text": "Sample reflection.",
+    "date": "2025-09-27",
+    "prompt": "Term check-in"
+  },
+  {
+    "id": "rf-032",
+    "eventId": "ev-358",
+    "text": "Sample reflection.",
+    "date": "2025-10-24",
+    "prompt": "Term check-in"
+  },
+  {
+    "id": "rf-033",
+    "eventId": "ev-360",
+    "text": "Sample reflection.",
+    "date": "2026-01-27",
+    "prompt": "Term check-in"
+  },
+  {
+    "id": "rf-034",
+    "eventId": "ev-362",
+    "text": "Sample reflection.",
+    "date": "2026-04-12",
+    "prompt": "Term check-in"
+  }
+]

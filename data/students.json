@@ -1,0 +1,175 @@
+[
+  {
+    "id": "st-01",
+    "name": "Maya Chen",
+    "grade": 12,
+    "programme": "IB Diploma",
+    "avatar": {
+      "initials": "MC",
+      "colour": "#6B3FB0"
+    },
+    "homeroom": "4B",
+    "advisorId": "t-07",
+    "g9StartYear": 2023,
+    "laneOrder": [
+      "maya-swim",
+      "science",
+      "maya-datasci",
+      "computing",
+      "environment",
+      "service"
+    ],
+    "lineLabels": {
+      "science": "Science · Biology"
+    }
+  },
+  {
+    "id": "st-02",
+    "name": "Arun Mehta",
+    "grade": 11,
+    "programme": "IB Diploma",
+    "avatar": {
+      "initials": "AM",
+      "colour": "#E0458B"
+    },
+    "homeroom": "4B",
+    "advisorId": "t-07",
+    "g9StartYear": 2024,
+    "laneOrder": [
+      "arun-french",
+      "music",
+      "arun-musictech",
+      "design",
+      "computing",
+      "languages"
+    ],
+    "lineLabels": {
+      "languages": "Languages · Spanish"
+    }
+  },
+  {
+    "id": "st-03",
+    "name": "Lena Fischer",
+    "grade": 10,
+    "programme": "IB MYP",
+    "avatar": {
+      "initials": "LF",
+      "colour": "#F06A1D"
+    },
+    "homeroom": "4B",
+    "advisorId": "t-07",
+    "g9StartYear": 2025,
+    "laneOrder": [
+      "lena-japanese",
+      "languages",
+      "service",
+      "art",
+      "lena-ceramics"
+    ],
+    "lineLabels": {
+      "languages": "Languages · Thai & English"
+    }
+  },
+  {
+    "id": "st-04",
+    "name": "Kai Tanaka",
+    "grade": 11,
+    "programme": "IB Diploma",
+    "avatar": {
+      "initials": "KT",
+      "colour": "#6b7280"
+    },
+    "homeroom": "4B",
+    "advisorId": "t-07",
+    "g9StartYear": 2024,
+    "laneOrder": [
+      "sport",
+      "science",
+      "service"
+    ],
+    "lineLabels": {},
+    "cohortOnly": true
+  },
+  {
+    "id": "st-05",
+    "name": "Noor Haddad",
+    "grade": 12,
+    "programme": "IB Diploma",
+    "avatar": {
+      "initials": "NH",
+      "colour": "#6b7280"
+    },
+    "homeroom": "4B",
+    "advisorId": "t-07",
+    "g9StartYear": 2023,
+    "laneOrder": [
+      "languages",
+      "art",
+      "service",
+      "environment"
+    ],
+    "lineLabels": {},
+    "cohortOnly": true
+  },
+  {
+    "id": "st-06",
+    "name": "Ploy Srisai",
+    "grade": 10,
+    "programme": "IB MYP",
+    "avatar": {
+      "initials": "PS",
+      "colour": "#6b7280"
+    },
+    "homeroom": "4B",
+    "advisorId": "t-07",
+    "g9StartYear": 2025,
+    "laneOrder": [
+      "music",
+      "design",
+      "sport"
+    ],
+    "lineLabels": {},
+    "cohortOnly": true
+  },
+  {
+    "id": "st-07",
+    "name": "Mateo Ruiz",
+    "grade": 12,
+    "programme": "IB Diploma",
+    "avatar": {
+      "initials": "MR",
+      "colour": "#6b7280"
+    },
+    "homeroom": "4B",
+    "advisorId": "t-07",
+    "g9StartYear": 2023,
+    "laneOrder": [
+      "computing",
+      "sport",
+      "science"
+    ],
+    "lineLabels": {},
+    "cohortOnly": true
+  },
+  {
+    "id": "st-08",
+    "name": "Sienna Okoye",
+    "grade": 11,
+    "programme": "IB Diploma",
+    "avatar": {
+      "initials": "SO",
+      "colour": "#6b7280"
+    },
+    "homeroom": "4B",
+    "advisorId": "t-07",
+    "g9StartYear": 2024,
+    "laneOrder": [
+      "science",
+      "environment",
+      "service",
+      "art"
+    ],
+    "lineLabels": {},
+    "cohortOnly": true
+  }
+]

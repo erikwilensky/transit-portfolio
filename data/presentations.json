@@ -1,0 +1,293 @@
+[
+  {
+    "id": "pr-01",
+    "studentId": "st-01",
+    "audience": "general",
+    "targetName": null,
+    "tier": "template",
+    "title": "Maya Chen: my journey",
+    "filters": {
+      "hiddenLines": []
+    },
+    "order": null,
+    "theme": "metro",
+    "layout": "metro",
+    "narratives": {},
+    "shareLinks": [
+      {
+        "token": "tp-g3n2",
+        "presentationId": "pr-01",
+        "expiresAt": "2026-11-30",
+        "revoked": false,
+        "views": 9
+      }
+    ]
+  },
+  {
+    "id": "pr-02",
+    "studentId": "st-01",
+    "audience": "university",
+    "targetName": null,
+    "tier": "builder",
+    "title": "Maya Chen: university portfolio",
+    "filters": {
+      "hiddenLines": []
+    },
+    "order": [
+      "maya-datasci",
+      "science",
+      "computing",
+      "environment",
+      "service",
+      "maya-swim"
+    ],
+    "theme": "ivy",
+    "layout": "metro",
+    "narratives": {
+      "maya-datasci": "Data Science branched off my Biology line in Grade 11, when an air-quality project showed me I enjoy the analysis more than the collection. Since then I have modelled algae growth for my IA and I am predicting dengue outbreaks from weather data for my Extended Essay.",
+      "science": "Biology gave me my questions: microplastics in canals, enzyme kinetics, algae growth. Each project pushed me toward more careful measurement.",
+      "computing": "I learned to code in Grade 9 and use it as a tool: sensors, dashboards and a hackathon chatbot.",
+      "environment": "Most of my projects start with a local environmental problem I can measure.",
+      "service": "Beach Guardians and the STEM club taught me that data is only useful when someone can act on it.",
+      "maya-swim": "Four years of competitive swimming taught me to train on a schedule."
+    },
+    "shareLinks": [
+      {
+        "token": "tp-u8k4",
+        "presentationId": "pr-02",
+        "expiresAt": "2026-12-15",
+        "revoked": false,
+        "views": 14
+      }
+    ]
+  },
+  {
+    "id": "pr-03",
+    "studentId": "st-01",
+    "audience": "specific",
+    "targetName": "Data Science",
+    "institution": "Northbridge University (fictional), BSc Data Science",
+    "tier": "builder",
+    "title": "Maya Chen: why Data Science",
+    "filters": {
+      "hiddenLines": []
+    },
+    "order": null,
+    "theme": "ivy",
+    "layout": "metro",
+    "focusLines": [
+      "maya-datasci",
+      "computing",
+      "science"
+    ],
+    "whyCourse": "Every line on my map that kept growing ended in a dataset. Data Science is the course that joins the questions I learned to ask in Biology with the tools I taught myself in Computing.",
+    "narratives": {},
+    "shareLinks": [
+      {
+        "token": "tp-nb7d",
+        "presentationId": "pr-03",
+        "expiresAt": "2027-01-31",
+        "revoked": false,
+        "views": 3
+      }
+    ]
+  },
+  {
+    "id": "pr-04",
+    "studentId": "st-01",
+    "audience": "employer",
+    "targetName": null,
+    "tier": "template",
+    "title": "Maya Chen: projects",
+    "filters": {
+      "hiddenLines": []
+    },
+    "order": null,
+    "theme": "slate",
+    "layout": "cards",
+    "narratives": {},
+    "shareLinks": [
+      {
+        "token": "tp-e1x9",
+        "presentationId": "pr-04",
+        "expiresAt": "2026-09-30",
+        "revoked": true,
+        "views": 2
+      }
+    ]
+  },
+  {
+    "id": "pr-11",
+    "studentId": "st-02",
+    "audience": "general",
+    "targetName": null,
+    "tier": "template",
+    "title": "Arun Mehta: my journey",
+    "filters": {
+      "hiddenLines": []
+    },
+    "order": null,
+    "theme": "metro",
+    "layout": "metro",
+    "narratives": {},
+    "shareLinks": [
+      {
+        "token": "tp-a1g0",
+        "presentationId": "pr-11",
+        "expiresAt": "2026-12-01",
+        "revoked": false,
+        "views": 5
+      }
+    ]
+  },
+  {
+    "id": "pr-12",
+    "studentId": "st-02",
+    "audience": "university",
+    "targetName": null,
+    "tier": "builder",
+    "title": "Arun Mehta: university portfolio",
+    "filters": {
+      "hiddenLines": []
+    },
+    "order": null,
+    "theme": "ivy",
+    "layout": "metro",
+    "narratives": {
+      "music": "Music has been my steadiest line: graded piano, jazz band and now Music HL.",
+      "arun-musictech": "Music Technology branched off when I started writing music for my own games.",
+      "design": "Design taught me to start from the person using the thing.",
+      "computing": "Code is how I make music react."
+    },
+    "shareLinks": [
+      {
+        "token": "tp-a2u1",
+        "presentationId": "pr-12",
+        "expiresAt": "2027-01-15",
+        "revoked": false,
+        "views": 2
+      }
+    ]
+  },
+  {
+    "id": "pr-13",
+    "studentId": "st-02",
+    "audience": "specific",
+    "targetName": "Music Technology",
+    "institution": "Lakeside Conservatoire (fictional), BMus Music Technology",
+    "tier": "builder",
+    "title": "Arun Mehta: why Music Technology",
+    "filters": {
+      "hiddenLines": []
+    },
+    "order": null,
+    "theme": "ivy",
+    "layout": "metro",
+    "focusLines": [
+      "arun-musictech",
+      "music",
+      "computing"
+    ],
+    "whyCourse": "My Music line never stopped, and every time it met Design or Computing something new happened. Music Technology is the course where all three are the point.",
+    "narratives": {},
+    "shareLinks": []
+  },
+  {
+    "id": "pr-14",
+    "studentId": "st-02",
+    "audience": "employer",
+    "targetName": null,
+    "tier": "template",
+    "title": "Arun Mehta: projects",
+    "filters": {
+      "hiddenLines": []
+    },
+    "order": null,
+    "theme": "slate",
+    "layout": "cards",
+    "narratives": {},
+    "shareLinks": []
+  },
+  {
+    "id": "pr-21",
+    "studentId": "st-03",
+    "audience": "general",
+    "targetName": null,
+    "tier": "template",
+    "title": "Lena Fischer: my journey",
+    "filters": {
+      "hiddenLines": []
+    },
+    "order": null,
+    "theme": "metro",
+    "layout": "metro",
+    "narratives": {},
+    "shareLinks": [
+      {
+        "token": "tp-l5g2",
+        "presentationId": "pr-21",
+        "expiresAt": "2026-12-20",
+        "revoked": false,
+        "views": 4
+      }
+    ]
+  },
+  {
+    "id": "pr-22",
+    "studentId": "st-03",
+    "audience": "university",
+    "targetName": null,
+    "tier": "template",
+    "title": "Lena Fischer: portfolio",
+    "filters": {
+      "hiddenLines": []
+    },
+    "order": null,
+    "theme": "ivy",
+    "layout": "metro",
+    "narratives": {
+      "languages": "I arrived in Bangkok in Grade 9 speaking no Thai. Languages became the line everything else hangs from.",
+      "service": "Language Buddies is where my languages turned into something useful for other people.",
+      "art": "Art is where I slow down."
+    },
+    "shareLinks": []
+  },
+  {
+    "id": "pr-23",
+    "studentId": "st-03",
+    "audience": "specific",
+    "targetName": "Japanese",
+    "institution": "IB Diploma course choice: Japanese ab initio",
+    "tier": "template",
+    "title": "Lena Fischer: why Japanese",
+    "filters": {
+      "hiddenLines": []
+    },
+    "order": null,
+    "theme": "ivy",
+    "layout": "metro",
+    "focusLines": [
+      "lena-japanese",
+      "languages"
+    ],
+    "whyCourse": "Japanese started as a hobby and became a branch of my Languages line within a year. I want to take it further in the Diploma.",
+    "narratives": {},
+    "shareLinks": []
+  },
+  {
+    "id": "pr-24",
+    "studentId": "st-03",
+    "audience": "employer",
+    "targetName": null,
+    "tier": "template",
+    "title": "Lena Fischer: volunteering",
+    "filters": {
+      "hiddenLines": []
+    },
+    "order": null,
+    "theme": "slate",
+    "layout": "cards",
+    "narratives": {},
+    "shareLinks": []
+  }
+]

@@ -1,0 +1,2980 @@
+[
+  {
+    "id": "ev-001",
+    "studentId": "st-01",
+    "title": "Joined varsity swim squad",
+    "date": "2023-08-28",
+    "lineIds": [
+      "maya-swim"
+    ],
+    "type": "sport",
+    "summary": "Selected for the varsity squad; five sessions a week.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "Clubs & Sports",
+      "ref": "roster-swim-23"
+    }
+  },
+  {
+    "id": "ev-002",
+    "studentId": "st-01",
+    "title": "G9 Computing: intro to Python",
+    "date": "2023-09-15",
+    "lineIds": [
+      "computing"
+    ],
+    "type": "class",
+    "summary": "First programming unit: loops, lists and a text adventure.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "school",
+    "source": {
+      "system": "ManageBac",
+      "ref": "class-g9cs"
+    }
+  },
+  {
+    "id": "ev-003",
+    "studentId": "st-01",
+    "title": "Joined Beach Guardians",
+    "date": "2023-09-20",
+    "lineIds": [
+      "service"
+    ],
+    "type": "club",
+    "summary": "Student service club running monthly beach cleanups in Rayong.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "Clubs & Sports",
+      "ref": "club-bg"
+    }
+  },
+  {
+    "id": "ev-004",
+    "studentId": "st-01",
+    "title": "Cell biology lab report",
+    "date": "2023-10-12",
+    "lineIds": [
+      "science"
+    ],
+    "type": "assessment",
+    "summary": "Microscopy of onion and cheek cells; scored 7/8 on criterion B.",
+    "evidence": [
+      {
+        "kind": "grade",
+        "url": null,
+        "caption": "MYP criterion B: 7/8"
+      }
+    ],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "task-2231"
+    }
+  },
+  {
+    "id": "ev-005",
+    "studentId": "st-01",
+    "title": "Campus composting audit",
+    "date": "2024-01-18",
+    "lineIds": [
+      "environment"
+    ],
+    "type": "project",
+    "summary": "Weighed canteen food waste for six weeks and proposed a compost bin.",
+    "evidence": [
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Audit spreadsheet"
+      },
+      {
+        "kind": "image",
+        "url": "#",
+        "caption": "Compost bin site"
+      }
+    ],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-006",
+    "studentId": "st-01",
+    "title": "Regional champs: 200m IM, 4th",
+    "date": "2024-02-10",
+    "lineIds": [
+      "maya-swim"
+    ],
+    "type": "competition",
+    "summary": "Personal best of 2:31 at the regional age-group championships.",
+    "evidence": [
+      {
+        "kind": "certificate",
+        "url": "#",
+        "caption": "Results sheet"
+      }
+    ],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "Clubs & Sports",
+      "ref": "meet-2402"
+    }
+  },
+  {
+    "id": "ev-007",
+    "studentId": "st-01",
+    "title": "Recycling quiz web app",
+    "date": "2024-03-05",
+    "lineIds": [
+      "computing"
+    ],
+    "type": "project",
+    "summary": "First web app in HTML and JavaScript, used in a G6 assembly.",
+    "evidence": [
+      {
+        "kind": "link",
+        "url": "https://example.org/quiz",
+        "caption": "Live quiz"
+      }
+    ],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-008",
+    "studentId": "st-01",
+    "title": "Ecology field trip, Khao Yai",
+    "date": "2024-03-12",
+    "lineIds": [
+      "science"
+    ],
+    "type": "class",
+    "summary": "Quadrat sampling and species counts in the national park.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "school",
+    "source": {
+      "system": "ManageBac",
+      "ref": "trip-khaoyai"
+    }
+  },
+  {
+    "id": "ev-009",
+    "studentId": "st-01",
+    "title": "Beach cleanup + litter survey",
+    "date": "2024-04-20",
+    "lineIds": [
+      "environment",
+      "service"
+    ],
+    "type": "service",
+    "summary": "Designed a tally sheet so 40 volunteers could log litter by type.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "#",
+        "caption": "Volunteers sorting litter"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Tally sheet template"
+      }
+    ],
+    "verification": "teacher-endorsed",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-010",
+    "studentId": "st-01",
+    "title": "Science fair: microplastics",
+    "date": "2024-05-15",
+    "lineIds": [
+      "science"
+    ],
+    "type": "project",
+    "summary": "Filtered water from three canals and counted microplastic fibres.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "#",
+        "caption": "Poster"
+      },
+      {
+        "kind": "certificate",
+        "url": "#",
+        "caption": "Science fair: Silver"
+      }
+    ],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-011",
+    "studentId": "st-01",
+    "title": "Swim training camp, Hua Hin",
+    "date": "2024-06-10",
+    "lineIds": [
+      "maya-swim"
+    ],
+    "type": "sport",
+    "summary": "Week-long training camp; started to feel the time pressure.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "Clubs & Sports",
+      "ref": "camp-2406"
+    }
+  },
+  {
+    "id": "ev-012",
+    "studentId": "st-01",
+    "title": "Reflection: why data keeps pulling me in",
+    "date": "2024-06-20",
+    "lineIds": [
+      "science"
+    ],
+    "type": "reflection",
+    "summary": "End-of-year reflection on the science fair and the composting audit.",
+    "evidence": [],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-013",
+    "studentId": "st-01",
+    "title": "Cut to two sessions a week",
+    "date": "2024-09-10",
+    "lineIds": [
+      "maya-swim"
+    ],
+    "type": "sport",
+    "summary": "Dropped to two sessions to make room for coursework and code club.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "advisor",
+    "source": {
+      "system": "Clubs & Sports",
+      "ref": "roster-swim-24"
+    }
+  },
+  {
+    "id": "ev-014",
+    "studentId": "st-01",
+    "title": "Arduino workshop",
+    "date": "2024-10-05",
+    "lineIds": [
+      "computing"
+    ],
+    "type": "club",
+    "summary": "Wired a temperature sensor and logged readings to a laptop.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "Clubs & Sports",
+      "ref": "club-maker"
+    }
+  },
+  {
+    "id": "ev-015",
+    "studentId": "st-01",
+    "title": "Tutoring G7 science",
+    "date": "2024-10-20",
+    "lineIds": [
+      "service"
+    ],
+    "type": "service",
+    "summary": "Weekly peer tutoring in the library for two terms.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "CAS log",
+      "ref": "svc-0412"
+    }
+  },
+  {
+    "id": "ev-016",
+    "studentId": "st-01",
+    "title": "Genetics unit test",
+    "date": "2024-11-02",
+    "lineIds": [
+      "science"
+    ],
+    "type": "assessment",
+    "summary": "Grade 10 genetics test.",
+    "evidence": [
+      {
+        "kind": "grade",
+        "url": null,
+        "caption": "Grade 7"
+      }
+    ],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "SIS",
+      "ref": "grade-g10bio-t1"
+    }
+  },
+  {
+    "id": "ev-017",
+    "studentId": "st-01",
+    "title": "Eco-committee energy audit",
+    "date": "2025-01-20",
+    "lineIds": [
+      "environment"
+    ],
+    "type": "project",
+    "summary": "Read every classroom meter for a month; lights left on cost ฿18,000 a term.",
+    "evidence": [
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Energy audit report"
+      }
+    ],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-018",
+    "studentId": "st-01",
+    "title": "Last race: inter-school gala",
+    "date": "2025-02-22",
+    "lineIds": [
+      "maya-swim"
+    ],
+    "type": "competition",
+    "summary": "Swam the 200m IM one last time, then left the squad.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "Clubs & Sports",
+      "ref": "meet-2502"
+    }
+  },
+  {
+    "id": "ev-019",
+    "studentId": "st-01",
+    "title": "Enzyme kinetics investigation",
+    "date": "2025-03-10",
+    "lineIds": [
+      "science"
+    ],
+    "type": "assessment",
+    "summary": "Measured catalase activity across temperatures; first time graphing error bars.",
+    "evidence": [
+      {
+        "kind": "grade",
+        "url": null,
+        "caption": "MYP criterion C: 8/8"
+      }
+    ],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "task-3310"
+    }
+  },
+  {
+    "id": "ev-020",
+    "studentId": "st-01",
+    "title": "Led the litter survey team",
+    "date": "2025-04-26",
+    "lineIds": [
+      "environment",
+      "service"
+    ],
+    "type": "service",
+    "summary": "Ran survey days for Beach Guardians and shared the results with the district office.",
+    "evidence": [
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Survey summary for district office"
+      }
+    ],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "CAS log",
+      "ref": "svc-0533"
+    }
+  },
+  {
+    "id": "ev-021",
+    "studentId": "st-01",
+    "title": "Data visualisation course",
+    "date": "2025-05-10",
+    "lineIds": [
+      "computing"
+    ],
+    "type": "award",
+    "summary": "Online course in pandas and matplotlib; 8 graded notebooks.",
+    "evidence": [
+      {
+        "kind": "certificate",
+        "url": "#",
+        "caption": "Course certificate"
+      }
+    ],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-022",
+    "studentId": "st-01",
+    "title": "Mangrove planting trip",
+    "date": "2025-06-15",
+    "lineIds": [
+      "environment"
+    ],
+    "type": "cas",
+    "summary": "Three days planting and tagging mangroves in Chanthaburi.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "CAS log",
+      "ref": "cas-mangrove"
+    }
+  },
+  {
+    "id": "ev-023",
+    "studentId": "st-01",
+    "title": "Started IB Biology HL",
+    "date": "2025-08-20",
+    "lineIds": [
+      "science"
+    ],
+    "type": "class",
+    "summary": "Depot: IB Biology HL with Mr Okafor.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "SIS",
+      "ref": "enrol-biohl"
+    }
+  },
+  {
+    "id": "ev-024",
+    "studentId": "st-01",
+    "title": "Started IB Computer Science SL",
+    "date": "2025-08-21",
+    "lineIds": [
+      "computing"
+    ],
+    "type": "class",
+    "summary": "Depot: IB CS SL with Ms Nair.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "SIS",
+      "ref": "enrol-cssl"
+    }
+  },
+  {
+    "id": "ev-025",
+    "studentId": "st-01",
+    "title": "CAS: STEM club for G6 girls",
+    "date": "2025-10-01",
+    "lineIds": [
+      "service"
+    ],
+    "type": "cas",
+    "summary": "Co-founded a Friday STEM club; 14 regular members.",
+    "evidence": [],
+    "verification": "teacher-endorsed",
+    "visibility": "publishable",
+    "source": {
+      "system": "CAS log",
+      "ref": "cas-stem"
+    }
+  },
+  {
+    "id": "ev-026",
+    "studentId": "st-01",
+    "title": "CO₂ sensor prototype",
+    "date": "2025-11-05",
+    "lineIds": [
+      "computing"
+    ],
+    "type": "project",
+    "summary": "One classroom sensor on a Raspberry Pi, logging every minute.",
+    "evidence": [
+      {
+        "kind": "link",
+        "url": "https://example.org/co2",
+        "caption": "Source code"
+      }
+    ],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "GitHub",
+      "ref": "repo-co2"
+    }
+  },
+  {
+    "id": "ev-028",
+    "studentId": "st-01",
+    "title": "Biology IA proposal",
+    "date": "2026-01-20",
+    "lineIds": [
+      "science"
+    ],
+    "type": "assessment",
+    "summary": "Proposal: algae growth against water temperature.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "task-ia-bio"
+    }
+  },
+  {
+    "id": "ev-042",
+    "studentId": "st-01",
+    "title": "Air-quality sensor network",
+    "date": "2026-03-14",
+    "lineIds": [
+      "computing",
+      "environment"
+    ],
+    "type": "project",
+    "summary": "Built 6 Raspberry Pi sensors around campus and a live dashboard.",
+    "evidence": [
+      {
+        "kind": "link",
+        "url": "https://example.org/aq",
+        "caption": "Dashboard"
+      },
+      {
+        "kind": "image",
+        "url": "#",
+        "caption": "Sensor on the canteen roof"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Calibration notes"
+      }
+    ],
+    "verification": "teacher-endorsed",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "task-8812"
+    }
+  },
+  {
+    "id": "ev-029",
+    "studentId": "st-01",
+    "title": "Air-quality data report",
+    "date": "2026-03-28",
+    "lineIds": [
+      "maya-datasci",
+      "computing"
+    ],
+    "type": "project",
+    "summary": "Cleaned 40,000 readings in Python and found the canteen PM2.5 spike at lunch.",
+    "evidence": [
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Report (PDF)"
+      },
+      {
+        "kind": "link",
+        "url": "https://example.org/aq-notebook",
+        "caption": "Notebook"
+      }
+    ],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-030",
+    "studentId": "st-01",
+    "title": "Biology IA: modelling algae growth",
+    "date": "2026-04-20",
+    "lineIds": [
+      "science",
+      "maya-datasci"
+    ],
+    "type": "assessment",
+    "summary": "Fitted a regression model to 12 weeks of growth data.",
+    "evidence": [
+      {
+        "kind": "grade",
+        "url": null,
+        "caption": "IA predicted: 7"
+      }
+    ],
+    "verification": "teacher-endorsed",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "task-ia-bio-2"
+    }
+  },
+  {
+    "id": "ev-031",
+    "studentId": "st-01",
+    "title": "Data Science summer school",
+    "date": "2026-07-10",
+    "lineIds": [
+      "maya-datasci"
+    ],
+    "type": "award",
+    "summary": "Two-week online summer school; final project on bike-share demand.",
+    "evidence": [
+      {
+        "kind": "certificate",
+        "url": "#",
+        "caption": "Certificate of completion"
+      }
+    ],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-032",
+    "studentId": "st-01",
+    "title": "Extended Essay: dengue and weather",
+    "date": "2026-09-15",
+    "lineIds": [
+      "maya-datasci"
+    ],
+    "type": "project",
+    "summary": "EE draft: can rainfall and temperature predict dengue cases in Bangkok?",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "school",
+    "source": {
+      "system": "ManageBac",
+      "ref": "ee-maya"
+    }
+  },
+  {
+    "id": "ev-033",
+    "studentId": "st-01",
+    "title": "Youth hackathon: 2nd place",
+    "date": "2026-09-28",
+    "lineIds": [
+      "computing"
+    ],
+    "type": "competition",
+    "summary": "Team of three built a flood-alert chatbot in 24 hours.",
+    "evidence": [
+      {
+        "kind": "certificate",
+        "url": "#",
+        "caption": "Runner-up certificate"
+      },
+      {
+        "kind": "link",
+        "url": "https://example.org/flood",
+        "caption": "Demo video"
+      }
+    ],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "Clubs & Sports",
+      "ref": "hack-2609"
+    }
+  },
+  {
+    "id": "ev-034",
+    "studentId": "st-01",
+    "title": "Reflection: what service taught me",
+    "date": "2026-10-10",
+    "lineIds": [
+      "service"
+    ],
+    "type": "reflection",
+    "summary": "CAS mid-point reflection.",
+    "evidence": [],
+    "verification": "student-added",
+    "visibility": "advisor",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-035",
+    "studentId": "st-01",
+    "title": "Extended Essay final submission",
+    "date": "2027-01-15",
+    "lineIds": [
+      "maya-datasci"
+    ],
+    "type": "goal",
+    "summary": "Planned: submit the EE in January.",
+    "evidence": [],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-036",
+    "studentId": "st-01",
+    "title": "Target: BSc Data Science",
+    "date": "2027-07-01",
+    "lineIds": [
+      "maya-datasci"
+    ],
+    "type": "goal",
+    "summary": "Planned: start a Data Science degree.",
+    "evidence": [],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-101",
+    "studentId": "st-02",
+    "title": "Design: product sketching",
+    "date": "2024-09-05",
+    "lineIds": [
+      "design"
+    ],
+    "type": "class",
+    "summary": "MYP Design unit on orthographic and perspective sketching.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "school",
+    "source": {
+      "system": "ManageBac",
+      "ref": "class-g9des"
+    }
+  },
+  {
+    "id": "ev-102",
+    "studentId": "st-02",
+    "title": "Piano Grade 5: Merit",
+    "date": "2024-09-20",
+    "lineIds": [
+      "music"
+    ],
+    "type": "award",
+    "summary": "Graded piano exam.",
+    "evidence": [
+      {
+        "kind": "certificate",
+        "url": "#",
+        "caption": "Grade 5 certificate"
+      }
+    ],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "Exam boards",
+      "ref": "pno-5"
+    }
+  },
+  {
+    "id": "ev-103",
+    "studentId": "st-02",
+    "title": "French: oral presentation",
+    "date": "2024-10-08",
+    "lineIds": [
+      "arun-french"
+    ],
+    "type": "assessment",
+    "summary": "Two-minute talk about my neighbourhood.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "task-fr-1"
+    }
+  },
+  {
+    "id": "ev-104",
+    "studentId": "st-02",
+    "title": "G9 Computing: Python basics",
+    "date": "2024-10-22",
+    "lineIds": [
+      "computing"
+    ],
+    "type": "class",
+    "summary": "Moved from Scratch to Python.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "school",
+    "source": {
+      "system": "ManageBac",
+      "ref": "class-g9cs"
+    }
+  },
+  {
+    "id": "ev-105",
+    "studentId": "st-02",
+    "title": "Joined jazz band on keys",
+    "date": "2024-12-02",
+    "lineIds": [
+      "music"
+    ],
+    "type": "club",
+    "summary": "Rehearses Tuesdays; first time improvising.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "Clubs & Sports",
+      "ref": "club-jazz"
+    }
+  },
+  {
+    "id": "ev-106",
+    "studentId": "st-02",
+    "title": "Code club: first Pygame game",
+    "date": "2025-01-20",
+    "lineIds": [
+      "computing"
+    ],
+    "type": "club",
+    "summary": "A side-scroller with chiptune music I wrote myself.",
+    "evidence": [
+      {
+        "kind": "link",
+        "url": "https://example.org/pygame",
+        "caption": "Play it"
+      }
+    ],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "Clubs & Sports",
+      "ref": "club-code"
+    }
+  },
+  {
+    "id": "ev-107",
+    "studentId": "st-02",
+    "title": "3D-printed phone stand",
+    "date": "2025-02-15",
+    "lineIds": [
+      "design"
+    ],
+    "type": "project",
+    "summary": "Iterated four prototypes in Fusion.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "#",
+        "caption": "Prototype line-up"
+      }
+    ],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-108",
+    "studentId": "st-02",
+    "title": "Francophonie night performance",
+    "date": "2025-03-20",
+    "lineIds": [
+      "arun-french",
+      "music"
+    ],
+    "type": "club",
+    "summary": "Sang and played “La Vie en rose” at the Francophonie evening.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "#",
+        "caption": "On stage"
+      }
+    ],
+    "verification": "teacher-endorsed",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-109",
+    "studentId": "st-02",
+    "title": "Spring concert solo",
+    "date": "2025-05-12",
+    "lineIds": [
+      "music"
+    ],
+    "type": "club",
+    "summary": "Solo arrangement of a Thai folk song for piano.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "Clubs & Sports",
+      "ref": "concert-25"
+    }
+  },
+  {
+    "id": "ev-110",
+    "studentId": "st-02",
+    "title": "DELF A2 passed",
+    "date": "2025-06-10",
+    "lineIds": [
+      "arun-french"
+    ],
+    "type": "award",
+    "summary": "External French exam.",
+    "evidence": [
+      {
+        "kind": "certificate",
+        "url": "#",
+        "caption": "DELF A2"
+      }
+    ],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "Exam boards",
+      "ref": "delf-a2"
+    }
+  },
+  {
+    "id": "ev-111",
+    "studentId": "st-02",
+    "title": "DAW summer course",
+    "date": "2025-07-15",
+    "lineIds": [
+      "arun-musictech"
+    ],
+    "type": "award",
+    "summary": "Two-week course in a digital audio workstation.",
+    "evidence": [
+      {
+        "kind": "certificate",
+        "url": "#",
+        "caption": "Course certificate"
+      }
+    ],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-112",
+    "studentId": "st-02",
+    "title": "First EP, “Monsoon Loops”",
+    "date": "2025-09-12",
+    "lineIds": [
+      "arun-musictech"
+    ],
+    "type": "project",
+    "summary": "Four tracks produced at home, released on the school music page.",
+    "evidence": [
+      {
+        "kind": "link",
+        "url": "https://example.org/ep",
+        "caption": "Listen"
+      }
+    ],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-113",
+    "studentId": "st-02",
+    "title": "MYP Design: ergonomic controller",
+    "date": "2025-10-06",
+    "lineIds": [
+      "design"
+    ],
+    "type": "assessment",
+    "summary": "Designed a one-handed game controller for a classmate with a wrist injury.",
+    "evidence": [
+      {
+        "kind": "grade",
+        "url": null,
+        "caption": "MYP Design: 7"
+      }
+    ],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "task-des-ctrl"
+    }
+  },
+  {
+    "id": "ev-114",
+    "studentId": "st-02",
+    "title": "French: written commentary",
+    "date": "2025-10-20",
+    "lineIds": [
+      "arun-french"
+    ],
+    "type": "assessment",
+    "summary": "Commentary on a short story.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "school",
+    "source": {
+      "system": "ManageBac",
+      "ref": "task-fr-5"
+    }
+  },
+  {
+    "id": "ev-115",
+    "studentId": "st-02",
+    "title": "Piano Grade 6: Distinction",
+    "date": "2025-11-15",
+    "lineIds": [
+      "music"
+    ],
+    "type": "award",
+    "summary": "Graded piano exam.",
+    "evidence": [
+      {
+        "kind": "certificate",
+        "url": "#",
+        "caption": "Grade 6 certificate"
+      }
+    ],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "Exam boards",
+      "ref": "pno-6"
+    }
+  },
+  {
+    "id": "ev-116",
+    "studentId": "st-02",
+    "title": "Unity fundamentals course",
+    "date": "2025-12-10",
+    "lineIds": [
+      "computing"
+    ],
+    "type": "award",
+    "summary": "Online course; built a small 3D level.",
+    "evidence": [
+      {
+        "kind": "certificate",
+        "url": "#",
+        "caption": "Course certificate"
+      }
+    ],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-117",
+    "studentId": "st-02",
+    "title": "Game-audio project: “Rainfall”",
+    "date": "2026-02-14",
+    "lineIds": [
+      "arun-musictech",
+      "design",
+      "computing"
+    ],
+    "type": "project",
+    "summary": "An adaptive soundtrack that changes with the weather in a Unity game.",
+    "evidence": [
+      {
+        "kind": "link",
+        "url": "https://example.org/rainfall",
+        "caption": "Playable build"
+      },
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Audio design document"
+      }
+    ],
+    "verification": "teacher-endorsed",
+    "visibility": "publishable",
+    "source": {
+      "system": "GitHub",
+      "ref": "repo-rainfall"
+    }
+  },
+  {
+    "id": "ev-118",
+    "studentId": "st-02",
+    "title": "Jazz band: schools festival",
+    "date": "2026-03-08",
+    "lineIds": [
+      "music"
+    ],
+    "type": "competition",
+    "summary": "Band placed second at the Bangkok schools jazz festival.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "Clubs & Sports",
+      "ref": "fest-26"
+    }
+  },
+  {
+    "id": "ev-119",
+    "studentId": "st-02",
+    "title": "Arcade cabinet for open day",
+    "date": "2026-04-18",
+    "lineIds": [
+      "design",
+      "computing"
+    ],
+    "type": "project",
+    "summary": "Built a cabinet with a Raspberry Pi running student games.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "#",
+        "caption": "Arcade cabinet"
+      }
+    ],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-120",
+    "studentId": "st-02",
+    "title": "Final French exam",
+    "date": "2026-05-20",
+    "lineIds": [
+      "arun-french"
+    ],
+    "type": "assessment",
+    "summary": "MYP eAssessment; then left French.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "SIS",
+      "ref": "eassess-fr"
+    }
+  },
+  {
+    "id": "ev-121",
+    "studentId": "st-02",
+    "title": "Sound design for the school play",
+    "date": "2026-06-12",
+    "lineIds": [
+      "arun-musictech"
+    ],
+    "type": "project",
+    "summary": "Designed and ran live sound for “The Tempest”.",
+    "evidence": [],
+    "verification": "teacher-endorsed",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-122",
+    "studentId": "st-02",
+    "title": "Started IB Music HL",
+    "date": "2026-08-20",
+    "lineIds": [
+      "music"
+    ],
+    "type": "class",
+    "summary": "Depot: IB Music HL.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "SIS",
+      "ref": "enrol-mushl"
+    }
+  },
+  {
+    "id": "ev-123",
+    "studentId": "st-02",
+    "title": "Started IB Computer Science HL",
+    "date": "2026-08-20",
+    "lineIds": [
+      "computing"
+    ],
+    "type": "class",
+    "summary": "Depot: IB CS HL.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "SIS",
+      "ref": "enrol-cshl"
+    }
+  },
+  {
+    "id": "ev-124",
+    "studentId": "st-02",
+    "title": "Started Spanish ab initio",
+    "date": "2026-08-22",
+    "lineIds": [
+      "languages"
+    ],
+    "type": "class",
+    "summary": "New language for the Diploma.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "SIS",
+      "ref": "enrol-spab"
+    }
+  },
+  {
+    "id": "ev-125",
+    "studentId": "st-02",
+    "title": "MIDI controller PCB",
+    "date": "2026-10-01",
+    "lineIds": [
+      "design"
+    ],
+    "type": "project",
+    "summary": "Designed my own 16-pad controller board.",
+    "evidence": [],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "GitHub",
+      "ref": "repo-midi"
+    }
+  },
+  {
+    "id": "ev-126",
+    "studentId": "st-02",
+    "title": "Music HL: composition draft",
+    "date": "2026-10-10",
+    "lineIds": [
+      "arun-musictech"
+    ],
+    "type": "assessment",
+    "summary": "First composition draft for Music HL.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "school",
+    "source": {
+      "system": "ManageBac",
+      "ref": "task-mus-c1"
+    }
+  },
+  {
+    "id": "ev-127",
+    "studentId": "st-02",
+    "title": "Spanish: first oral",
+    "date": "2026-10-15",
+    "lineIds": [
+      "languages"
+    ],
+    "type": "assessment",
+    "summary": "Introduced myself and my family.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "advisor",
+    "source": {
+      "system": "ManageBac",
+      "ref": "task-sp-1"
+    }
+  },
+  {
+    "id": "ev-128",
+    "studentId": "st-02",
+    "title": "Piano Grade 8",
+    "date": "2027-06-01",
+    "lineIds": [
+      "music"
+    ],
+    "type": "goal",
+    "summary": "Planned: sit Grade 8 piano.",
+    "evidence": [],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-129",
+    "studentId": "st-02",
+    "title": "CS IA: procedural music engine",
+    "date": "2027-10-15",
+    "lineIds": [
+      "computing"
+    ],
+    "type": "goal",
+    "summary": "Planned: IB CS internal assessment.",
+    "evidence": [],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-130",
+    "studentId": "st-02",
+    "title": "Target: BMus Music Technology",
+    "date": "2028-06-01",
+    "lineIds": [
+      "arun-musictech"
+    ],
+    "type": "goal",
+    "summary": "Planned: study music technology.",
+    "evidence": [],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-201",
+    "studentId": "st-03",
+    "title": "Joined ceramics club",
+    "date": "2025-09-02",
+    "lineIds": [
+      "lena-ceramics"
+    ],
+    "type": "club",
+    "summary": "Thursday after-school club.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "Clubs & Sports",
+      "ref": "club-ceramics"
+    }
+  },
+  {
+    "id": "ev-202",
+    "studentId": "st-03",
+    "title": "Thai B: speaking task",
+    "date": "2025-09-18",
+    "lineIds": [
+      "languages"
+    ],
+    "type": "assessment",
+    "summary": "First Thai speaking assessment after moving to Bangkok.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "task-th-1"
+    }
+  },
+  {
+    "id": "ev-203",
+    "studentId": "st-03",
+    "title": "MYP Art: self-portrait unit",
+    "date": "2025-10-10",
+    "lineIds": [
+      "art"
+    ],
+    "type": "class",
+    "summary": "Charcoal self-portraits.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "school",
+    "source": {
+      "system": "ManageBac",
+      "ref": "class-g9art"
+    }
+  },
+  {
+    "id": "ev-204",
+    "studentId": "st-03",
+    "title": "Reflection: arriving in a new school",
+    "date": "2025-11-20",
+    "lineIds": [
+      "languages"
+    ],
+    "type": "reflection",
+    "summary": "First-term reflection.",
+    "evidence": [],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-205",
+    "studentId": "st-03",
+    "title": "Joined Language Buddies",
+    "date": "2025-12-05",
+    "lineIds": [
+      "service"
+    ],
+    "type": "service",
+    "summary": "Peer support for new students who speak little English.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "CAS log",
+      "ref": "svc-lb"
+    }
+  },
+  {
+    "id": "ev-206",
+    "studentId": "st-03",
+    "title": "100 days of drawing",
+    "date": "2026-01-15",
+    "lineIds": [
+      "art"
+    ],
+    "type": "project",
+    "summary": "One sketch a day for 100 days.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "#",
+        "caption": "Sketchbook spread"
+      }
+    ],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-207",
+    "studentId": "st-03",
+    "title": "Welcome pack translation",
+    "date": "2026-02-12",
+    "lineIds": [
+      "languages",
+      "service"
+    ],
+    "type": "service",
+    "summary": "Translated the new-family welcome pack into German and simple English.",
+    "evidence": [
+      {
+        "kind": "file",
+        "url": "#",
+        "caption": "Welcome pack (DE)"
+      }
+    ],
+    "verification": "teacher-endorsed",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-208",
+    "studentId": "st-03",
+    "title": "First wheel-thrown bowl",
+    "date": "2026-02-26",
+    "lineIds": [
+      "lena-ceramics"
+    ],
+    "type": "project",
+    "summary": "After six weeks of collapsed attempts.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "#",
+        "caption": "The bowl"
+      }
+    ],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-209",
+    "studentId": "st-03",
+    "title": "Reflection: what 100 days taught me",
+    "date": "2026-03-20",
+    "lineIds": [
+      "art"
+    ],
+    "type": "reflection",
+    "summary": "Reflection on the drawing challenge.",
+    "evidence": [],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-210",
+    "studentId": "st-03",
+    "title": "Ceramics showcase",
+    "date": "2026-04-22",
+    "lineIds": [
+      "lena-ceramics"
+    ],
+    "type": "club",
+    "summary": "Showed three pieces, then left the club.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "Clubs & Sports",
+      "ref": "show-26"
+    }
+  },
+  {
+    "id": "ev-211",
+    "studentId": "st-03",
+    "title": "Started learning Japanese",
+    "date": "2026-05-10",
+    "lineIds": [
+      "languages"
+    ],
+    "type": "project",
+    "summary": "Self-study with an app and anime subtitles.",
+    "evidence": [],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-212",
+    "studentId": "st-03",
+    "title": "Community centre mural",
+    "date": "2026-06-05",
+    "lineIds": [
+      "art",
+      "service"
+    ],
+    "type": "service",
+    "summary": "Designed and led painting of a 6 m mural with 12 volunteers.",
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "#",
+        "caption": "Finished mural"
+      }
+    ],
+    "verification": "teacher-endorsed",
+    "visibility": "publishable",
+    "source": {
+      "system": "CAS log",
+      "ref": "svc-mural"
+    }
+  },
+  {
+    "id": "ev-213",
+    "studentId": "st-03",
+    "title": "Japanese club: kana certificate",
+    "date": "2026-06-20",
+    "lineIds": [
+      "lena-japanese"
+    ],
+    "type": "award",
+    "summary": "Passed the club’s hiragana and katakana test.",
+    "evidence": [
+      {
+        "kind": "certificate",
+        "url": "#",
+        "caption": "Kana certificate"
+      }
+    ],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "Clubs & Sports",
+      "ref": "club-jp"
+    }
+  },
+  {
+    "id": "ev-214",
+    "studentId": "st-03",
+    "title": "Started Japanese elective",
+    "date": "2026-08-19",
+    "lineIds": [
+      "lena-japanese"
+    ],
+    "type": "class",
+    "summary": "Depot: G10 Japanese.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "SIS",
+      "ref": "enrol-jp"
+    }
+  },
+  {
+    "id": "ev-215",
+    "studentId": "st-03",
+    "title": "Printmaking unit",
+    "date": "2026-09-01",
+    "lineIds": [
+      "art"
+    ],
+    "type": "class",
+    "summary": "Linocut prints.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "school",
+    "source": {
+      "system": "ManageBac",
+      "ref": "class-g10art"
+    }
+  },
+  {
+    "id": "ev-216",
+    "studentId": "st-03",
+    "title": "Weekly tutoring log",
+    "date": "2026-09-12",
+    "lineIds": [
+      "service"
+    ],
+    "type": "service",
+    "summary": "Two new buddies this term.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "CAS log",
+      "ref": "svc-lb-2"
+    }
+  },
+  {
+    "id": "ev-217",
+    "studentId": "st-03",
+    "title": "Thai literature response",
+    "date": "2026-10-02",
+    "lineIds": [
+      "languages"
+    ],
+    "type": "assessment",
+    "summary": "First written response in Thai.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "advisor",
+    "source": {
+      "system": "ManageBac",
+      "ref": "task-th-6"
+    }
+  },
+  {
+    "id": "ev-218",
+    "studentId": "st-03",
+    "title": "Reflection: why tutoring matters",
+    "date": "2026-10-14",
+    "lineIds": [
+      "service"
+    ],
+    "type": "reflection",
+    "summary": "Term reflection.",
+    "evidence": [],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-219",
+    "studentId": "st-03",
+    "title": "JLPT N5",
+    "date": "2026-12-06",
+    "lineIds": [
+      "lena-japanese"
+    ],
+    "type": "goal",
+    "summary": "Planned: sit the JLPT N5 in December.",
+    "evidence": [],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-220",
+    "studentId": "st-03",
+    "title": "Personal Project: bilingual zine",
+    "date": "2027-03-15",
+    "lineIds": [
+      "art"
+    ],
+    "type": "goal",
+    "summary": "Planned: MYP Personal Project.",
+    "evidence": [],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-221",
+    "studentId": "st-03",
+    "title": "Target: DP Japanese ab initio",
+    "date": "2027-06-10",
+    "lineIds": [
+      "languages"
+    ],
+    "type": "goal",
+    "summary": "Planned: choose Japanese for the Diploma.",
+    "evidence": [],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-300",
+    "studentId": "st-04",
+    "title": "Service activity",
+    "date": "2025-02-06",
+    "lineIds": [
+      "service"
+    ],
+    "type": "assessment",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-301"
+    }
+  },
+  {
+    "id": "ev-301",
+    "studentId": "st-04",
+    "title": "Reflection",
+    "date": "2025-04-09",
+    "lineIds": [
+      "sport"
+    ],
+    "type": "reflection",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-302",
+    "studentId": "st-04",
+    "title": "Science activity",
+    "date": "2025-05-10",
+    "lineIds": [
+      "science"
+    ],
+    "type": "service",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-303"
+    }
+  },
+  {
+    "id": "ev-303",
+    "studentId": "st-04",
+    "title": "Sport activity",
+    "date": "2025-10-17",
+    "lineIds": [
+      "sport"
+    ],
+    "type": "club",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-304"
+    }
+  },
+  {
+    "id": "ev-304",
+    "studentId": "st-04",
+    "title": "Service activity",
+    "date": "2025-10-25",
+    "lineIds": [
+      "service"
+    ],
+    "type": "class",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-305"
+    }
+  },
+  {
+    "id": "ev-305",
+    "studentId": "st-04",
+    "title": "Science activity",
+    "date": "2026-03-21",
+    "lineIds": [
+      "science"
+    ],
+    "type": "service",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-306"
+    }
+  },
+  {
+    "id": "ev-306",
+    "studentId": "st-04",
+    "title": "Science activity",
+    "date": "2026-04-08",
+    "lineIds": [
+      "science"
+    ],
+    "type": "assessment",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-307"
+    }
+  },
+  {
+    "id": "ev-307",
+    "studentId": "st-04",
+    "title": "Service activity",
+    "date": "2026-04-10",
+    "lineIds": [
+      "service"
+    ],
+    "type": "project",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-308"
+    }
+  },
+  {
+    "id": "ev-308",
+    "studentId": "st-04",
+    "title": "Service activity",
+    "date": "2026-08-18",
+    "lineIds": [
+      "service"
+    ],
+    "type": "class",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-309"
+    }
+  },
+  {
+    "id": "ev-309",
+    "studentId": "st-05",
+    "title": "Languages activity",
+    "date": "2023-10-31",
+    "lineIds": [
+      "languages"
+    ],
+    "type": "class",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-310"
+    }
+  },
+  {
+    "id": "ev-310",
+    "studentId": "st-05",
+    "title": "Reflection",
+    "date": "2024-07-05",
+    "lineIds": [
+      "art"
+    ],
+    "type": "reflection",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-311",
+    "studentId": "st-05",
+    "title": "Art activity",
+    "date": "2024-07-29",
+    "lineIds": [
+      "art"
+    ],
+    "type": "assessment",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-312"
+    }
+  },
+  {
+    "id": "ev-312",
+    "studentId": "st-05",
+    "title": "Reflection",
+    "date": "2024-12-22",
+    "lineIds": [
+      "service"
+    ],
+    "type": "reflection",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-313",
+    "studentId": "st-05",
+    "title": "Languages activity",
+    "date": "2024-12-30",
+    "lineIds": [
+      "languages"
+    ],
+    "type": "project",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-314"
+    }
+  },
+  {
+    "id": "ev-314",
+    "studentId": "st-05",
+    "title": "Reflection",
+    "date": "2025-04-02",
+    "lineIds": [
+      "art"
+    ],
+    "type": "reflection",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-315",
+    "studentId": "st-05",
+    "title": "Art activity",
+    "date": "2025-05-28",
+    "lineIds": [
+      "art"
+    ],
+    "type": "club",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-316"
+    }
+  },
+  {
+    "id": "ev-316",
+    "studentId": "st-05",
+    "title": "Reflection",
+    "date": "2025-05-31",
+    "lineIds": [
+      "service"
+    ],
+    "type": "reflection",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-317",
+    "studentId": "st-05",
+    "title": "Languages activity",
+    "date": "2025-12-12",
+    "lineIds": [
+      "languages"
+    ],
+    "type": "club",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-318"
+    }
+  },
+  {
+    "id": "ev-318",
+    "studentId": "st-05",
+    "title": "Reflection",
+    "date": "2026-06-01",
+    "lineIds": [
+      "environment"
+    ],
+    "type": "reflection",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-319",
+    "studentId": "st-05",
+    "title": "Service activity",
+    "date": "2026-08-08",
+    "lineIds": [
+      "service"
+    ],
+    "type": "club",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-320"
+    }
+  },
+  {
+    "id": "ev-320",
+    "studentId": "st-06",
+    "title": "Music activity",
+    "date": "2025-10-10",
+    "lineIds": [
+      "music"
+    ],
+    "type": "class",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-321"
+    }
+  },
+  {
+    "id": "ev-321",
+    "studentId": "st-06",
+    "title": "Reflection",
+    "date": "2025-12-08",
+    "lineIds": [
+      "music"
+    ],
+    "type": "reflection",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-322",
+    "studentId": "st-06",
+    "title": "Sport activity",
+    "date": "2026-01-11",
+    "lineIds": [
+      "sport"
+    ],
+    "type": "service",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-323"
+    }
+  },
+  {
+    "id": "ev-323",
+    "studentId": "st-06",
+    "title": "Music activity",
+    "date": "2026-01-19",
+    "lineIds": [
+      "music"
+    ],
+    "type": "club",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-324"
+    }
+  },
+  {
+    "id": "ev-324",
+    "studentId": "st-06",
+    "title": "Reflection",
+    "date": "2026-02-05",
+    "lineIds": [
+      "music"
+    ],
+    "type": "reflection",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-325",
+    "studentId": "st-06",
+    "title": "Sport activity",
+    "date": "2026-02-08",
+    "lineIds": [
+      "sport"
+    ],
+    "type": "assessment",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-326"
+    }
+  },
+  {
+    "id": "ev-326",
+    "studentId": "st-06",
+    "title": "Sport activity",
+    "date": "2026-04-29",
+    "lineIds": [
+      "sport"
+    ],
+    "type": "service",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-327"
+    }
+  },
+  {
+    "id": "ev-327",
+    "studentId": "st-06",
+    "title": "Reflection",
+    "date": "2026-06-11",
+    "lineIds": [
+      "music"
+    ],
+    "type": "reflection",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-328",
+    "studentId": "st-06",
+    "title": "Music activity",
+    "date": "2026-06-19",
+    "lineIds": [
+      "music"
+    ],
+    "type": "class",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-329"
+    }
+  },
+  {
+    "id": "ev-329",
+    "studentId": "st-06",
+    "title": "Music activity",
+    "date": "2026-07-25",
+    "lineIds": [
+      "music"
+    ],
+    "type": "project",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-330"
+    }
+  },
+  {
+    "id": "ev-330",
+    "studentId": "st-06",
+    "title": "Reflection",
+    "date": "2026-08-04",
+    "lineIds": [
+      "sport"
+    ],
+    "type": "reflection",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-331",
+    "studentId": "st-06",
+    "title": "Design activity",
+    "date": "2026-08-29",
+    "lineIds": [
+      "design"
+    ],
+    "type": "project",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-332"
+    }
+  },
+  {
+    "id": "ev-332",
+    "studentId": "st-06",
+    "title": "Sport activity",
+    "date": "2026-09-24",
+    "lineIds": [
+      "sport"
+    ],
+    "type": "project",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-333"
+    }
+  },
+  {
+    "id": "ev-333",
+    "studentId": "st-07",
+    "title": "Computing activity",
+    "date": "2023-08-28",
+    "lineIds": [
+      "computing"
+    ],
+    "type": "service",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-334"
+    }
+  },
+  {
+    "id": "ev-334",
+    "studentId": "st-07",
+    "title": "Reflection",
+    "date": "2023-09-18",
+    "lineIds": [
+      "science"
+    ],
+    "type": "reflection",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-335",
+    "studentId": "st-07",
+    "title": "Sport activity",
+    "date": "2024-01-08",
+    "lineIds": [
+      "sport",
+      "science"
+    ],
+    "type": "class",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-336"
+    }
+  },
+  {
+    "id": "ev-336",
+    "studentId": "st-07",
+    "title": "Science activity",
+    "date": "2024-03-28",
+    "lineIds": [
+      "computing",
+      "science"
+    ],
+    "type": "service",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-337"
+    }
+  },
+  {
+    "id": "ev-337",
+    "studentId": "st-07",
+    "title": "Science activity",
+    "date": "2024-04-21",
+    "lineIds": [
+      "computing",
+      "science"
+    ],
+    "type": "assessment",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-338"
+    }
+  },
+  {
+    "id": "ev-338",
+    "studentId": "st-07",
+    "title": "Science activity",
+    "date": "2024-05-07",
+    "lineIds": [
+      "science"
+    ],
+    "type": "assessment",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-339"
+    }
+  },
+  {
+    "id": "ev-339",
+    "studentId": "st-07",
+    "title": "Science activity",
+    "date": "2024-06-26",
+    "lineIds": [
+      "science"
+    ],
+    "type": "project",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-340"
+    }
+  },
+  {
+    "id": "ev-340",
+    "studentId": "st-07",
+    "title": "Science activity",
+    "date": "2025-03-10",
+    "lineIds": [
+      "science"
+    ],
+    "type": "project",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-341"
+    }
+  },
+  {
+    "id": "ev-341",
+    "studentId": "st-07",
+    "title": "Computing activity",
+    "date": "2025-06-05",
+    "lineIds": [
+      "computing"
+    ],
+    "type": "assessment",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-342"
+    }
+  },
+  {
+    "id": "ev-342",
+    "studentId": "st-07",
+    "title": "Reflection",
+    "date": "2025-06-06",
+    "lineIds": [
+      "sport"
+    ],
+    "type": "reflection",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-343",
+    "studentId": "st-07",
+    "title": "Sport activity",
+    "date": "2025-08-27",
+    "lineIds": [
+      "sport"
+    ],
+    "type": "service",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-344"
+    }
+  },
+  {
+    "id": "ev-344",
+    "studentId": "st-07",
+    "title": "Sport activity",
+    "date": "2025-10-15",
+    "lineIds": [
+      "sport"
+    ],
+    "type": "club",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-345"
+    }
+  },
+  {
+    "id": "ev-345",
+    "studentId": "st-07",
+    "title": "Computing activity",
+    "date": "2026-06-26",
+    "lineIds": [
+      "computing"
+    ],
+    "type": "assessment",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-346"
+    }
+  },
+  {
+    "id": "ev-346",
+    "studentId": "st-07",
+    "title": "Science activity",
+    "date": "2026-07-11",
+    "lineIds": [
+      "science"
+    ],
+    "type": "assessment",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-347"
+    }
+  },
+  {
+    "id": "ev-347",
+    "studentId": "st-07",
+    "title": "Science activity",
+    "date": "2026-07-22",
+    "lineIds": [
+      "science"
+    ],
+    "type": "service",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-348"
+    }
+  },
+  {
+    "id": "ev-348",
+    "studentId": "st-07",
+    "title": "Computing activity",
+    "date": "2026-09-13",
+    "lineIds": [
+      "computing"
+    ],
+    "type": "club",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-349"
+    }
+  },
+  {
+    "id": "ev-349",
+    "studentId": "st-08",
+    "title": "Science activity",
+    "date": "2024-09-14",
+    "lineIds": [
+      "science"
+    ],
+    "type": "project",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-350"
+    }
+  },
+  {
+    "id": "ev-350",
+    "studentId": "st-08",
+    "title": "Reflection",
+    "date": "2025-01-02",
+    "lineIds": [
+      "science"
+    ],
+    "type": "reflection",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-351",
+    "studentId": "st-08",
+    "title": "Service activity",
+    "date": "2025-01-19",
+    "lineIds": [
+      "service"
+    ],
+    "type": "class",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-352"
+    }
+  },
+  {
+    "id": "ev-352",
+    "studentId": "st-08",
+    "title": "Reflection",
+    "date": "2025-04-16",
+    "lineIds": [
+      "art"
+    ],
+    "type": "reflection",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-353",
+    "studentId": "st-08",
+    "title": "Art activity",
+    "date": "2025-06-05",
+    "lineIds": [
+      "art"
+    ],
+    "type": "assessment",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-354"
+    }
+  },
+  {
+    "id": "ev-354",
+    "studentId": "st-08",
+    "title": "Reflection",
+    "date": "2025-08-11",
+    "lineIds": [
+      "service"
+    ],
+    "type": "reflection",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-355",
+    "studentId": "st-08",
+    "title": "Art activity",
+    "date": "2025-09-07",
+    "lineIds": [
+      "science",
+      "art"
+    ],
+    "type": "service",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-356"
+    }
+  },
+  {
+    "id": "ev-356",
+    "studentId": "st-08",
+    "title": "Reflection",
+    "date": "2025-09-27",
+    "lineIds": [
+      "service"
+    ],
+    "type": "reflection",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-357",
+    "studentId": "st-08",
+    "title": "Service activity",
+    "date": "2025-10-09",
+    "lineIds": [
+      "service"
+    ],
+    "type": "class",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-358"
+    }
+  },
+  {
+    "id": "ev-358",
+    "studentId": "st-08",
+    "title": "Reflection",
+    "date": "2025-10-24",
+    "lineIds": [
+      "science"
+    ],
+    "type": "reflection",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-359",
+    "studentId": "st-08",
+    "title": "Science activity",
+    "date": "2025-11-09",
+    "lineIds": [
+      "science",
+      "environment"
+    ],
+    "type": "class",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-360"
+    }
+  },
+  {
+    "id": "ev-360",
+    "studentId": "st-08",
+    "title": "Reflection",
+    "date": "2026-01-27",
+    "lineIds": [
+      "science"
+    ],
+    "type": "reflection",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-361",
+    "studentId": "st-08",
+    "title": "Service activity",
+    "date": "2026-04-07",
+    "lineIds": [
+      "service"
+    ],
+    "type": "class",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-362"
+    }
+  },
+  {
+    "id": "ev-362",
+    "studentId": "st-08",
+    "title": "Reflection",
+    "date": "2026-04-12",
+    "lineIds": [
+      "science"
+    ],
+    "type": "reflection",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "student-added",
+    "visibility": "publishable",
+    "source": {
+      "system": "Manual entry",
+      "ref": null
+    }
+  },
+  {
+    "id": "ev-363",
+    "studentId": "st-08",
+    "title": "Science activity",
+    "date": "2026-09-07",
+    "lineIds": [
+      "science"
+    ],
+    "type": "project",
+    "summary": "Cohort sample record.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "ManageBac",
+      "ref": "gen-364"
+    }
+  }
+]

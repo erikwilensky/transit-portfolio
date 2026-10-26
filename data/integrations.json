@@ -1,0 +1,207 @@
+{
+  "integrations": [
+    {
+      "id": "sis",
+      "name": "SIS",
+      "detail": "Enrolment, classes, grades",
+      "lastSynced": "2026-10-26T01:10:00Z",
+      "mode": "Nightly pull",
+      "itemCount": 1284
+    },
+    {
+      "id": "lms",
+      "name": "LMS · ManageBac",
+      "detail": "Assignments, IA milestones",
+      "lastSynced": "2026-10-26T03:20:00Z",
+      "mode": "Webhook",
+      "itemCount": 3912
+    },
+    {
+      "id": "cas",
+      "name": "CAS log",
+      "detail": "CAS and service hours",
+      "lastSynced": "2026-10-25T22:00:00Z",
+      "mode": "Hourly pull",
+      "itemCount": 641
+    },
+    {
+      "id": "clubs",
+      "name": "Clubs & Sports",
+      "detail": "Rosters, fixtures, results",
+      "lastSynced": "2026-10-24T09:00:00Z",
+      "mode": "CSV import",
+      "itemCount": 488
+    },
+    {
+      "id": "github",
+      "name": "GitHub",
+      "detail": "Student-linked repositories (opt-in)",
+      "lastSynced": "2026-10-25T18:45:00Z",
+      "mode": "Webhook",
+      "itemCount": 97
+    },
+    {
+      "id": "exams",
+      "name": "Exam boards",
+      "detail": "Music, language and external exams",
+      "lastSynced": "2026-10-01T00:00:00Z",
+      "mode": "Monthly pull",
+      "itemCount": 156
+    }
+  ],
+  "pending": [
+    {
+      "sourceId": "github",
+      "event": {
+        "id": "ev-037",
+        "studentId": "st-01",
+        "title": "Air-quality dashboard v2",
+        "date": "2026-10-20",
+        "lineIds": [
+          "computing"
+        ],
+        "type": "project",
+        "summary": "Pushed v2: alerts when PM2.5 crosses the WHO limit.",
+        "evidence": [
+          {
+            "kind": "link",
+            "url": "https://example.org/aq-v2",
+            "caption": "Release notes"
+          }
+        ],
+        "verification": "student-added",
+        "visibility": "advisor",
+        "source": {
+          "system": "GitHub",
+          "ref": "repo-aq@v2.0"
+        }
+      }
+    },
+    {
+      "sourceId": "lms",
+      "event": {
+        "id": "ev-038",
+        "studentId": "st-01",
+        "title": "EE: research question approved",
+        "date": "2026-10-22",
+        "lineIds": [
+          "maya-datasci"
+        ],
+        "type": "assessment",
+        "summary": "Supervisor approved the Extended Essay research question.",
+        "evidence": [],
+        "verification": "school-verified",
+        "visibility": "advisor",
+        "source": {
+          "system": "ManageBac",
+          "ref": "ee-maya-rq"
+        }
+      }
+    },
+    {
+      "sourceId": "cas",
+      "event": {
+        "id": "ev-039",
+        "studentId": "st-01",
+        "title": "STEM club: 20th session",
+        "date": "2026-10-24",
+        "lineIds": [
+          "service"
+        ],
+        "type": "cas",
+        "summary": "Logged the 20th session of the G6 STEM club.",
+        "evidence": [],
+        "verification": "school-verified",
+        "visibility": "advisor",
+        "source": {
+          "system": "CAS log",
+          "ref": "cas-stem-20"
+        }
+      }
+    },
+    {
+      "sourceId": "github",
+      "event": {
+        "id": "ev-131",
+        "studentId": "st-02",
+        "title": "MIDI controller firmware",
+        "date": "2026-10-21",
+        "lineIds": [
+          "computing"
+        ],
+        "type": "project",
+        "summary": "First firmware release for the 16-pad controller.",
+        "evidence": [],
+        "verification": "student-added",
+        "visibility": "advisor",
+        "source": {
+          "system": "GitHub",
+          "ref": "repo-midi@v0.1"
+        }
+      }
+    },
+    {
+      "sourceId": "exams",
+      "event": {
+        "id": "ev-132",
+        "studentId": "st-02",
+        "title": "Piano Grade 7: Merit",
+        "date": "2026-10-18",
+        "lineIds": [
+          "music"
+        ],
+        "type": "award",
+        "summary": "Graded piano exam result received.",
+        "evidence": [],
+        "verification": "school-verified",
+        "visibility": "advisor",
+        "source": {
+          "system": "Exam boards",
+          "ref": "pno-7"
+        }
+      }
+    },
+    {
+      "sourceId": "cas",
+      "event": {
+        "id": "ev-222",
+        "studentId": "st-03",
+        "title": "Language Buddies: 30 hours",
+        "date": "2026-10-23",
+        "lineIds": [
+          "service"
+        ],
+        "type": "service",
+        "summary": "Passed 30 logged hours of peer support.",
+        "evidence": [],
+        "verification": "school-verified",
+        "visibility": "advisor",
+        "source": {
+          "system": "CAS log",
+          "ref": "svc-lb-30"
+        }
+      }
+    },
+    {
+      "sourceId": "lms",
+      "event": {
+        "id": "ev-223",
+        "studentId": "st-03",
+        "title": "Japanese: first quiz",
+        "date": "2026-10-21",
+        "lineIds": [
+          "lena-japanese"
+        ],
+        "type": "assessment",
+        "summary": "Vocabulary quiz, unit 2.",
+        "evidence": [],
+        "verification": "school-verified",
+        "visibility": "advisor",
+        "source": {
+          "system": "ManageBac",
+          "ref": "task-jp-2"
+        }
+      }
+    }
+  ]
+}

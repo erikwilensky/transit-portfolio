@@ -1,0 +1,65 @@
+[
+  {
+    "id": "en-001",
+    "eventId": "ev-009",
+    "teacherId": "t-08",
+    "note": "Maya turned a cleanup into a data-collection exercise the club still uses.",
+    "date": "2024-04-20"
+  },
+  {
+    "id": "en-002",
+    "eventId": "ev-025",
+    "teacherId": "t-08",
+    "note": "A genuinely student-led CAS project with clear impact.",
+    "date": "2025-10-01"
+  },
+  {
+    "id": "en-003",
+    "eventId": "ev-042",
+    "teacherId": "t-01",
+    "note": "Maya designed the sensor housing, calibrated every unit against the school weather station and wrote the dashboard herself. Outstanding independent work.",
+    "date": "2026-03-20"
+  },
+  {
+    "id": "en-004",
+    "eventId": "ev-030",
+    "teacherId": "t-02",
+    "note": "Statistical treatment well beyond the usual IA.",
+    "date": "2026-04-20"
+  },
+  {
+    "id": "en-005",
+    "eventId": "ev-108",
+    "teacherId": "t-05",
+    "note": "Brave performance, excellent pronunciation.",
+    "date": "2025-03-20"
+  },
+  {
+    "id": "en-006",
+    "eventId": "ev-117",
+    "teacherId": "t-04",
+    "note": "Arun designed the game, the interaction and the sound system together. A real cross-disciplinary piece.",
+    "date": "2026-02-25"
+  },
+  {
+    "id": "en-007",
+    "eventId": "ev-121",
+    "teacherId": "t-03",
+    "note": "Calm and professional on the desk all week.",
+    "date": "2026-06-12"
+  },
+  {
+    "id": "en-008",
+    "eventId": "ev-207",
+    "teacherId": "t-05",
+    "note": "Thoughtful, accurate translation now used by admissions.",
+    "date": "2026-02-12"
+  },
+  {
+    "id": "en-009",
+    "eventId": "ev-212",
+    "teacherId": "t-06",
+    "note": "Lena led the design process with real maturity.",
+    "date": "2026-06-05"
+  }
+]
