@@ -345,8 +345,8 @@ if (!store.consentReqs) store.consentReqs = [
   { id: 'cr-3', studentId: 'st-09', kind: 'photos', title: 'Photos where Pim can be recognised', detail: 'Allow photos of Pim to appear as evidence on her stations. Off unless you say yes.', asked: '2026-10-20', status: 'pending' },
 ];
 if (!store.family) store.family = { lang: 'en', email: true };
-if (!store.reportComments) store.reportComments = {};
 if (!store.tags) store.tags = {};
+if (!store.intensity) store.intensity = {};
 if (!store.classTasks) store.classTasks = [
   { id: 'ct-1', teacherId: 't-01', title: 'CS: algorithms problem set 3', ref: 'mb-cs-ps3', due: '2026-10-20', type: 'assessment', summary: 'Searching and sorting: complexity analysis and a timed implementation task.', submitted: ['st-01', 'st-02', 'st-07'], late: [] },
   { id: 'ct-2', teacherId: 't-01', title: 'CS: sorting visualiser project', ref: 'mb-cs-viz', due: '2026-10-24', type: 'project', summary: 'An interactive page that animates three sorting algorithms side by side.', submitted: ['st-01', 'st-02'], late: ['st-07'] },
@@ -1023,17 +1023,6 @@ export function mergeCandidate(candId, eventId) {
   return { event: e, stronger };
 }
 
-// ── N5: end-of-term report comments, drafted from the map ──────────────
-export const getReportComment = (studentId) => store.reportComments[studentId] || null;
-export function saveReportComment(studentId, patch, by) {
-  const was = store.reportComments[studentId];
-  store.reportComments[studentId] = { ...(was || { status: 'draft' }), ...patch, savedAt: nowIso() };
-  if (patch.status === 'sent' && was?.status !== 'sent') {
-    log(studentId, by, 'report', 'Sent the end-of-term report comment to the SIS');
-    notify(PERSONA_OF_STUDENT[studentId], 'Your advisor’s end-of-term report comment is in the SIS');
-  }
-  emit();
-}
 
 // ── N6: IB learner profile attributes and ATL skills on stations ──────
 export const LEARNER_PROFILE = ['Inquirer', 'Knowledgeable', 'Thinker', 'Communicator', 'Principled', 'Open-minded', 'Caring', 'Risk-taker', 'Balanced', 'Reflective'];
@@ -1094,3 +1083,21 @@ export function endorseClassTask(taskId, studentIds, note) {
   emit();
   return studentIds.length;
 }
+
+// ── Interface intensity: how much of the student interface is showing. It never changes the record. ──
+export const INTENSITY = [
+  ['simple', 'Simple', 'Your map, add a moment, answer a question, share a page'],
+  ['standard', 'Standard', 'Adds the inbox, lines and branches, the builder and audiences'],
+  ['full', 'Full', 'Everything: code, time travel, search, comparisons and settings'],
+];
+// Default by Year: Years 7–8 Simple, 9–11 Standard, 12–13 Full.
+export const defaultIntensity = (s) => (s.grade + 1 <= 8 ? 'simple' : s.grade + 1 <= 11 ? 'standard' : 'full');
+export const getIntensity = (studentId) => store.intensity[studentId] || defaultIntensity(getStudent(studentId));
+export function setIntensity(studentId, level) {
+  store.intensity[studentId] = level;
+  log(studentId, getStudent(studentId).name, 'privacy', `Set the interface to ${level}`);
+  emit();
+}
+// Screens each level shows. The first is home.
+export const INTENSITY_NAV = { simple: ['map', 'family'], standard: ['map', 'studio', 'inbox', 'links', 'privacy'], full: ['map', 'studio', 'shared', 'inbox', 'links', 'activity', 'privacy'] };
+export const INTENSITY_LABEL = { simple: { map: 'My journey' } };

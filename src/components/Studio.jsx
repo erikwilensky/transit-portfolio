@@ -13,7 +13,7 @@ import { CommentStrip } from './DraftComments.jsx';
 import LensCompare from './LensCompare.jsx';
 import { draftNarrative } from './drafts.js';
 
-export default function Studio({ map, drafts, audience, setAudience, tier, setTier, updateDraft, onShare, toast }) {
+export default function Studio({ level = 'full', map, drafts, audience, setAudience, tier, setTier, updateDraft, onShare, toast }) {
   const pres = drafts.find((p) => p.audience === audience) || drafts[0];
   const lens = useMemo(() => applyLens(map, pres, { hiddenLines: pres.filters.hiddenLines }), [map, pres]);
   const [selected, setSelected] = useState(null);
@@ -46,11 +46,11 @@ export default function Studio({ map, drafts, audience, setAudience, tier, setTi
   return (
     <div className="studio">
       <div className="studio-bar">
-        {!compare && <><div className="bar-group"><label>Audience</label><LensSwitcher value={audience} onChange={(a) => { setAudience(a); setSelected(null); }} targetName={specific?.targetName} /></div>
+        {!compare && <><div className="bar-group"><label>Audience</label><LensSwitcher value={audience} onChange={(a) => { setAudience(a); setSelected(null); }} targetName={specific?.targetName} only={level === 'simple' ? ['general', 'university', 'employer'] : level === 'standard' ? ['general', 'university', 'specific', 'employer', 'scholarship'] : null} /></div>
         {custom
           ? <div className="bar-group"><label>Mode</label><div className="seg"><button className={editing ? 'on' : ''} onClick={() => setEditing(true)}>Design</button><button className={!editing ? 'on' : ''} onClick={() => { setEditing(false); setBlockId(null); }}>Preview</button></div></div>
-          : <div className="bar-group"><label>Skill tier</label><TierToggle value={tier} onChange={setTier} /></div>}</>}
-        <button className={`compare-btn${compare ? ' on' : ''}`} onClick={() => setCompare(!compare)} aria-pressed={compare}>{compare ? 'Back to editing' : 'Compare two audiences'}</button>
+          : level !== 'simple' && <div className="bar-group"><label>Skill tier</label><TierToggle value={tier} onChange={setTier} only={level === 'standard' ? ['template', 'builder'] : null} /></div>}</>}
+        {level === 'full' && <button className={`compare-btn${compare ? ' on' : ''}`} onClick={() => setCompare(!compare)} aria-pressed={compare}>{compare ? 'Back to editing' : 'Compare two audiences'}</button>}
         {!compare && <button className="collapse-btn" onClick={() => setCollapsed(!collapsed)} aria-pressed={collapsed}>{collapsed ? 'Show controls' : 'Hide controls'}</button>}
       </div>
       {compare ? <LensCompare map={map} drafts={drafts} initial={audience} /> : <>

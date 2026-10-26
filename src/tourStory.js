@@ -1,4 +1,4 @@
-import { addReflection, addStation, endorse, getRequests, getSignals, getStore } from './api.js';
+import { addReflection, addStation, completeOnboarding, endorse, getRequests, getSignals, getStore, getStudent } from './api.js';
 
 // The role tour's story: Maya answers a prompt, adds the hackathon, Ms Nair endorses it.
 // Each stop can run on its own, so a presenter who skips ahead still sees a consistent record.
@@ -22,4 +22,9 @@ export function ensureEndorsed() {
   const e = tourEvent();
   const r = getRequests('t-01').find((x) => x.eventId === e.id);
   if (r) endorse([r.id], 't-01', 'Strong collaboration. Real-world impact.');
+}
+
+// Pim (Year 7) has picked three interests, so the Simple interface has a few stations to show.
+export function ensurePimStarted() {
+  if (getStudent('st-09').onboarding) completeOnboarding('st-09', ['science', 'art', 'sport'], 'starter');
 }

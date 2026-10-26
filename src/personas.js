@@ -16,7 +16,7 @@ export const KIND_LABEL = { student: 'Students', advisor: 'Advisor', teacher: 'S
 
 // Each kind of persona gets its own navigation. The first item is home.
 export const NAV = {
-  student: [['map', 'My map'], ['studio', 'Presentation studio'], ['shared', 'Shared view'], ['inbox', 'Inbox'], ['links', 'Share links'], ['activity', 'Activity'], ['privacy', 'Privacy']],
+  student: [['map', 'My map'], ['studio', 'Presentation studio'], ['shared', 'Shared view'], ['inbox', 'Inbox'], ['links', 'Share links'], ['activity', 'Activity'], ['privacy', 'Privacy'], ['family', 'Show my family']],
   advisor: [['advisory', 'Advisory 4B'], ['signals', 'Signals']],
   teacher: [['queue', 'Endorsements'], ['crosslinks', 'Cross-subject'], ['depot', 'Class depot']],
   counsellor: [['applications', 'Applications'], ['letter', 'Reference letter'], ['activities', 'Activities list'], ['search', 'Cohort search']],

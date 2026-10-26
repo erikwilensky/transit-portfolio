@@ -1,10 +1,11 @@
-import { ensureEndorsed, ensureMayaStory } from './tourStory.js';
+import { ensureEndorsed, ensureMayaStory, ensurePimStarted } from './tourStory.js';
 
 // Pitch tours, built from one library of steps (Q4). Each step moves to a persona and screen;
 // `say` is the presenter's line and `secs` a time hint. A step with `card` shows a full-screen card (Q1).
 const S = {
   open: { title: 'Opening', sub: 'The problem, one record, seven roles', card: 'open', secs: 30, say: 'Today a student’s learning is scattered across six systems, and every year counsellors rebuild the story by hand. This is one verified record that every role reads from.', run: () => {} },
   dash: { title: 'Leadership home', sub: 'Adoption, verified share, hours saved', secs: 30, say: 'The Head of School opens on the school dashboard: who uses it, how much is verified automatically, and the time it saves.', run: (c) => c.go('principal', 'dashboard') },
+  pim: { title: 'Pim, Year 7, on Simple', sub: 'The same record with a lighter interface', secs: 30, say: 'Younger students start on a Simple interface: their map, one big button to add something, and questions to answer. The slider at the top lets any student move to Standard or Full when they are ready. It never changes the record.', run: (c) => { ensurePimStarted(); c.go('pim', 'map'); } },
   maya: { title: 'Maya, after the hackathon', sub: 'Answers a signal, adds a station from her phone', secs: 60, say: 'Maya answers her advisor’s reflection signal, then adds yesterday’s hackathon from her phone and asks Ms Nair to endorse it.', run: (c) => c.go('maya', 'map', 'tour') },
   nair: { title: 'Ms Nair endorses it', sub: 'One click from her queue', secs: 30, say: 'Ms Nair sees the request in her queue and endorses it in one click. The badge on Maya’s map changes from dotted to outlined.', run: (c) => { ensureMayaStory(); c.go('nair', 'queue'); } },
   sponsor: { title: 'Sponsoring a plan', sub: 'A teacher joins before it happens', secs: 40, say: 'Not everything lives in a school system. Maya invited Ms Nair to sponsor her water-quality buoy while it was still a plan; Ms Nair set expectations and checks in, and endorses it when it is done.', run: (c) => { ensureMayaStory(); c.go('nair', 'queue', 'sponsor'); } },
@@ -24,13 +25,14 @@ const S = {
 const tour = (title, use, keys) => ({ title, use, steps: keys.map((k) => ({ key: k, ...S[k] })) });
 
 export const TOURS = {
-  short: tour('Five-minute pitch', 'For the board: under five minutes', ['open', 'maya', 'nair', 'adeyemi', 'reader', 'pdpa', 'ask']),
-  roles: tour('One record, every role', 'The full role walk-through', ['open', 'dash', 'maya', 'nair', 'whitfield', 'brandt', 'adeyemi', 'reader', 'pdpa', 'ask']),
-  deep: tour('Deep dive for staff', 'A staff session, with time for questions', ['open', 'dash', 'maya', 'nair', 'sponsor', 'whitfield', 'signals', 'brandt', 'adeyemi', 'lenses', 'reader', 'family', 'inbox', 'pdpa', 'rollout', 'ask']),
+  short: tour('Five-minute pitch', 'For the board: under five minutes', ['open', 'pim', 'maya', 'nair', 'adeyemi', 'reader', 'pdpa', 'ask']),
+  roles: tour('One record, every role', 'The full role walk-through', ['open', 'dash', 'pim', 'maya', 'nair', 'whitfield', 'brandt', 'adeyemi', 'reader', 'pdpa', 'ask']),
+  deep: tour('Deep dive for staff', 'A staff session, with time for questions', ['open', 'dash', 'pim', 'maya', 'nair', 'sponsor', 'whitfield', 'signals', 'brandt', 'adeyemi', 'lenses', 'reader', 'family', 'inbox', 'pdpa', 'rollout', 'ask']),
   student: {
     title: 'The student’s map',
     use: 'Formats and tiers for one student',
     steps: [
+      { title: 'Pim on Simple', sub: 'Year 7: a lighter interface', secs: 30, say: 'Pim is in Year 7, so the interface starts on Simple: the map, a big add button and plain words.', run: (c) => { ensurePimStarted(); c.go('pim', 'map'); } },
       { title: 'Maya’s interchange', sub: 'Air-quality sensor network', secs: 30, say: 'Maya’s map: each line is a strand of her life, and the air-quality project is where Computing meets Environment.', run: (c) => c.go('maya', 'map', 'ev-042') },
       { title: 'Lens: General → University', sub: 'Same data, a new format', secs: 30, say: 'Same verified data, different audience: the general profile becomes a university narrative.', run: (c) => { c.setTier('template'); c.setAudience('university'); c.go('maya', 'studio'); } },
       { title: 'Lens: Specific university', sub: '“Why Data Science”', secs: 30, say: 'For one course, matching lines stay full and everything else becomes thin context.', run: (c) => { c.setTier('builder'); c.setAudience('specific'); c.go('maya', 'studio'); } },
@@ -53,5 +55,6 @@ export const QA = [
   { q: 'What happens when a student leaves?', a: 'They take their map with them: a full export of the record and a static copy of every presentation. School access ends on a retention schedule.', go: (c) => c.go('maya', 'privacy'), show: 'Maya’s privacy page' },
   { q: 'Could a student make things up?', a: 'They can add anything, but it shows as student-added until a teacher endorses it. Readers see how each station was verified.', go: (c) => { ensureEndorsed(); c.go('reader', 'reader'); }, show: 'The reader’s view' },
   { q: 'Does it replace ManageBac or the SIS?', a: 'No. It reads from them through one adapter each and the student chooses what joins their map.', go: (c) => c.go('maya', 'inbox'), show: 'Integrations inbox' },
+  { q: 'Isn’t this too much for younger students?', a: 'Each student sets how much interface they see: Simple, Standard or Full. Years 7 and 8 start on Simple and move up when they are ready. The record underneath is the same.', go: (c) => { ensurePimStarted(); c.go('pim', 'map'); }, show: 'Pim on Simple' },
   { q: 'What about Years 7 to 9?', a: 'They start with simple templates. A parent gives consent in the family view, in Thai or English, before anything is kept or shared.', go: (c) => c.go('parent', 'consent', 'st-09'), show: 'A parent’s consent page' },
 ];

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { applyLens, getStore, getStudentMap, LEARNER_PROFILE, suggestInterchanges } from '../api.js';
+import { applyLens, getIntensity, getStore, getStudentMap, LEARNER_PROFILE, suggestInterchanges } from '../api.js';
 import LineDialog from '../components/LineDialog.jsx';
 import PhoneCapture from '../components/PhoneCapture.jsx';
 import MetroMap from '../components/MetroMap.jsx';
@@ -21,6 +21,8 @@ const yearOf = (e, s) => fmtTerm(e.date, s.g9StartYear, s.startGrade).split(',')
 const SEE = [['student', 'Me'], ['advisor', 'Advisor'], ['school', 'School'], ['public', 'Public']];
 
 export default function StudentMap({ map, studentId, toast, focusId, go, persona }) {
+  const level = getIntensity(studentId); // simple | standard | full
+  const simple = level === 'simple', full = level === 'full';
   const [hidden, setHidden] = useState([]);
   const [selected, setSelected] = useState(focusId && focusId.startsWith('ev-') ? focusId : null);
   const [signal, setSignal] = useState(null);
@@ -62,7 +64,7 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
   const [year, setYear] = useState('');
   const [lp, setLp] = useState(''); // N6: a learner-profile lens, such as risk-taker moments
   const [opts, setOpts] = useState(false); // P3: on a phone, the view options fold away
-  const [view, setView] = useState(() => (typeof window !== 'undefined' && window.innerWidth < 600 ? 'list' : 'map'));
+  const [view, setView] = useState(() => (typeof window !== 'undefined' && window.innerWidth < 600 && level === 'full' ? 'list' : 'map'));
   const filtering = q.trim() || kind || ver || year || lp;
   const base = useMemo(() => applyLens(shown, null, { hiddenLines: hidden }), [shown, hidden]);
   const lens = useMemo(() => {
@@ -105,12 +107,12 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
           </div>
           <div className="stats">
             <span><b>{map.events.length}</b> stations</span>
-            <span><b>{map.lines.length}</b> lines</span>
-            <span><b>{reflections}</b> reflections</span>
+            {!simple && <><span><b>{map.lines.length}</b> lines</span>
+            <span><b>{reflections}</b> reflections</span></>}
             {openSignals.length > 0 && <button className="sig-chip" onClick={() => setSignal(openSignals[0])}><span className="sig-dot" aria-hidden="true" />{openSignals.length} open signal{openSignals.length > 1 ? 's' : ''}</button>}
           </div>
           <div className="home-actions">
-            <button className="ghost" onClick={() => setReview(true)}>Term in review{sugCount > 0 && <span className="badge-n" aria-label={`${sugCount} suggestions`}>{sugCount}</span>}</button>
+            {!simple && <><button className="ghost" onClick={() => setReview(true)}>Term in review{sugCount > 0 && <span className="badge-n" aria-label={`${sugCount} suggestions`}>{sugCount}</span>}</button>
             <button className="ghost" onClick={() => setPhone(true)}>Capture on phone</button>
             <div className="menu-wrap">
               <button className="ghost" onClick={() => setMenu(!menu)} aria-expanded={menu}>Plan ▾</button>
@@ -119,18 +121,19 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
                 <button role="menuitem" onClick={() => { setMenu(false); setLineMode('branch'); }}><span><b>Start a branch</b><small>A sub-line under a school line</small></span></button>
                 <button role="menuitem" onClick={() => { setMenu(false); setLineMode('end'); }}><span><b>End a line</b><small>Terminus, then a reflection</small></span></button>
               </div>}
-            </div>
-            <button className="primary" onClick={() => setAdding({})}>＋ Add a station</button>
+            </div></>}
+            <button className={`primary${simple ? ' big-add' : ''}`} onClick={() => setAdding({})}>＋ {simple ? 'Add something I did' : 'Add a station'}</button>
           </div>
         </div>
-        <button className="ghost opts-toggle" aria-expanded={opts} onClick={() => setOpts(!opts)}>{opts ? 'Fewer options ▴' : `View options${filtering || hidden.length || seeAs !== 'student' ? ' (on)' : ''} ▾`}</button>
-        <div className={`map-opts${opts ? ' open' : ''}`}>
+        {simple && <p className="simple-hint">Each colour is something you do. Tap a dot to see it, or add something new.</p>}
+        {!simple && <button className="ghost opts-toggle" aria-expanded={opts} onClick={() => setOpts(!opts)}>{opts ? 'Fewer options ▴' : `View options${filtering || hidden.length || seeAs !== 'student' ? ' (on)' : ''} ▾`}</button>}
+        {!simple && <div className={`map-opts${opts ? ' open' : ''}`}>
         <div className="see-as" role="group" aria-label="See my map as">
           <span>See as</span>
           <div className="seg small">{SEE.map(([k, l]) => <button key={k} className={seeAs === k ? 'on' : ''} aria-pressed={seeAs === k} onClick={() => { setSeeAs(k); setSelected(null); }}>{l}</button>)}</div>
           {seeAs !== 'student' && <span className="see-note"><b>{seen.events.length}</b> of {map.events.length} stations and <b>{countRefl(seen)}</b> of {reflections} reflections visible to {seeAs === 'public' ? 'anyone with a link' : seeAs === 'school' ? 'school staff' : 'your advisor'}</span>}
         </div>
-        <div className="map-find" role="search">
+        {full && <div className="map-find" role="search">
           <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search stations, reflections, lines" aria-label="Search the map" />
           <select value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Kind"><option value="">Any kind</option>{kinds.map((k) => <option key={k} value={k}>{TYPE_LABEL[k] || k}</option>)}</select>
           <select value={ver} onChange={(e) => setVer(e.target.value)} aria-label="Verification"><option value="">Any verification</option>{Object.entries(VERIFY_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
@@ -138,26 +141,26 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
           <select value={lp} onChange={(e) => setLp(e.target.value)} aria-label="Learner profile"><option value="">Any learner profile</option>{LEARNER_PROFILE.map((k) => <option key={k} value={k}>{k} moments</option>)}</select>
           {filtering && <span className="find-n" role="status">{lens.visible.size} match{lens.visible.size === 1 ? '' : 'es'} <button className="linkish" onClick={() => { setQ(''); setKind(''); setVer(''); setYear(''); setLp(''); }}>Clear</button></span>}
           <div className="seg small" role="group" aria-label="Show as"><button className={view === 'map' ? 'on' : ''} aria-pressed={view === 'map'} onClick={() => setView('map')}>Map</button><button className={view === 'list' ? 'on' : ''} aria-pressed={view === 'list'} onClick={() => setView('list')}>List</button></div>
-        </div>
+        </div>}
         <div className="chips filter" role="group" aria-label="Show or hide lines">
           {map.lines.map((l) => (
             <button key={l.id} className={`line-chip${hidden.includes(l.id) ? ' off' : ''}${l.status === 'ended' ? ' ended' : ''}`} style={{ '--c': l.colour }} aria-pressed={!hidden.includes(l.id)}
               onClick={() => setHidden(hidden.includes(l.id) ? hidden.filter((x) => x !== l.id) : [...hidden, l.id])}><i className={l.pattern === 'cased' ? 'cased' : undefined} />{l.name}</button>
           ))}
         </div>
-        </div>
+        </div>}
       </div>
       <div className="home-map">
-        {view === 'map' ? <MetroMap map={shown} lens={lens} selectedId={selected} onSelect={setSelected} onSignal={(g) => (g.open ? setSignal(g) : setSelected(g.eventId))} fitKey={studentId} newIds={newIds} />
+        {view === 'map' ? <MetroMap recent={simple} map={shown} lens={lens} selectedId={selected} onSelect={setSelected} onSignal={(g) => (g.open ? setSignal(g) : setSelected(g.eventId))} fitKey={studentId} newIds={newIds} />
           : <StationList events={listed} map={shown} selected={selected} onSelect={setSelected} />}
         <StationPanel event={event} map={map} onClose={() => setSelected(null)} readOnly={seeAs !== 'student'} toast={toast} />
       </div>
-      <div className="scrubber">
+      {full && <div className="scrubber">
         <button className="icon-btn" onClick={() => { if (playing) setPlaying(false); else { if (scrub === null) setScrub(0); setPlaying(true); } }} aria-label={playing ? 'Pause' : 'Play the journey'}>{playing ? '❚❚' : '▶'}</button>
         <input type="range" min={0} max={span} value={scrub ?? span} onChange={(e) => { setPlaying(false); const v = +e.target.value; setScrub(v >= span ? null : v); }} aria-label="Travel through time" />
         <span className="scrub-date">{scrub === null ? 'Today' : new Date(at).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}</span>
-      </div>
-      <div className="home-foot"><MapLegend /><VerifyLegend /><span className="hint">Tap a station or a signal · drag to pan · pinch or scroll to zoom</span></div>
+      </div>}
+      <div className="home-foot">{!simple && <MapLegend />}<VerifyLegend /><span className="hint">Tap a station or a signal · drag to pan · pinch or scroll to zoom</span></div>
 
       {signal && (
         <ReflectComposer signal={signal} studentId={studentId} prefill={tourStage === 'signal' ? TOUR_REFLECTION : ''}

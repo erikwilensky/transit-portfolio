@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { applyLens, getPresentations, getStudentMap, getStudents, subscribe, getNotifications, markNotificationsRead, resetDemo, restore, logLink, addStation, getLang, setLang } from './api.js';
+import { applyLens, getPresentations, getStudentMap, getStudents, subscribe, getNotifications, markNotificationsRead, resetDemo, restore, logLink, addStation, getLang, setLang, getIntensity, setIntensity, INTENSITY, INTENSITY_NAV, INTENSITY_LABEL } from './api.js';
+import SimpleHome, { ShowFamily } from './screens/SimpleHome.jsx';
+import IntensityControl from './components/IntensityControl.jsx';
 import { ensureEndorsed } from './tourStory.js';
 import { PERSONAS, KIND_LABEL, NAV, personaById, home } from './personas.js';
 import { ago, appUrl } from './format.js';
@@ -154,7 +156,10 @@ export default function App() {
   // N1: a parent's navigation follows their language.
   const lang = getLang();
   const T = (s) => tr(lang, s);
-  const nav = NAV[persona.kind].map(([id, l]) => [id, T(l)]);
+  // Students choose how much interface they see; the record is the same at every level.
+  const level = persona.kind === 'student' ? getIntensity(persona.studentId) : null;
+  const changeLevel = (v) => { setIntensity(persona.studentId, v); if (INTENSITY_NAV[v] && !INTENSITY_NAV[v].includes(route.screen)) go(persona.id, 'map'); toast(`Interface set to ${v}. Your map and everything on it stay the same.`); };
+  const nav = NAV[persona.kind].filter(([id]) => !level || !INTENSITY_NAV[level] || INTENSITY_NAV[level].includes(id)).map(([id, l]) => [id, T(INTENSITY_LABEL[level]?.[id] || l)]);
   const notes = getNotifications(persona.id);
   const unread = notes.filter((n) => !n.read).length;
   const ctx = { go, toast, version, persona, drafts, setDrafts, audience, setAudience, tier, setTier, startTour: (t) => { setTourState({ tour: t, step: 0 }); TOURS[t].steps[0].run(ctx); } };
@@ -173,7 +178,7 @@ export default function App() {
 
   return (
     <VerifyProvider>
-      <div className={`app kind-${persona.kind}`} lang={lang}>
+      <div className={`app kind-${persona.kind}${level ? ` int-${level}` : ''}`} lang={lang}>
         <header className="topnav">
           <a className="brand" href={`#/${persona.id}`} aria-label="NIST Transit Portfolio home"><Logo className="brand-logo" /><span className="brand-name"><b>Transit</b> Portfolio</span></a>
           <NavBar items={nav} hrefOf={(id) => `#/${persona.id}/${id}`} isOn={(id) => route.screen === id || (id === 'advisory' && route.screen === 'student')} onGo={(id) => go(persona.id, id)} moreLabel={T('More')} />
@@ -216,8 +221,21 @@ export default function App() {
                 </div>
               )}
             </div>
-            <button className="icon-btn lang-btn" onClick={() => setLang(lang === 'th' ? 'en' : 'th')} aria-label={lang === 'th' ? 'Switch to English' : 'เปลี่ยนเป็นภาษาไทย'} title={lang === 'th' ? 'English' : 'ภาษาไทย'} lang={lang === 'th' ? 'en' : 'th'}>{lang === 'th' ? 'EN' : 'ไทย'}</button>
-            <button className="icon-btn" onClick={() => setDark(!dark)} aria-label={dark ? 'Light mode' : 'Dark mode'}>{dark ? '☀' : '☾'}</button>
+            {level && <IntensityControl compact value={level} onChange={changeLevel} />}
+            <div className="menu-wrap">
+              <button className="icon-btn view-btn" onClick={() => setMenu(menu === 'view' ? null : 'view')} aria-expanded={menu === 'view'} aria-haspopup="menu" aria-label="Display settings" title="Display settings">
+                <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /><circle cx="16" cy="7" r="2.2" fill="none" stroke="currentColor" strokeWidth="2" /><circle cx="10" cy="17" r="2.2" fill="none" stroke="currentColor" strokeWidth="2" /></svg>
+              </button>
+              {menu === 'view' && (
+                <div className="menu view-menu" role="menu">
+                  {level && <><div className="menu-title">How much to show</div><div className="vm-row"><IntensityControl value={level} onChange={changeLevel} /><small className="vm-note">{INTENSITY.find(([k]) => k === level)?.[2]}</small></div></>}
+                  <div className="menu-title">Language</div>
+                  <div className="vm-row seg">{[['en', 'English'], ['th', 'ภาษาไทย']].map(([k, l]) => <button key={k} className={lang === k ? 'on' : ''} lang={k} onClick={() => setLang(k)}>{l}</button>)}</div>
+                  <div className="menu-title">Theme</div>
+                  <div className="vm-row seg">{[[false, 'Light'], [true, 'Dark']].map(([k, l]) => <button key={l} className={dark === k ? 'on' : ''} onClick={() => setDark(k)}>{l}</button>)}</div>
+                </div>
+              )}
+            </div>
             <div className="menu-wrap">
               <button className="icon-btn tour-btn" onClick={() => setMenu(menu === 'tour' ? null : 'tour')} aria-expanded={menu === 'tour'}>{T('Pitch tour')}</button>
               {menu === 'tour' && (
@@ -327,12 +345,15 @@ function StudentScreens({ screen, param, studentId, drafts, setDrafts, audience,
     setNewLink({ link, title: site ? `${pres.title} (your own site)` : pres.title });
   };
   if (map.student.onboarding) return <Onboarding map={map} studentId={studentId} onDone={() => { toast('Your map is ready.'); go(persona.id, 'map'); }} />;
+  const level = getIntensity(studentId);
+  if (level === 'simple' && screen === 'map') return <SimpleHome map={map} studentId={studentId} toast={toast} version={version} />;
+  if (screen === 'family') return <ShowFamily map={map} toast={toast} version={version} />;
   if (screen === 'links') return <ShareLinks studentId={studentId} drafts={myDrafts} updateDraft={updateDraft} toast={toast} version={version} />;
   if (screen === 'activity') return <Activity studentId={studentId} version={version} />;
   if (screen === 'privacy') return <Privacy studentId={studentId} drafts={myDrafts} toast={toast} go={go} persona={persona} version={version} />;
   if (screen === 'map') return <StudentMap map={map} studentId={studentId} toast={toast} version={version} focusId={param} go={go} persona={persona} />;
   if (screen === 'studio') return <>{newLink && <ShareDialog link={newLink.link} title={newLink.title} onClose={() => setNewLink(null)} />}
-    {gapFor && <ShareGaps pres={gapFor} gaps={gapsOf(gapFor)} lines={map.lines} toast={toast} onClose={() => setGapFor(null)} onShare={() => { const p = gapFor; setGapFor(null); share(myDrafts.find((x) => x.id === p.id) || p); }} />}<Studio key={studentId} map={publicMap} drafts={myDrafts} audience={audience} setAudience={setAudience} tier={tier} setTier={setTier} updateDraft={updateDraft} onShare={askShare} toast={toast} /></>;
+    {gapFor && <ShareGaps pres={gapFor} gaps={gapsOf(gapFor)} lines={map.lines} toast={toast} onClose={() => setGapFor(null)} onShare={() => { const p = gapFor; setGapFor(null); share(myDrafts.find((x) => x.id === p.id) || p); }} />}<Studio key={studentId} level={level} map={publicMap} drafts={myDrafts} audience={(level === 'simple' && !['general', 'university', 'employer'].includes(audience)) || (level === 'standard' && audience === 'custom') ? 'general' : audience} setAudience={setAudience} tier={level === 'simple' ? 'template' : level === 'standard' && tier === 'code' ? 'builder' : tier} setTier={setTier} updateDraft={updateDraft} onShare={askShare} toast={toast} /></>;
   if (screen === 'shared') return <SharedView key={studentId} publicMap={publicMap} drafts={myDrafts} links={links} />;
   if (screen === 'inbox') return <IntegrationsPanel map={map} lens={applyLens(map, null)} newIds={new Set()} onAdded={(e) => { toast(`Added “${e.title}” to the map`); go(persona.id, 'map', e.id); }} toast={toast} version={version} />;
   return null;
