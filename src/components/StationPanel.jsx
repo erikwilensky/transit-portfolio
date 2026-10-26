@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { VerifyBadge } from './Badge.jsx';
 import RecordInspector from './RecordInspector.jsx';
-import { addCheckIn, completeGoal, getTeacher, setVisibility, TODAY } from '../api.js';
+import { addCheckIn, addReflection, completeGoal, deleteStation, editStation, getTeacher, getTeachers, requestEndorsement, requestFor, resubmit, setVisibility, snapshot, TODAY } from '../api.js';
+import { createPortal } from 'react-dom';
 import { fmtDate, fmtTerm, TYPE_LABEL, VIS_LABEL, VERIFY_HELP } from '../format.js';
 
 const KIND_ICON = { link: '↗', file: '▤', image: '▣', grade: '✓', certificate: '★' };
 
-export default function StationPanel({ event, map, onClose, readOnly = false, onAsk }) {
+export default function StationPanel({ event, map, onClose, readOnly = false, onAsk, toast }) {
   const open = !!event;
   const [inspect, setInspect] = useState(null);
+  const [view, setView] = useState(null); // evidence item open in the lightbox
   return (
     <aside className={`station-panel${open ? ' open' : ''}`} aria-hidden={!open} aria-label="Station details">
       {event && (
@@ -27,6 +29,7 @@ export default function StationPanel({ event, map, onClose, readOnly = false, on
           <p className="panel-summary">{event.summary}</p>
           {event.about && <p className="panel-about">{event.about}</p>}
           {event.type === 'goal' && <GoalBox event={event} readOnly={readOnly} />}
+          {!readOnly && event.type !== 'goal' && <StudentActions key={event.id} event={event} onClose={onClose} toast={toast} />}
           <VerifyBadge level={event.verification} large event={event} />
           <span className="vhelp">{VERIFY_HELP[event.verification]}</span>
 
@@ -35,12 +38,14 @@ export default function StationPanel({ event, map, onClose, readOnly = false, on
               <h3>Evidence</h3>
               <ul className="evidence">
                 {event.evidence.filter((ev) => ev.kind === 'image').map((ev, i) => (
-                  <li key={`img-${i}`} className="ev-image"><img src={ev.url} alt={ev.caption} loading="lazy" /><span><b>{ev.caption}</b><small>image</small></span></li>
+                  <li key={`img-${i}`} className="ev-image"><button className="ev-open" onClick={() => setView(ev)} aria-label={`Open ${ev.caption} full size`}><img src={ev.url} alt={ev.caption} loading="lazy" /></button><span><b>{ev.caption}</b><small>image</small></span></li>
                 ))}
                 {event.evidence.filter((ev) => ev.kind !== 'image').map((ev, i) => (
                   <li key={i}>
-                    <span className="ev-icon" aria-hidden="true">{KIND_ICON[ev.kind]}</span>
-                    <span><b>{ev.caption}</b><small>{ev.kind}</small></span>
+                    <button className="ev-open ev-row" onClick={() => setView(ev)}>
+                      <span className="ev-icon" aria-hidden="true">{KIND_ICON[ev.kind]}</span>
+                      <span><b>{ev.caption}</b><small>{ev.kind} · open</small></span>
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -76,6 +81,7 @@ export default function StationPanel({ event, map, onClose, readOnly = false, on
         </div>
       )}
       {inspect && <RecordInspector eventId={inspect} onClose={() => setInspect(null)} />}
+      {view && event && <EvidenceView ev={view} event={event} onClose={() => setView(null)} />}
     </aside>
   );
 }
@@ -117,6 +123,83 @@ function AskBox({ first, onAsk }) {
       <h3>Want to see more?</h3>
       <textarea rows={2} value={text} onChange={(e) => setText(e.target.value)} placeholder="e.g. Could we see the code?" aria-label={`Ask ${first} for more evidence`} />
       <button className="ghost small-btn" disabled={text.trim().length < 4} onClick={() => { onAsk(text.trim()); setSent(true); }}>Ask {first}</button>
+    </section>
+  );
+}
+
+// F8: evidence opens. Images full size; files and links as a document stamped with where and when it came from.
+function EvidenceView({ ev, event, onClose }) {
+  return createPortal(
+    <div className="modal-back ev-back" onClick={onClose} onKeyDown={(k) => k.key === 'Escape' && onClose()}>
+      <div className={`ev-view ${ev.kind === 'image' ? 'img' : 'doc'}`} role="dialog" aria-label={ev.caption} onClick={(x) => x.stopPropagation()}>
+        <button className="panel-close" onClick={onClose} aria-label="Close" autoFocus>×</button>
+        {ev.kind === 'image' ? <img src={ev.url} alt={ev.caption} /> : (
+          <div className="ev-doc">
+            <div className="ev-doc-stamp">{event.source?.system || 'Uploaded'}{event.source?.ref ? ` · ${event.source.ref}` : ''} · {fmtDate(event.date)}</div>
+            <h2>{ev.caption}</h2>
+            <p className="fineprint">{ev.kind === 'link' ? 'Linked page' : ev.kind === 'grade' ? 'Gradebook extract' : ev.kind === 'certificate' ? 'Certificate' : 'Document'} attached to “{event.title}”.</p>
+            <div className="ev-doc-body">{(event.about || event.summary).split('. ').map((x, i) => <p key={i}>{x.replace(/\.$/, '')}.</p>)}<div className="ev-doc-lines" aria-hidden="true">{Array.from({ length: 6 }, (_, i) => <i key={i} style={{ width: `${92 - (i * 13) % 40}%` }} />)}</div></div>
+            <p className="fineprint">Demo document. In the real product this opens the file from {event.source?.system || 'the student’s upload'}.</p>
+          </div>
+        )}
+        <div className="ev-cap">{ev.caption}</div>
+      </div>
+    </div>, document.body);
+}
+
+const STAFF = ['t-01', 't-02', 't-03', 't-04', 't-05', 't-06', 't-07', 't-08'];
+
+// F5 and F6: what a student can do with one of their stations. Verified facts stay read-only.
+function StudentActions({ event, onClose, toast = () => {} }) {
+  const [mode, setMode] = useState(null); // 'reflect' | 'request' | 'edit'
+  const [text, setText] = useState('');
+  const [vis, setVis] = useState('advisor');
+  const [teacher, setTeacher] = useState('t-01');
+  const [title, setTitle] = useState(event.title);
+  const [summary, setSummary] = useState(event.summary);
+  const [link, setLink] = useState('');
+  const own = event.verification === 'student-added';
+  const rq = requestFor(event.id);
+  const t = rq && getTeacher(rq.teacherId);
+  const done = (msg, snap) => { setMode(null); setText(''); toast(msg, snap); };
+  return (
+    <section className="st-actions">
+      {rq?.status === 'returned' && (
+        <div className="returned">
+          <b>{t.name} asked for more</b>
+          <p>“{rq.reason || 'More evidence please.'}”</p>
+          <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="Link to the code, a photo or a file" aria-label="Evidence link" />
+          <button className="primary small-btn" disabled={link.trim().length < 4} onClick={() => { const snap = snapshot(); resubmit(rq.id, { kind: 'link', url: link.trim(), caption: link.trim().replace(/^https?:\/\//, '').slice(0, 48) }); setLink(''); toast(`Resubmitted to ${t.name}`, snap); }}>Add evidence and resubmit</button>
+        </div>
+      )}
+      {rq?.status === 'pending' && <p className="pending-note">Waiting for {t.name} to endorse{rq.resubmitted ? ' (resubmitted with more evidence)' : ''}.</p>}
+      <div className="st-btns">
+        <button className="ghost small-btn" aria-pressed={mode === 'reflect'} onClick={() => setMode(mode === 'reflect' ? null : 'reflect')}>Add a reflection</button>
+        {own && !rq && <button className="ghost small-btn" aria-pressed={mode === 'request'} onClick={() => setMode(mode === 'request' ? null : 'request')}>Ask for an endorsement</button>}
+        {own && <button className="ghost small-btn" aria-pressed={mode === 'edit'} onClick={() => setMode(mode === 'edit' ? null : 'edit')}>Edit</button>}
+        {own && <button className="ghost small-btn danger" onClick={() => { const snap = snapshot(); deleteStation(event.id); onClose(); toast(`Deleted “${event.title}”`, snap); }}>Delete</button>}
+      </div>
+      {mode === 'reflect' && (
+        <div className="st-form">
+          <textarea rows={3} value={text} onChange={(e) => setText(e.target.value)} placeholder="What did this give you? What would you do differently?" aria-label="Reflection" />
+          <div className="st-row"><select value={vis} onChange={(e) => setVis(e.target.value)} aria-label="Who can read it">{Object.entries(VIS_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
+            <button className="primary small-btn" disabled={text.trim().length < 8} onClick={() => { const snap = snapshot(); addReflection({ studentId: event.studentId, eventId: event.id, prompt: 'My own reflection', text: text.trim(), visibility: vis }); done('Reflection saved', snap); }}>Save reflection</button></div>
+        </div>
+      )}
+      {mode === 'request' && (
+        <div className="st-form">
+          <div className="st-row"><select value={teacher} onChange={(e) => setTeacher(e.target.value)} aria-label="Teacher">{getTeachers().filter((x) => STAFF.includes(x.id)).map((x) => <option key={x.id} value={x.id}>{x.name} · {x.role}</option>)}</select></div>
+          <input value={text} onChange={(e) => setText(e.target.value)} placeholder="A note for the teacher (optional)" aria-label="Note for the teacher" />
+          <button className="primary small-btn" onClick={() => { const snap = snapshot(); requestEndorsement(event.id, teacher, text.trim() || null); done(`Asked ${getTeacher(teacher).name} to endorse it`, snap); }}>Send request</button>
+        </div>
+      )}
+      {mode === 'edit' && (
+        <div className="st-form">
+          <input value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Title" />
+          <textarea rows={2} value={summary} onChange={(e) => setSummary(e.target.value)} aria-label="Summary" />
+          <button className="primary small-btn" disabled={title.trim().length < 3} onClick={() => { const snap = snapshot(); editStation(event.id, { title: title.trim(), summary: summary.trim() }); done('Saved', snap); }}>Save changes</button>
+        </div>
+      )}
     </section>
   );
 }

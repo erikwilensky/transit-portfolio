@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { addNote, applyLens, getNotes, getPrompts, getStudentMap, growth, log, sendPrompt, TODAY } from '../api.js';
+import { addNote, applyLens, getNotes, getPrompts, getStudentMap, growth, log, sendPrompt, snapshot, TODAY } from '../api.js';
 import { appUrl, fmtDate } from '../format.js';
 import MeetingMode from '../components/MeetingMode.jsx';
 import Qr from '../components/Qr.jsx';
@@ -65,7 +65,7 @@ export default function AdvisorStudent({ studentId, version, toast, go, persona 
             <h3>Send a reflection prompt</h3>
             <p className="fineprint">{event ? `Attached to “${event.title}”.` : 'Tap a station on the map to attach the prompt to it.'}</p>
             <textarea rows={2} value={promptText} onChange={(e) => setPromptText(e.target.value)} placeholder={`e.g. What did this teach you, ${first}?`} />
-            <button className="primary" disabled={!event || promptText.trim().length < 8} onClick={() => { sendPrompt(studentId, event.id, promptText.trim(), persona.teacherId); setPromptText(''); toast(`Prompt sent. A signal now shows on ${first}'s map.`); }}>Send prompt</button>
+            <button className="primary" disabled={!event || promptText.trim().length < 8} onClick={() => { const snap = snapshot(); sendPrompt(studentId, event.id, promptText.trim(), persona.teacherId); setPromptText(''); toast(`Prompt sent. A signal now shows on ${first}'s map.`, snap); }}>Send prompt</button>
             {prompts.length > 0 && <ul className="prompt-hist">{prompts.map((p) => <li key={p.id}><span className={`ph-dot${p.answered ? ' ok' : ''}`} />{p.text}<small>{fmtDate(p.date)} · {p.answered ? 'answered' : 'open'}</small></li>)}</ul>}
           </section>
           <section className="card-sec">

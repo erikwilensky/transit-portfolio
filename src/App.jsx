@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { applyLens, getPresentations, getStudentMap, getStudents, subscribe, getNotifications, markNotificationsRead, resetDemo } from './api.js';
+import { applyLens, getPresentations, getStudentMap, getStudents, subscribe, getNotifications, markNotificationsRead, resetDemo, restore, logLink } from './api.js';
 import { ensureEndorsed } from './tourStory.js';
 import { PERSONAS, KIND_LABEL, NAV, personaById, home } from './personas.js';
 import { ago } from './format.js';
@@ -38,6 +38,7 @@ import Pilot from './screens/Pilot.jsx';
 import AuditLog from './screens/AuditLog.jsx';
 import Logo from './components/Logo.jsx';
 import NavBar from './components/NavBar.jsx';
+import ShareDialog from './components/ShareDialog.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { VerifyProvider } from './components/VerifyModal.jsx';
 import { TOURS } from './tour.js';
@@ -92,7 +93,8 @@ export default function App() {
     if (location.hash !== h) history.pushState(null, '', h);
     setRoute(parse()); setMenu(null);
   };
-  const toast = (m) => { setToastMsg(m); clearTimeout(window.__toast); window.__toast = setTimeout(() => setToastMsg(null), 3400); };
+  // F9: a toast can carry a snapshot taken before the action; Undo restores it.
+  const toast = (m, undo) => { setToastMsg({ m, undo }); clearTimeout(window.__toast); window.__toast = setTimeout(() => setToastMsg(null), undo ? 6000 : 3400); };
 
   if (route.publicKind === 's') return <VerifyProvider><ShareLanding token={route.param} drafts={drafts} version={version} /></VerifyProvider>;
   if (route.publicKind === 'v') return <VerifyPage code={route.param} />;
@@ -226,7 +228,7 @@ export default function App() {
             <button onClick={() => { setAuto(false); setTourState(null); }} aria-label="Close tour">×</button>
           </div>
         )}
-        <div className={`toast${toastMsg ? ' show' : ''}`} role="status" aria-live="polite">{toastMsg}</div>
+        <div className={`toast${toastMsg ? ' show' : ''}`} role="status" aria-live="polite">{toastMsg?.m}{toastMsg?.undo && <button className="toast-undo" onClick={() => { restore(toastMsg.undo); setToastMsg(null); }}>Undo</button>}</div>
       </div>
     </VerifyProvider>
   );
@@ -238,17 +240,19 @@ function StudentScreens({ screen, param, studentId, drafts, setDrafts, audience,
   const myDrafts = drafts[studentId] || [];
   const links = myDrafts.flatMap((p) => p.shareLinks);
   const updateDraft = (presId, patch) => setDrafts((d) => ({ ...d, [studentId]: d[studentId].map((p) => (p.id === presId ? { ...p, ...patch } : p)) }));
+  const [newLink, setNewLink] = useState(null);
   const share = (pres) => {
-    const token = `tp-${Math.random().toString(36).slice(2, 6)}`;
-    updateDraft(pres.id, { shareLinks: [...pres.shareLinks, { token, presentationId: pres.id, expiresAt: '2026-12-31', revoked: false, views: 0 }] });
-    toast(`Share link created: /s/${token}, expires 31 Dec 2026`);
+    const link = { token: `tp-${Math.random().toString(36).slice(2, 6)}`, presentationId: pres.id, expiresAt: '2026-12-31', revoked: false, views: 0 };
+    updateDraft(pres.id, { shareLinks: [...pres.shareLinks, link] });
+    logLink(studentId, `Created share link /s/${link.token} for “${pres.title}”`);
+    setNewLink({ link, title: pres.title });
   };
   if (map.student.onboarding) return <Onboarding map={map} studentId={studentId} onDone={() => { toast('Your map is ready.'); go(persona.id, 'map'); }} />;
   if (screen === 'links') return <ShareLinks studentId={studentId} drafts={myDrafts} updateDraft={updateDraft} toast={toast} version={version} />;
   if (screen === 'activity') return <Activity studentId={studentId} version={version} />;
   if (screen === 'privacy') return <Privacy studentId={studentId} drafts={myDrafts} toast={toast} go={go} persona={persona} version={version} />;
   if (screen === 'map') return <StudentMap map={map} studentId={studentId} toast={toast} version={version} focusId={param} go={go} persona={persona} />;
-  if (screen === 'studio') return <Studio key={studentId} map={publicMap} drafts={myDrafts} audience={audience} setAudience={setAudience} tier={tier} setTier={setTier} updateDraft={updateDraft} onShare={share} toast={toast} />;
+  if (screen === 'studio') return <>{newLink && <ShareDialog link={newLink.link} title={newLink.title} onClose={() => setNewLink(null)} />}<Studio key={studentId} map={publicMap} drafts={myDrafts} audience={audience} setAudience={setAudience} tier={tier} setTier={setTier} updateDraft={updateDraft} onShare={share} toast={toast} /></>;
   if (screen === 'shared') return <SharedView key={studentId} publicMap={publicMap} drafts={myDrafts} links={links} />;
   if (screen === 'inbox') return <IntegrationsPanel map={map} lens={applyLens(map, null)} newIds={new Set()} onAdded={(e) => { toast(`Added “${e.title}” to the map`); go(persona.id, 'map', e.id); }} toast={toast} version={version} />;
   return null;

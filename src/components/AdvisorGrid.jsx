@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { applyLens, getCohort, getTeacher, growth, sendPrompt, TODAY } from '../api.js';
+import { applyLens, getCohort, getTeacher, growth, sendPrompt, snapshot, TODAY } from '../api.js';
 import { fmtDate } from '../format.js';
 import MetroMap from './MetroMap.jsx';
 
@@ -52,7 +52,7 @@ export default function AdvisorGrid({ advisorId, onOpen, toast, version }) {
                 {c.flagFewReflections ? (
                   <>
                     <span className="flag">Few reflections</span>
-                    <button onClick={() => { const last = c.events.filter((e) => e.date <= TODAY && e.type !== 'goal').at(-1); if (last) sendPrompt(c.student.id, last.id, `What has “${last.title}” taught you so far?`, advisorId); setPrompted({ ...prompted, [c.student.id]: true }); toast(`Reflection prompt sent to ${c.student.name.split(' ')[0]}`); }} disabled={prompted[c.student.id]}>
+                    <button onClick={() => { const snap = snapshot(); const last = c.events.filter((e) => e.date <= TODAY && e.type !== 'goal').at(-1); if (last) sendPrompt(c.student.id, last.id, `What has “${last.title}” taught you so far?`, advisorId); setPrompted({ ...prompted, [c.student.id]: true }); toast(`Reflection prompt sent to ${c.student.name.split(' ')[0]}`, snap); }} disabled={prompted[c.student.id]}>
                       {prompted[c.student.id] ? 'Prompt sent' : 'Send reflection prompt'}
                     </button>
                   </>

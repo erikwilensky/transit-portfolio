@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { getCohort, getEvent, getPrompts, sendPrompt } from '../api.js';
+import { getCohort, getEvent, getPrompts, sendPrompt, snapshot } from '../api.js';
 import { fmtDate } from '../format.js';
 
 const TEMPLATES = {
@@ -43,7 +43,7 @@ export default function SignalBoard({ persona, toast, go, version }) {
                 {done ? <p className="sr-sent">✓ Sent. It now shows as a signal on {r.c.student.name.split(' ')[0]}’s map.</p> : (
                   <>
                     <div className="q-chips">{TEMPLATES[r.kind].map((x) => <button key={x} className={t === x ? 'on' : ''} onClick={() => setText({ ...text, [r.key]: x })}>{x}</button>)}</div>
-                    <div className="q-actions"><input value={t} onChange={(ev) => setText({ ...text, [r.key]: ev.target.value })} aria-label="Prompt" /><button className="primary" disabled={!e || t.trim().length < 6} onClick={() => { sendPrompt(r.c.student.id, r.eventId, t.trim(), persona.teacherId); setSent([...sent, r.key]); toast(`Prompt sent to ${r.c.student.name.split(' ')[0]}.`); }}>Send</button></div>
+                    <div className="q-actions"><input value={t} onChange={(ev) => setText({ ...text, [r.key]: ev.target.value })} aria-label="Prompt" /><button className="primary" disabled={!e || t.trim().length < 6} onClick={() => { const snap = snapshot(); sendPrompt(r.c.student.id, r.eventId, t.trim(), persona.teacherId); setSent([...sent, r.key]); toast(`Prompt sent to ${r.c.student.name.split(' ')[0]}.`, snap); }}>Send</button></div>
                   </>
                 )}
               </div>

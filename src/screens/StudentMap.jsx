@@ -111,7 +111,7 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
       </div>
       <div className="home-map">
         <MetroMap map={shown} lens={lens} selectedId={selected} onSelect={setSelected} onSignal={(g) => (g.open ? setSignal(g) : setSelected(g.eventId))} fitKey={studentId} newIds={newIds} />
-        <StationPanel event={event} map={map} onClose={() => setSelected(null)} readOnly={seeAs !== 'student'} />
+        <StationPanel event={event} map={map} onClose={() => setSelected(null)} readOnly={seeAs !== 'student'} toast={toast} />
       </div>
       <div className="scrubber">
         <button className="icon-btn" onClick={() => { if (playing) setPlaying(false); else { if (scrub === null) setScrub(0); setPlaying(true); } }} aria-label={playing ? 'Pause' : 'Play the journey'}>{playing ? '❚❚' : '▶'}</button>

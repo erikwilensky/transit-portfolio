@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { declineRequest, endorse, getRequests, getStore, getTeacher, getLine } from '../api.js';
+import { declineRequest, endorse, getRequests, getStore, getTeacher, getLine, snapshot } from '../api.js';
 import { fmtDate, TYPE_LABEL } from '../format.js';
 import { VerifyBadge } from '../components/Badge.jsx';
 import SponsorPanel from '../components/SponsorPanel.jsx';
@@ -19,9 +19,10 @@ export default function TeacherQueue({ teacherId, toast, version }) {
   const autoShare = (() => { const ev = getStore().events.filter((e) => e.date >= '2026-08-15'); return Math.round(100 * ev.filter((e) => e.verification === 'school-verified').length / Math.max(1, ev.length)); })();
   const noteFor = (r) => [...(chips[r.id] || []), notes[r.id]].filter(Boolean).join('. ') || 'Endorsed.';
   const doEndorse = (ids) => {
+    const snap = snapshot();
     ids.forEach((id) => endorse(id, teacherId, noteFor(pending.find((r) => r.id === id))));
     setPicked([]);
-    toast(ids.length > 1 ? `${ids.length} items endorsed. Students were notified.` : 'Endorsed. The badge on the student’s map is now outlined.');
+    toast(ids.length > 1 ? `${ids.length} items endorsed. Students were notified.` : 'Endorsed. The badge on the student’s map is now outlined.', snap);
   };
 
   return (
@@ -63,7 +64,7 @@ export default function TeacherQueue({ teacherId, toast, version }) {
                   <span className="pres-avatar xs" style={{ background: r.student.avatar.colour }}>{r.student.avatar.initials}</span>
                   <b>{r.student.name}</b><span>Year {r.student.grade + 1}</span>
                   <span className="q-src">{r.source === 'lms' ? 'From ManageBac' : r.source === 'sponsor' ? 'Finished project you sponsored' : 'Requested by the student'} · {fmtDate(r.date)}</span>
-                  {r.fresh && <span className="new-pill">NEW</span>}
+                  {r.resubmitted ? <span className="new-pill">RESUBMITTED</span> : r.fresh && <span className="new-pill">NEW</span>}
                 </div>
                 <h3>{e.title}</h3>
                 <p>{e.about || e.summary}</p>
@@ -75,8 +76,8 @@ export default function TeacherQueue({ teacherId, toast, version }) {
                 {r.note && <blockquote className="q-note">“{r.note}”</blockquote>}
                 <div className="q-chips">{CHIPS.map((c) => { const on = (chips[r.id] || []).includes(c); return <button key={c} className={on ? 'on' : ''} onClick={() => setChips({ ...chips, [r.id]: on ? chips[r.id].filter((x) => x !== c) : [...(chips[r.id] || []), c] })}>{c}</button>; })}</div>
                 <div className="q-actions">
-                  <input value={notes[r.id] || ''} onChange={(ev) => setNotes({ ...notes, [r.id]: ev.target.value })} placeholder="Optional note for the student’s record" />
-                  <button className="ghost" onClick={() => { declineRequest(r.id, 'More evidence please'); toast('Sent back with a request for more evidence.'); }}>Ask for more</button>
+                  <input value={notes[r.id] || ''} onChange={(ev) => setNotes({ ...notes, [r.id]: ev.target.value })} placeholder="A note for the record, or what you need to see" aria-label="Note" />
+                  <button className="ghost" title="Sends your note to the student as what you need to see" onClick={() => { const snap = snapshot(); declineRequest(r.id, (notes[r.id] || '').trim() || 'Could you add more evidence, such as the code or a photo?'); toast(`Sent back to ${r.student.name.split(' ')[0]} with your request.`, snap); }}>Ask for more</button>
                   <button className="primary" onClick={() => doEndorse([r.id])}>Endorse</button>
                 </div>
               </div>

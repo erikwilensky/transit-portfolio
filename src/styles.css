@@ -1459,3 +1459,43 @@ a.ghost { text-decoration: none; display: inline-flex; align-items: center; font
 .demo-states button { text-align: left; border: 1px solid var(--rule); background: var(--surface); border-radius: 9px; padding: 8px 10px; display: flex; flex-direction: column; }
 .demo-states button:hover { background: var(--surface-2); } .demo-states small { color: var(--muted); font-size: 12px; }
 .demo-note { margin: 8px 4px 2px; }
+
+/* Round 2 F5–F9: act on a station, ask-for-more loop, evidence viewer, undo, share dialog */
+.st-actions { margin-top: 14px; border-top: 1px solid var(--rule); padding-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.st-btns { display: flex; flex-wrap: wrap; gap: 6px; } .st-btns .small-btn { margin-top: 0; }
+.st-btns .small-btn[aria-pressed=true] { border-color: var(--b-purple); color: var(--b-purple); }
+.small-btn.danger { color: var(--b-red); }
+.st-form { display: flex; flex-direction: column; gap: 6px; }
+.st-form textarea, .st-form input, .st-form select, .returned input { width: 100%; border: 1px solid var(--rule); background: var(--bg); color: var(--ink); border-radius: 9px; padding: 8px 10px; font: inherit; font-size: 14px; font-weight: 400; }
+.st-form .small-btn { margin-top: 0; align-self: flex-start; }
+.st-row { display: flex; gap: 6px; align-items: center; } .st-row select { flex: 1; }
+.returned { border: 1.5px solid var(--b-orange); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.returned b { color: var(--b-orange); font-size: 13.5px; } .returned p { margin: 0; font-size: 14px; }
+.returned .small-btn { margin-top: 0; align-self: flex-start; }
+.pending-note { margin: 0; font-size: 13px; color: var(--muted); }
+.ev-open { all: unset; cursor: zoom-in; display: block; border-radius: 8px; }
+.ev-open:focus-visible { outline: 2px solid var(--b-purple); outline-offset: 2px; }
+.ev-open.ev-row { cursor: pointer; display: flex; gap: 10px; align-items: center; width: 100%; }
+.ev-back { z-index: 120; }
+.ev-view { position: relative; background: var(--surface); border-radius: 14px; max-width: min(960px, 100%); max-height: calc(100vh - 32px); overflow: auto; display: flex; flex-direction: column; }
+.ev-view.img { background: #001a38; } .ev-view.img .panel-close { color: #fff; }
+.ev-view.img img { display: block; max-width: 100%; max-height: calc(100vh - 90px); object-fit: contain; margin: 0 auto; }
+.ev-view.img .ev-cap { color: #fff; }
+.ev-view.doc { width: min(640px, 100%); }
+.ev-cap { padding: 10px 16px; font-size: 13.5px; color: var(--muted); }
+.ev-view.doc .ev-cap { display: none; }
+.ev-doc { padding: 26px 28px 18px; } .ev-doc h2 { font-size: 21px; margin: 6px 36px 4px 0; }
+.ev-doc-stamp { display: inline-block; font-size: 11.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--b-purple); border: 1.5px solid var(--b-purple); border-radius: 6px; padding: 3px 8px; }
+.ev-doc-body { border: 1px solid var(--rule); border-radius: 10px; padding: 14px 16px; margin: 12px 0; background: var(--bg); }
+.ev-doc-body p { margin: 0 0 8px; font-size: 14.5px; line-height: 1.55; }
+.ev-doc-lines { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; } .ev-doc-lines i { display: block; height: 8px; border-radius: 4px; background: var(--rule); }
+.toast { display: flex; align-items: center; gap: 12px; }
+.toast.show { pointer-events: auto; }
+.toast-undo { background: transparent; border: 1.5px solid currentColor; color: inherit; border-radius: 8px; padding: 3px 10px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.toast-undo:hover { background: rgba(255,255,255,.12); }
+.share-dlg h2 { margin-bottom: 12px; }
+.sd-row { display: flex; gap: 16px; align-items: flex-start; }
+.sd-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.sd-main code { display: block; padding: 8px 10px; border: 1px solid var(--rule); border-radius: 8px; background: var(--bg); font-size: 13px; overflow-wrap: anywhere; }
+.sd-btns { display: flex; flex-wrap: wrap; gap: 8px; } .sd-btns a.ghost { text-decoration: none; display: inline-flex; align-items: center; }
+@media (max-width: 520px) { .sd-row { flex-direction: column; align-items: center; } .sd-main { width: 100%; } }

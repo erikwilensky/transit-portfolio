@@ -751,3 +751,35 @@ export function resetDemo() {
   apply({ store: JSON.parse(SEED), seq: 1, evSeq: 900 });
   try { localStorage.setItem(STORE_KEY, JSON.stringify({ store, seq, evSeq, at: Date.now() })); } catch { /* ignore */ }
 }
+
+// ── F9: undo. A copy of the record before a quick action; Undo puts it back. ─
+export const snapshot = () => JSON.stringify({ store, seq, evSeq });
+export function restore(snap) { apply(JSON.parse(snap)); persist(); }
+
+// ── F5: students act on their own stations ────────────────────────────
+export function editStation(id, patch) {
+  const e = getEvent(id); if (!e || e.verification !== 'student-added') return;
+  Object.assign(e, patch);
+  log(e.studentId, getStudent(e.studentId).name, 'station', `Edited “${e.title}”`);
+  emit();
+}
+export function deleteStation(id) {
+  const e = getEvent(id); if (!e || e.verification !== 'student-added') return;
+  store.events = store.events.filter((x) => x.id !== id);
+  store.reflections = store.reflections.filter((r) => r.eventId !== id);
+  store.requests = store.requests.filter((r) => r.eventId !== id || r.status !== 'pending');
+  log(e.studentId, getStudent(e.studentId).name, 'station', `Deleted “${e.title}”`);
+  emit();
+}
+export const requestFor = (eventId) => store.requests.find((r) => r.eventId === eventId && (r.status === 'pending' || r.status === 'returned'));
+// ── F6: the "ask for more" loop. The student adds evidence and the item goes back to the teacher. ─
+export function resubmit(requestId, evidence, note) {
+  const r = store.requests.find((x) => x.id === requestId); if (!r) return;
+  const e = getEvent(r.eventId);
+  if (evidence) e.evidence = [...e.evidence, evidence];
+  Object.assign(r, { status: 'pending', resubmitted: true, date: TODAY, note: note || r.note, fresh: true });
+  const s = getStudent(r.studentId);
+  notify(PERSONA_OF_TEACHER[r.teacherId], `${s.name.split(' ')[0]} added evidence to “${e.title}” and resubmitted it`, { persona: PERSONA_OF_TEACHER[r.teacherId], screen: 'queue' });
+  log(r.studentId, s.name, 'request', `Added evidence to “${e.title}” and resubmitted it to ${teacherById[r.teacherId].name}`);
+  emit();
+}

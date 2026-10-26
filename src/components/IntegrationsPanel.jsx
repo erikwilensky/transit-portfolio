@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { acceptCandidate, dismissCandidate, getDismissed, getInbox, getIntegrations, restoreCandidate, sync } from '../api.js';
+import { snapshot, acceptCandidate, dismissCandidate, getDismissed, getInbox, getIntegrations, restoreCandidate, sync } from '../api.js';
 import { ago, fmtDate, TYPE_LABEL, VIS_LABEL } from '../format.js';
 import MetroMap from './MetroMap.jsx';
 import StationPanel from './StationPanel.jsx';
@@ -79,7 +79,7 @@ export default function IntegrationsPanel({ map, lens, newIds, onAdded, toast, v
           </div>
           <ReaderRequests studentId={studentId} toast={toast} />
           {inbox.length === 0 && <div className="inbox-empty">{totalPending ? 'Press Sync to pull new items from the school systems.' : 'Inbox clear.'}</div>}
-          {inbox.map((c) => <Candidate key={c.id} c={c} map={map} onAdd={(lineIds, vis) => { const e = acceptCandidate(c.id, lineIds, vis); if (e) onAdded(e); }} onSkip={() => dismissCandidate(c.id)} />)}
+          {inbox.map((c) => <Candidate key={c.id} c={c} map={map} onAdd={(lineIds, vis) => { const e = acceptCandidate(c.id, lineIds, vis); if (e) onAdded(e); }} onSkip={() => { const snap = snapshot(); dismissCandidate(c.id); toast(`Skipped “${c.title}”`, snap); }} />)}
           {dismissed.length > 0 && (
             <details className="skipped">
               <summary>Skipped ({dismissed.length})</summary>
