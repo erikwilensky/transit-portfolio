@@ -13,7 +13,7 @@ export function termOf(date, g9StartYear) {
   return Math.max(0, Math.min(11, (academicYear - g9StartYear) * 3 + t));
 }
 
-const DEFAULTS = { laneH: 92, slotW: 60, colPad: 24, emptyW: 46, left: 196, top: 118, right: 70, bottom: 64, gap: 14 };
+const DEFAULTS = { laneH: 104, slotW: 70, colPad: 24, emptyW: 46, left: 196, top: 118, right: 70, bottom: 64, gap: 14 };
 
 export function computeLayout(map, lens, today, opts = {}) {
   const o = { ...DEFAULTS, ...opts };

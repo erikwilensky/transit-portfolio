@@ -4,105 +4,120 @@
     "eventId": "ev-010",
     "text": "Counting fibres by hand took forever. I had three jars of canal water, a cheap microscope from the science store and a tally sheet, and every session ended with sore eyes and numbers I didn't fully trust.\n\nHalfway through, Mr Okafor asked how I knew I hadn't counted the same fibre twice. I didn't. So I started photographing each slide and marking fibres on the photo instead, which was slower but meant someone else could check me.\n\nWhat surprised me most wasn't the result (canal B was much worse) but how much of science is bookkeeping. I kept thinking a program could do the counting. I didn't know how to write one yet.",
     "date": "2024-05-15",
-    "prompt": "What surprised you?"
+    "prompt": "What surprised you?",
+    "visibility": "publishable"
   },
   {
     "id": "rf-002",
     "eventId": "ev-012",
     "text": "Looking back at Grade 9, my projects look unrelated on paper: a composting audit, a science fair, a quiz website. But they were all really about counting things carefully and finding a pattern.\n\nThe best part of the composting audit wasn't the bin we eventually got. It was the spreadsheet: six weeks of canteen waste, and the moment the chart showed Mondays were twice as bad as Fridays. I sat with it for an hour trying to work out why (it was the weekend fridge clear-out).\n\nI want next year to have fewer projects and deeper ones. And I want to learn enough code to stop doing the boring parts by hand.",
     "date": "2024-06-20",
-    "prompt": "What connected your projects this year?"
+    "prompt": "What connected your projects this year?",
+    "visibility": "publishable"
   },
   {
     "id": "rf-003",
     "eventId": "ev-018",
     "text": "Swimming taught me to train on a schedule. Five mornings a week for three years builds a kind of discipline I don't think I would have found anywhere else, and I'm proud of the 2:31.\n\nI stopped because I wanted my evenings for building things, not because I fell out of love with it. That was a hard conversation with my coach and with my parents, who had driven me to 6 a.m. sessions for years.\n\nEnding a line doesn't feel like failing anymore. It feels like choosing. I still swim on Sundays, just without a stopwatch.",
     "date": "2025-03-01",
-    "prompt": "A line is ending. What are you taking with you?"
+    "prompt": "A line is ending. What are you taking with you?",
+    "visibility": "private"
   },
   {
     "id": "rf-004",
     "eventId": "ev-042",
     "text": "I started this as an environment project: the canteen felt smoky at lunch and I wanted proof. Building the six sensors was the fun part. The hard part was everything after.\n\nTwo sensors drifted. One died for four days when a cleaner unplugged it, and the gap made the dashboard lie. I spent more time cleaning data than soldering: spotting the broken unit from its readings alone, deciding how to fill gaps honestly, checking every unit against the school weather station.\n\nThat's when I realised the part I enjoy most isn't the hardware or even the environment question. It's turning messy readings into something someone can trust and act on. Ms Nair said the calibration notes were the most impressive part, and I think she's right. That's why I want to study data.",
     "date": "2026-03-22",
-    "prompt": "This project touches two lines. What joined them?"
+    "prompt": "This project touches two lines. What joined them?",
+    "visibility": "publishable"
   },
   {
     "id": "rf-005",
     "eventId": "ev-029",
     "text": "Biology gave me the questions; the sensor project showed me I enjoy the analysis even more. Data Science is where those meet, so I've started treating it as its own line.\n\nThis report was the first time I wrote Python that someone else depended on. Forty thousand readings, a lunch-time PM2.5 spike in the canteen, and a recommendation the facilities team actually followed (they moved the extractor fan schedule).\n\nI'm nervous about calling it a \"line\" when it's only a few months old. But the map shows it clearly: everything I've done since March has run along it.",
     "date": "2026-03-28",
-    "prompt": "A new line has branched. Why now?"
+    "prompt": "A new line has branched. Why now?",
+    "visibility": "publishable"
   },
   {
     "id": "rf-006",
     "eventId": "ev-034",
     "text": "When I joined Beach Guardians in Grade 9 I thought service meant picking up rubbish. It does, but the cleanups that changed anything were the ones where we counted what we found and sent it to the district office.\n\nThe STEM club taught me the same lesson from the other side. The girls stayed when they could see their sensor readings change in real time, not when I explained theory.\n\nEvery service project I loved ended with a dataset someone could act on. I think that is what I want my degree, and my work after it, to be about.",
     "date": "2026-10-10",
-    "prompt": "How has service changed what you want to study?"
+    "prompt": "How has service changed what you want to study?",
+    "visibility": "advisor"
   },
   {
     "id": "rf-007",
     "eventId": "ev-111",
     "text": "Writing the music for my Pygame game made me want to understand production, not just playing. My piano teacher can tell me why a chord works; she can't tell me why my game music sounded thin through laptop speakers.\n\nThe DAW course was two weeks of headphones and frustration. I learned that most of what makes music sound \"finished\" is invisible: levels, space, removing things rather than adding them.\n\nIt's strange to see this branch off my Music line on the map, because it doesn't feel separate to me. But I play differently now. I listen for the room, not just the notes.",
     "date": "2025-07-15",
-    "prompt": "A new line has branched. What started it?"
+    "prompt": "A new line has branched. What started it?",
+    "visibility": "publishable"
   },
   {
     "id": "rf-008",
     "eventId": "ev-117",
     "text": "This project joins three lines and it's the first time all of me was useful at once. Design gave me the player's view: what should a storm feel like, and when should the music get out of the way? Code made the music react to the weather system in real time. Music technology made it sound right.\n\nThe hardest bug was musical, not technical: transitions between calm and storm sounded like someone changing the radio station. I rewrote the system three times before it crossfaded on the beat.\n\nMr Hale asked me which subject this was for. I didn't have an answer, and I think that's the point. I want to keep doing work that doesn't fit in one box.",
     "date": "2026-02-14",
-    "prompt": "This project joins three lines. What did each bring?"
+    "prompt": "This project joins three lines. What did each bring?",
+    "visibility": "publishable"
   },
   {
     "id": "rf-009",
     "eventId": "ev-120",
     "text": "I chose Spanish for the Diploma because my cousins in Madrid speak it, and I want to talk to them without my mum translating. Dropping French felt like quitting something I'd been good at.\n\nBut French taught me how to learn a language: flashcards every night, speaking before I felt ready, singing in front of people at Francophonie night. So I'm not starting from zero with Spanish, even if the vocabulary is new.\n\nI'm keeping the DELF certificate on my map. It's a finished line, not a failed one.",
     "date": "2026-05-20",
-    "prompt": "A line is ending. What are you taking with you?"
+    "prompt": "A line is ending. What are you taking with you?",
+    "visibility": "private"
   },
   {
     "id": "rf-010",
     "eventId": "ev-204",
     "text": "Not understanding the canteen staff at first was the hardest part. I had moved from Munich in July and spoke no Thai, and ordering lunch became a small daily test I kept failing.\n\nLearning ten Thai phrases a week helped more than anything. Kru Napat gave me a list, and I practised them on the bus. By November I could order, say thank you properly and make the auntie at the noodle stall laugh.\n\nI'm writing this down because I want to remember how it felt. Someone else will arrive next year feeling exactly the same.",
     "date": "2025-11-20",
-    "prompt": "What has been hardest, and what has helped?"
+    "prompt": "What has been hardest, and what has helped?",
+    "visibility": "private"
   },
   {
     "id": "rf-011",
     "eventId": "ev-207",
     "text": "I knew what it felt like to arrive without the language, so when admissions asked for volunteers to translate the welcome pack into German, I said yes straight away.\n\nIt was harder than I expected. Some phrases don't translate, like \"uniform shop\" or \"house points\", and I had to explain them rather than translate them. I added a page of the phrases I wished someone had given me.\n\nTwo families have already used it. One mum found me at pick-up to say thank you. That moment is the reason this station sits where my Languages and Service lines meet.",
     "date": "2026-02-12",
-    "prompt": "This joins two lines. What joined them?"
+    "prompt": "This joins two lines. What joined them?",
+    "visibility": "publishable"
   },
   {
     "id": "rf-012",
     "eventId": "ev-209",
     "text": "The drawings got better after day 60, when I stopped drawing what I thought I should and started drawing what was in front of me: my shoes, the bus window, my brother asleep.\n\nThe first 59 days weren't wasted, though. They were how I got there. Some days I drew for two minutes because I had a test; I still counted them.\n\nWhat I learned is that repetition is boring until suddenly it isn't. I think that's true for languages too.",
     "date": "2026-03-20",
-    "prompt": "What did repetition teach you?"
+    "prompt": "What did repetition teach you?",
+    "visibility": "publishable"
   },
   {
     "id": "rf-013",
     "eventId": "ev-210",
     "text": "The ceramics club moved to Thursdays, which clashed with Language Buddies. I had to choose, and I chose tutoring.\n\nI was sad about it. Clay is the one thing that makes my brain completely quiet, and my wheel-thrown bowl took six weeks of collapsed attempts. But Language Buddies is where I feel most useful, and the new students rely on me being there.\n\nThe line ends here on my map, but I still love clay. Maybe it will come back as a branch later.",
     "date": "2026-04-22",
-    "prompt": "A line is ending. What are you taking with you?"
+    "prompt": "A line is ending. What are you taking with you?",
+    "visibility": "private"
   },
   {
     "id": "rf-014",
     "eventId": "ev-213",
     "text": "Self-study got serious enough that I wanted a teacher and a test. I'd been learning Japanese from an app and anime subtitles since May, mostly for fun.\n\nPassing the kana test proved to me that this wasn't just a phase. It also helped that learning a third script made Thai feel less scary in hindsight.\n\nI like seeing Japanese branch off Languages on my map. It started as a hobby and now it's going somewhere: I want to take it in the Diploma.",
     "date": "2026-06-20",
-    "prompt": "A new line has branched. Why now?"
+    "prompt": "A new line has branched. Why now?",
+    "visibility": "publishable"
   },
   {
     "id": "rf-015",
     "eventId": "ev-218",
     "text": "I am more patient with my buddies than with myself. When a Grade 6 student mixes up words, I tell them it's normal. When I mix up Thai tones, I get angry.\n\nThis term I have two new buddies, one from Korea and one from Brazil. We use a mix of English, gestures and translation apps, and somehow it works.\n\nI'm trying to talk to myself the way I talk to them. That might be the most useful thing tutoring has taught me.",
     "date": "2026-10-14",
-    "prompt": "What do you notice about yourself when you help others?"
+    "prompt": "What do you notice about yourself when you help others?",
+    "visibility": "publishable"
   },
   {
     "id": "rf-016",

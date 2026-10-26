@@ -149,8 +149,6 @@ A('ev-130', '2028-06-01', ['arun-musictech'], 'goal', 'Target: BMus Music Techno
 // ── Lena Fischer, Grade 10 ────────────────────────────────────────────
 const L = (...a) => ev('st-03', ...a);
 L('ev-201', '2025-09-02', ['lena-ceramics'], 'club', 'Joined ceramics club', 'Thursday after-school club.', { src: SRC.clubs('club-ceramics') });
-L('ev-202', '2025-09-18', ['languages'], 'assessment', 'Thai B: speaking task', 'First Thai speaking assessment after moving to Bangkok.', { src: SRC.lms('task-th-1') });
-L('ev-203', '2025-10-10', ['art'], 'class', 'MYP Art: self-portrait unit', 'Charcoal self-portraits.', { src: SRC.lms('class-g9art'), vis: 'school' });
 L('ev-204', '2025-11-20', ['languages'], 'reflection', 'Reflection: arriving in a new school', 'First-term reflection.', { refl: ['What has been hardest, and what has helped?', 'Not understanding the canteen staff at first. Learning ten Thai phrases a week helped more than anything.'] });
 L('ev-205', '2025-12-05', ['service'], 'service', 'Joined Language Buddies', 'Peer support for new students who speak little English.', { src: SRC.cas('svc-lb') });
 L('ev-206', '2026-01-15', ['art'], 'project', '100 days of drawing', 'One sketch a day for 100 days.', { evidence: [img('Sketchbook spread')] });
@@ -165,13 +163,9 @@ L('ev-212', '2026-06-05', ['art', 'service'], 'service', 'Community centre mural
 L('ev-213', '2026-06-20', ['lena-japanese'], 'award', 'Japanese club: kana certificate', 'Passed the club’s hiragana and katakana test.', { src: SRC.clubs('club-jp'), evidence: [cert('Kana certificate')],
   refl: ['A new line has branched. Why now?', 'Self-study got serious enough that I wanted a teacher and a test.'] });
 L('ev-214', '2026-08-19', ['lena-japanese'], 'class', 'Started Japanese elective', 'Depot: G10 Japanese.', { src: SRC.sis('enrol-jp') });
-L('ev-215', '2026-09-01', ['art'], 'class', 'Printmaking unit', 'Linocut prints.', { src: SRC.lms('class-g10art'), vis: 'school' });
-L('ev-216', '2026-09-12', ['service'], 'service', 'Weekly tutoring log', 'Two new buddies this term.', { src: SRC.cas('svc-lb-2') });
-L('ev-217', '2026-10-02', ['languages'], 'assessment', 'Thai literature response', 'First written response in Thai.', { src: SRC.lms('task-th-6'), vis: 'advisor' });
 L('ev-218', '2026-10-14', ['service'], 'reflection', 'Reflection: why tutoring matters', 'Term reflection.', { refl: ['What do you notice about yourself when you help others?', 'I am more patient with my buddies than with myself. I am trying to fix that.'] });
 L('ev-219', '2026-12-06', ['lena-japanese'], 'goal', 'JLPT N5', 'Planned: sit the JLPT N5 in December.', {});
 L('ev-220', '2027-03-15', ['art'], 'goal', 'Personal Project: bilingual zine', 'Planned: MYP Personal Project.', {});
-L('ev-221', '2027-06-10', ['languages'], 'goal', 'Target: DP Japanese ab initio', 'Planned: choose Japanese for the Diploma.', {});
 
 // ── Extra illustrated evidence (drawn by scripts/illustrations.mjs) ─────
 const EXTRA_IMAGES = {
@@ -260,6 +254,9 @@ This term I have two new buddies, one from Korea and one from Brazil. We use a m
 I'm trying to talk to myself the way I talk to them. That might be the most useful thing tutoring has taught me.`,
 };
 for (const r of reflections) if (FULL[r.eventId]) r.text = FULL[r.eventId];
+// Reflections are private by default; these are the ones each student chose to publish.
+const PUBLISHED_REFLECTIONS = ['ev-010', 'ev-012', 'ev-042', 'ev-029', 'ev-111', 'ev-117', 'ev-207', 'ev-209', 'ev-213', 'ev-218'];
+for (const r of reflections) r.visibility = PUBLISHED_REFLECTIONS.includes(r.eventId) ? 'publishable' : r.eventId === 'ev-034' ? 'advisor' : 'private';
 
 // ── Cohort sample (advisor grid only), generated deterministically ──────
 let seed = 7;
@@ -328,6 +325,11 @@ const presentations = [
   { id: 'pr-15', studentId: 'st-02', audience: 'scholarship', targetName: null, tier: 'template', title: 'Arun Mehta: contribution and impact', intro: 'Music and technology used for the school community: concerts, the school play and an arcade for open day.', filters: { hiddenLines: [] }, order: null, theme: 'metro', layout: 'impact', showMap: false, narratives: {}, shareLinks: [] },
   { id: 'pr-25', studentId: 'st-03', audience: 'scholarship', targetName: null, tier: 'template', title: 'Lena Fischer: service and impact', intro: 'Since arriving in Bangkok without the language, I have helped other new students do the same.', filters: { hiddenLines: [] }, order: null, theme: 'metro', layout: 'impact', showMap: false, narratives: {}, shareLinks: [] },
 ];
+
+// Ended lines are private by default: hide them in every presentation unless the
+// student chose to publish (Maya keeps Swimming in her university portfolio).
+const ENDED = { 'st-01': ['maya-swim'], 'st-02': ['arun-french'], 'st-03': ['lena-ceramics'] };
+for (const p of presentations) if (p.id !== 'pr-02') p.filters.hiddenLines = [...ENDED[p.studentId]];
 
 // ── Integrations (adapters) and items waiting at the next sync ──────────
 const integrations = [

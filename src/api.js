@@ -46,7 +46,8 @@ export function getStudentMap(studentId, viewer = 'student') {
     .filter((e) => e.studentId === studentId && allowed.includes(e.visibility))
     .map((e) => ({
       ...e,
-      reflections: reflectionsData.filter((r) => r.eventId === e.id),
+      // Reflections carry their own visibility (private by default).
+      reflections: reflectionsData.filter((r) => r.eventId === e.id && allowed.includes(r.visibility || 'private')),
       endorsements: endorsementsData.filter((n) => n.eventId === e.id).map((n) => ({ ...n, teacher: teacherById[n.teacherId] })),
     }))
     .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
@@ -136,7 +137,8 @@ export function sync(sourceIds, studentId) {
   emit();
   return arrived;
 }
-export const getInbox = (studentId) => store.inbox.filter((e) => e.studentId === studentId).sort((a, b) => b.date.localeCompare(a.date));
+export const getInbox = (studentId) => store.inbox.filter((e) => e.studentId === studentId)
+  .sort((a, b) => (b.suggestedLineIds.length > 0) - (a.suggestedLineIds.length > 0) || b.date.localeCompare(a.date));
 export const getDismissed = (studentId) => store.dismissed.filter((e) => e.studentId === studentId);
 
 export function acceptCandidate(id, lineIds, visibility = 'advisor') {

@@ -1,5 +1,5 @@
 import { VerifyBadge } from './Badge.jsx';
-import { fmtDate, fmtTerm, TYPE_LABEL, VIS_LABEL } from '../format.js';
+import { fmtDate, fmtTerm, TYPE_LABEL, VIS_LABEL, VERIFY_HELP } from '../format.js';
 
 const KIND_ICON = { link: '↗', file: '▤', image: '▣', grade: '✓', certificate: '★' };
 
@@ -22,6 +22,7 @@ export default function StationPanel({ event, map, onClose, readOnly = false }) 
           </div>
           <p className="panel-summary">{event.summary}</p>
           <VerifyBadge level={event.verification} large />
+          <span className="vhelp">{VERIFY_HELP[event.verification]}</span>
 
           {event.evidence.length > 0 && (
             <section>
@@ -50,7 +51,7 @@ export default function StationPanel({ event, map, onClose, readOnly = false }) 
 
           {event.reflections?.map((r) => (
             <section key={r.id} className="reflection">
-              <h3>Reflection</h3>
+              <h3>Reflection{!readOnly && <span className="vis-tag">· {VIS_LABEL[r.visibility || 'private']}</span>}</h3>
               <div className="prompt">Signal: {r.prompt}</div>
               {r.text.split('\n\n').map((para, i) => <p key={i}>{para}</p>)}
             </section>

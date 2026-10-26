@@ -44,7 +44,7 @@ export default function IntegrationsPanel({ map, lens, newIds, onAdded, toast, v
       <div className="int-head">
         <h2>Connected systems</h2>
         <button className="primary" onClick={() => run(integrations.map((i) => i.id))} disabled={!!syncing.length || !totalPending}>
-          {syncing.length ? 'Syncing…' : totalPending ? `Sync all (${totalPending} new)` : 'All synced'}
+          {syncing.length ? 'Syncing…' : `Sync all · ${totalPending} new`}
         </button>
       </div>
       <div className="int-grid">

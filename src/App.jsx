@@ -61,7 +61,7 @@ export default function App() {
   const onAdded = (e) => {
     setNewIds(new Set([e.id]));
     toast(`Added “${e.title}” to the map`);
-    setTimeout(() => setNewIds(new Set()), 2600);
+    setTimeout(() => setNewIds(new Set()), 7000);
   };
 
   const tour = [

@@ -17,6 +17,7 @@ const starter = (id) => `<!doctype html>
 
     document.title = student.name;
     const app = document.querySelector('#app');
+    app.innerHTML = \`<h1>\${student.name}</h1><p class="sub">\${student.programme} · Grade \${student.grade}</p>\`;
     for (const line of lines) {
       const stops = stations.filter((s) => s.lineIds.includes(line.id));
       app.insertAdjacentHTML('beforeend', \`
@@ -29,7 +30,10 @@ const starter = (id) => `<!doctype html>
 </body>
 </html>`;
 
-const css = `section { border-left: 8px solid var(--c); padding-left: 1rem; }
+const css = `body { font-family: system-ui, sans-serif; margin: 2rem; color: #1b1d22; }
+h1 { margin: 0 0 .25rem; } .sub { color: #646a73; margin: 0 0 1.5rem; }
+section { border-left: 8px solid var(--c); padding-left: 1rem; margin-bottom: 1.25rem; }
+h2 { margin: 0 0 .4rem; font-size: 1.1rem; } ol { margin: 0; padding-left: 1.2rem; } li { margin: .2rem 0; }
 li[data-v="school-verified"]::after  { content: " ●"; }
 li[data-v="teacher-endorsed"]::after { content: " ○"; }
 li[data-v="student-added"]::after    { content: " ◌"; }`;
@@ -46,6 +50,10 @@ export default function CodeView({ pres, map, lens }) {
     const a = Object.assign(document.createElement('a'), { href: url, download: `${pres.id}.json` });
     a.click(); URL.revokeObjectURL(url);
   };
+  // The same starter files, rendered live with this presentation's data.
+  const previewDoc = useMemo(() => starter(pres.id)
+    .replace('<link rel="stylesheet" href="style.css">', `<style>${css}</style>`)
+    .replace(/const res = await fetch\([^)]*\);\n\s*const \{ student, lines, stations \} = await res\.json\(\);/, () => `const { student, lines, stations } = ${JSON.stringify(data).replace(/</g, '\\u003c')};`), [pres.id, data]);
   return (
     <div className="code-view fade-in">
       <div className="code-head">
@@ -58,7 +66,13 @@ export default function CodeView({ pres, map, lens }) {
         <button onClick={copy}>{copied ? 'Copied' : 'Copy'}</button>
         <button onClick={download}>Download JSON</button>
       </div>
-      <pre className="code" tabIndex={0}><code>{tab === 'data.json' ? <Json text={json} /> : files[tab]}</code></pre>
+      <div className="code-split">
+        <pre className="code" tabIndex={0}><code>{tab === 'data.json' ? <Json text={json} /> : files[tab]}</code></pre>
+        <div className="code-preview">
+          <div className="code-preview-bar">Live preview: index.html rendered with this data</div>
+          <iframe title="Rendered preview" sandbox="allow-scripts" srcDoc={previewDoc} />
+        </div>
+      </div>
     </div>
   );
 }

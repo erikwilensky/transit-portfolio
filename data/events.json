@@ -1473,42 +1473,6 @@
     }
   },
   {
-    "id": "ev-202",
-    "studentId": "st-03",
-    "title": "Thai B: speaking task",
-    "date": "2025-09-18",
-    "lineIds": [
-      "languages"
-    ],
-    "type": "assessment",
-    "summary": "First Thai speaking assessment after moving to Bangkok.",
-    "evidence": [],
-    "verification": "school-verified",
-    "visibility": "publishable",
-    "source": {
-      "system": "ManageBac",
-      "ref": "task-th-1"
-    }
-  },
-  {
-    "id": "ev-203",
-    "studentId": "st-03",
-    "title": "MYP Art: self-portrait unit",
-    "date": "2025-10-10",
-    "lineIds": [
-      "art"
-    ],
-    "type": "class",
-    "summary": "Charcoal self-portraits.",
-    "evidence": [],
-    "verification": "school-verified",
-    "visibility": "school",
-    "source": {
-      "system": "ManageBac",
-      "ref": "class-g9art"
-    }
-  },
-  {
     "id": "ev-204",
     "studentId": "st-03",
     "title": "Reflection: arriving in a new school",
@@ -1744,60 +1708,6 @@
     }
   },
   {
-    "id": "ev-215",
-    "studentId": "st-03",
-    "title": "Printmaking unit",
-    "date": "2026-09-01",
-    "lineIds": [
-      "art"
-    ],
-    "type": "class",
-    "summary": "Linocut prints.",
-    "evidence": [],
-    "verification": "school-verified",
-    "visibility": "school",
-    "source": {
-      "system": "ManageBac",
-      "ref": "class-g10art"
-    }
-  },
-  {
-    "id": "ev-216",
-    "studentId": "st-03",
-    "title": "Weekly tutoring log",
-    "date": "2026-09-12",
-    "lineIds": [
-      "service"
-    ],
-    "type": "service",
-    "summary": "Two new buddies this term.",
-    "evidence": [],
-    "verification": "school-verified",
-    "visibility": "publishable",
-    "source": {
-      "system": "CAS log",
-      "ref": "svc-lb-2"
-    }
-  },
-  {
-    "id": "ev-217",
-    "studentId": "st-03",
-    "title": "Thai literature response",
-    "date": "2026-10-02",
-    "lineIds": [
-      "languages"
-    ],
-    "type": "assessment",
-    "summary": "First written response in Thai.",
-    "evidence": [],
-    "verification": "school-verified",
-    "visibility": "advisor",
-    "source": {
-      "system": "ManageBac",
-      "ref": "task-th-6"
-    }
-  },
-  {
     "id": "ev-218",
     "studentId": "st-03",
     "title": "Reflection: why tutoring matters",
@@ -1843,24 +1753,6 @@
     ],
     "type": "goal",
     "summary": "Planned: MYP Personal Project.",
-    "evidence": [],
-    "verification": "student-added",
-    "visibility": "publishable",
-    "source": {
-      "system": "Manual entry",
-      "ref": null
-    }
-  },
-  {
-    "id": "ev-221",
-    "studentId": "st-03",
-    "title": "Target: DP Japanese ab initio",
-    "date": "2027-06-10",
-    "lineIds": [
-      "languages"
-    ],
-    "type": "goal",
-    "summary": "Planned: choose Japanese for the Diploma.",
     "evidence": [],
     "verification": "student-added",
     "visibility": "publishable",

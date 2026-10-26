@@ -11,6 +11,8 @@ export default function Studio({ map, drafts, audience, setAudience, tier, setTi
   const pres = drafts.find((p) => p.audience === audience) || drafts[0];
   const lens = useMemo(() => applyLens(map, pres, { hiddenLines: pres.filters.hiddenLines }), [map, pres]);
   const [selected, setSelected] = useState(null);
+  const [collapsed, setCollapsed] = useState(false);
+  const first = map.student.name.split(' ')[0];
   const event = map.events.find((e) => e.id === selected && lens.visible.has(e.id));
   const specific = drafts.find((p) => p.audience === 'specific');
   const set = (patch) => updateDraft(pres.id, patch);
@@ -32,10 +34,11 @@ export default function Studio({ map, drafts, audience, setAudience, tier, setTi
       <div className="studio-bar">
         <div className="bar-group"><label>Audience</label><LensSwitcher value={audience} onChange={(a) => { setAudience(a); setSelected(null); }} targetName={specific?.targetName} /></div>
         <div className="bar-group"><label>Skill tier</label><TierToggle value={tier} onChange={setTier} /></div>
+        <button className="collapse-btn" onClick={() => setCollapsed(!collapsed)} aria-pressed={collapsed}>{collapsed ? 'Show controls' : 'Hide controls'}</button>
       </div>
       <p className="lens-blurb">{LENSES[pres.audience].blurb}</p>
 
-      <div className={`studio-body tier-${tier}`}>
+      <div className={`studio-body tier-${tier}${collapsed ? ' collapsed' : ''}`}>
         <aside className="studio-controls" aria-label={`${tier} controls`}>
           {tier === 'template' && (
             <>
@@ -53,11 +56,12 @@ export default function Studio({ map, drafts, audience, setAudience, tier, setTi
               <ul className="line-toggles">
                 {map.lines.map((l) => (
                   <li key={l.id}><label><input type="checkbox" checked={!pres.filters.hiddenLines.includes(l.id)} onChange={() => toggleLine(l.id)} />
-                    <i style={{ background: l.colour }} />{l.name}{l.status === 'ended' && <small> ended</small>}</label></li>
+                    <i style={{ background: l.colour }} />{l.name}</label>
+                    {l.status === 'ended' && <span className="pub-note">{pres.filters.hiddenLines.includes(l.id) ? 'Ended line: private by default' : `Ended line: ${first} chose to publish it`}</span>}</li>
                 ))}
               </ul>
               <button className="primary wide" onClick={() => onShare(pres)}>Create share link</button>
-              <p className="fineprint">Three choices and a link: a polished page in about two minutes.</p>
+              <p className="fineprint">Three choices and a link: a polished page in about two minutes. Ended lines and reflections stay private unless {first} publishes them.</p>
             </>
           )}
           {tier === 'builder' && (
@@ -75,7 +79,7 @@ export default function Studio({ map, drafts, audience, setAudience, tier, setTi
                   return (
                     <li key={id} className={hidden ? 'off' : ''} style={{ '--c': l.colour }}>
                       <div className="bl-head">
-                        <i /><b>{l.name}</b>
+                        <i /><b>{l.name}</b>{l.status === 'ended' && <small className="vis-tag">{hidden ? 'ended · private by default' : `ended · published by ${first}`}</small>}
                         <span className="spacer" />
                         <button onClick={() => move(id, -1)} disabled={i === 0} aria-label={`Move ${l.name} up`}>↑</button>
                         <button onClick={() => move(id, 1)} disabled={i === lens.order.length - 1} aria-label={`Move ${l.name} down`}>↓</button>

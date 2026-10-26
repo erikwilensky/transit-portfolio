@@ -7,7 +7,9 @@
     "tier": "template",
     "title": "Maya Chen: my journey",
     "filters": {
-      "hiddenLines": []
+      "hiddenLines": [
+        "maya-swim"
+      ]
     },
     "order": null,
     "theme": "metro",
@@ -74,7 +76,9 @@
     "tier": "builder",
     "title": "Maya Chen: why Data Science",
     "filters": {
-      "hiddenLines": []
+      "hiddenLines": [
+        "maya-swim"
+      ]
     },
     "order": null,
     "theme": "ivy",
@@ -113,7 +117,9 @@
       "Public speaking"
     ],
     "filters": {
-      "hiddenLines": []
+      "hiddenLines": [
+        "maya-swim"
+      ]
     },
     "order": null,
     "theme": "slate",
@@ -138,7 +144,9 @@
     "tier": "template",
     "title": "Arun Mehta: my journey",
     "filters": {
-      "hiddenLines": []
+      "hiddenLines": [
+        "arun-french"
+      ]
     },
     "order": null,
     "theme": "metro",
@@ -163,7 +171,9 @@
     "tier": "builder",
     "title": "Arun Mehta: university portfolio",
     "filters": {
-      "hiddenLines": []
+      "hiddenLines": [
+        "arun-french"
+      ]
     },
     "order": null,
     "theme": "ivy",
@@ -194,7 +204,9 @@
     "tier": "builder",
     "title": "Arun Mehta: why Music Technology",
     "filters": {
-      "hiddenLines": []
+      "hiddenLines": [
+        "arun-french"
+      ]
     },
     "order": null,
     "theme": "ivy",
@@ -225,7 +237,9 @@
       "Piano (Grade 7)"
     ],
     "filters": {
-      "hiddenLines": []
+      "hiddenLines": [
+        "arun-french"
+      ]
     },
     "order": null,
     "theme": "slate",
@@ -242,7 +256,9 @@
     "tier": "template",
     "title": "Lena Fischer: my journey",
     "filters": {
-      "hiddenLines": []
+      "hiddenLines": [
+        "lena-ceramics"
+      ]
     },
     "order": null,
     "theme": "metro",
@@ -267,7 +283,9 @@
     "tier": "template",
     "title": "Lena Fischer: portfolio",
     "filters": {
-      "hiddenLines": []
+      "hiddenLines": [
+        "lena-ceramics"
+      ]
     },
     "order": null,
     "theme": "ivy",
@@ -289,7 +307,9 @@
     "tier": "template",
     "title": "Lena Fischer: why Japanese",
     "filters": {
-      "hiddenLines": []
+      "hiddenLines": [
+        "lena-ceramics"
+      ]
     },
     "order": null,
     "theme": "ivy",
@@ -319,7 +339,9 @@
       "Workshop leading"
     ],
     "filters": {
-      "hiddenLines": []
+      "hiddenLines": [
+        "lena-ceramics"
+      ]
     },
     "order": null,
     "theme": "slate",
@@ -337,7 +359,9 @@
     "title": "Maya Chen: service and impact",
     "intro": "Four years of service, from beach cleanups to a STEM club for younger girls, and the data that made each one useful.",
     "filters": {
-      "hiddenLines": []
+      "hiddenLines": [
+        "maya-swim"
+      ]
     },
     "order": null,
     "theme": "metro",
@@ -355,7 +379,9 @@
     "title": "Arun Mehta: contribution and impact",
     "intro": "Music and technology used for the school community: concerts, the school play and an arcade for open day.",
     "filters": {
-      "hiddenLines": []
+      "hiddenLines": [
+        "arun-french"
+      ]
     },
     "order": null,
     "theme": "metro",
@@ -373,7 +399,9 @@
     "title": "Lena Fischer: service and impact",
     "intro": "Since arriving in Bangkok without the language, I have helped other new students do the same.",
     "filters": {
-      "hiddenLines": []
+      "hiddenLines": [
+        "lena-ceramics"
+      ]
     },
     "order": null,
     "theme": "metro",
