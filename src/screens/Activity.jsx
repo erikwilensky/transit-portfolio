@@ -22,8 +22,13 @@ export default function Activity({ studentId, version }) {
           <h1>Everything that happened to my record</h1>
           <p>Every import, endorsement, visibility change and share-link view, with who and when. Only you and the school's data protection officer can see this page.</p>
         </div>
-        <div className="seg small">{KINDS.map(([k, l]) => <button key={k} className={kind === k ? 'on' : ''} onClick={() => setKind(k)}>{l} <small>{k === 'all' ? all.length : all.filter((a) => group(a.kind) === k).length}</small></button>)}</div>
+        <div className="meter">
+          <div><b>{all.filter((a) => group(a.kind) === 'view').length}</b><span>link views</span></div>
+          <div><b>{all.filter((a) => group(a.kind) === 'endorse').length}</b><span>endorsements</span></div>
+          <div><b>{all.filter((a) => group(a.kind) === 'sync').length}</b><span>imports</span></div>
+        </div>
       </header>
+      <div className="seg small act-filter">{KINDS.map(([k, l]) => <button key={k} className={kind === k ? 'on' : ''} onClick={() => setKind(k)}>{l} <small>{k === 'all' ? all.length : all.filter((a) => group(a.kind) === k).length}</small></button>)}</div>
       <ol className="act-days">
         {byDay.map(({ d, items }) => (
           <li key={d}>

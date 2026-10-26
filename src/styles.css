@@ -1690,3 +1690,4 @@ p b, p strong, td b { font-weight: 600; }
 .fineprint, small { font-weight: 400; }
 .page-head p, .kicker + h1 + p { font-weight: 300; }
 .tc-roles .av, .topnav .av, .persona-menu .av { box-shadow: 0 0 0 1.5px rgba(255,255,255,.55); }
+.act-filter { margin-bottom: 6px; }
