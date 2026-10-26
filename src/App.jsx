@@ -26,6 +26,7 @@ import SignalBoard from './screens/SignalBoard.jsx';
 import SchoolLine from './screens/SchoolLine.jsx';
 import SchoolMetro from './screens/SchoolMetro.jsx';
 import Logo from './components/Logo.jsx';
+import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { VerifyProvider } from './components/VerifyModal.jsx';
 import { TOURS } from './tour.js';
 
@@ -159,6 +160,7 @@ export default function App() {
         </header>
 
         <main className={`screen screen-${route.screen}`} key={`${persona.id}-${route.screen}`}>
+          <ErrorBoundary resetKey={`${persona.id}-${route.screen}-${route.param}`}>
           {persona.kind === 'student' && <StudentScreens {...ctx} screen={route.screen} param={route.param} studentId={studentId} />}
           {persona.kind === 'advisor' && route.screen === 'advisory' && <AdvisorGrid advisorId={persona.teacherId} version={version} toast={toast} onOpen={(id) => go(persona.id, 'student', id)} />}
           {persona.kind === 'advisor' && route.screen === 'student' && <AdvisorStudent studentId={route.param || 'st-01'} {...ctx} />}
@@ -174,6 +176,7 @@ export default function App() {
           {persona.kind === 'leadership' && route.screen === 'schoolmetro' && <SchoolMetro {...ctx} />}
           {persona.kind === 'external' && <ShareLanding token={persona.token} drafts={drafts} version={version} embedded />}
           <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} />
+          </ErrorBoundary>
         </main>
 
         {tour && (
