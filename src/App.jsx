@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { applyLens, getPresentations, getStudentMap, getStudents, subscribe, getNotifications, markNotificationsRead, resetDemo, restore, logLink, addStation } from './api.js';
+import { applyLens, getPresentations, getStudentMap, getStudents, subscribe, getNotifications, markNotificationsRead, resetDemo, restore, logLink, addStation, getFamily } from './api.js';
 import { ensureEndorsed } from './tourStory.js';
 import { PERSONAS, KIND_LABEL, NAV, personaById, home } from './personas.js';
 import { ago, appUrl } from './format.js';
@@ -34,6 +34,8 @@ import DpCore from './screens/DpCore.jsx';
 import Governance from './screens/Governance.jsx';
 import Rollout from './screens/Rollout.jsx';
 import ParentView from './screens/ParentView.jsx';
+import Family from './screens/Family.jsx';
+import { tr } from './i18n.js';
 import Pilot from './screens/Pilot.jsx';
 import AuditLog from './screens/AuditLog.jsx';
 import Logo from './components/Logo.jsx';
@@ -147,7 +149,8 @@ export default function App() {
 
   const persona = personaById(route.persona);
   const studentId = persona.studentId;
-  const nav = NAV[persona.kind];
+  // N1: a parent's navigation follows their language.
+  const nav = persona.kind === 'parent' ? NAV.parent.map(([id, l]) => [id, tr(getFamily().lang, l)]) : NAV[persona.kind];
   const notes = getNotifications(persona.id);
   const unread = notes.filter((n) => !n.read).length;
   const ctx = { go, toast, version, persona, drafts, setDrafts, audience, setAudience, tier, setTier, startTour: (t) => { setTourState({ tour: t, step: 0 }); TOURS[t].steps[0].run(ctx); } };
@@ -263,6 +266,7 @@ export default function App() {
           {persona.kind === 'leadership' && route.screen === 'rollout' && <Rollout {...ctx} />}
           {persona.kind === 'leadership' && route.screen === 'pilot' && <Pilot {...ctx} />}
           {persona.kind === 'leadership' && route.screen === 'audit' && <AuditLog {...ctx} />}
+          {persona.kind === 'parent' && <Family {...ctx} screen={route.screen} param={route.param} />}
           {persona.kind === 'external' && <ShareLanding token={persona.token} drafts={drafts} version={version} embedded />}
           <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} />
           </ErrorBoundary>

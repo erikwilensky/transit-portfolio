@@ -335,6 +335,13 @@ if (!store.rollout) store.rollout = { systems: ['sis', 'mb'], years: [12, 13], s
 export const getRollout = () => store.rollout;
 export function setRollout(patch) { Object.assign(store.rollout, patch); emit(); }
 
+// ── N1: families. Consent for Years 7 to 9, and what a family can see ──
+if (!store.consentReqs) store.consentReqs = [
+  { id: 'cr-1', studentId: 'st-09', kind: 'join', title: 'Pim’s record in Transit Portfolio', detail: 'Keep Pim’s school activities in one record. Pim, her advisor and you can see it; nothing leaves the school.', asked: '2026-10-20', status: 'pending' },
+  { id: 'cr-2', studentId: 'st-09', kind: 'share', title: 'Share links outside the school', detail: 'Let Pim make share links, for example for a summer camp application. Every link expires, and each one appears in your weekly digest.', asked: '2026-10-20', status: 'pending' },
+  { id: 'cr-3', studentId: 'st-09', kind: 'photos', title: 'Photos where Pim can be recognised', detail: 'Allow photos of Pim to appear as evidence on her stations. Off unless you say yes.', asked: '2026-10-20', status: 'pending' },
+];
+if (!store.family) store.family = { lang: 'en', email: true };
 // ── Advisor ───────────────────────────────────────────────────────────
 export function getCohort(advisorId) {
   return store.students.filter((s) => s.advisorId === advisorId).map((s) => {
@@ -928,4 +935,43 @@ export function resubmit(requestId, evidence, note) {
   notify(PERSONA_OF_TEACHER[r.teacherId], `${s.name.split(' ')[0]} added evidence to “${e.title}” and resubmitted it`, { persona: PERSONA_OF_TEACHER[r.teacherId], screen: 'queue' });
   log(r.studentId, s.name, 'request', `Added evidence to “${e.title}” and resubmitted it to ${teacherById[r.teacherId].name}`);
   emit();
+}
+
+// ── N1: families ──────────────────────────────────────────────────────
+// Years 7 to 9 (grades 6 to 8) need a parent's consent; families see what the advisor sees.
+// From Year 10 the student decides, and families see what the student shares with the school.
+export const youngStudent = (s) => s.grade <= 8;
+export const familyViewer = (studentId) => (youngStudent(getStudent(studentId)) ? 'advisor' : 'school');
+export const getConsentReqs = (studentId) => store.consentReqs.filter((r) => r.studentId === studentId);
+export const consentOnFile = (studentId) => !youngStudent(getStudent(studentId)) || store.consentReqs.some((r) => r.studentId === studentId && r.kind === 'join' && r.status === 'approved');
+export function answerConsent(id, status, by) {
+  const r = store.consentReqs.find((x) => x.id === id);
+  if (!r) return;
+  r.status = status; r.answered = TODAY;
+  const s = getStudent(r.studentId);
+  log(r.studentId, by, 'consent', `${status === 'approved' ? 'Gave' : status === 'declined' ? 'Declined' : 'Withdrew'} consent: ${r.title}`);
+  notify(PERSONA_OF_STUDENT[r.studentId], status === 'approved' ? `Your parent said yes: ${r.title}` : `Your parent said no for now: ${r.title}`, { persona: PERSONA_OF_STUDENT[r.studentId], screen: 'privacy' });
+  notify('whitfield', `${s.name.split(' ')[0]}’s family answered a consent request`);
+  emit();
+}
+export function remindParent(studentId) {
+  const s = getStudent(studentId);
+  notify('parent', `${s.name.split(' ')[0]} asked you to look at a consent request`, { persona: 'parent', screen: 'consent', param: studentId });
+  log(studentId, s.name, 'consent', 'Sent a reminder to a parent about consent');
+  emit();
+}
+export const getFamily = () => store.family;
+export function setFamily(patch) { Object.assign(store.family, patch); emit(); }
+// A week of one child's record, as a family would see it.
+export function getDigest(studentId, days = 7) {
+  const from = new Date(new Date(`${TODAY}T12:00:00`).getTime() - days * 86400000).toISOString().slice(0, 10);
+  const map = getStudentMap(studentId, familyViewer(studentId));
+  const inWeek = (d) => d > from && d <= TODAY;
+  const stations = map.events.filter((e) => inWeek(e.date) && e.type !== 'goal' && e.type !== 'reflection');
+  const reflections = map.events.filter((e) => inWeek(e.date) && e.type === 'reflection').length + map.events.flatMap((e) => e.reflections).filter((r) => r.date && inWeek(r.date)).length;
+  const endorsed = map.events.flatMap((e) => e.endorsements.filter((n) => inWeek(n.date)).map((n) => ({ teacher: n.teacher?.name, title: e.title })));
+  const views = getActivity(studentId).filter((a) => a.kind === 'view' && inWeek(a.ts.slice(0, 10))).length;
+  const soon = new Date(new Date(`${TODAY}T12:00:00`).getTime() + 42 * 86400000).toISOString().slice(0, 10);
+  const coming = map.events.filter((e) => e.type === 'goal' && e.date > TODAY && e.date <= soon);
+  return { from, stations, reflections, endorsed, views, coming, map };
 }

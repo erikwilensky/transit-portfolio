@@ -30,6 +30,7 @@ const TH = {
   'Is there a line you want to start, or stop?': 'มีเส้นไหนที่อยากเริ่มใหม่ หรืออยากหยุดไหม',
   'What would you like help with next term?': 'ภาคเรียนหน้าอยากให้ช่วยเรื่องอะไร',
   'Advisor’s agenda': 'หัวข้อที่ครูที่ปรึกษาจะคุย',
+  'Family view': 'มุมมองครอบครัว', Consent: 'การให้ความยินยอม', 'Weekly digest': 'สรุปประจำสัปดาห์',
 };
 
 // Line names, translated part by part ("Science · Biology").

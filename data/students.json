@@ -113,12 +113,12 @@
   },
   {
     "id": "st-06",
-    "name": "Ploy Srisai",
+    "name": "Ploy Chaiyaporn",
     "grade": 10,
     "programme": "IB MYP",
     "avatar": {
-      "initials": "PS",
-      "colour": "#6b7280"
+      "initials": "PC",
+      "colour": "#4F529B"
     },
     "homeroom": "4B",
     "advisorId": "t-07",

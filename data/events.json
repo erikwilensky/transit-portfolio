@@ -3503,5 +3503,23 @@
         2
       ]
     }
+  },
+  {
+    "id": "ev-306a",
+    "studentId": "st-06",
+    "title": "Football: league semi-final",
+    "date": "2026-10-23",
+    "lineIds": [
+      "sport"
+    ],
+    "type": "sport",
+    "summary": "Started in midfield; the U16 team won 2–1 to reach the BISAC final.",
+    "evidence": [],
+    "verification": "school-verified",
+    "visibility": "publishable",
+    "source": {
+      "system": "Clubs & Sports",
+      "ref": "fb-u16-sf"
+    }
   }
 ]

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { applyLens, exportRecord, getPrivacy, getStudentMap, setPrivacy, setVisibility, TODAY } from '../api.js';
+import { applyLens, consentOnFile, exportRecord, getPrivacy, remindParent, getStudentMap, setPrivacy, setVisibility, TODAY } from '../api.js';
 import { VIS_LABEL } from '../format.js';
 
 const VIEWERS = [['advisor', 'My advisor'], ['school', 'School staff'], ['public', 'Anyone with a link']];
@@ -13,7 +13,7 @@ export default function Privacy({ studentId, drafts, toast, go, persona, version
   const p = getPrivacy(studentId);
   const [done, setDone] = useState(null);
   const s = me.student;
-  const consent = s.grade <= 6 ? 'pending' : 'on-file';
+  const consent = consentOnFile(s.id) ? 'on-file' : 'pending';
   const mine = count(me);
   const lineVis = (id) => { const v = [...new Set(me.events.filter((e) => e.lineIds.includes(id) && e.type !== 'goal').map((e) => e.visibility))]; return v.length === 1 ? v[0] : 'mixed'; };
   const setLine = (id, vis) => { me.events.filter((e) => e.lineIds.includes(id) && e.type !== 'goal').forEach((e) => setVisibility(e.id, vis)); toast(`Every station on ${me.lines.find((l) => l.id === id).name} is now ${VIS_LABEL[vis].toLowerCase()}.`); };
@@ -74,7 +74,7 @@ export default function Privacy({ studentId, drafts, toast, go, persona, version
         <div className="card-sec pv-consent">
           <h3>Consent</h3>
           {consent === 'pending'
-            ? <><p><span className="status s-warn"><i>!</i>Waiting for a parent</span></p><p className="fineprint">Students under 13 need a parent's consent before anything can be made publishable. Until then, everything stays inside the school.</p><button className="ghost" onClick={() => toast('Reminder sent to the parent email on file.')}>Send a reminder to my parent</button></>
+            ? <><p><span className="status s-warn"><i>!</i>Waiting for a parent</span></p><p className="fineprint">Students in Years 7 to 9 need a parent's consent before anything can be made publishable. Until then, everything stays inside the school.</p><button className="ghost" onClick={() => { remindParent(s.id); toast('Reminder sent to your parent.'); }}>Send a reminder to my parent</button></>
             : <><p><span className="status s-ok"><i>✓</i>Parent consent on file</span></p><p className="fineprint">Recorded in the SIS when you joined. Under Thailand's PDPA you can ask the school to correct or delete your data at any time.</p></>}
         </div>
 
