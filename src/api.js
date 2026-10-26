@@ -139,7 +139,7 @@ export function exportPresentation(pres, map, lensResult) {
 
 // ── Integrations ──────────────────────────────────────────────────────
 export const getIntegrations = (studentId) => store.integrations.map((i) => ({
-  ...i, pendingForStudent: store.pending.filter((p) => p.sourceId === i.id && p.event.studentId === studentId).length,
+  ...i, pendingForStudent: store.pending.filter((p) => p.sourceId === i.id && p.event.studentId === studentId && ghAllowed(p)).length,
 }));
 
 // Sync pulls new items into the student's inbox. Nothing reaches the map
@@ -148,7 +148,7 @@ export function sync(sourceIds, studentId) {
   const now = new Date().toISOString();
   const arrived = [];
   store.pending = store.pending.filter((p) => {
-    if (sourceIds.includes(p.sourceId) && p.event.studentId === studentId) { arrived.push({ ...p.event, sourceId: p.sourceId, suggestedLineIds: p.event.lineIds }); return false; }
+    if (sourceIds.includes(p.sourceId) && p.event.studentId === studentId && ghAllowed(p)) { arrived.push({ ...p.event, sourceId: p.sourceId, suggestedLineIds: p.event.lineIds }); return false; }
     return true;
   });
   store.inbox.push(...arrived);
@@ -188,6 +188,94 @@ export function restoreCandidate(id) {
   store.dismissed = store.dismissed.filter((e) => e.id !== id);
   store.inbox.push(c);
   emit();
+}
+
+// F11: GitHub is opt-in per repository, and "Simulate next week" gives every system something new to send.
+const GH_SEED = {
+  'st-01': { connected: true, user: 'mayachen-nist', repos: [
+    { name: 'air-quality-dashboard', about: 'PM2.5 dashboard for the canteen roof sensors', ref: 'repo-aq', shared: true },
+    { name: 'tmd-weather-api', about: 'Fork: Thai Meteorological Department feed reader', ref: 'fork-tmd-api', shared: true },
+    { name: 'ee-algae-models', about: 'Extended Essay notebooks', ref: 'repo-ee', shared: false },
+    { name: 'dotfiles', about: 'Editor settings', ref: 'repo-dot', shared: false },
+  ] },
+  'st-02': { connected: false, user: 'arun-makes-noise', repos: [
+    { name: 'midi-looper', about: 'Arduino MIDI looper pedal', ref: 'repo-midi', shared: false },
+    { name: 'french-flashcards', about: 'Spaced-repetition app for DELF vocab', ref: 'repo-fr', shared: false },
+    { name: 'game-jam-2026', about: 'Global Game Jam entry', ref: 'repo-jam', shared: false },
+  ] },
+  'st-03': { connected: false, user: 'lenaf', repos: [
+    { name: 'kanji-tracker', about: 'Tracks JLPT N4 kanji', ref: 'repo-kanji', shared: false },
+    { name: 'glaze-log', about: 'Spreadsheet of kiln firings', ref: 'repo-glaze', shared: false },
+  ] },
+};
+if (!store.github) store.github = structuredClone(GH_SEED);
+const ghRepo = (studentId, ref) => store.github[studentId]?.repos.find((r) => ref?.startsWith(r.ref));
+// A GitHub item only counts as pending once the student has shared its repository.
+export const ghAllowed = (p) => p.sourceId !== 'github' || (store.github[p.event.studentId]?.connected && ghRepo(p.event.studentId, p.event.source.ref)?.shared);
+export const getGithub = (studentId) => store.github[studentId] || null;
+export function setGithub(studentId, shared) {
+  const g = store.github[studentId]; if (!g) return;
+  const was = g.connected;
+  g.connected = true;
+  for (const r of g.repos) r.shared = shared.includes(r.name);
+  log(studentId, getStudent(studentId).name, 'sync', was ? `Changed shared GitHub repositories (${shared.length} shared)` : `Connected GitHub and shared ${shared.length} repositor${shared.length === 1 ? 'y' : 'ies'}`);
+  emit();
+}
+export function disconnectGithub(studentId) {
+  const g = store.github[studentId]; if (!g) return;
+  g.connected = false; for (const r of g.repos) r.shared = false;
+  store.pending = store.pending.filter((p) => !(p.sourceId === 'github' && p.event.studentId === studentId));
+  log(studentId, getStudent(studentId).name, 'sync', 'Disconnected GitHub. Nothing more arrives from it.');
+  emit();
+}
+
+const SIM = {
+  sis: [
+    { title: 'Term 1 report: effort grades', type: 'assessment', lines: ['science', 'languages', 'music'], summary: 'Term 1 effort grades published to the SIS.' },
+    { title: 'Timetable change: new elective', type: 'class', lines: ['design', 'art', 'computing'], summary: 'Joined a new elective block from next week.' },
+  ],
+  lms: [
+    { title: 'Lab report returned with feedback', type: 'assessment', lines: ['science', 'maya-datasci'], summary: 'Teacher feedback on the latest lab report.' },
+    { title: 'Unit project submitted', type: 'project', lines: ['computing', 'design', 'art'], summary: 'Submitted the end-of-unit project on ManageBac.' },
+    { title: 'Oral assessment recorded', type: 'assessment', lines: ['languages', 'arun-french', 'lena-japanese'], summary: 'Individual oral recorded and uploaded.' },
+  ],
+  cas: [
+    { title: 'CAS: beach clean-up, 3 hours', type: 'cas', lines: ['service', 'environment'], summary: 'Logged 3 service hours with the Beach Guardians.' },
+    { title: 'CAS: reading buddies session', type: 'cas', lines: ['service', 'languages'], summary: 'Read with Year 3 pupils for an hour.' },
+  ],
+  clubs: [
+    { title: 'Fixture: inter-school match', type: 'sport', lines: ['sport', 'maya-swim'], summary: 'Played in the inter-school fixture on Saturday.' },
+    { title: 'Club: robotics build night', type: 'club', lines: ['computing', 'design'], summary: 'Attended the after-school robotics build night.' },
+    { title: 'Ensemble rehearsal: winter concert', type: 'club', lines: ['music', 'arun-musictech'], summary: 'Rehearsal for the winter concert set list.' },
+  ],
+  exams: [
+    { title: 'Mock exam results released', type: 'assessment', lines: ['science', 'languages', 'computing'], summary: 'Results from the October mock series.' },
+  ],
+  github: [
+    { title: 'Pushed {repo}: new release', type: 'project', lines: ['computing', 'maya-datasci', 'arun-musictech'], summary: 'Tagged a new release of {repo}.' },
+    { title: 'Merged a pull request in {repo}', type: 'project', lines: ['computing', 'design'], summary: 'Reviewed and merged a contribution to {repo}.' },
+  ],
+};
+const VER = { sis: 'school-verified', lms: 'school-verified', cas: 'school-verified', clubs: 'school-verified', exams: 'school-verified', github: 'student-added' };
+const SYS = { sis: 'SIS', lms: 'ManageBac', cas: 'CAS log', clubs: 'Clubs & Sports', exams: 'Exam boards', github: 'GitHub' };
+if (!store.simWeeks) store.simWeeks = {};
+// One new item per system, dated in the past week, with lines suggested from the student's own lines.
+export function simulateWeek(studentId) {
+  const st = getStudent(studentId);
+  const wk = store.simWeeks[studentId] = (store.simWeeks[studentId] || 0) + 1;
+  const made = [];
+  for (const [sys, pool] of Object.entries(SIM)) {
+    const t = pool[(wk - 1) % pool.length];
+    let repo = null;
+    if (sys === 'github') { const shared = (store.github[studentId]?.connected && store.github[studentId].repos.filter((r) => r.shared)) || []; if (!shared.length) continue; repo = shared[(wk - 1) % shared.length]; }
+    const date = new Date(new Date(TODAY).getTime() - ((made.length * 2 + wk) % 7) * 86400000).toISOString().slice(0, 10);
+    const fill = (x) => x.replace('{repo}', repo?.name || '');
+    const event = { id: `ev-sim-${studentId}-${wk}-${sys}`, studentId, title: fill(t.title), date, lineIds: t.lines.filter((l) => st.laneOrder.includes(l)).slice(0, 1), type: t.type, summary: fill(t.summary), evidence: [], verification: VER[sys], visibility: 'advisor', source: { system: SYS[sys], ref: repo ? `${repo.ref}@sim${wk}` : `sim-${sys}-${wk}` } };
+    store.pending.push({ sourceId: sys, event });
+    made.push(event);
+  }
+  emit();
+  return made;
 }
 
 // ── Advisor ───────────────────────────────────────────────────────────

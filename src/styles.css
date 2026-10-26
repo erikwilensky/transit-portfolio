@@ -1517,3 +1517,17 @@ a.ghost { text-decoration: none; display: inline-flex; align-items: center; font
 .sl-dots { display: flex; gap: 3px; flex: none; } .sl-dots i { width: 10px; height: 10px; border-radius: 50%; }
 .sl-main { flex: 1; min-width: 0; } .sl-main b { display: block; font-size: 14.5px; font-weight: 600; } .sl-main small { color: var(--muted); font-size: 12.5px; }
 @media (max-width: 600px) { .map-find select { flex: 1 1 30%; } .map-find .seg { margin-left: 0; } .sl-row .vbadge { display: none; } }
+
+/* F11: GitHub opt-in and simulated weeks */
+.int-card.off { border-style: dashed; } .int-card.off dl { opacity: .6; }
+.int-head { flex-wrap: wrap; } .int-head h2 { margin-right: auto; }
+.gh-auth { display: flex; gap: 14px; align-items: flex-start; border: 1px solid var(--rule); border-radius: 12px; padding: 12px 14px; margin: 8px 0; }
+.gh-auth b { font-size: 14px; } .gh-auth ul { margin: 4px 0 10px; padding-left: 18px; font-size: 14px; }
+.gh-repos { list-style: none; padding: 0; margin: 10px 0; display: flex; flex-direction: column; gap: 6px; }
+.gh-repos label { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--rule); border-radius: 10px; padding: 9px 12px; cursor: pointer; }
+.gh-repos label:has(input:checked) { border-color: var(--b-purple); }
+.gh-repos input { margin-top: 3px; accent-color: var(--b-purple); }
+.gh-repos b { display: block; font-size: 14px; font-family: ui-monospace, Menlo, monospace; font-weight: 500; } .gh-repos small { color: var(--muted); font-size: 12.5px; }
+.int-foot { gap: 6px; } .int-foot .pending { margin-right: auto; }
+.int-foot button.primary { background: var(--navy); border-color: var(--navy); color: #fff; }
+.int-foot button { white-space: nowrap; } .int-foot .pending { font-size: 12.5px; }
