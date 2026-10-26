@@ -5,20 +5,20 @@ import { ENRICH } from './enrich.mjs';
 const out = (f, d) => writeFileSync(new URL(`../data/${f}`, import.meta.url), JSON.stringify(d, null, 2) + '\n');
 
 const lines = [
-  { id: 'science', name: 'Science', colour: '#6B3FB0', parentLineId: null, status: 'active' },
-  { id: 'computing', name: 'Computing', colour: '#1E6FD9', parentLineId: null, status: 'active' },
-  { id: 'environment', name: 'Environment', colour: '#2E9E4F', parentLineId: null, status: 'active' },
-  { id: 'sport', name: 'Sport', colour: '#F2A100', parentLineId: null, status: 'active' },
-  { id: 'service', name: 'Service', colour: '#E2343C', parentLineId: null, status: 'active' },
-  { id: 'music', name: 'Music', colour: '#E0458B', parentLineId: null, status: 'active' },
-  { id: 'design', name: 'Design', colour: '#00A39E', parentLineId: null, status: 'active' },
-  { id: 'languages', name: 'Languages', colour: '#F06A1D', parentLineId: null, status: 'active' },
+  { id: 'science', name: 'Science', colour: '#4F529B', parentLineId: null, status: 'active' },
+  { id: 'computing', name: 'Computing', colour: '#0072CE', parentLineId: null, status: 'active' },
+  { id: 'environment', name: 'Environment', colour: '#008A60', parentLineId: null, status: 'active' },
+  { id: 'sport', name: 'Sport', colour: '#FFB81C', parentLineId: null, status: 'active' },
+  { id: 'service', name: 'Service', colour: '#E73C3E', parentLineId: null, status: 'active' },
+  { id: 'music', name: 'Music', colour: '#D6457F', parentLineId: null, status: 'active' },
+  { id: 'design', name: 'Design', colour: '#1FA3A8', parentLineId: null, status: 'active' },
+  { id: 'languages', name: 'Languages', colour: '#FF8F1C', parentLineId: null, status: 'active' },
   { id: 'art', name: 'Art', colour: '#8A5A44', parentLineId: null, status: 'active' },
   // student sub-lines
-  { id: 'maya-datasci', name: 'Data Science', colour: '#C152DB', parentLineId: 'science', status: 'active', studentId: 'st-01' },
-  { id: 'maya-swim', name: 'Swimming', colour: '#F2A100', parentLineId: 'sport', status: 'ended', studentId: 'st-01' },
+  { id: 'maya-datasci', name: 'Data Science', colour: '#8C7FD6', parentLineId: 'science', status: 'active', studentId: 'st-01' },
+  { id: 'maya-swim', name: 'Swimming', colour: '#FFB81C', parentLineId: 'sport', status: 'ended', studentId: 'st-01' },
   { id: 'arun-musictech', name: 'Music Technology', colour: '#A23B72', parentLineId: 'music', status: 'active', studentId: 'st-02' },
-  { id: 'arun-french', name: 'French', colour: '#F06A1D', parentLineId: 'languages', status: 'ended', studentId: 'st-02' },
+  { id: 'arun-french', name: 'French', colour: '#FF8F1C', parentLineId: 'languages', status: 'ended', studentId: 'st-02' },
   { id: 'lena-japanese', name: 'Japanese', colour: '#C2410C', parentLineId: 'languages', status: 'active', studentId: 'st-03' },
   { id: 'lena-ceramics', name: 'Ceramics', colour: '#8A5A44', parentLineId: 'art', status: 'ended', studentId: 'st-03' },
 ];
@@ -32,14 +32,16 @@ const teachers = [
   { id: 't-06', name: 'Ms Hana Sato', role: 'Visual Arts' },
   { id: 't-07', name: 'Mr James Whitfield', role: 'Advisor, 4B' },
   { id: 't-08', name: 'Ms Clara Brandt', role: 'CAS Coordinator' },
+  { id: 't-09', name: 'Ms Ruth Adeyemi', role: 'University Counsellor' },
+  { id: 't-10', name: 'Dr Anan Wongsakul', role: 'Head of School' },
 ];
 
 const students = [
-  { id: 'st-01', name: 'Maya Chen', grade: 12, programme: 'IB Diploma', avatar: { initials: 'MC', colour: '#6B3FB0' }, homeroom: '4B', advisorId: 't-07', g9StartYear: 2023,
+  { id: 'st-01', name: 'Maya Chen', grade: 12, programme: 'IB Diploma', avatar: { initials: 'MC', colour: '#4F529B' }, homeroom: '4B', advisorId: 't-07', g9StartYear: 2023,
     laneOrder: ['maya-swim', 'science', 'maya-datasci', 'computing', 'environment', 'service'], lineLabels: { science: 'Science · Biology' } },
-  { id: 'st-02', name: 'Arun Mehta', grade: 11, programme: 'IB Diploma', avatar: { initials: 'AM', colour: '#E0458B' }, homeroom: '4B', advisorId: 't-07', g9StartYear: 2024,
+  { id: 'st-02', name: 'Arun Mehta', grade: 11, programme: 'IB Diploma', avatar: { initials: 'AM', colour: '#D6457F' }, homeroom: '4B', advisorId: 't-07', g9StartYear: 2024,
     laneOrder: ['arun-french', 'music', 'arun-musictech', 'design', 'computing', 'languages'], lineLabels: { languages: 'Languages · Spanish' } },
-  { id: 'st-03', name: 'Lena Fischer', grade: 10, programme: 'IB MYP', avatar: { initials: 'LF', colour: '#F06A1D' }, homeroom: '4B', advisorId: 't-07', g9StartYear: 2025,
+  { id: 'st-03', name: 'Lena Fischer', grade: 10, programme: 'IB MYP', avatar: { initials: 'LF', colour: '#FF8F1C' }, homeroom: '4B', advisorId: 't-07', g9StartYear: 2025,
     laneOrder: ['lena-japanese', 'languages', 'service', 'art', 'lena-ceramics'], lineLabels: { languages: 'Languages · Thai & English' } },
 ];
 
@@ -293,6 +295,17 @@ const cohort = [
   ['st-08', 'Sienna Okoye', 11, ['science', 'environment', 'service', 'art'], 6],
 ];
 let gc = 300;
+const POOL = {
+  computing: ['Python data project', 'Robotics club build', 'Library web app', 'CS class: algorithms unit', 'Game jam entry', 'Spreadsheet automation for the PTA'],
+  science: ['Chemistry titration lab', 'Physics pendulum investigation', 'Science fair entry', 'Biology field study', 'Lab report: osmosis'],
+  service: ['Food bank volunteering', 'Reading buddies with G3', 'Charity run organiser', 'Animal shelter weekends', 'Community garden'],
+  sport: ['Football team season', 'Badminton tournament', 'Cross-country race', 'Basketball league', 'Climbing club'],
+  environment: ['Recycling audit', 'Tree planting day', 'Plastic-free week campaign', 'Eco-committee meeting series'],
+  languages: ['Spanish oral exam', 'Thai poetry recital', 'Translation project', 'Language exchange'],
+  art: ['Portrait series', 'Art exhibition piece', 'Printmaking workshop', 'Set design for the play'],
+  music: ['Choir concert', 'Guitar grade exam', 'Band rehearsal season', 'Songwriting project'],
+  design: ['Product design prototype', 'Lamp design project', 'Laser-cut puzzle', 'App mock-up for a client'],
+};
 for (const [id, name, grade, ls, nRefl] of cohort) {
   const start = 2026 - (grade - 9) - 0;
   students.push({ id, name, grade, programme: grade >= 11 ? 'IB Diploma' : 'IB MYP', avatar: { initials: name.split(' ').map((p) => p[0]).join(''), colour: '#6b7280' },
@@ -305,7 +318,7 @@ for (const [id, name, grade, ls, nRefl] of cohort) {
     const isRefl = i % Math.max(2, Math.floor(n / Math.max(nRefl, 1))) === 1 && nRefl > 0;
     const lineIds = !isRefl && rnd() < 0.15 ? [l, ls[(ls.indexOf(l) + 1) % ls.length]].sort((a, b) => ls.indexOf(a) - ls.indexOf(b)) : [l];
     ev(id, `ev-${gc++}`, d, lineIds, isRefl ? 'reflection' : ['class', 'project', 'club', 'service', 'assessment'][Math.floor(rnd() * 5)],
-      isRefl ? 'Reflection' : `${lines.find((x) => x.id === l).name} activity`, 'Cohort sample record.', { src: isRefl ? SRC.manual() : SRC.lms(`gen-${gc}`),
+      isRefl ? 'Reflection: term check-in' : POOL[l][Math.floor(rnd() * POOL[l].length)], isRefl ? 'Term check-in reflection.' : `${lines.find((x) => x.id === l).name} record from the school systems.`, { src: isRefl ? SRC.manual() : SRC.lms(`gen-${gc}`),
         refl: isRefl ? ['Term check-in', 'Sample reflection.'] : undefined });
   });
 }
@@ -397,6 +410,53 @@ const pending = [
 out('lines.json', lines); out('students.json', students); out('teachers.json', teachers); out('events.json', events);
 out('reflections.json', reflections); out('endorsements.json', endorsements); out('presentations.json', presentations);
 out('integrations.json', { integrations, pending });
+
+// ── School-level mock data: CAS tags, endorsement requests, prompts, applications ──
+// CAS: strand (C/A/S) and the IB learning outcomes (1–7) the student tagged.
+const CAS = {
+  'ev-025': ['S', [3, 4, 6]], 'ev-026': ['C', [1, 2]], 'ev-042': ['C', [2, 3, 6]], 'ev-033': ['C', [2, 6]], 'ev-034': ['S', [1]],
+  'ev-125': ['C', [1, 2]], 'ev-122': ['C', [1]],
+};
+const casStart = (s) => `${s.g9StartYear + 2}-08-15`;
+for (const e of events) {
+  const s = students.find((x) => x.id === e.studentId);
+  if (CAS[e.id]) e.cas = { strand: CAS[e.id][0], outcomes: CAS[e.id][1] };
+  else if (s.cohortOnly && s.grade >= 11 && e.date >= casStart(s) && ['service', 'club', 'project', 'cas'].includes(e.type)) {
+    const strand = e.type === 'service' || e.lineIds.includes('service') ? 'S' : e.lineIds.some((l) => l === 'sport') ? 'A' : 'C';
+    const n = parseInt(e.id.slice(3), 10);
+    e.cas = { strand, outcomes: [1 + (n % 7), 1 + ((n * 3) % 7)].filter((v, i, a) => a.indexOf(v) === i) };
+  }
+}
+out('events.json', events);
+const mateoComp = events.filter((e) => e.studentId === 'st-07' && e.lineIds.includes('computing') && e.type !== 'reflection').slice(-2);
+const school = {
+  requests: [
+    { id: 'rq-01', eventId: 'ev-026', studentId: 'st-01', teacherId: 't-01', date: '2026-10-21', source: 'student', note: 'Could you endorse my first sensor prototype? It became the campus network.', status: 'pending' },
+    { id: 'rq-02', eventId: 'ev-021', studentId: 'st-01', teacherId: 't-01', date: '2026-10-19', source: 'student', note: 'I used this course for the air-quality analysis.', status: 'pending' },
+    { id: 'rq-03', eventId: 'ev-116', studentId: 'st-02', teacherId: 't-01', date: '2026-10-22', source: 'student', note: 'The Unity course I took before the Rainfall project.', status: 'pending' },
+    ...mateoComp.map((e, i) => ({ id: `rq-0${4 + i}`, eventId: e.id, studentId: 'st-07', teacherId: 't-01', date: '2026-10-2' + (3 + i), source: 'lms', note: null, status: 'pending' })),
+    { id: 'rq-06', eventId: 'ev-206', studentId: 'st-03', teacherId: 't-06', date: '2026-10-20', source: 'student', note: null, status: 'pending' },
+  ],
+  prompts: [
+    { id: 'pm-01', studentId: 'st-01', eventId: 'ev-033', from: 't-07', date: '2026-10-02', text: 'Your team came second at the hackathon. What did 24 hours teach you about working under pressure?', answered: false },
+    { id: 'pm-02', studentId: 'st-03', eventId: 'ev-205', from: 't-07', date: '2026-10-12', text: 'You have been a Language Buddy for almost a year. What has changed for you?', answered: false },
+  ],
+  notes: {
+    'st-01': [{ date: '2026-09-18', text: 'Talked about EE timeline; Maya wants to finish the data collection by November.' }, { date: '2026-10-09', text: 'Asked about balancing CAS Activity now swimming has ended. Suggested the climbing club.' }],
+    'st-02': [{ date: '2026-09-25', text: 'Settling into DP well. Interested in music technology degrees in the UK and Netherlands.' }],
+    'st-03': [{ date: '2026-10-03', text: 'Lena is thriving in Language Buddies. Encourage her to reflect more on the art line.' }],
+  },
+  applications: [
+    { studentId: 'st-01', uni: 'Northbridge University (fictional)', course: 'BSc Data Science', deadline: '2027-01-15', presentationId: 'pr-03', status: 'viewed', views: 3 },
+    { studentId: 'st-01', uni: 'Harbourside Institute (fictional)', course: 'BSc Environmental Data', deadline: '2026-11-30', presentationId: 'pr-02', status: 'shared', views: 0 },
+    { studentId: 'st-01', uni: 'Kingsgate College (fictional)', course: 'BSc Statistics', deadline: '2027-01-29', presentationId: null, status: 'draft', views: 0 },
+    { studentId: 'st-05', uni: 'Riverside Arts University (fictional)', course: 'BA Illustration', deadline: '2026-12-01', presentationId: null, status: 'shared', views: 2 },
+    { studentId: 'st-05', uni: 'Northbridge University (fictional)', course: 'BA Modern Languages', deadline: '2027-01-15', presentationId: null, status: 'draft', views: 0 },
+    { studentId: 'st-07', uni: 'Eastgate Polytechnic (fictional)', course: 'BEng Software Engineering', deadline: '2026-11-15', presentationId: null, status: 'viewed', views: 5 },
+    { studentId: 'st-07', uni: 'Harbourside Institute (fictional)', course: 'BSc Computer Science', deadline: '2026-11-30', presentationId: null, status: 'draft', views: 0 },
+  ],
+};
+out('school.json', school);
 for (const s of students.filter((s) => !s.cohortOnly)) {
   const es = events.filter((e) => e.studentId === s.id);
   console.log(s.name, es.length, 'stations,', es.filter((e) => e.lineIds.length > 1).length, 'interchanges,', es.filter((e) => e.type === 'goal').length, 'goals');

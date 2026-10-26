@@ -81,7 +81,7 @@ export function VerificationMark({ level, x = 0, y = 0, r = 3.6 }) {
 
 const GRADE_YEARS = (start, g) => `${start + g - 9}–${String(start + g - 8).slice(2)}`;
 
-export default function MetroMap({ map, lens, selectedId, onSelect, mini = false, newIds, fitKey, duration = 450, showToday = true, className = '' }) {
+export default function MetroMap({ map, lens, selectedId, onSelect, onSignal, mini = false, newIds, fitKey, duration = 450, showToday = true, className = '' }) {
   const target = useMemo(() => computeLayout(map, lens, TODAY, mini ? { laneH: 70, slotW: 40, colPad: 10, emptyW: 24, left: 20, top: 30, bottom: 30, right: 20 } : {}), [map, lens, mini]);
   const tweened = useTween(target, duration);
   // On the first frame after the data changes shape, the tween hasn't caught up yet.
@@ -101,8 +101,10 @@ export default function MetroMap({ map, lens, selectedId, onSelect, mini = false
     const svg = svgRef.current;
     if (!svg || !zoomRef.current) return;
     const { width: cw, height: ch } = svg.getBoundingClientRect();
+    // Desktop: show the whole journey from Grade 9 when it can stay legible; phones keep a closer zoom.
     let s = Math.min(cw / target.width, ch / target.height);
-    s = Math.max(cw < 700 ? 0.6 : 0.82, Math.min(1.15, s));
+    if (cw >= 900) s = Math.max(s, Math.min(cw / target.width, 1));
+    s = Math.max(cw < 700 ? 0.6 : 0.5, Math.min(1.15, s));
     // Too wide to fit: start with the most recent stretch (around Today) in view.
     const tx = target.width * s < cw ? (cw - target.width * s) / 2 : Math.max(cw - target.width * s, Math.min(0, cw * 0.7 - target.todayX * s));
     const ty = target.height * s < ch ? (ch - target.height * s) / 2 : 0;
@@ -195,10 +197,23 @@ export default function MetroMap({ map, lens, selectedId, onSelect, mini = false
                 strokeDasharray={s.dashed ? `${ln.width * 1.4} ${ln.width * 1.3}` : undefined} />
             ))}
             {terminus && <line x1={terminus.x} x2={terminus.x} y1={terminus.y - ln.width * 1.8} y2={terminus.y + ln.width * 1.8} stroke={l.colour} strokeWidth={ln.width} strokeLinecap="round" />}
-            {!mini && terminus && <Signal x={terminus.x + 16} y={terminus.y} />}
-            {!mini && start && ln.state === 'full' && <Signal x={start.x} y={start.y} />}
+            {!mini && terminus && !map.signals && <Signal x={terminus.x + 16} y={terminus.y} />}
+            {!mini && start && ln.state === 'full' && !map.signals && <Signal x={start.x} y={start.y} />}
+            {!mini && map.signals?.filter((g) => g.lineId === l.id && g.kind !== 'prompt').map((g) => {
+              const p = g.kind === 'branch' ? start : terminus && { x: terminus.x + 16, y: terminus.y };
+              if (!p || (g.kind === 'branch' && ln.state !== 'full')) return null;
+              return <Signal key={g.key} x={p.x} y={p.y} open={g.open} title={g.prompt} onClick={onSignal ? () => onSignal(g) : undefined} />;
+            })}
           </g>
         );
+      })}
+
+      {/* Prompt signals an advisor attached to a station */}
+      {!mini && map.signals?.filter((g) => g.kind === 'prompt').map((g) => {
+        const s = L.stations[g.eventId];
+        if (!s || s.opacity < 0.5) return null;
+        const top = s.interchange ? s.capsule.y1 : s.y - 7;
+        return <Signal key={g.key} x={s.x - 15} y={top - 2} open={g.open} title={g.prompt} onClick={onSignal ? () => onSignal(g) : undefined} />;
       })}
 
       {/* Stations */}
@@ -285,9 +300,14 @@ export default function MetroMap({ map, lens, selectedId, onSelect, mini = false
   );
 }
 
-function Signal({ x, y }) {
+function Signal({ x, y, open = true, title, onClick }) {
   return (
-    <g className="signal" transform={`translate(${x} ${y})`} aria-hidden="true">
+    <g className={`signal${open ? ' open' : ' clear'}${onClick ? ' clickable' : ''}`} transform={`translate(${x} ${y})`}
+      onClick={onClick ? (ev) => { ev.stopPropagation(); onClick(); } : undefined}
+      role={onClick ? 'button' : undefined} tabIndex={onClick ? 0 : undefined} aria-label={onClick ? `Reflection signal: ${title}` : undefined}
+      onKeyDown={onClick ? (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); onClick(); } } : undefined}>
+      {title && <title>{title}</title>}
+      {onClick && <circle cx={0} cy={-8} r={14} className="hit" />}
       <line x1={0} y1={6} x2={0} y2={-6} />
       <rect x={-4} y={-15} width={8} height={11} rx={3} />
       <circle cx={0} cy={-11.5} r={1.8} className="signal-lamp" />

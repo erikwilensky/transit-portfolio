@@ -74,7 +74,7 @@ export default function CustomView({ map, lens, design, editable = false, select
               <p>{e.about || e.summary}</p>
               {p.showReflection && r && <blockquote className="cv-refl">“{firstPara(r.text)}”</blockquote>}
               {p.showEndorsement && n && <blockquote className="cv-endorse">“{n.note}”<cite>{n.teacher?.name}, {n.teacher?.role}</cite></blockquote>}
-              <div className="cv-foot">{chips(e)}<VerifyBadge level={e.verification} /></div>
+              <div className="cv-foot">{chips(e)}<VerifyBadge level={e.verification} event={e} /></div>
             </div>
           </article>
         );
@@ -94,7 +94,7 @@ export default function CustomView({ map, lens, design, editable = false, select
                     <div className="cv-kicker">{fmtDate(e.date)}</div>
                     <h3>{e.title}</h3>
                     {p.style !== 'compact' && <p>{e.summary}</p>}
-                    <div className="cv-foot">{chips(e)}<VerifyBadge level={e.verification} /></div>
+                    <div className="cv-foot">{chips(e)}<VerifyBadge level={e.verification} event={e} /></div>
                   </div>
                 </article>
               ))}

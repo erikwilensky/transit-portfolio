@@ -1,0 +1,173 @@
+{
+  "requests": [
+    {
+      "id": "rq-01",
+      "eventId": "ev-026",
+      "studentId": "st-01",
+      "teacherId": "t-01",
+      "date": "2026-10-21",
+      "source": "student",
+      "note": "Could you endorse my first sensor prototype? It became the campus network.",
+      "status": "pending"
+    },
+    {
+      "id": "rq-02",
+      "eventId": "ev-021",
+      "studentId": "st-01",
+      "teacherId": "t-01",
+      "date": "2026-10-19",
+      "source": "student",
+      "note": "I used this course for the air-quality analysis.",
+      "status": "pending"
+    },
+    {
+      "id": "rq-03",
+      "eventId": "ev-116",
+      "studentId": "st-02",
+      "teacherId": "t-01",
+      "date": "2026-10-22",
+      "source": "student",
+      "note": "The Unity course I took before the Rainfall project.",
+      "status": "pending"
+    },
+    {
+      "id": "rq-04",
+      "eventId": "ev-336",
+      "studentId": "st-07",
+      "teacherId": "t-01",
+      "date": "2026-10-23",
+      "source": "lms",
+      "note": null,
+      "status": "pending"
+    },
+    {
+      "id": "rq-05",
+      "eventId": "ev-337",
+      "studentId": "st-07",
+      "teacherId": "t-01",
+      "date": "2026-10-24",
+      "source": "lms",
+      "note": null,
+      "status": "pending"
+    },
+    {
+      "id": "rq-06",
+      "eventId": "ev-206",
+      "studentId": "st-03",
+      "teacherId": "t-06",
+      "date": "2026-10-20",
+      "source": "student",
+      "note": null,
+      "status": "pending"
+    }
+  ],
+  "prompts": [
+    {
+      "id": "pm-01",
+      "studentId": "st-01",
+      "eventId": "ev-033",
+      "from": "t-07",
+      "date": "2026-10-02",
+      "text": "Your team came second at the hackathon. What did 24 hours teach you about working under pressure?",
+      "answered": false
+    },
+    {
+      "id": "pm-02",
+      "studentId": "st-03",
+      "eventId": "ev-205",
+      "from": "t-07",
+      "date": "2026-10-12",
+      "text": "You have been a Language Buddy for almost a year. What has changed for you?",
+      "answered": false
+    }
+  ],
+  "notes": {
+    "st-01": [
+      {
+        "date": "2026-09-18",
+        "text": "Talked about EE timeline; Maya wants to finish the data collection by November."
+      },
+      {
+        "date": "2026-10-09",
+        "text": "Asked about balancing CAS Activity now swimming has ended. Suggested the climbing club."
+      }
+    ],
+    "st-02": [
+      {
+        "date": "2026-09-25",
+        "text": "Settling into DP well. Interested in music technology degrees in the UK and Netherlands."
+      }
+    ],
+    "st-03": [
+      {
+        "date": "2026-10-03",
+        "text": "Lena is thriving in Language Buddies. Encourage her to reflect more on the art line."
+      }
+    ]
+  },
+  "applications": [
+    {
+      "studentId": "st-01",
+      "uni": "Northbridge University (fictional)",
+      "course": "BSc Data Science",
+      "deadline": "2027-01-15",
+      "presentationId": "pr-03",
+      "status": "viewed",
+      "views": 3
+    },
+    {
+      "studentId": "st-01",
+      "uni": "Harbourside Institute (fictional)",
+      "course": "BSc Environmental Data",
+      "deadline": "2026-11-30",
+      "presentationId": "pr-02",
+      "status": "shared",
+      "views": 0
+    },
+    {
+      "studentId": "st-01",
+      "uni": "Kingsgate College (fictional)",
+      "course": "BSc Statistics",
+      "deadline": "2027-01-29",
+      "presentationId": null,
+      "status": "draft",
+      "views": 0
+    },
+    {
+      "studentId": "st-05",
+      "uni": "Riverside Arts University (fictional)",
+      "course": "BA Illustration",
+      "deadline": "2026-12-01",
+      "presentationId": null,
+      "status": "shared",
+      "views": 2
+    },
+    {
+      "studentId": "st-05",
+      "uni": "Northbridge University (fictional)",
+      "course": "BA Modern Languages",
+      "deadline": "2027-01-15",
+      "presentationId": null,
+      "status": "draft",
+      "views": 0
+    },
+    {
+      "studentId": "st-07",
+      "uni": "Eastgate Polytechnic (fictional)",
+      "course": "BEng Software Engineering",
+      "deadline": "2026-11-15",
+      "presentationId": null,
+      "status": "viewed",
+      "views": 5
+    },
+    {
+      "studentId": "st-07",
+      "uni": "Harbourside Institute (fictional)",
+      "course": "BSc Computer Science",
+      "deadline": "2026-11-30",
+      "presentationId": null,
+      "status": "draft",
+      "views": 0
+    }
+  ]
+}

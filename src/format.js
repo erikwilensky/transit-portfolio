@@ -18,3 +18,10 @@ export function ago(iso, now = Date.now()) {
   if (h < 24) return `${h} h ago`;
   return `${Math.round(h / 24)} days ago`;
 }
+// A short public code for a station's verification record (printed on CVs as text and QR).
+export function verifyCode(eventId) {
+  let h = 2166136261;
+  for (const c of `nist:${eventId}`) h = Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0;
+  return `NIST-${h.toString(36).toUpperCase().padStart(6, '0').slice(0, 6)}`;
+}
+export const appUrl = (hash) => `${location.origin}${location.pathname}#/${hash}`;

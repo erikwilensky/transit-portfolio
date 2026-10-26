@@ -1,5 +1,17 @@
 import { VERIFY_LABEL, VERIFY_HELP } from '../format.js';
-export function VerifyBadge({ level, large = false }) {
+import { useContext } from 'react';
+import { useVerify, VerifyScope } from './VerifyModal.jsx';
+export function VerifyBadge({ level, large = false, event, verifiable }) {
+  const open = useVerify();
+  const scoped = useContext(VerifyScope);
+  if (event && (verifiable ?? scoped) && open) {
+    return (
+      <button type="button" className={`vbadge vbadge-${level}${large ? ' large' : ''} as-btn`} title="See the verification record" onClick={(ev) => { ev.stopPropagation(); open(event.id); }}>
+        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.2" className={`vmark ${level === 'school-verified' ? 'vmark-solid' : level === 'teacher-endorsed' ? 'vmark-outline' : 'vmark-dotted'}`} /></svg>
+        {VERIFY_LABEL[level]} <span className="vb-check">Verify</span>
+      </button>
+    );
+  }
   return (
     <span className={`vbadge vbadge-${level}${large ? ' large' : ''}`} title={VERIFY_HELP[level]}>
       <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.2" className={`vmark ${level === 'school-verified' ? 'vmark-solid' : level === 'teacher-endorsed' ? 'vmark-outline' : 'vmark-dotted'}`} /></svg>

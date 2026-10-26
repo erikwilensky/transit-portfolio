@@ -38,5 +38,15 @@
     "id": "t-08",
     "name": "Ms Clara Brandt",
     "role": "CAS Coordinator"
+  },
+  {
+    "id": "t-09",
+    "name": "Ms Ruth Adeyemi",
+    "role": "University Counsellor"
+  },
+  {
+    "id": "t-10",
+    "name": "Dr Anan Wongsakul",
+    "role": "Head of School"
   }
 ]

@@ -8,6 +8,7 @@ import endorsementsData from '../data/endorsements.json';
 import teachersData from '../data/teachers.json';
 import presentationsData from '../data/presentations.json';
 import integrationsData from '../data/integrations.json';
+import schoolData from '../data/school.json';
 
 export const TODAY = '2026-10-26';
 
@@ -18,18 +19,37 @@ const store = {
   inbox: [],      // synced, waiting for the student's decision
   dismissed: [],  // skipped by the student (can be undone)
   integrations: integrationsData.integrations.map((i) => ({ ...i })),
+  reflections: reflectionsData.map((r) => ({ ...r })),
+  endorsements: endorsementsData.map((n) => ({ ...n })),
+  students: structuredClone(studentsData),
+  lines: structuredClone(linesData),
+  requests: structuredClone(schoolData.requests),
+  prompts: structuredClone(schoolData.prompts),
+  notes: structuredClone(schoolData.notes),
+  applications: structuredClone(schoolData.applications),
+  activity: [],       // live actions taken during the demo
+  notifications: [],  // per persona
+  linkViews: {},      // token → extra views during the demo
+  comments: [],       // counsellor comments on drafts
+  evidenceRequests: [],
+  answered: {},       // signal key → reflection id
 };
 const listeners = new Set();
 export const subscribe = (fn) => (listeners.add(fn), () => listeners.delete(fn));
 const emit = () => listeners.forEach((fn) => fn());
 
-const lineById = Object.fromEntries(linesData.map((l) => [l.id, l]));
+const lineById = (id) => store.lines.find((l) => l.id === id);
 const teacherById = Object.fromEntries(teachersData.map((t) => [t.id, t]));
 
-export const getStudents = ({ includeCohort = false } = {}) => studentsData.filter((s) => includeCohort || !s.cohortOnly);
-export const getStudent = (id) => studentsData.find((s) => s.id === id);
+export const getStudents = ({ includeCohort = false } = {}) => store.students.filter((s) => includeCohort || !s.cohortOnly);
+export const getStudent = (id) => store.students.find((s) => s.id === id);
 export const getTeacher = (id) => teacherById[id];
-export const getLine = (id) => lineById[id];
+export const getTeachers = () => teachersData;
+export const getLine = (id) => lineById(id);
+export const getSchoolLines = () => store.lines.filter((l) => !l.studentId);
+export const getAllLines = () => store.lines;
+export const getEvent = (id) => store.events.find((e) => e.id === id);
+export const getStore = () => store;
 
 // The visibility levels each viewer may read. Enforced here, not in the UI.
 const VISIBLE_TO = {
@@ -47,12 +67,13 @@ export function getStudentMap(studentId, viewer = 'student') {
     .map((e) => ({
       ...e,
       // Reflections carry their own visibility (private by default).
-      reflections: reflectionsData.filter((r) => r.eventId === e.id && allowed.includes(r.visibility || 'private')),
-      endorsements: endorsementsData.filter((n) => n.eventId === e.id).map((n) => ({ ...n, teacher: teacherById[n.teacherId] })),
+      reflections: store.reflections.filter((r) => r.eventId === e.id && allowed.includes(r.visibility || 'private')),
+      endorsements: store.endorsements.filter((n) => n.eventId === e.id).map((n) => ({ ...n, teacher: teacherById[n.teacherId] })),
     }))
     .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
-  const lines = student.laneOrder.map((id) => ({ ...lineById[id], name: student.lineLabels?.[id] || lineById[id].name }));
-  return { student, lines, events };
+  const lines = student.laneOrder.map((id) => { const l = lineById(id); return { ...l, name: student.lineLabels?.[id] || l.name, status: student.lineStatus?.[id] || l.status }; })
+    .filter((l) => viewer === 'student' || l.status !== 'ended' || events.some((e) => e.lineIds.includes(l.id)));
+  return { student, lines, events, signals: viewer === 'student' || viewer === 'advisor' ? getSignals(studentId, lines) : [] };
 }
 
 export const getPresentations = (studentId) => presentationsData.filter((p) => p.studentId === studentId);
@@ -169,10 +190,131 @@ export function restoreCandidate(id) {
 
 // ── Advisor ───────────────────────────────────────────────────────────
 export function getCohort(advisorId) {
-  return studentsData.filter((s) => s.advisorId === advisorId).map((s) => {
+  return store.students.filter((s) => s.advisorId === advisorId).map((s) => {
     const map = getStudentMap(s.id, 'advisor');
     const reflectionCount = map.events.filter((e) => e.type === 'reflection').length + map.events.reduce((n, e) => n + e.reflections.length, 0);
     const last = map.events.filter((e) => e.date <= TODAY).at(-1);
-    return { ...map, reflectionCount, lastActivity: last?.date, flagFewReflections: reflectionCount < 4 };
+    const openSignals = map.signals.filter((g) => g.open).length;
+    return { ...map, reflectionCount, openSignals, lastActivity: last?.date, flagFewReflections: reflectionCount < 4 };
   }).sort((a, b) => a.student.name.localeCompare(b.student.name));
 }
+
+// ── Signals: places on the map that ask for a reflection ──────────────
+// A branch start, a terminus, or a prompt an advisor attached to a station.
+export function getSignals(studentId, lines = getStudentMap(studentId).lines) {
+  const evs = store.events.filter((e) => e.studentId === studentId && e.type !== 'goal' && e.date <= TODAY).sort((a, b) => a.date.localeCompare(b.date));
+  const hasRefl = (id) => store.reflections.some((r) => r.eventId === id);
+  const out = [];
+  for (const l of lines) {
+    const on = evs.filter((e) => e.lineIds.includes(l.id));
+    if (!on.length) continue;
+    if (l.parentLineId) out.push({ key: `${studentId}:${l.id}:branch`, kind: 'branch', lineId: l.id, eventId: on[0].id, prompt: `A new line has branched. Why ${l.name}, and why now?`, open: !hasRefl(on[0].id) && !store.answered[`${studentId}:${l.id}:branch`] });
+    if (l.status === 'ended') out.push({ key: `${studentId}:${l.id}:end`, kind: 'terminus', lineId: l.id, eventId: on.at(-1).id, prompt: `A line is ending. What did ${l.name} give you?`, open: !hasRefl(on.at(-1).id) && !store.answered[`${studentId}:${l.id}:end`] });
+  }
+  for (const p of store.prompts.filter((x) => x.studentId === studentId)) {
+    out.push({ key: `prompt:${p.id}`, kind: 'prompt', promptId: p.id, eventId: p.eventId, prompt: p.text, from: teacherById[p.from], open: !p.answered, date: p.date });
+  }
+  return out;
+}
+
+// ── Personas: who receives notifications ──────────────────────────────
+export const PERSONA_OF_STUDENT = { 'st-01': 'maya', 'st-02': 'arun', 'st-03': 'lena', 'st-09': 'pim' };
+export const PERSONA_OF_TEACHER = { 't-07': 'whitfield', 't-01': 'nair', 't-09': 'adeyemi', 't-08': 'brandt', 't-10': 'principal' };
+let seq = 1;
+const nowIso = () => new Date().toISOString();
+export function notify(to, text, go) { if (!to) return; store.notifications.unshift({ id: `nt-${seq++}`, to, text, go, ts: nowIso(), read: false }); }
+export function log(studentId, actor, kind, text) { store.activity.unshift({ id: `ac-${seq++}`, studentId, actor, kind, text, ts: nowIso() }); }
+export const getNotifications = (persona) => store.notifications.filter((n) => n.to === persona);
+export function markNotificationsRead(persona) { store.notifications.forEach((n) => { if (n.to === persona) n.read = true; }); emit(); }
+
+// ── Student actions ───────────────────────────────────────────────────
+export function addReflection({ studentId, eventId, prompt, text, visibility = 'advisor', signal }) {
+  const r = { id: `rf-x${seq++}`, eventId, text, prompt, date: TODAY, visibility };
+  store.reflections.push(r);
+  if (signal) {
+    store.answered[signal.key] = r.id;
+    if (signal.promptId) {
+      const p = store.prompts.find((x) => x.id === signal.promptId);
+      if (p) { p.answered = true; notify(PERSONA_OF_TEACHER[p.from], `${getStudent(studentId).name.split(' ')[0]} answered your reflection prompt`, { persona: PERSONA_OF_TEACHER[p.from], screen: 'student', param: studentId }); }
+    }
+  }
+  log(studentId, getStudent(studentId).name, 'reflection', `Added a reflection on “${getEvent(eventId)?.title}” (${visibility})`);
+  emit();
+  return r;
+}
+
+let evSeq = 900;
+export function addStation(studentId, f) {
+  const e = {
+    id: `ev-${evSeq++}`, studentId, title: f.title, date: f.date || TODAY, lineIds: f.lineIds, type: f.type || 'project', summary: f.summary || '',
+    about: f.about || '', evidence: f.image ? [{ kind: 'image', url: f.image, caption: f.imageCaption || 'Photo' }] : [],
+    verification: 'student-added', visibility: f.visibility || 'advisor', source: { system: f.via || 'Manual entry', ref: null },
+    ...(f.cas ? { cas: f.cas } : {}),
+  };
+  store.events.push(e);
+  if (f.reflection) store.reflections.push({ id: `rf-x${seq++}`, eventId: e.id, text: f.reflection, prompt: 'Quick reflection', date: e.date, visibility: f.visibility || 'advisor' });
+  const who = getStudent(studentId).name;
+  log(studentId, who, 'station', `Added “${e.title}”${f.via ? ` from ${f.via}` : ''}`);
+  if (f.requestFrom) requestEndorsement(e.id, f.requestFrom, f.requestNote);
+  emit();
+  return e;
+}
+export function requestEndorsement(eventId, teacherId, note) {
+  const e = getEvent(eventId);
+  const rq = { id: `rq-x${seq++}`, eventId, studentId: e.studentId, teacherId, date: TODAY, source: 'student', note: note || null, status: 'pending', fresh: true };
+  store.requests.unshift(rq);
+  const name = getStudent(e.studentId).name;
+  notify(PERSONA_OF_TEACHER[teacherId], `${name.split(' ')[0]} asked you to endorse “${e.title}”`, { persona: PERSONA_OF_TEACHER[teacherId], screen: 'queue' });
+  log(e.studentId, name, 'request', `Asked ${teacherById[teacherId].name} to endorse “${e.title}”`);
+  emit();
+  return rq;
+}
+
+// ── Teacher actions ───────────────────────────────────────────────────
+export const getRequests = (teacherId, status = 'pending') => store.requests.filter((r) => r.teacherId === teacherId && (!status || r.status === status))
+  .map((r) => ({ ...r, event: getEvent(r.eventId), student: getStudent(r.studentId) }));
+export function endorse(requestIds, teacherId, note) {
+  const ids = [].concat(requestIds);
+  for (const id of ids) {
+    const r = store.requests.find((x) => x.id === id);
+    if (!r || r.status !== 'pending') continue;
+    r.status = 'endorsed'; r.decidedAt = nowIso();
+    const e = getEvent(r.eventId);
+    store.endorsements.push({ id: `en-x${seq++}`, eventId: e.id, teacherId, note: note || 'Endorsed.', date: TODAY });
+    e.verification = 'teacher-endorsed';
+    const t = teacherById[teacherId];
+    log(e.studentId, t.name, 'endorsement', `Endorsed “${e.title}”`);
+    notify(PERSONA_OF_STUDENT[e.studentId], `${t.name} endorsed “${e.title}”`, { persona: PERSONA_OF_STUDENT[e.studentId], screen: 'map', param: e.id });
+  }
+  emit();
+}
+export function declineRequest(id, reason) {
+  const r = store.requests.find((x) => x.id === id);
+  if (!r) return;
+  r.status = 'returned'; r.reason = reason;
+  notify(PERSONA_OF_STUDENT[r.studentId], `${teacherById[r.teacherId].name} asked for more evidence on “${getEvent(r.eventId).title}”`, { persona: PERSONA_OF_STUDENT[r.studentId], screen: 'map', param: r.eventId });
+  emit();
+}
+
+// ── Advisor actions ───────────────────────────────────────────────────
+export const getNotes = (studentId) => store.notes[studentId] || [];
+export function addNote(studentId, text) { (store.notes[studentId] ||= []).push({ date: TODAY, text }); emit(); }
+export const getPrompts = (studentId) => store.prompts.filter((p) => p.studentId === studentId);
+export function sendPrompt(studentId, eventId, text, from = 't-07') {
+  const p = { id: `pm-x${seq++}`, studentId, eventId, from, date: TODAY, text, answered: false };
+  store.prompts.push(p);
+  notify(PERSONA_OF_STUDENT[studentId], `${teacherById[from].name} sent you a reflection prompt`, { persona: PERSONA_OF_STUDENT[studentId], screen: 'map', param: eventId });
+  log(studentId, teacherById[from].name, 'prompt', `Sent a reflection prompt on “${getEvent(eventId)?.title}”`);
+  emit();
+  return p;
+}
+
+// ── Share links: views logged ─────────────────────────────────────────
+export function recordView(token, studentId, who = 'Anonymous viewer') {
+  store.linkViews[token] = (store.linkViews[token] || 0) + 1;
+  log(studentId, who, 'view', `Viewed share link /s/${token}`);
+  emit();
+}
+export const extraViews = (token) => store.linkViews[token] || 0;
+
+export const getApplications = () => store.applications;

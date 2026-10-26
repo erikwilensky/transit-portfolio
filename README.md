@@ -1,6 +1,6 @@
-# Transit Portfolio — pitch demo
+# NIST Transit Portfolio — pitch demo
 
-A static, clickable demo of Transit Portfolio: each student's journey drawn as a metro map,
+A static, clickable demo of NIST Transit Portfolio: each student's journey drawn as a metro map,
 fed (in mock) by school systems and re-presented for different audiences. No backend, no
 logins, no external calls. All students, teachers and records are fictional.
 

@@ -43,7 +43,7 @@ export default function PresentationView({ map, lens, pres, selectedId, onSelect
       <div className="p-item-head"><b>{e.title}</b><span className="p-date">{fmtDate(e.date)}</span></div>
       {detail && <p>{e.summary}</p>}
       {detail && quote(e)}
-      <div className="p-item-foot">{chips(e)}<VerifyBadge level={e.verification} /></div>
+      <div className="p-item-foot">{chips(e)}<VerifyBadge level={e.verification} event={e} /></div>
     </div>
   );
   const highlights = [...past].filter((e) => SHOWCASE.includes(e.type))
@@ -122,7 +122,7 @@ export default function PresentationView({ map, lens, pres, selectedId, onSelect
                         <li key={e.id} className={e.type === 'goal' ? 'goal' : ''} onClick={() => open(e.id)}>
                           <span className="p-date">{month(e.date)}</span>
                           <div>
-                            <b>{e.title}</b> <VerifyBadge level={e.verification} />
+                            <b>{e.title}</b> <VerifyBadge level={e.verification} event={e} />
                             <p>{e.about || e.summary}</p>
                             {firstImage(e) && <img className="narr-img" src={firstImage(e).url} alt={firstImage(e).caption} loading="lazy" />}
                             {e.reflections.map((r) => <blockquote key={r.id} className="refl-quote"><span className="refl-prompt">Reflection: {r.prompt}</span>{r.text.split('\n\n').map((para, i) => <p key={i}>{para}</p>)}</blockquote>)}
@@ -177,7 +177,7 @@ export default function PresentationView({ map, lens, pres, selectedId, onSelect
                 <h3>{e.title}</h3>
                 <p>{e.about || e.summary}</p>
                 {quote(e)}
-                <div className="case-foot">{chips(e)}<VerifyBadge level={e.verification} /></div>
+                <div className="case-foot">{chips(e)}<VerifyBadge level={e.verification} event={e} /></div>
               </article>
             ))}
           </div>
@@ -196,7 +196,7 @@ export default function PresentationView({ map, lens, pres, selectedId, onSelect
                 <li key={e.id} style={{ '--c': lineById[e.lineIds.find((id) => lens.lineState[id] !== 'hidden')]?.colour }} onClick={() => open(e.id)}>
                   <span className="tl-date">{i === 0 || year(past[i - 1].date) !== year(e.date) ? <b>{year(e.date)}</b> : null}{month(e.date).split(' ')[0]}</span>
                   <span className="tl-dot" />
-                  <span className="tl-body"><b>{e.title}</b><span>{e.summary}</span>{firstImage(e) && <img className="tl-img" src={firstImage(e).url} alt={firstImage(e).caption} loading="lazy" />}{quote(e)}<span className="tl-meta">{chips(e)}<VerifyBadge level={e.verification} /></span></span>
+                  <span className="tl-body"><b>{e.title}</b><span>{e.summary}</span>{firstImage(e) && <img className="tl-img" src={firstImage(e).url} alt={firstImage(e).caption} loading="lazy" />}{quote(e)}<span className="tl-meta">{chips(e)}<VerifyBadge level={e.verification} event={e} /></span></span>
                 </li>
               ))}
             </ol>

@@ -22,7 +22,7 @@ export default function StationPanel({ event, map, onClose, readOnly = false }) 
           </div>
           <p className="panel-summary">{event.summary}</p>
           {event.about && <p className="panel-about">{event.about}</p>}
-          <VerifyBadge level={event.verification} large />
+          <VerifyBadge level={event.verification} large event={event} />
           <span className="vhelp">{VERIFY_HELP[event.verification]}</span>
 
           {event.evidence.length > 0 && (

@@ -88,11 +88,12 @@ const scenes = {
     <circle cx="420" cy="300" r="26" fill="#E2343C"/><path d="M408 300 l9 9 l16 -18" stroke="#fff" stroke-width="5" fill="none"/></g>`, '#fbeee4'),
 };
 
+scenes['hackathon-1st'] = scenes.hackathon.replace('2nd PLACE', '1st PLACE').replace('#F2A100', '#FFB81C');
 for (const [name, content] of Object.entries(scenes)) writeFileSync(new URL(`${name}.svg`, dir), content);
 
 // ── Per-station scenes from templates (data in scripts/enrich.mjs) ──────
 const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-const T = (x, y, t, size = 18, fill = '#1b1f27', o = '') => `<text x="${x}" y="${y}" font-family="Helvetica,Arial" font-size="${size}" fill="${fill}" ${o}>${esc(t)}</text>`;
+const T = (x, y, t, size = 18, fill = '#1b1f27', o = '') => `<text x="${x}" y="${y}"${o.includes('font-family') ? '' : ' font-family="Helvetica,Arial"'} font-size="${size}" fill="${fill}" ${o}>${esc(t)}</text>`;
 const tint = (c) => `${c}22`;
 const templates = {
   cert: ({ title, sub, c }) => svg(`<rect x="90" y="60" width="460" height="300" rx="6" fill="#fffdf6" stroke="${c}" stroke-width="8"/><rect x="108" y="78" width="424" height="264" fill="none" stroke="${c}" stroke-width="2" opacity=".5"/>

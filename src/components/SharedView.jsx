@@ -3,6 +3,7 @@ import { applyLens, TODAY } from '../api.js';
 import { fmtDate } from '../format.js';
 import PresentationView from './PresentationView.jsx';
 import StationPanel from './StationPanel.jsx';
+import { VerifyScope } from './VerifyModal.jsx';
 
 export default function SharedView({ publicMap, drafts, links }) {
   const [token, setToken] = useState(links.find((l) => !l.revoked)?.token || links[0]?.token);
@@ -43,8 +44,8 @@ export default function SharedView({ publicMap, drafts, links }) {
               <span>Link expires {fmtDate(link.expiresAt)}</span>
               <span>{link.views} views logged</span>
             </div>
-            <PresentationView map={publicMap} lens={lens} pres={pres} selectedId={selected} onSelect={setSelected} />
-            <StationPanel event={event} map={publicMap} onClose={() => setSelected(null)} readOnly />
+            <VerifyScope.Provider value><PresentationView map={publicMap} lens={lens} pres={pres} selectedId={selected} onSelect={setSelected} />
+            <StationPanel event={event} map={publicMap} onClose={() => setSelected(null)} readOnly /></VerifyScope.Provider>
           </div>
         )}
       </div>

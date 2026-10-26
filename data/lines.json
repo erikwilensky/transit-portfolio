@@ -2,56 +2,56 @@
   {
     "id": "science",
     "name": "Science",
-    "colour": "#6B3FB0",
+    "colour": "#4F529B",
     "parentLineId": null,
     "status": "active"
   },
   {
     "id": "computing",
     "name": "Computing",
-    "colour": "#1E6FD9",
+    "colour": "#0072CE",
     "parentLineId": null,
     "status": "active"
   },
   {
     "id": "environment",
     "name": "Environment",
-    "colour": "#2E9E4F",
+    "colour": "#008A60",
     "parentLineId": null,
     "status": "active"
   },
   {
     "id": "sport",
     "name": "Sport",
-    "colour": "#F2A100",
+    "colour": "#FFB81C",
     "parentLineId": null,
     "status": "active"
   },
   {
     "id": "service",
     "name": "Service",
-    "colour": "#E2343C",
+    "colour": "#E73C3E",
     "parentLineId": null,
     "status": "active"
   },
   {
     "id": "music",
     "name": "Music",
-    "colour": "#E0458B",
+    "colour": "#D6457F",
     "parentLineId": null,
     "status": "active"
   },
   {
     "id": "design",
     "name": "Design",
-    "colour": "#00A39E",
+    "colour": "#1FA3A8",
     "parentLineId": null,
     "status": "active"
   },
   {
     "id": "languages",
     "name": "Languages",
-    "colour": "#F06A1D",
+    "colour": "#FF8F1C",
     "parentLineId": null,
     "status": "active"
   },
@@ -65,7 +65,7 @@
   {
     "id": "maya-datasci",
     "name": "Data Science",
-    "colour": "#C152DB",
+    "colour": "#8C7FD6",
     "parentLineId": "science",
     "status": "active",
     "studentId": "st-01"
@@ -73,7 +73,7 @@
   {
     "id": "maya-swim",
     "name": "Swimming",
-    "colour": "#F2A100",
+    "colour": "#FFB81C",
     "parentLineId": "sport",
     "status": "ended",
     "studentId": "st-01"
@@ -89,7 +89,7 @@
   {
     "id": "arun-french",
     "name": "French",
-    "colour": "#F06A1D",
+    "colour": "#FF8F1C",
     "parentLineId": "languages",
     "status": "ended",
     "studentId": "st-02"

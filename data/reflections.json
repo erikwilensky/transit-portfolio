@@ -602,14 +602,14 @@
     "id": "rf-076",
     "eventId": "ev-310",
     "text": "Sample reflection.",
-    "date": "2024-07-05",
+    "date": "2024-04-03",
     "prompt": "Term check-in"
   },
   {
     "id": "rf-077",
     "eventId": "ev-312",
     "text": "Sample reflection.",
-    "date": "2024-12-22",
+    "date": "2024-10-19",
     "prompt": "Term check-in"
   },
   {
@@ -630,98 +630,84 @@
     "id": "rf-080",
     "eventId": "ev-318",
     "text": "Sample reflection.",
-    "date": "2026-06-01",
+    "date": "2026-07-07",
     "prompt": "Term check-in"
   },
   {
     "id": "rf-081",
     "eventId": "ev-321",
     "text": "Sample reflection.",
-    "date": "2025-12-08",
-    "prompt": "Term check-in"
-  },
-  {
-    "id": "rf-082",
-    "eventId": "ev-324",
-    "text": "Sample reflection.",
-    "date": "2026-02-05",
-    "prompt": "Term check-in"
-  },
-  {
-    "id": "rf-083",
-    "eventId": "ev-327",
-    "text": "Sample reflection.",
-    "date": "2026-06-11",
-    "prompt": "Term check-in"
-  },
-  {
-    "id": "rf-084",
-    "eventId": "ev-330",
-    "text": "Sample reflection.",
-    "date": "2026-08-04",
-    "prompt": "Term check-in"
-  },
-  {
-    "id": "rf-085",
-    "eventId": "ev-334",
-    "text": "Sample reflection.",
-    "date": "2023-09-18",
-    "prompt": "Term check-in"
-  },
-  {
-    "id": "rf-086",
-    "eventId": "ev-342",
-    "text": "Sample reflection.",
-    "date": "2025-06-06",
-    "prompt": "Term check-in"
-  },
-  {
-    "id": "rf-087",
-    "eventId": "ev-350",
-    "text": "Sample reflection.",
-    "date": "2025-01-02",
-    "prompt": "Term check-in"
-  },
-  {
-    "id": "rf-088",
-    "eventId": "ev-352",
-    "text": "Sample reflection.",
-    "date": "2025-04-16",
-    "prompt": "Term check-in"
-  },
-  {
-    "id": "rf-089",
-    "eventId": "ev-354",
-    "text": "Sample reflection.",
-    "date": "2025-08-11",
-    "prompt": "Term check-in"
-  },
-  {
-    "id": "rf-090",
-    "eventId": "ev-356",
-    "text": "Sample reflection.",
-    "date": "2025-09-27",
-    "prompt": "Term check-in"
-  },
-  {
-    "id": "rf-091",
-    "eventId": "ev-358",
-    "text": "Sample reflection.",
     "date": "2025-10-24",
     "prompt": "Term check-in"
   },
   {
-    "id": "rf-092",
-    "eventId": "ev-360",
+    "id": "rf-082",
+    "eventId": "ev-323",
     "text": "Sample reflection.",
-    "date": "2026-01-27",
+    "date": "2025-11-25",
     "prompt": "Term check-in"
   },
   {
-    "id": "rf-093",
-    "eventId": "ev-362",
+    "id": "rf-083",
+    "eventId": "ev-325",
     "text": "Sample reflection.",
-    "date": "2026-04-12",
+    "date": "2026-03-05",
+    "prompt": "Term check-in"
+  },
+  {
+    "id": "rf-084",
+    "eventId": "ev-327",
+    "text": "Sample reflection.",
+    "date": "2026-05-18",
+    "prompt": "Term check-in"
+  },
+  {
+    "id": "rf-085",
+    "eventId": "ev-330",
+    "text": "Sample reflection.",
+    "date": "2024-03-28",
+    "prompt": "Term check-in"
+  },
+  {
+    "id": "rf-086",
+    "eventId": "ev-334",
+    "text": "Sample reflection.",
+    "date": "2026-06-26",
+    "prompt": "Term check-in"
+  },
+  {
+    "id": "rf-087",
+    "eventId": "ev-339",
+    "text": "Sample reflection.",
+    "date": "2025-04-27",
+    "prompt": "Term check-in"
+  },
+  {
+    "id": "rf-088",
+    "eventId": "ev-341",
+    "text": "Sample reflection.",
+    "date": "2025-07-23",
+    "prompt": "Term check-in"
+  },
+  {
+    "id": "rf-089",
+    "eventId": "ev-343",
+    "text": "Sample reflection.",
+    "date": "2026-01-04",
+    "prompt": "Term check-in"
+  },
+  {
+    "id": "rf-090",
+    "eventId": "ev-345",
+    "text": "Sample reflection.",
+    "date": "2026-03-25",
+    "prompt": "Term check-in"
+  },
+  {
+    "id": "rf-091",
+    "eventId": "ev-347",
+    "text": "Sample reflection.",
+    "date": "2026-10-08",
     "prompt": "Term check-in"
   }
 ]

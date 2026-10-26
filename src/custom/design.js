@@ -3,6 +3,7 @@
 // by id; the student's own words live in text, hero and skills blocks.
 
 export const FONTS = {
+  switzer: { label: 'Switzer (NIST)', body: '"Switzer", Arial, sans-serif', head: '"Switzer", Arial, sans-serif' },
   inter: { label: 'Inter', body: '"Inter", system-ui, sans-serif', head: '"Inter", system-ui, sans-serif' },
   editorial: { label: 'Fraunces + Inter', body: '"Inter", system-ui, sans-serif', head: '"Fraunces", Georgia, serif' },
   classic: { label: 'Playfair + Source Serif', body: '"Source Serif 4", Georgia, serif', head: '"Playfair Display", Georgia, serif' },
@@ -12,6 +13,7 @@ export const FONTS = {
 };
 
 export const PRESETS = {
+  nist: { label: 'NIST', bg: '#f4f6fa', surface: '#ffffff', ink: '#002855', muted: '#56627a', accent: '#002855', accent2: '#FFB81C', font: 'switzer', radius: 10, pattern: 'none', card: 'outline' },
   metro: { label: 'Metro', bg: '#f7f6f2', surface: '#ffffff', ink: '#1b1d22', muted: '#646a73', accent: '#1E6FD9', accent2: '#E2343C', font: 'inter', radius: 12, pattern: 'none', card: 'outline' },
   ivy: { label: 'Ivy', bg: '#f6f1e7', surface: '#fffdf8', ink: '#2a2420', muted: '#7a6e63', accent: '#6B3FB0', accent2: '#2E9E4F', font: 'classic', radius: 6, pattern: 'none', card: 'outline' },
   slate: { label: 'Slate', bg: '#eef1f4', surface: '#ffffff', ink: '#111827', muted: '#5b6472', accent: '#00A39E', accent2: '#1E6FD9', font: 'grotesk', radius: 4, pattern: 'grid', card: 'flat' },
