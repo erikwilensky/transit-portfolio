@@ -298,6 +298,23 @@ export function casNudge(sid, about, text, by) {
   emit();
 }
 
+// F13: reference letters are kept per student, with a status the application tracker can read.
+if (!store.letters) store.letters = {};
+export const LETTER_STATUSES = ['Draft', 'Ready', 'Sent'];
+export const getLetter = (sid) => store.letters[sid] || null;
+export function saveLetter(sid, text) {
+  const l = store.letters[sid] || (store.letters[sid] = { status: 'Draft' });
+  l.text = text; l.savedAt = nowIso();
+  emit();
+}
+export function setLetterStatus(sid, status, by) {
+  const l = store.letters[sid] || (store.letters[sid] = { status: 'Draft' });
+  if (l.status === status) return;
+  l.status = status; if (status === 'Sent') l.sentOn = TODAY;
+  log(sid, by, 'link', `Reference letter marked ${status.toLowerCase()}`);
+  emit();
+}
+
 // ── Advisor ───────────────────────────────────────────────────────────
 export function getCohort(advisorId) {
   return store.students.filter((s) => s.advisorId === advisorId).map((s) => {

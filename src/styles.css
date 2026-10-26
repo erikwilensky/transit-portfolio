@@ -1548,3 +1548,13 @@ button.cas-proj:focus-visible { outline: 2px solid var(--b-purple); }
 .nudge-hist small { display: block; color: var(--muted); font-size: 11.5px; }
 .cas-panel { position: fixed; inset: 64px 0 0 auto; width: min(420px, 100%); z-index: 60; pointer-events: none; }
 .cas-panel .station-panel { pointer-events: auto; }
+
+/* F13: letters keep their status */
+.lt-save { font-size: 12.5px; color: var(--muted); }
+.lt-status { font-size: 13px; color: var(--muted); display: inline-flex; gap: 6px; align-items: center; font-weight: 600; }
+.lt-status select { border: 1px solid var(--rule); background: var(--bg); color: var(--ink); border-radius: 8px; padding: 4px 8px; font: inherit; font-weight: 500; }
+.lt-pill { margin-left: 6px; font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; padding: 1px 6px; border-radius: 5px; background: var(--rule); color: var(--ink); }
+.lt-pill.st-ready { background: #FFB81C; color: #002855; } .lt-pill.st-sent { background: #008A60; color: #fff; }
+.cite-btn { all: unset; cursor: pointer; padding: 0 2px; border-radius: 3px; text-decoration: underline; text-underline-offset: 2px; }
+.cite-btn:hover, .cite-btn:focus-visible { background: color-mix(in srgb, var(--b-purple) 18%, transparent); outline: none; }
+.letter-ta[readonly] { opacity: .8; }

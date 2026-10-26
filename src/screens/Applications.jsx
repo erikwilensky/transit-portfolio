@@ -1,4 +1,4 @@
-import { extraViews, getApplications, getStudent, getStudents, TODAY } from '../api.js';
+import { extraViews, getApplications, getLetter, getStudent, getStudents, TODAY } from '../api.js';
 import { fmtDate } from '../format.js';
 import { useState } from 'react';
 import { CommentDialog } from '../components/DraftComments.jsx';
@@ -37,7 +37,7 @@ export default function Applications({ go, persona, drafts, version, toast }) {
               <span className="pres-avatar sm" style={{ background: s.avatar.colour }}>{s.avatar.initials}</span>
               <div><h2>{s.name}</h2><small>{s.programme} · {mine.length ? `${mine.length} application${mine.length > 1 ? 's' : ''}` : 'No applications yet'}</small></div>
               <span className="spacer" />
-              <button className="ghost" onClick={() => go(persona.id, 'letter', s.id)}>Reference letter</button>
+              <button className="ghost" onClick={() => go(persona.id, 'letter', s.id)}>Reference letter{getLetter(s.id) && <small className={`lt-pill st-${getLetter(s.id).status.toLowerCase()}`}>{getLetter(s.id).status}</small>}</button>
             </div>
             {mine.length > 0 && (
               <table className="app-table">

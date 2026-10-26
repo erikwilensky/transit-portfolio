@@ -1,7 +1,8 @@
-import { useMemo, useRef, useState } from 'react';
-import { getStudentMap, getStudents, getTeacher } from '../api.js';
-import { fmtDate, verifyCode } from '../format.js';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { getLetter, getStudentMap, getStudents, getTeacher, LETTER_STATUSES, saveLetter, setLetterStatus } from '../api.js';
+import { ago, fmtDate, verifyCode } from '../format.js';
 import { VerifyBadge } from '../components/Badge.jsx';
+import { useVerify } from '../components/VerifyModal.jsx';
 
 const DRAFTS = {
   'st-01': `I have known Maya Chen for four years as her university counsellor, and it is a pleasure to recommend her for Data Science.
@@ -15,23 +16,36 @@ Maya is also a natural leader under pressure. She is one of the most curious stu
 const CLAIM = /\b(built|led|founded|co-founded|designed|won|placed|organi[sz]ed|created|wrote|ran|analy[sz]ed|calibrated|taught|tutored|traced|fitted|trained|managed|launched|natural leader|leader)\b|\d/i;
 
 // The counsellor writes; every claim can cite a verified station.
-export default function ReferenceLetter({ studentId, go, persona }) {
+export default function ReferenceLetter({ studentId, go, persona, version, toast }) {
   const seniors = getStudents({ includeCohort: true }).filter((s) => s.grade === 12);
   const map = useMemo(() => getStudentMap(studentId, 'school'), [studentId]);
   const me = getTeacher(persona.teacherId);
+  // F13: one draft per student, autosaved into the record, with a status.
+  const saved = getLetter(studentId);
   const [texts, setTexts] = useState({});
-  const text = texts[studentId] ?? DRAFTS[studentId] ?? `I am pleased to recommend ${map.student.name}.\n\n`;
+  const text = texts[studentId] ?? saved?.text ?? DRAFTS[studentId] ?? `I am pleased to recommend ${map.student.name}.\n\n`;
   const setText = (t) => setTexts({ ...texts, [studentId]: t });
+  const dirty = texts[studentId] !== undefined && texts[studentId] !== saved?.text;
+  useEffect(() => {
+    if (!dirty) return undefined;
+    const t = setTimeout(() => saveLetter(studentId, texts[studentId]), 700);
+    return () => clearTimeout(t);
+  }, [texts, studentId, dirty]);
+  const [, tick] = useState(0);
+  useEffect(() => { const t = setInterval(() => tick((n) => n + 1), 20000); return () => clearInterval(t); }, []);
+  const status = saved?.status || 'Draft';
+  const locked = status === 'Sent';
+  const openVerify = useVerify();
   const [q, setQ] = useState('');
   const [view, setView] = useState('edit');
   const ta = useRef(null);
   const byId = Object.fromEntries(map.events.map((e) => [e.id, e]));
   const stations = map.events.filter((e) => e.type !== 'goal' && e.type !== 'reflection' && (!q || e.title.toLowerCase().includes(q.toLowerCase()))).slice().reverse();
 
-  const cited = [...new Set([...text.matchAll(/\[(ev-\d+)\]/g)].map((m) => m[1]))];
+  const cited = [...new Set([...text.matchAll(/\[(ev-[\w-]+)\]/g)].map((m) => m[1]))];
   const num = Object.fromEntries(cited.map((id, i) => [id, i + 1]));
   const sentences = text.split(/(?<=[.!?])\s+/).filter((x) => x.trim());
-  const unsupported = sentences.filter((x) => CLAIM.test(x.replace(/\[ev-\d+\]/g, '')) && !/\[ev-\d+\]/.test(x));
+  const unsupported = sentences.filter((x) => CLAIM.test(x.replace(/\[ev-[\w-]+\]/g, '')) && !/\[ev-[\w-]+\]/.test(x));
   const weak = cited.filter((id) => byId[id]?.verification === 'student-added');
 
   const insert = (id) => {
@@ -42,11 +56,11 @@ export default function ReferenceLetter({ studentId, go, persona }) {
     setTimeout(() => { el?.focus(); }, 0);
   };
   const render = (para, k) => (
-    <p key={k}>{para.split(/(\[ev-\d+\])/).map((part, i) => {
-      const m = part.match(/\[(ev-\d+)\]/);
+    <p key={k}>{para.split(/(\[ev-[\w-]+\])/).map((part, i) => {
+      const m = part.match(/\[(ev-[\w-]+)\]/);
       if (!m) return <span key={i} className={unsupported.some((u) => u.includes(part.trim()) && part.trim().length > 20) ? 'unsup' : ''}>{part}</span>;
       const e = byId[m[1]];
-      return <sup key={i} className={`cite v-${e?.verification}`} title={e ? `${e.title} · ${e.verification}` : 'Not found'}>{num[m[1]]}</sup>;
+      return <sup key={i} className={`cite v-${e?.verification}`}>{e && openVerify ? <button className="cite-btn" onClick={() => openVerify(e.id)} title={`${e.title} · ${e.verification}. Open the verification record`}>{num[m[1]]}</button> : num[m[1]]}</sup>;
     })}</p>
   );
 
@@ -59,18 +73,20 @@ export default function ReferenceLetter({ studentId, go, persona }) {
           <p>Every claim can cite a station from the student’s record. Readers see the citation and how it was verified.</p>
         </div>
         <div className="seg">
-          {seniors.map((s) => <button key={s.id} className={s.id === studentId ? 'on' : ''} onClick={() => go(persona.id, 'letter', s.id)}>{s.name.split(' ')[0]}</button>)}
+          {seniors.map((s) => <button key={s.id} className={s.id === studentId ? 'on' : ''} onClick={() => go(persona.id, 'letter', s.id)}>{s.name.split(' ')[0]}{getLetter(s.id) && <small className={`lt-pill st-${getLetter(s.id).status.toLowerCase()}`}>{getLetter(s.id).status}</small>}</button>)}
         </div>
       </header>
       <div className="letter-body">
         <div className="letter-main">
           <div className="letter-tools">
             <div className="seg small"><button className={view === 'edit' ? 'on' : ''} onClick={() => setView('edit')}>Write</button><button className={view === 'preview' ? 'on' : ''} onClick={() => setView('preview')}>Preview with citations</button></div>
+            <span className="lt-save" role="status">{locked ? `Sent ${fmtDate(saved.sentOn)}` : dirty ? 'Saving…' : saved?.savedAt ? `Saved ${ago(saved.savedAt)}` : 'Not edited yet'}</span>
             <span className="spacer" />
+            <label className="lt-status">Status <select value={status} onChange={(e) => { setLetterStatus(studentId, e.target.value, persona.name); if (!saved?.text) saveLetter(studentId, text); toast(`${map.student.name.split(' ')[0]}’s letter: ${e.target.value.toLowerCase()}`); }}>{LETTER_STATUSES.map((x) => <option key={x}>{x}</option>)}</select></label>
             <span className={`check ${unsupported.length ? 'warn' : 'ok'}`}>{unsupported.length ? `${unsupported.length} claim${unsupported.length > 1 ? 's' : ''} without evidence` : 'Every claim has evidence'}</span>
           </div>
           {view === 'edit'
-            ? <textarea ref={ta} className="letter-ta" value={text} onChange={(e) => setText(e.target.value)} spellCheck />
+            ? <textarea ref={ta} className="letter-ta" value={text} onChange={(e) => setText(e.target.value)} spellCheck readOnly={locked} aria-label="Letter text" />
             : (
               <article className="letter-doc">
                 <div className="lt-head">NIST International School · University Counselling</div>
@@ -78,7 +94,7 @@ export default function ReferenceLetter({ studentId, go, persona }) {
                 <p className="lt-sign">{me.name}<br /><small>{me.role}</small></p>
                 {cited.length > 0 && (
                   <ol className="lt-notes">
-                    {cited.map((id) => { const e = byId[id]; return e && <li key={id}><b>{e.title}</b>, {fmtDate(e.date)}. <VerifyBadge level={e.verification} /> <code>{verifyCode(id)}</code></li>; })}
+                    {cited.map((id) => { const e = byId[id]; return e && <li key={id}><b>{e.title}</b>, {fmtDate(e.date)}. <VerifyBadge level={e.verification} event={e} verifiable /> <code>{verifyCode(id)}</code></li>; })}
                   </ol>
                 )}
               </article>
@@ -100,7 +116,7 @@ export default function ReferenceLetter({ studentId, go, persona }) {
             {stations.map((e) => (
               <li key={e.id} className={num[e.id] ? 'cited' : ''}>
                 <div><b>{e.title}</b><small>{fmtDate(e.date)}</small><VerifyBadge level={e.verification} /></div>
-                <button onClick={() => insert(e.id)}>{num[e.id] ? `Cited [${num[e.id]}]` : 'Cite'}</button>
+                <button disabled={locked} onClick={() => insert(e.id)}>{num[e.id] ? `Cited [${num[e.id]}]` : 'Cite'}</button>
               </li>
             ))}
           </ul>
