@@ -45,10 +45,10 @@ import { VerifyProvider } from './components/VerifyModal.jsx';
 import { TOURS, tourMinutes, stopCount } from './tour.js';
 import { QADrawer, TourCard, TourRoute } from './components/TourCards.jsx';
 
-// Routes: #/<persona>/<screen>/<param>, plus public #/s/<token>, #/v/<code> and #/p/<student> (parent link).
+// Routes: #/<persona>/<screen>/<param>, plus public #/s/<token>, #/v/<code> and #/p/<student>[/th] (parent link).
 const parse = () => {
   const [a, b, c] = location.hash.replace(/^#\/?/, '').split('/');
-  if (a === 's' || a === 'v' || a === 'p') return { publicKind: a, param: b };
+  if (a === 's' || a === 'v' || a === 'p') return { publicKind: a, param: b, lang: c };
   const p = personaById(a);
   const screens = NAV[p.kind].map(([id]) => id).concat(p.kind === 'advisor' ? ['student'] : []);
   return { persona: p.id, screen: screens.includes(b) ? b : home(p), param: c || null };
@@ -143,7 +143,7 @@ export default function App() {
 
   if (route.publicKind === 's') return <VerifyProvider><ShareLanding token={route.param} drafts={drafts} version={version} /></VerifyProvider>;
   if (route.publicKind === 'v') return <VerifyPage code={route.param} />;
-  if (route.publicKind === 'p') return <VerifyProvider><ParentView studentId={route.param} /></VerifyProvider>;
+  if (route.publicKind === 'p') return <VerifyProvider><ParentView studentId={route.param} lang={route.lang} /></VerifyProvider>;
 
   const persona = personaById(route.persona);
   const studentId = persona.studentId;

@@ -73,8 +73,8 @@ export default function AdvisorStudent({ studentId, version, toast, go, persona 
             {parent ? (
               <div className="pc-link">
                 <Qr text={appUrl(`p/${studentId}`)} size={96} />
-                <div><code>/p/{studentId}</code><small>Works for 7 days. Shows only what {first} made publishable, plus your agenda.</small>
-                  <a className="ghost" href={appUrl(`p/${studentId}`)} target="_blank" rel="noreferrer">Open as a parent</a></div>
+                <div><code>/p/{studentId}</code><small>Works for 7 days, in English or Thai. Shows only what {first} made publishable.</small>
+                  <span className="pc-open"><a className="ghost" href={appUrl(`p/${studentId}`)} target="_blank" rel="noreferrer">Open in English</a><a className="ghost" href={appUrl(`p/${studentId}/th`)} target="_blank" rel="noreferrer" lang="th">เปิดเป็นภาษาไทย</a></span></div>
               </div>
             ) : (
               <><p className="fineprint">A short-lived link for parents before the conference. It shows what {first} chose to share publicly, never advisor notes or private reflections.</p>

@@ -5,6 +5,7 @@ import { computeLayout, lineSegments } from '../layout/metroLayout.js';
 import { useTween } from '../hooks/useTween.js';
 import { TODAY } from '../api.js';
 import { inkOn, lineCode } from '../format.js';
+import { lineName, tr as say, useLang } from '../i18n.js';
 
 // Station labels wrap onto up to three short rows instead of being cut off.
 function wrap(text, max = 16) {
@@ -88,6 +89,7 @@ export default function MetroMap({ map, lens, selectedId, onSelect, onSignal, mi
   // On the first frame after the data changes shape, the tween hasn't caught up yet.
   const L = Object.keys(target.lines).every((k) => k in tweened.lines) && Object.keys(target.stations).every((k) => k in tweened.stations) ? tweened : target;
   const eventsById = useMemo(() => Object.fromEntries(map.events.map((e) => [e.id, e])), [map]);
+  const lang = useLang();
   const lineById = useMemo(() => Object.fromEntries(map.lines.map((l) => [l.id, l])), [map]);
 
   const labels = useMemo(() => placeLabels(map, target, lens), [map, target, lens]);
@@ -172,7 +174,7 @@ export default function MetroMap({ map, lens, selectedId, onSelect, onSignal, mi
           {L.columns.map((c, i) => (
             <g key={i}>
               <rect x={c.x} y={0} width={c.w} height={L.height} className={c.grade % 2 ? 'col col-a' : 'col col-b'} />
-              <text x={c.x + c.w / 2} y={66} className="term-label" textAnchor="middle">T{c.term}</text>
+              <text x={c.x + c.w / 2} y={66} className="term-label" textAnchor="middle">{say(lang, 'T')}{c.term}</text>
             </g>
           ))}
           {Array.from({ length: L.columns.length / 3 }, (_, g) => g).map((g) => {
@@ -194,7 +196,7 @@ export default function MetroMap({ map, lens, selectedId, onSelect, onSignal, mi
       {showToday && (
         <g className="today">
           <line x1={L.todayX} x2={L.todayX} y1={mini ? 0 : 84} y2={L.height} />
-          {!mini && <text x={L.todayX} y={L.height - 12} textAnchor="middle">Today</text>}
+          {!mini && <text x={L.todayX} y={L.height - 12} textAnchor="middle">{say(lang, 'Today')}</text>}
         </g>
       )}
 
@@ -299,9 +301,9 @@ export default function MetroMap({ map, lens, selectedId, onSelect, onSignal, mi
         return (
           <g key={l.id} className="line-name" style={{ opacity: ln.state === 'hidden' ? 0 : ln.state === 'thin' ? 0.5 : 1 }} transform={`translate(16 ${ln.y})`}>
             <g opacity={l.status === 'ended' ? 0.5 : 1}><LineTag l={l} x={0} y={0} legend /></g>
-            <text x={44} y={l.status === 'ended' ? -1 : 4} className="line-name-text">{l.name}</text>
-            {l.status === 'ended' && <text x={44} y={12} className="line-name-sub">ended</text>}
-            {l.parentLineId && l.status !== 'ended' && <text x={44} y={17} className="line-name-sub">branch of {lineById[l.parentLineId]?.name.split(' ·')[0] || l.parentLineId}</text>}
+            <text x={44} y={l.status === 'ended' ? -1 : 4} className="line-name-text">{lineName(lang, l.name)}</text>
+            {l.status === 'ended' && <text x={44} y={12} className="line-name-sub">{say(lang, 'ended')}</text>}
+            {l.parentLineId && l.status !== 'ended' && <text x={44} y={17} className="line-name-sub">{say(lang, 'branch of')} {lineName(lang, lineById[l.parentLineId]?.name.split(' ·')[0] || l.parentLineId)}</text>}
           </g>
         );
       })}

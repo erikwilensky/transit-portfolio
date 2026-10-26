@@ -3,7 +3,8 @@ import { VerifyBadge } from './Badge.jsx';
 import RecordInspector from './RecordInspector.jsx';
 import { addCheckIn, addReflection, completeGoal, deleteStation, editStation, getTeacher, getTeachers, requestEndorsement, requestFor, resubmit, setVisibility, snapshot, TODAY } from '../api.js';
 import { createPortal } from 'react-dom';
-import { fmtDate, fmtTerm, TYPE_LABEL, VIS_LABEL, VERIFY_HELP } from '../format.js';
+import { fmtTerm, TYPE_LABEL, VIS_LABEL, VERIFY_HELP } from '../format.js';
+import { dateIn, daysIn, lineName, termText, tr, useLang } from '../i18n.js';
 
 const KIND_ICON = { link: '↗', file: '▤', image: '▣', grade: '✓', certificate: '★' };
 
@@ -11,40 +12,43 @@ export default function StationPanel({ event, map, onClose, readOnly = false, on
   const open = !!event;
   const [inspect, setInspect] = useState(null);
   const [view, setView] = useState(null); // evidence item open in the lightbox
+  const lang = useLang();
+  const t = (s) => tr(lang, s);
+  const fmtDate = (d) => dateIn(lang, d);
   return (
     <aside className={`station-panel${open ? ' open' : ''}`} aria-hidden={!open} aria-label="Station details">
       {event && (
         <div className="panel-inner" key={event.id}>
           <div className="panel-grab" aria-hidden="true" />
-          <button className="panel-close" onClick={onClose} aria-label="Close">×</button>
-          <div className="panel-type">{event.lineIds.length > 1 ? 'Interchange · ' : ''}{TYPE_LABEL[event.type]}</div>
+          <button className="panel-close" onClick={onClose} aria-label={t('Close')}>×</button>
+          <div className="panel-type">{event.lineIds.length > 1 ? `${t('Interchange')} · ` : ''}{t(TYPE_LABEL[event.type])}</div>
           <h2>{event.title}</h2>
-          <div className="panel-date">{fmtDate(event.date)} · {fmtTerm(event.date, map.student.g9StartYear, map.student.startGrade)}</div>
+          <div className="panel-date">{fmtDate(event.date)} · {termText(lang, fmtTerm(event.date, map.student.g9StartYear, map.student.startGrade))}</div>
           <div className="chips">
             {event.lineIds.map((id) => {
               const l = map.lines.find((x) => x.id === id);
-              return l && <span key={id} className="line-chip static" style={{ '--c': l.colour }}><i className={l.pattern === 'cased' ? 'cased' : undefined} />{l.name}</span>;
+              return l && <span key={id} className="line-chip static" style={{ '--c': l.colour }}><i className={l.pattern === 'cased' ? 'cased' : undefined} />{lineName(lang, l.name)}</span>;
             })}
           </div>
           <p className="panel-summary">{event.summary}</p>
           {event.about && <p className="panel-about">{event.about}</p>}
-          {event.type === 'goal' && <GoalBox event={event} readOnly={readOnly} />}
+          {event.type === 'goal' && <GoalBox event={event} readOnly={readOnly} lang={lang} />}
           {!readOnly && event.type !== 'goal' && <StudentActions key={event.id} event={event} onClose={onClose} toast={toast} />}
           <VerifyBadge level={event.verification} large event={event} />
-          <span className="vhelp">{VERIFY_HELP[event.verification]}</span>
+          <span className="vhelp">{t(VERIFY_HELP[event.verification])}</span>
 
           {event.evidence.length > 0 && (
             <section>
-              <h3>Evidence</h3>
+              <h3>{t('Evidence')}</h3>
               <ul className="evidence">
                 {event.evidence.filter((ev) => ev.kind === 'image').map((ev, i) => (
-                  <li key={`img-${i}`} className="ev-image"><button className="ev-open" onClick={() => setView(ev)} aria-label={`Open ${ev.caption} full size`}><img src={ev.url} alt={ev.caption} loading="lazy" /></button><span><b>{ev.caption}</b><small>image</small></span></li>
+                  <li key={`img-${i}`} className="ev-image"><button className="ev-open" onClick={() => setView(ev)} aria-label={`Open ${ev.caption} full size`}><img src={ev.url} alt={ev.caption} loading="lazy" /></button><span><b>{ev.caption}</b><small>{t('image')}</small></span></li>
                 ))}
                 {event.evidence.filter((ev) => ev.kind !== 'image').map((ev, i) => (
                   <li key={i}>
                     <button className="ev-open ev-row" onClick={() => setView(ev)}>
                       <span className="ev-icon" aria-hidden="true">{KIND_ICON[ev.kind]}</span>
-                      <span><b>{ev.caption}</b><small>{ev.kind} · open</small></span>
+                      <span><b>{ev.caption}</b><small>{t(ev.kind)} · {t('open')}</small></span>
                     </button>
                   </li>
                 ))}
@@ -54,7 +58,7 @@ export default function StationPanel({ event, map, onClose, readOnly = false, on
 
           {event.endorsements?.map((n) => (
             <section key={n.id} className="endorsement">
-              <h3>Teacher endorsement</h3>
+              <h3>{t('Teacher endorsement')}</h3>
               <blockquote>“{n.note}”</blockquote>
               <div className="who">{n.teacher?.name}, {n.teacher?.role} · {fmtDate(n.date)}</div>
             </section>
@@ -62,20 +66,20 @@ export default function StationPanel({ event, map, onClose, readOnly = false, on
 
           {event.reflections?.map((r) => (
             <section key={r.id} className="reflection">
-              <h3>Reflection{!readOnly && <span className="vis-tag">· {VIS_LABEL[r.visibility || 'private']}</span>}</h3>
-              <div className="prompt">Signal: {r.prompt}</div>
+              <h3>{t('Reflection')}{!readOnly && <span className="vis-tag">· {VIS_LABEL[r.visibility || 'private']}</span>}</h3>
+              <div className="prompt">{t('Signal:')} {r.prompt}</div>
               {r.text.split('\n\n').map((para, i) => <p key={i}>{para}</p>)}
             </section>
           ))}
 
           <dl className="meta">
-            <dt>Source</dt><dd>{event.source.system}{event.source.ref ? ` · ${event.source.ref}` : ''}</dd>
+            <dt>{t('Source')}</dt><dd>{event.source.system}{event.source.ref ? ` · ${event.source.ref}` : ''}</dd>
             {!readOnly && <><dt>Visibility</dt><dd>{event.type === 'goal' ? <span className={`vis vis-${event.visibility}`}>{VIS_LABEL[event.visibility]}</span> : (
               <select className="vis-select" value={event.visibility} onChange={(ev) => setVisibility(event.id, ev.target.value)} aria-label="Who can see this station">
                 {Object.entries(VIS_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
               </select>)}</dd></>}
           </dl>
-          <button className="ghost small-btn" onClick={() => setInspect(event.id)}>View record</button>
+          <button className="ghost small-btn" onClick={() => setInspect(event.id)}>{t('View record')}</button>
           {onAsk && <AskBox key={event.id} first={map.student.name.split(' ')[0]} onAsk={(t) => onAsk(event.id, t)} />}
           {!readOnly && <p className="fineprint">Verified facts can be included, excluded or reordered in a presentation, never edited.</p>}
         </div>
@@ -89,19 +93,21 @@ export default function StationPanel({ event, map, onClose, readOnly = false, on
 const SP_STATUS = { invited: 'Invitation sent', accepted: 'Sponsoring', declined: 'Declined', done: 'Waiting for endorsement' };
 
 // A planned station: its target, its sponsor and the check-ins along the way.
-function GoalBox({ event, readOnly }) {
+function GoalBox({ event, readOnly, lang = 'en' }) {
+  const L = (s) => tr(lang, s);
+  const fmtDate = (d) => dateIn(lang, d);
   const [text, setText] = useState('');
   const sp = event.sponsor;
   const t = sp && getTeacher(sp.teacherId);
   const days = Math.round((new Date(event.date) - new Date(TODAY)) / 86400000);
   return (
     <section className="goal-box">
-      <div className="goal-when">{event.requirement ? 'Requirement from ManageBac' : 'Planned'} · {days >= 0 ? `in ${days} days` : `${-days} days ago`}</div>
+      <div className="goal-when">{L(event.requirement ? 'Requirement from ManageBac' : 'Planned')} · {daysIn(lang, days)}</div>
       {sp && (
         <div className="sponsor">
-          <div className="sp-top"><b>Sponsor: {t.name}</b><span className={`app-st sp-${sp.status}`}>{SP_STATUS[sp.status]}</span></div>
-          {sp.expectations && <p className="sp-exp"><small>Expectations</small>{sp.expectations}</p>}
-          {sp.checkIns.length > 0 && <ul className="sp-log">{sp.checkIns.map((c, i) => <li key={i}><small>{fmtDate(c.date)} · {c.by === 'student' ? 'You' : getTeacher(c.by)?.name}</small>{c.text}</li>)}</ul>}
+          <div className="sp-top"><b>{L('Sponsor:')} {t.name}</b><span className={`app-st sp-${sp.status}`}>{L(SP_STATUS[sp.status])}</span></div>
+          {sp.expectations && <p className="sp-exp"><small>{L('Expectations')}</small>{sp.expectations}</p>}
+          {sp.checkIns.length > 0 && <ul className="sp-log">{sp.checkIns.map((c, i) => <li key={i}><small>{fmtDate(c.date)} · {c.by === 'student' ? L('You') : getTeacher(c.by)?.name}</small>{c.text}</li>)}</ul>}
           {!readOnly && sp.status === 'accepted' && (
             <div className="sp-add"><input value={text} onChange={(e) => setText(e.target.value)} placeholder={`Post an update for ${t.name.split(' ')[0]} ${t.name.split(' ').at(-1)}`} aria-label="Update for your sponsor" /><button className="ghost" disabled={text.trim().length < 4} onClick={() => { addCheckIn(event.id, text.trim(), 'student'); setText(''); }}>Post</button></div>
           )}

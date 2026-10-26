@@ -1737,3 +1737,9 @@ p b, p strong, td b { font-weight: 600; }
 .line-chip i.cased { background: var(--surface); box-shadow: inset 0 0 0 3.5px var(--c); }
 .line-chip.static i.cased { box-shadow: inset 0 0 0 2.5px var(--c); }
 .line-chip.off i.cased { box-shadow: none; }
+
+/* N1: parent view in English or Thai */
+.landing-bar .lang-seg { margin-left: 12px; background: rgba(255,255,255,.12); } .landing-bar .lang-seg button { color: #fff; } .landing-bar .lang-seg button.on { background: #fff; color: var(--navy); }
+.parent[lang="th"] { font-family: "Switzer", "TH SarabunPSK", Sarabun, sans-serif; }
+.parent[lang="th"] .pv-intro p, .parent[lang="th"] .pv-intro li { line-height: 1.7; }
+.pc-open { display: flex; gap: 6px; flex-wrap: wrap; }
