@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { declineRequest, endorse, getRequests, getStore, getTeacher, getLine, snapshot } from '../api.js';
 import { fmtDate, TYPE_LABEL } from '../format.js';
 import { VerifyBadge } from '../components/Badge.jsx';
@@ -8,7 +8,9 @@ import { getSponsored } from '../api.js';
 const CHIPS = ['Independent work', 'Beyond the syllabus', 'Strong collaboration', 'Real-world impact', 'Clear progress'];
 
 // A subject teacher's home: items waiting for an endorsement, one click each.
-export default function TeacherQueue({ teacherId, toast, version }) {
+export default function TeacherQueue({ teacherId, toast, version, focus }) {
+  // #/nair/queue/sponsor scrolls to the sponsored plans (used by the deep-dive tour).
+  useEffect(() => { if (focus === 'sponsor') setTimeout(() => document.getElementById('sponsor')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300); }, [focus]);
   const t = getTeacher(teacherId);
   const pending = getRequests(teacherId);
   const done = getRequests(teacherId, null).filter((r) => r.status !== 'pending');

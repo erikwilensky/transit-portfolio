@@ -330,6 +330,11 @@ export function matchRoster(id, studentId, by) {
   emit();
 }
 
+// Q1: the rollout planner's choices, so the tour can end on that exact proposal.
+if (!store.rollout) store.rollout = { systems: ['sis', 'mb'], years: [12, 13], start: '2027-08', devs: 2 };
+export const getRollout = () => store.rollout;
+export function setRollout(patch) { Object.assign(store.rollout, patch); emit(); }
+
 // ── Advisor ───────────────────────────────────────────────────────────
 export function getCohort(advisorId) {
   return store.students.filter((s) => s.advisorId === advisorId).map((s) => {

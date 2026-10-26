@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { getRollout, setRollout } from '../api.js';
 
 // Illustrative planning figures, not a quote. Weeks are developer-weeks for one adapter.
 export const SYSTEMS = [
@@ -26,13 +26,8 @@ export function estimate(systemIds, years, devs = 2) {
 }
 
 // L3: tick what is in scope and see the build effort, the timeline and the running cost change with it.
-export default function Rollout({ version }) {
-  const [systems, setSystems] = useState(PRESETS.dp.systems);
-  const [years, setYears] = useState(PRESETS.dp.years);
-  const [start, setStart] = useState('2027-08');
-  const [devs, setDevs] = useState(2);
-  const preset = Object.entries(PRESETS).find(([, p]) => p.years.join() === [...years].sort((a, b) => a - b).join() && p.systems.join() === SYSTEMS.filter((s) => systems.includes(s.id)).map((s) => s.id).join())?.[0];
-  const toggle = (arr, set, v) => set(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
+// The plan for a scope, shared with the tour's closing "ask" card.
+export function plan({ systems, years, start, devs }) {
   const chosen = SYSTEMS.filter((s) => systems.includes(s.id));
   const students = YEARS.filter(([y]) => years.includes(y)).reduce((n, [, c]) => n + c, 0);
   const adapterWeeks = chosen.reduce((n, s) => n + s.weeks, 0);
@@ -51,9 +46,24 @@ export default function Rollout({ version }) {
   const goYm = addM(now, go);
   phases.push(['Pilot term', `${years.length > 2 ? `Years ${Math.min(...years)} and ${Math.min(...years) + 1} first` : 'All chosen years'}, with weekly check-ins`, go, 3, 'var(--b-green)']);
   if (years.length > 2) phases.push(['Whole rollout', `All ${years.length} year groups`, go + 3, 3, 'var(--navy)']);
-  const span = Math.max(...phases.map(([, , s, d]) => s + d)) + 1;
+  const span = Math.max(...phases.map(([, , st, d]) => st + d)) + 1;
   const late = monthsTo(start) < ready;
   const run = Math.round((students * 210 + chosen.length * 18000) / 1000) * 1000;
+  return { chosen, students, adapterWeeks, buildMonths, young, phases, now, go, goYm, goLabel: label(goYm), span, late, run, staff: Math.ceil(students / 18) };
+}
+
+// L3: tick what is in scope and see the build effort, the timeline and the running cost change with it.
+// Q1: the settings are kept, so the tour's closing card can propose exactly this plan.
+export default function Rollout({ version }) { // eslint-disable-line no-unused-vars
+  const r = getRollout();
+  const { systems, years, start, devs } = r;
+  const setSystems = (v) => setRollout({ systems: v });
+  const setYears = (v) => setRollout({ years: v });
+  const setStart = (v) => setRollout({ start: v });
+  const setDevs = (v) => setRollout({ devs: v });
+  const preset = Object.entries(PRESETS).find(([, p]) => p.years.join() === [...years].sort((a, b) => a - b).join() && p.systems.join() === SYSTEMS.filter((s) => systems.includes(s.id)).map((s) => s.id).join())?.[0];
+  const toggle = (arr, set, v) => set(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
+  const { chosen, students, adapterWeeks, buildMonths, young, phases, now, go, goYm, span, late, run } = plan(r);
   return (
     <div className="page rollout">
       <header className="page-head">

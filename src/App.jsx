@@ -42,7 +42,8 @@ import Launcher from './components/Launcher.jsx';
 import ShareDialog from './components/ShareDialog.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { VerifyProvider } from './components/VerifyModal.jsx';
-import { TOURS } from './tour.js';
+import { TOURS, tourMinutes, stopCount } from './tour.js';
+import { QADrawer, TourCard, TourRoute } from './components/TourCards.jsx';
 
 // Routes: #/<persona>/<screen>/<param>, plus public #/s/<token>, #/v/<code> and #/p/<student> (parent link).
 const parse = () => {
@@ -70,6 +71,7 @@ export default function App() {
   const [tourState, setTourState] = useState(null); // { tour, step }
   const [auto, setAuto] = useState(false);
   const [launch, setLaunch] = useState(false);
+  const [qa, setQa] = useState(false);
   // F18: Escape closes the top dialog, else an open station panel; Tab stays inside an open dialog;
   // focus moves into a dialog when it opens and returns to where it was when it closes.
   useEffect(() => {
@@ -212,15 +214,19 @@ export default function App() {
               <button className="icon-btn tour-btn" onClick={() => setMenu(menu === 'tour' ? null : 'tour')} aria-expanded={menu === 'tour'}>Pitch tour</button>
               {menu === 'tour' && (
                 <div className="menu tour" role="menu">
+                  <div className="menu-title">Tours</div>
                   {Object.entries(TOURS).map(([id, t]) => (
-                    <div key={id}>
-                      <div className="menu-title">{t.title}</div>
-                      {t.steps.map((s, i) => (
-                        <button key={i} role="menuitem" onClick={() => { setMenu(null); setTourState({ tour: id, step: i }); s.run(ctx); }}><span className="n">{i + 1}</span><span><b>{s.title}</b><small>{s.sub}</small></span></button>
-                      ))}
-                      <button className="tour-play" onClick={() => { setMenu(null); ctx.startTour(id); }}>▶ Present this tour</button>
+                    <div key={id} className="tour-row">
+                      <div className="tr-head"><span><b>{t.title}</b><small>{t.use} · {stopCount(t)} stops · about {tourMinutes(t)} min</small></span>
+                        <button className="tour-play" onClick={() => { setMenu(null); ctx.startTour(id); }}>▶ Present</button></div>
+                      <details><summary>Jump to a stop</summary>
+                        {t.steps.map((st, i) => (
+                          <button key={i} role="menuitem" onClick={() => { setMenu(null); setTourState({ tour: id, step: i }); st.run(ctx); }}><span className="n">{st.card ? '■' : i + 1}</span><span><b>{st.title}</b><small>{st.sub}</small></span></button>
+                        ))}
+                      </details>
                     </div>
                   ))}
+                  <button className="qa-open" onClick={() => { setMenu(null); setQa(true); }}><b>Q&amp;A drawer</b><small>Likely board questions, each with a screen that answers it</small></button>
                   <div className="menu-title">Demo state</div>
                   <div className="demo-states">
                     <button onClick={() => { resetDemo(); setDrafts(freshDrafts()); setTourState(null); setMenu(null); go('principal', 'dashboard'); toast('Demo reset. Ready for the tour.'); }}><b>Reset, ready for the tour</b><small>Clean record, starts on the dashboard</small></button>
@@ -238,7 +244,7 @@ export default function App() {
           {persona.kind === 'student' && <StudentScreens {...ctx} screen={route.screen} param={route.param} studentId={studentId} />}
           {persona.kind === 'advisor' && route.screen === 'advisory' && <AdvisorGrid advisorId={persona.teacherId} version={version} toast={toast} onOpen={(id) => go(persona.id, 'student', id)} />}
           {persona.kind === 'advisor' && route.screen === 'student' && <AdvisorStudent studentId={route.param || 'st-01'} {...ctx} />}
-          {persona.kind === 'teacher' && route.screen === 'queue' && <TeacherQueue teacherId={persona.teacherId} {...ctx} />}
+          {persona.kind === 'teacher' && route.screen === 'queue' && <TeacherQueue teacherId={persona.teacherId} focus={route.param} {...ctx} />}
           {persona.kind === 'coordinator' && route.screen === 'cas' && <CasDashboard {...ctx} />}
           {persona.kind === 'counsellor' && route.screen === 'letter' && <ReferenceLetter {...ctx} studentId={route.param || 'st-01'} />}
           {persona.kind === 'leadership' && route.screen === 'dashboard' && <SchoolDashboard {...ctx} />}
@@ -262,10 +268,16 @@ export default function App() {
           </ErrorBoundary>
         </main>
 
+        {tour?.steps[tourState.step].card && <TourCard kind={tour.steps[tourState.step].card} ctx={ctx} />}
+        {qa && <QADrawer ctx={ctx} onClose={() => setQa(false)} />}
         {tour && (
           <div className="presenter" role="dialog" aria-label="Pitch tour">
-            <span className="pr-n">{tourState.step + 1}/{tour.steps.length}</span>{auto && <span className="pr-prog" key={tourState.step} aria-hidden="true" />}
-            <div className="pr-text"><b>{tour.steps[tourState.step].title}</b><span>{tour.steps[tourState.step].say}</span></div>
+            {auto && <span className="pr-prog" key={tourState.step} aria-hidden="true" />}
+            <div className="pr-main">
+              <TourRoute tour={tour} step={tourState.step} onStep={stepTo} />
+              <div className="pr-text"><b>{tour.steps[tourState.step].title}</b><span>{tour.steps[tourState.step].say}</span></div>
+            </div>
+            <button className="pr-qa" onClick={() => setQa(true)} title="Likely questions, with a screen for each">Q&amp;A</button>
             <button onClick={() => stepTo(tourState.step - 1)} disabled={tourState.step === 0} aria-label="Previous">‹</button>
             <button className="primary" onClick={() => stepTo(tourState.step + 1)}>{tourState.step === tour.steps.length - 1 ? 'Finish' : 'Next ›'}</button>
             <button className={`pr-auto${auto ? ' on' : ''}`} onClick={() => setAuto(!auto)} aria-pressed={auto} title="Auto-play every 12 seconds, looping">{auto ? '❚❚ Auto' : '▶ Auto'}</button>
