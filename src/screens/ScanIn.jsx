@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { extraViews, getPresentations } from '../api.js';
 import { appUrl } from '../format.js';
 import Qr from '../components/Qr.jsx';
@@ -11,6 +11,23 @@ export default function ScanIn({ drafts, version }) {
   const [local, setLocal] = useState(0);
   const [sim, setSim] = useState(false);
   const [simCount, setSimCount] = useState(0);
+  // P11: a projector mode that fills the screen with the code, the address and the counter.
+  const [big, setBig] = useState(false);
+  const root = useRef(null);
+  const toggleBig = () => {
+    if (big) { if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {}); setBig(false); return; }
+    setBig(true); root.current?.requestFullscreen?.().catch(() => {});
+  };
+  useEffect(() => {
+    const onFs = () => { if (!document.fullscreenElement) setBig(false); };
+    const onKey = (e) => {
+      if (e.target.closest?.('input,select,textarea')) return;
+      if (e.key === 'f' || e.key === 'F') toggleBig();
+      if (e.key === 'Escape' && big) setBig(false);
+    };
+    document.addEventListener('fullscreenchange', onFs); window.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('fullscreenchange', onFs); window.removeEventListener('keydown', onKey); };
+  });
   useEffect(() => {
     let ch; try { ch = new BroadcastChannel('tp-views'); ch.onmessage = (m) => { if (m.data?.token === token) setLocal((n) => n + 1); }; } catch { /* unsupported */ }
     return () => ch?.close();
@@ -23,10 +40,10 @@ export default function ScanIn({ drafts, version }) {
   const url = appUrl(`s/${link.token}`);
   const total = link.views + extraViews(link.token) + local + simCount;
   return (
-    <div className="page scan">
+    <div className={`page scan${big ? ' scan-big' : ''}`} ref={root}>
       <div className="scan-card">
         <div className="tri tri-a" aria-hidden="true" /><div className="tri tri-b" aria-hidden="true" />
-        <div className="scan-qr"><Qr text={url} size={300} /></div>
+        <div className="scan-qr"><Qr text={url} size={big ? 'min(72vh, 46vw)' : 300} /></div>
         <div className="scan-text">
           <div className="kicker">Scan to open on your phone</div>
           <h1>{link.title}</h1>
@@ -35,7 +52,9 @@ export default function ScanIn({ drafts, version }) {
           <div className="scan-ctl">
             <select value={link.token} onChange={(e) => { setToken(e.target.value); setSimCount(0); setLocal(0); }}>{links.map((l) => <option key={l.token} value={l.token}>{l.title}</option>)}</select>
             <label className="cb-check"><input type="checkbox" checked={sim} onChange={() => setSim(!sim)} /> Simulate audience</label>
+            <button className="ghost" onClick={toggleBig}>{big ? 'Exit projector mode' : 'Projector mode'}</button>
           </div>
+          {big && <p className="scan-exit">Press <kbd>Esc</kbd> to leave projector mode</p>}
           <p className="fineprint">Views from this browser count live. The demo has no server, so phones in the room count on their own devices; turn on the simulation to show the counter moving.</p>
         </div>
       </div>
