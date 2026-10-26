@@ -1619,3 +1619,9 @@ kbd { font: 500 11px ui-monospace, Menlo, monospace; border: 1px solid var(--rul
 .landing-site iframe { flex: 1; min-height: 70vh; width: 100%; border: 1px solid var(--rule); border-radius: 12px; background: #fff; }
 .code-up { border: 1px solid #2f343e; color: #9aa1ac; padding: 5px 10px; border-radius: 7px; font-size: 13px; }
 .landing-foot a { color: inherit; font-weight: 600; }
+
+/* F18: keyboard and touch */
+.q-card:focus-visible { outline: 2.5px solid var(--b-purple); outline-offset: 2px; }
+.kbd-hint { font-size: 12.5px; color: var(--muted); margin: 0 0 8px; }
+button, a, .station, .sl-row { -webkit-tap-highlight-color: transparent; }
+@media (pointer: coarse) { .small-btn { min-height: 36px; } .panel-close { min-width: 40px; min-height: 40px; } .zoom-ctl button { min-width: 44px; min-height: 44px; } }

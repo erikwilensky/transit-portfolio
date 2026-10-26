@@ -70,6 +70,38 @@ export default function App() {
   const [tourState, setTourState] = useState(null); // { tour, step }
   const [auto, setAuto] = useState(false);
   const [launch, setLaunch] = useState(false);
+  // F18: Escape closes the top dialog, else an open station panel; Tab stays inside an open dialog;
+  // focus moves into a dialog when it opens and returns to where it was when it closes.
+  useEffect(() => {
+    const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const top = () => [...document.querySelectorAll('.modal-back')].at(-1);
+    const k = (e) => {
+      if (e.defaultPrevented) return;
+      const dlg = top();
+      if (e.key === 'Escape') {
+        const close = dlg ? dlg.querySelector('.panel-close') : document.querySelector('.station-panel.open .panel-close');
+        if (close) { e.preventDefault(); close.click(); } else if (dlg) { e.preventDefault(); dlg.click(); }
+      }
+      if (e.key === 'Tab' && dlg) {
+        const f = [...dlg.querySelectorAll(FOCUSABLE)].filter((x) => x.offsetParent !== null);
+        if (!f.length) return;
+        const i = f.indexOf(document.activeElement);
+        if (e.shiftKey && (i <= 0)) { e.preventDefault(); f.at(-1).focus(); } else if (!e.shiftKey && (i === -1 || i === f.length - 1)) { e.preventDefault(); f[0].focus(); }
+      }
+    };
+    const back = [];
+    const mo = new MutationObserver(() => {
+      const dlg = top();
+      if (dlg && !dlg.dataset.focused) {
+        dlg.dataset.focused = '1'; back.push(document.activeElement);
+        if (!dlg.contains(document.activeElement)) (dlg.querySelector('[autofocus], input:not([type=checkbox]), textarea') || dlg.querySelector(FOCUSABLE))?.focus();
+      }
+      const open = document.querySelectorAll('.modal-back').length;
+      while (back.length > open) { const el = back.pop(); if (el?.isConnected) el.focus(); }
+    });
+    mo.observe(document.body, { childList: true, subtree: true });
+    addEventListener('keydown', k); return () => { removeEventListener('keydown', k); mo.disconnect(); };
+  }, []);
   // F16: / or Ctrl+K opens the launcher from anywhere (except while typing).
   useEffect(() => {
     const k = (e) => {
@@ -125,7 +157,7 @@ export default function App() {
       if (e.target.closest?.('input, textarea, select, [contenteditable]')) return;
       if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); stepTo(tourState.step + 1); }
       if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); stepTo(tourState.step - 1); }
-      if (e.key === 'Escape' && !document.querySelector('.modal-back')) { setAuto(false); setTourState(null); }
+      if (e.key === 'Escape' && !e.defaultPrevented && !document.querySelector('.modal-back, .station-panel.open')) { setAuto(false); setTourState(null); }
     },
     advance: () => stepTo(tourState.step === tour.steps.length - 1 ? 0 : tourState.step + 1),
   } : null;

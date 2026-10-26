@@ -18,6 +18,18 @@ export default function TeacherQueue({ teacherId, toast, version }) {
   const termEndorsed = 14 + done.filter((r) => r.status === 'endorsed').length;
   const autoShare = (() => { const ev = getStore().events.filter((e) => e.date >= '2026-08-15'); return Math.round(100 * ev.filter((e) => e.verification === 'school-verified').length / Math.max(1, ev.length)); })();
   const noteFor = (r) => [...(chips[r.id] || []), notes[r.id]].filter(Boolean).join('. ') || 'Endorsed.';
+  // F18: J and K (or the arrow keys) move between cards, E endorses, A asks for more, X selects.
+  const cardKey = (ev, r) => {
+    if (ev.target !== ev.currentTarget) return;
+    const cards = [...document.querySelectorAll('.q-card')];
+    const i = cards.indexOf(ev.currentTarget);
+    const k = ev.key.toLowerCase();
+    if (k === 'j' || k === 'arrowdown') { ev.preventDefault(); cards[Math.min(cards.length - 1, i + 1)]?.focus(); }
+    else if (k === 'k' || k === 'arrowup') { ev.preventDefault(); cards[Math.max(0, i - 1)]?.focus(); }
+    else if (k === 'e') { ev.preventDefault(); doEndorse([r.id]); setTimeout(() => document.querySelectorAll('.q-card')[Math.min(i, cards.length - 2)]?.focus(), 50); }
+    else if (k === 'a') { ev.preventDefault(); ev.currentTarget.querySelector('.q-actions input')?.focus(); }
+    else if (k === 'x') { ev.preventDefault(); setPicked(picked.includes(r.id) ? picked.filter((x) => x !== r.id) : [...picked, r.id]); }
+  };
   const doEndorse = (ids) => {
     const snap = snapshot();
     ids.forEach((id) => endorse(id, teacherId, noteFor(pending.find((r) => r.id === id))));
@@ -51,12 +63,13 @@ export default function TeacherQueue({ teacherId, toast, version }) {
       )}
       {!pending.length && <div className="empty-state"><b>All caught up.</b> New requests will appear here and in your notifications.</div>}
 
+      {pending.length > 0 && <p className="kbd-hint">Keyboard: <kbd>Tab</kbd> to a card, then <kbd>J</kbd> <kbd>K</kbd> to move, <kbd>E</kbd> to endorse, <kbd>A</kbd> to write what you need, <kbd>X</kbd> to select.</p>}
       <div className="queue-list">
         {pending.map((r) => {
           const e = r.event;
           const img = e.evidence.find((x) => x.kind === 'image');
           return (
-            <article key={r.id} className={`q-card${r.fresh ? ' fresh' : ''}`}>
+            <article key={r.id} className={`q-card${r.fresh ? ' fresh' : ''}`} tabIndex={0} aria-label={`${r.student.name}: ${e.title}`} onKeyDown={(ev) => cardKey(ev, r)}>
               <label className="q-pick"><input type="checkbox" checked={picked.includes(r.id)} onChange={() => setPicked(picked.includes(r.id) ? picked.filter((x) => x !== r.id) : [...picked, r.id])} aria-label={`Select ${e.title}`} /></label>
               {img ? <img src={img.url} alt={img.caption} className="q-img" /> : <div className="q-img none">{TYPE_LABEL[e.type]}</div>}
               <div className="q-body">
