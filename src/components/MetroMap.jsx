@@ -162,18 +162,18 @@ export default function MetroMap({ map, lens, selectedId, onSelect, onSignal, mi
               <text x={c.x + c.w / 2} y={66} className="term-label" textAnchor="middle">T{c.term}</text>
             </g>
           ))}
-          {[0, 1, 2, 3].map((g) => {
+          {Array.from({ length: L.columns.length / 3 }, (_, g) => g).map((g) => {
             const a = L.columns[g * 3], b = L.columns[g * 3 + 2];
             const cx = (a.x + b.x + b.w) / 2;
             return (
               <g key={g}>
                 <line x1={a.x} x2={a.x} y1={0} y2={L.height} className="grade-rule" />
-                <text x={cx} y={30} textAnchor="middle" className="grade-label">Grade {9 + g}</text>
-                <text x={cx} y={46} textAnchor="middle" className="year-label">{GRADE_YEARS(map.student.g9StartYear, 9 + g)}</text>
+                <text x={cx} y={30} textAnchor="middle" className="grade-label">Grade {a.grade}</text>
+                <text x={cx} y={46} textAnchor="middle" className="year-label">{GRADE_YEARS(map.student.g9StartYear, a.grade)}</text>
               </g>
             );
           })}
-          <line x1={L.columns[0].x} x2={L.columns[11].x + L.columns[11].w} y1={80} y2={80} className="grade-rule" />
+          <line x1={L.columns[0].x} x2={L.columns.at(-1).x + L.columns.at(-1).w} y1={80} y2={80} className="grade-rule" />
         </g>
       )}
       {mini && L.columns.filter((c, i) => i % 3 === 0).map((c, i) => <line key={i} x1={c.x} x2={c.x} y1={0} y2={L.height} className="grade-rule" />)}

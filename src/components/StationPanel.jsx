@@ -1,10 +1,14 @@
+import { useState } from 'react';
 import { VerifyBadge } from './Badge.jsx';
+import RecordInspector from './RecordInspector.jsx';
+import { setVisibility } from '../api.js';
 import { fmtDate, fmtTerm, TYPE_LABEL, VIS_LABEL, VERIFY_HELP } from '../format.js';
 
 const KIND_ICON = { link: '↗', file: '▤', image: '▣', grade: '✓', certificate: '★' };
 
 export default function StationPanel({ event, map, onClose, readOnly = false }) {
   const open = !!event;
+  const [inspect, setInspect] = useState(null);
   return (
     <aside className={`station-panel${open ? ' open' : ''}`} aria-hidden={!open} aria-label="Station details">
       {event && (
@@ -13,7 +17,7 @@ export default function StationPanel({ event, map, onClose, readOnly = false }) 
           <button className="panel-close" onClick={onClose} aria-label="Close">×</button>
           <div className="panel-type">{event.lineIds.length > 1 ? 'Interchange · ' : ''}{TYPE_LABEL[event.type]}</div>
           <h2>{event.title}</h2>
-          <div className="panel-date">{fmtDate(event.date)} · {fmtTerm(event.date, map.student.g9StartYear)}</div>
+          <div className="panel-date">{fmtDate(event.date)} · {fmtTerm(event.date, map.student.g9StartYear, map.student.startGrade)}</div>
           <div className="chips">
             {event.lineIds.map((id) => {
               const l = map.lines.find((x) => x.id === id);
@@ -60,11 +64,16 @@ export default function StationPanel({ event, map, onClose, readOnly = false }) 
 
           <dl className="meta">
             <dt>Source</dt><dd>{event.source.system}{event.source.ref ? ` · ${event.source.ref}` : ''}</dd>
-            {!readOnly && <><dt>Visibility</dt><dd><span className={`vis vis-${event.visibility}`}>{VIS_LABEL[event.visibility]}</span></dd></>}
+            {!readOnly && <><dt>Visibility</dt><dd>{event.type === 'goal' ? <span className={`vis vis-${event.visibility}`}>{VIS_LABEL[event.visibility]}</span> : (
+              <select className="vis-select" value={event.visibility} onChange={(ev) => setVisibility(event.id, ev.target.value)} aria-label="Who can see this station">
+                {Object.entries(VIS_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+              </select>)}</dd></>}
           </dl>
+          <button className="ghost small-btn" onClick={() => setInspect(event.id)}>View record</button>
           {!readOnly && <p className="fineprint">Verified facts can be included, excluded or reordered in a presentation, never edited.</p>}
         </div>
       )}
+      {inspect && <RecordInspector eventId={inspect} onClose={() => setInspect(null)} />}
     </aside>
   );
 }

@@ -171,5 +171,22 @@
     ],
     "lineLabels": {},
     "cohortOnly": true
+  },
+  {
+    "id": "st-09",
+    "name": "Pim Chaiyaporn",
+    "grade": 6,
+    "startGrade": 6,
+    "programme": "IB MYP",
+    "avatar": {
+      "initials": "PC",
+      "colour": "#1FA3A8"
+    },
+    "homeroom": "6C",
+    "advisorId": "t-11",
+    "g9StartYear": 2029,
+    "laneOrder": [],
+    "lineLabels": {},
+    "onboarding": true
   }
 ]

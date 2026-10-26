@@ -5,12 +5,15 @@
 
 export const TERMS_PER_YEAR = 3;
 export const GRADES = [9, 10, 11, 12];
+// Most maps run Grade 9 to 12; a younger student's map starts at their first grade (e.g. Grade 6).
+export const gradesFor = (student) => Array.from({ length: 13 - (student?.startGrade || 9) }, (_, i) => (student?.startGrade || 9) + i);
 
-export function termOf(date, g9StartYear) {
+export function termOf(date, g9StartYear, startGrade = 9) {
   const [y, m] = date.split('-').map(Number);
   const academicYear = m >= 8 ? y : y - 1;
   const t = m >= 8 && m <= 11 ? 0 : m === 12 || m <= 3 ? 1 : 2;
-  return Math.max(0, Math.min(11, (academicYear - g9StartYear) * 3 + t));
+  const n = (13 - startGrade) * 3;
+  return Math.max(0, Math.min(n - 1, (academicYear - g9StartYear + 9 - startGrade) * 3 + t));
 }
 
 const DEFAULTS = { laneH: 104, slotW: 70, colPad: 24, emptyW: 46, left: 196, top: 118, right: 70, bottom: 64, gap: 14 };
@@ -32,14 +35,16 @@ export function computeLayout(map, lens, today, opts = {}) {
   const laneY = (id) => o.top + lanes[id] * o.laneH;
 
   const events = map.events;
-  const term = Object.fromEntries(events.map((e) => [e.id, termOf(e.date, map.student.g9StartYear)]));
+  const grades = gradesFor(map.student);
+  const nTerms = grades.length * 3;
+  const term = Object.fromEntries(events.map((e) => [e.id, termOf(e.date, map.student.g9StartYear, grades[0])]));
 
   // Slot assignment inside each term column.
   const slotOf = {};
-  const slotsPerTerm = Array(12).fill(0);
+  const slotsPerTerm = Array(nTerms).fill(0);
   const firstOnLine = {};
   for (const e of events) for (const l of e.lineIds) if (visible.has(e.id) && !firstOnLine[l]) firstOnLine[l] = e.id;
-  for (let t = 0; t < 12; t++) {
+  for (let t = 0; t < nTerms; t++) {
     const inTerm = events.filter((e) => term[e.id] === t && visible.has(e.id));
     const lastSlot = {};
     const slots = [];
@@ -68,10 +73,10 @@ export function computeLayout(map, lens, today, opts = {}) {
   // Columns.
   const columns = [];
   let x = o.left;
-  for (let t = 0; t < 12; t++) {
+  for (let t = 0; t < nTerms; t++) {
     const n = slotsPerTerm[t];
     const w = n ? n * o.slotW + o.colPad : o.emptyW;
-    columns.push({ x, w, grade: GRADES[Math.floor(t / 3)], term: (t % 3) + 1 });
+    columns.push({ x, w, grade: grades[Math.floor(t / 3)], term: (t % 3) + 1 });
     x += w;
   }
   const width = x + o.right;

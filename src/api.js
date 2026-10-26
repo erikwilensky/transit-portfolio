@@ -167,9 +167,11 @@ export function acceptCandidate(id, lineIds, visibility = 'advisor') {
   const c = store.inbox.find((e) => e.id === id);
   if (!c || !lineIds.length) return null;
   store.inbox = store.inbox.filter((e) => e.id !== id);
-  const { sourceId, suggestedLineIds, ...event } = c;
+  const { sourceId, suggestedLineIds, quickReflection, ...event } = c;
   const added = { ...event, lineIds, visibility };
   store.events.push(added);
+  if (quickReflection) store.reflections.push({ id: `rf-x${seq++}`, eventId: added.id, text: quickReflection, prompt: 'Quick reflection', date: added.date, visibility: 'advisor' });
+  log(added.studentId, getStudent(added.studentId).name, 'station', `Accepted “${added.title}” from the inbox`);
   emit();
   return added;
 }
@@ -209,7 +211,9 @@ export function getSignals(studentId, lines = getStudentMap(studentId).lines) {
     const on = evs.filter((e) => e.lineIds.includes(l.id));
     if (!on.length) continue;
     if (l.parentLineId) out.push({ key: `${studentId}:${l.id}:branch`, kind: 'branch', lineId: l.id, eventId: on[0].id, prompt: `A new line has branched. Why ${l.name}, and why now?`, open: !hasRefl(on[0].id) && !store.answered[`${studentId}:${l.id}:branch`] });
-    if (l.status === 'ended') out.push({ key: `${studentId}:${l.id}:end`, kind: 'terminus', lineId: l.id, eventId: on.at(-1).id, prompt: `A line is ending. What did ${l.name} give you?`, open: !hasRefl(on.at(-1).id) && !store.answered[`${studentId}:${l.id}:end`] });
+    // A line the student ends during the demo always asks, even if its last station already has a reflection.
+    const endedNow = getStudent(studentId).lineStatus?.[l.id] === 'ended';
+    if (l.status === 'ended') out.push({ key: `${studentId}:${l.id}:end`, kind: 'terminus', lineId: l.id, eventId: on.at(-1).id, prompt: `A line is ending. What did ${l.name} give you?`, open: (endedNow || !hasRefl(on.at(-1).id)) && !store.answered[`${studentId}:${l.id}:end`] });
   }
   for (const p of store.prompts.filter((x) => x.studentId === studentId)) {
     out.push({ key: `prompt:${p.id}`, kind: 'prompt', promptId: p.id, eventId: p.eventId, prompt: p.text, from: teacherById[p.from], open: !p.answered, date: p.date });
@@ -280,7 +284,7 @@ export function endorse(requestIds, teacherId, note) {
     if (!r || r.status !== 'pending') continue;
     r.status = 'endorsed'; r.decidedAt = nowIso();
     const e = getEvent(r.eventId);
-    store.endorsements.push({ id: `en-x${seq++}`, eventId: e.id, teacherId, note: note || 'Endorsed.', date: TODAY });
+    store.endorsements.push({ id: `en-x${seq++}`, eventId: e.id, teacherId, note: note || 'Endorsed.', date: TODAY, live: true });
     e.verification = 'teacher-endorsed';
     const t = teacherById[teacherId];
     log(e.studentId, t.name, 'endorsement', `Endorsed “${e.title}”`);
@@ -318,3 +322,130 @@ export function recordView(token, studentId, who = 'Anonymous viewer') {
 export const extraViews = (token) => store.linkViews[token] || 0;
 
 export const getApplications = () => store.applications;
+
+// ── Student: lines (branch, end), onboarding, phone capture ───────────
+const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+const BRANCH_TINT = { science: '#7C80C7', computing: '#3F93DE', environment: '#2FAE80', sport: '#E3A21A', service: '#EE6A6C', music: '#B04A85', design: '#3DB6BA', languages: '#E07B10', art: '#A27560' };
+
+// A student names a sub-line under a fixed school line. It waits for the coordinator to approve the name.
+export function addBranch(studentId, parentLineId, name, first) {
+  const s = getStudent(studentId);
+  const id = `${studentId}-${slug(name)}`;
+  if (!lineById(id)) store.lines.push({ id, name, colour: BRANCH_TINT[parentLineId] || '#7C80C7', parentLineId, status: 'active', studentId, approval: 'pending', requestedOn: TODAY });
+  const at = s.laneOrder.indexOf(parentLineId);
+  if (!s.laneOrder.includes(id)) s.laneOrder.splice(at < 0 ? s.laneOrder.length : at + 1, 0, id);
+  const e = addStation(studentId, { ...first, lineIds: [parentLineId, id], visibility: first.visibility || 'advisor' });
+  log(studentId, s.name, 'line', `Branched “${name}” from ${lineById(parentLineId)?.name}`);
+  notify('brandt', `${s.name} asked for a new sub-line: “${name}” under ${lineById(parentLineId)?.name}`, { persona: 'brandt', screen: 'governance' });
+  emit();
+  return { line: lineById(id), event: e };
+}
+// Ending a line is a first-class event: a terminus bar, a quieter line, a signal asking what it gave.
+export function endLine(studentId, lineId, keepVisible = false) {
+  const s = getStudent(studentId);
+  s.lineStatus = { ...(s.lineStatus || {}), [lineId]: 'ended' };
+  if (!keepVisible) store.events.forEach((e) => { if (e.studentId === studentId && e.lineIds.length === 1 && e.lineIds[0] === lineId && e.visibility === 'publishable') e.visibility = 'advisor'; });
+  log(studentId, s.name, 'line', `Ended the ${lineById(lineId)?.name} line${keepVisible ? '' : ' (its stations are now advisor-only)'}`);
+  const adv = store.students.find((x) => x.id === studentId)?.advisorId;
+  if (PERSONA_OF_TEACHER[adv]) notify(PERSONA_OF_TEACHER[adv], `${s.name.split(' ')[0]} ended the ${lineById(lineId)?.name} line`, { persona: PERSONA_OF_TEACHER[adv], screen: 'student', param: studentId });
+  emit();
+}
+export function restartLine(studentId, lineId) {
+  const s = getStudent(studentId);
+  s.lineStatus = { ...(s.lineStatus || {}), [lineId]: 'active' };
+  log(studentId, s.name, 'line', `Restarted the ${lineById(lineId)?.name} line`);
+  emit();
+}
+
+// Grade 6 starters: what arrives from school systems once a new student picks their interests.
+export const STARTERS = {
+  science: { title: 'Lab safety certificate', type: 'class', source: { system: 'ManageBac', ref: 'g6-sci-01' }, summary: 'Passed the Grade 6 lab safety quiz.', img: 'cert' },
+  sport: { title: 'Joined the U12 swim squad', type: 'sport', source: { system: 'Clubs & Sports', ref: 'swim-u12' }, summary: 'Tuesday and Thursday training.', img: 'pool' },
+  art: { title: 'First sketchbook page', type: 'project', source: { system: 'ManageBac', ref: 'g6-art-02' }, summary: 'Observational drawing of a shell.', img: 'sketchbook' },
+  music: { title: 'Joined the junior choir', type: 'club', source: { system: 'Clubs & Sports', ref: 'choir-jr' }, summary: 'Rehearsals on Wednesdays.', img: 'piano-stage' },
+  computing: { title: 'Scratch: animated name', type: 'class', source: { system: 'ManageBac', ref: 'g6-cs-01' }, summary: 'First Scratch project in Design & Tech.', img: 'code' },
+  environment: { title: 'Eco-club welcome walk', type: 'club', source: { system: 'Clubs & Sports', ref: 'eco-jr' }, summary: 'Mapped the recycling bins on campus.', img: 'compost-bin' },
+  service: { title: 'Reading buddy for Grade 1', type: 'service', source: { system: 'CAS log', ref: 'sa-g6-01' }, summary: 'Service as action: reading with a Grade 1 class.', img: 'stem-club' },
+  languages: { title: 'Thai placement: Level 2', type: 'assessment', source: { system: 'SIS', ref: 'thai-place' }, summary: 'Placed in Thai as an additional language, Level 2.', img: 'welcome-pack' },
+  design: { title: 'Design cycle: pencil holder', type: 'project', source: { system: 'ManageBac', ref: 'g6-des-01' }, summary: 'First MYP design cycle project.', img: 'phone-stands' },
+};
+const STARTER_IMG = { cert: null, pool: null, code: null, sketchbook: 'sketchbook', 'piano-stage': 'piano-stage', 'compost-bin': 'compost-bin', 'stem-club': 'stem-club', 'welcome-pack': 'welcome-pack', 'phone-stands': 'phone-stands' };
+export function completeOnboarding(studentId, lineIds, template) {
+  const s = getStudent(studentId);
+  s.laneOrder = [...lineIds];
+  s.onboarding = false;
+  s.template = template;
+  lineIds.forEach((l, i) => {
+    const st = STARTERS[l]; if (!st) return;
+    const img = STARTER_IMG[st.img];
+    store.events.push({ id: `ev-${evSeq++}`, studentId, title: st.title, date: `2026-08-${String(14 + i * 3).padStart(2, '0')}`, lineIds: [l], type: st.type, summary: st.summary,
+      evidence: img ? [{ kind: 'image', url: `evidence/${img}.svg`, caption: st.title }] : [], verification: 'school-verified', visibility: 'advisor', source: st.source });
+  });
+  log(studentId, s.name, 'onboarding', `Picked ${lineIds.length} starter lines and the “${template}” template`);
+  emit();
+}
+
+// A quick capture from the phone lands in the inbox, like any other import.
+export function capturePhone(studentId, f) {
+  const e = { id: `ev-${evSeq++}`, studentId, title: f.title, date: TODAY, lineIds: f.lineIds || [], type: f.type || 'project', summary: f.summary || '',
+    evidence: f.image ? [{ kind: 'image', url: f.image, caption: 'Photo from phone' }] : [], verification: 'student-added', visibility: 'advisor',
+    source: { system: 'Phone capture', ref: null }, sourceId: 'phone', suggestedLineIds: f.lineIds || [], quickReflection: f.reflection };
+  store.inbox.unshift(e);
+  log(studentId, getStudent(studentId).name, 'capture', `Captured “${f.title}” on her phone`);
+  emit();
+  return e;
+}
+
+// ── Visibility and privacy ────────────────────────────────────────────
+export function setVisibility(eventId, visibility) {
+  const e = getEvent(eventId); if (!e) return;
+  const from = e.visibility; e.visibility = visibility;
+  log(e.studentId, getStudent(e.studentId).name, 'visibility', `Changed “${e.title}” from ${from} to ${visibility}`);
+  emit();
+}
+const DEFAULT_PRIVACY = { reflections: 'private', added: 'advisor', imported: 'advisor', endedLines: 'advisor', linkDays: 90, emailGate: false };
+export const getPrivacy = (studentId) => ({ ...DEFAULT_PRIVACY, ...(store.privacy?.[studentId] || {}) });
+export function setPrivacy(studentId, patch) {
+  store.privacy = store.privacy || {};
+  store.privacy[studentId] = { ...getPrivacy(studentId), ...patch };
+  log(studentId, getStudent(studentId).name, 'privacy', `Changed privacy defaults: ${Object.entries(patch).map(([k, v]) => `${k} → ${v}`).join(', ')}`);
+  emit();
+}
+// Consent on file, by grade (mock). Under-18s need a parent's consent to publish.
+export const CONSENT = [
+  { grade: 6, students: 118, parent: 103, pending: 15 }, { grade: 7, students: 121, parent: 0, pending: 0 }, { grade: 8, students: 117, parent: 0, pending: 0 },
+  { grade: 9, students: 124, parent: 116, pending: 8 }, { grade: 10, students: 119, parent: 115, pending: 4 }, { grade: 11, students: 112, parent: 110, pending: 2 }, { grade: 12, students: 108, parent: 108, pending: 0 },
+];
+
+// ── Activity log: seeded history plus everything done during the demo ─
+const SYS_TIME = { SIS: '01:10', ManageBac: '03:20', 'CAS log': '04:00', 'Clubs & Sports': '05:30', GitHub: '09:12', 'Exam boards': '02:00' };
+export function getActivity(studentId) {
+  const s = getStudent(studentId);
+  const hist = [];
+  for (const e of store.events.filter((x) => x.studentId === studentId && x.date <= TODAY && x.type !== 'goal')) {
+    const sys = e.source?.system;
+    if (sys && sys !== 'Manual entry' && sys !== 'Phone capture') hist.push({ ts: `${e.date}T${SYS_TIME[sys] || '06:00'}:00`, actor: sys, kind: 'sync', text: `Imported “${e.title}”${e.source.ref ? ` (${e.source.ref})` : ''}` });
+    else if (!e.id.startsWith('ev-9')) hist.push({ ts: `${e.date}T18:30:00`, actor: s.name, kind: 'station', text: `Added “${e.title}”` });
+  }
+  for (const n of store.endorsements) { const e = getEvent(n.eventId); if (e?.studentId === studentId && !n.live) hist.push({ ts: `${n.date}T15:40:00`, actor: teacherById[n.teacherId]?.name, kind: 'endorse', text: `Endorsed “${e.title}”` }); }
+  for (const p of presentationsData.filter((x) => x.studentId === studentId)) for (const l of p.shareLinks) {
+    for (let i = 0; i < l.views; i++) { const d = new Date(new Date(`${TODAY}T12:00:00`).getTime() - (i * 5 + (l.token.charCodeAt(3) % 4)) * 86400000 - i * 3600000); hist.push({ ts: d.toISOString().slice(0, 19), actor: SHARED_LABEL[l.token] || 'Link viewer', kind: 'view', text: `Viewed share link /s/${l.token}` }); }
+    if (l.revoked) hist.push({ ts: `${l.expiresAt}T09:00:00`, actor: s.name, kind: 'link', text: `Revoked share link /s/${l.token}` });
+  }
+  const live = store.activity.filter((a) => a.studentId === studentId).map((a) => ({ ...a, live: true }));
+  return [...live, ...hist.filter((h) => h.ts.slice(0, 10) <= TODAY).sort((a, b) => b.ts.localeCompare(a.ts))];
+}
+export const SHARED_LABEL = { 'tp-nb7d': 'Northbridge University admissions', 'tp-u8k4': 'University applications', 'tp-c7m1': 'Anyone with the link', 'tp-g3n2': 'Family and friends', 'tp-e1x9': 'Summer internship' };
+export function logLink(studentId, text) { log(studentId, getStudent(studentId).name, 'link', text); emit(); }
+
+// Graduation export: the full record as the student sees it.
+export function exportRecord(studentId) {
+  const map = getStudentMap(studentId, 'student');
+  return {
+    exportedOn: TODAY, format: 'nist-transit-portfolio/v1',
+    student: map.student, lines: map.lines,
+    stations: map.events.map(({ reflections, endorsements, ...e }) => ({ ...e, reflections, endorsements: endorsements.map((n) => ({ teacher: n.teacher?.name, note: n.note, date: n.date })) })),
+    presentations: presentationsData.filter((p) => p.studentId === studentId).map(({ shareLinks, ...p }) => p),
+    activity: getActivity(studentId).slice(0, 200),
+  };
+}

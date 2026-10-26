@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { applyLens, getPresentations, getStudentMap, getStudents, subscribe, getNotifications, markNotificationsRead } from './api.js';
 import { PERSONAS, KIND_LABEL, NAV, personaById, home } from './personas.js';
 import { ago } from './format.js';
@@ -16,6 +16,12 @@ import ShareLanding from './screens/ShareLanding.jsx';
 import VerifyPage from './screens/VerifyPage.jsx';
 import ScanIn from './screens/ScanIn.jsx';
 import ComingSoon from './screens/ComingSoon.jsx';
+import ShareLinks from './screens/ShareLinks.jsx';
+import Activity from './screens/Activity.jsx';
+import Privacy from './screens/Privacy.jsx';
+import Onboarding from './screens/Onboarding.jsx';
+import Pdpa from './screens/Pdpa.jsx';
+import Applications from './screens/Applications.jsx';
 import Logo from './components/Logo.jsx';
 import { VerifyProvider } from './components/VerifyModal.jsx';
 import { TOURS } from './tour.js';
@@ -39,11 +45,16 @@ export default function App() {
   const [toastMsg, setToastMsg] = useState(null);
   const [menu, setMenu] = useState(null); // 'persona' | 'bell' | 'tour'
   const [tourState, setTourState] = useState(null); // { tour, step }
+  const [auto, setAuto] = useState(false);
 
   useEffect(() => subscribe(() => setVersion((v) => v + 1)), []);
   useEffect(() => { const f = () => setRoute(parse()); addEventListener('hashchange', f); return () => removeEventListener('hashchange', f); }, []);
   useEffect(() => { document.documentElement.dataset.theme = dark ? 'dark' : 'light'; }, [dark]);
   useEffect(() => { const f = (e) => { if (!e.target.closest('.menu-wrap')) setMenu(null); }; addEventListener('pointerdown', f); return () => removeEventListener('pointerdown', f); }, []);
+
+  const tourRef = useRef(null);
+  useEffect(() => { const k = (e) => tourRef.current?.key(e); addEventListener('keydown', k); return () => removeEventListener('keydown', k); }, []);
+  useEffect(() => { if (!auto || !tourState) return undefined; const t = setTimeout(() => tourRef.current?.advance(), 12000); return () => clearTimeout(t); }, [auto, tourState]);
 
   const go = (persona, screen, param) => {
     const p = personaById(persona || route.persona);
@@ -63,7 +74,17 @@ export default function App() {
   const unread = notes.filter((n) => !n.read).length;
   const ctx = { go, toast, version, persona, drafts, setDrafts, audience, setAudience, tier, setTier, startTour: (t) => { setTourState({ tour: t, step: 0 }); TOURS[t].steps[0].run(ctx); } };
   const tour = tourState && TOURS[tourState.tour];
-  const stepTo = (i) => { if (!tour || i < 0 || i >= tour.steps.length) return setTourState(null); setTourState({ ...tourState, step: i }); tour.steps[i].run(ctx); };
+  const stepTo = (i) => { if (!tour || i < 0 || i >= tour.steps.length) { setAuto(false); return setTourState(null); } setTourState({ ...tourState, step: i }); tour.steps[i].run(ctx); };
+  // X7: arrow keys and space drive the tour; auto-play moves on every 12 seconds (for an open-day screen).
+  tourRef.current = tourState ? {
+    key: (e) => {
+      if (e.target.closest?.('input, textarea, select, [contenteditable]')) return;
+      if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); stepTo(tourState.step + 1); }
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); stepTo(tourState.step - 1); }
+      if (e.key === 'Escape' && !document.querySelector('.modal-back')) { setAuto(false); setTourState(null); }
+    },
+    advance: () => stepTo(tourState.step === tour.steps.length - 1 ? 0 : tourState.step + 1),
+  } : null;
 
   return (
     <VerifyProvider>
@@ -143,17 +164,20 @@ export default function App() {
           {persona.kind === 'counsellor' && route.screen === 'letter' && <ReferenceLetter {...ctx} studentId={route.param || 'st-01'} />}
           {persona.kind === 'leadership' && route.screen === 'dashboard' && <SchoolDashboard {...ctx} />}
           {persona.kind === 'leadership' && route.screen === 'scan' && <ScanIn {...ctx} />}
+          {persona.kind === 'leadership' && route.screen === 'pdpa' && <Pdpa {...ctx} />}
+          {persona.kind === 'counsellor' && route.screen === 'applications' && <Applications {...ctx} />}
           {persona.kind === 'external' && <ShareLanding token={persona.token} drafts={drafts} version={version} embedded />}
           <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} />
         </main>
 
         {tour && (
           <div className="presenter" role="dialog" aria-label="Pitch tour">
-            <span className="pr-n">{tourState.step + 1}/{tour.steps.length}</span>
+            <span className="pr-n">{tourState.step + 1}/{tour.steps.length}</span>{auto && <span className="pr-prog" key={tourState.step} aria-hidden="true" />}
             <div className="pr-text"><b>{tour.steps[tourState.step].title}</b><span>{tour.steps[tourState.step].say}</span></div>
             <button onClick={() => stepTo(tourState.step - 1)} disabled={tourState.step === 0} aria-label="Previous">‹</button>
             <button className="primary" onClick={() => stepTo(tourState.step + 1)}>{tourState.step === tour.steps.length - 1 ? 'Finish' : 'Next ›'}</button>
-            <button onClick={() => setTourState(null)} aria-label="Close tour">×</button>
+            <button className={`pr-auto${auto ? ' on' : ''}`} onClick={() => setAuto(!auto)} aria-pressed={auto} title="Auto-play every 12 seconds, looping">{auto ? '❚❚ Auto' : '▶ Auto'}</button>
+            <button onClick={() => { setAuto(false); setTourState(null); }} aria-label="Close tour">×</button>
           </div>
         )}
         <div className={`toast${toastMsg ? ' show' : ''}`} role="status" aria-live="polite">{toastMsg}</div>
@@ -173,6 +197,10 @@ function StudentScreens({ screen, param, studentId, drafts, setDrafts, audience,
     updateDraft(pres.id, { shareLinks: [...pres.shareLinks, { token, presentationId: pres.id, expiresAt: '2026-12-31', revoked: false, views: 0 }] });
     toast(`Share link created: /s/${token}, expires 31 Dec 2026`);
   };
+  if (map.student.onboarding) return <Onboarding map={map} studentId={studentId} onDone={() => { toast('Your map is ready.'); go(persona.id, 'map'); }} />;
+  if (screen === 'links') return <ShareLinks studentId={studentId} drafts={myDrafts} updateDraft={updateDraft} toast={toast} version={version} />;
+  if (screen === 'activity') return <Activity studentId={studentId} version={version} />;
+  if (screen === 'privacy') return <Privacy studentId={studentId} drafts={myDrafts} toast={toast} go={go} persona={persona} version={version} />;
   if (screen === 'map') return <StudentMap map={map} studentId={studentId} toast={toast} version={version} focusId={param} go={go} persona={persona} />;
   if (screen === 'studio') return <Studio key={studentId} map={publicMap} drafts={myDrafts} audience={audience} setAudience={setAudience} tier={tier} setTier={setTier} updateDraft={updateDraft} onShare={share} toast={toast} />;
   if (screen === 'shared') return <SharedView key={studentId} publicMap={publicMap} drafts={myDrafts} links={links} />;

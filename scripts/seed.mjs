@@ -34,6 +34,7 @@ const teachers = [
   { id: 't-08', name: 'Ms Clara Brandt', role: 'CAS Coordinator' },
   { id: 't-09', name: 'Ms Ruth Adeyemi', role: 'University Counsellor' },
   { id: 't-10', name: 'Dr Anan Wongsakul', role: 'Head of School' },
+  { id: 't-11', name: 'Ms Siriporn Thongdee', role: 'Grade 6 homeroom, 6C' },
 ];
 
 const students = [
@@ -407,6 +408,9 @@ const pending = [
   P('exams', 'ev-226', 'st-03', '2026-10-15', ['lena-japanese'], 'goal', 'JLPT N5: registration confirmed', 'Registered for the December JLPT sitting.', 'jlpt-reg'),
 ];
 
+// Pim is in her first week of Grade 6: no lines yet, onboarding picks them (idea S9).
+students.push({ id: 'st-09', name: 'Pim Chaiyaporn', grade: 6, startGrade: 6, programme: 'IB MYP', avatar: { initials: 'PC', colour: '#1FA3A8' }, homeroom: '6C', advisorId: 't-11',
+  g9StartYear: 2029, laneOrder: [], lineLabels: {}, onboarding: true });
 out('lines.json', lines); out('students.json', students); out('teachers.json', teachers); out('events.json', events);
 out('reflections.json', reflections); out('endorsements.json', endorsements); out('presentations.json', presentations);
 out('integrations.json', { integrations, pending });
