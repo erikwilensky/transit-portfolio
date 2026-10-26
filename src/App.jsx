@@ -42,6 +42,7 @@ import Logo from './components/Logo.jsx';
 import NavBar from './components/NavBar.jsx';
 import Launcher from './components/Launcher.jsx';
 import ShareDialog from './components/ShareDialog.jsx';
+import ShareGaps from './components/ShareGaps.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { VerifyProvider } from './components/VerifyModal.jsx';
 import { TOURS, tourMinutes, stopCount } from './tour.js';
@@ -302,6 +303,10 @@ function StudentScreens({ screen, param, studentId, drafts, setDrafts, audience,
   const links = myDrafts.flatMap((p) => p.shareLinks);
   const updateDraft = (presId, patch) => setDrafts((d) => ({ ...d, [studentId]: d[studentId].map((p) => (p.id === presId ? { ...p, ...patch } : p)) }));
   const [newLink, setNewLink] = useState(null);
+  // N11: stations a presentation would show but a link cannot, because they are not publishable.
+  const [gapFor, setGapFor] = useState(null);
+  const gapsOf = (pres) => { const l = applyLens(map, pres, { hiddenLines: pres.filters.hiddenLines }); return map.events.filter((e) => l.visible.has(e.id) && e.type !== 'goal' && e.visibility !== 'publishable'); };
+  const askShare = (pres, opts = {}) => { if (!opts.site && gapsOf(pres).length) return setGapFor(pres); share(pres, opts); };
   const share = (pres, { site } = {}) => {
     const link = { token: `tp-${Math.random().toString(36).slice(2, 6)}`, presentationId: pres.id, expiresAt: '2026-12-31', revoked: false, views: 0, ...(site ? { site: true, sharedWith: 'Anyone with the link' } : {}) };
     const patch = { shareLinks: [...pres.shareLinks, link] };
@@ -321,7 +326,8 @@ function StudentScreens({ screen, param, studentId, drafts, setDrafts, audience,
   if (screen === 'activity') return <Activity studentId={studentId} version={version} />;
   if (screen === 'privacy') return <Privacy studentId={studentId} drafts={myDrafts} toast={toast} go={go} persona={persona} version={version} />;
   if (screen === 'map') return <StudentMap map={map} studentId={studentId} toast={toast} version={version} focusId={param} go={go} persona={persona} />;
-  if (screen === 'studio') return <>{newLink && <ShareDialog link={newLink.link} title={newLink.title} onClose={() => setNewLink(null)} />}<Studio key={studentId} map={publicMap} drafts={myDrafts} audience={audience} setAudience={setAudience} tier={tier} setTier={setTier} updateDraft={updateDraft} onShare={share} toast={toast} /></>;
+  if (screen === 'studio') return <>{newLink && <ShareDialog link={newLink.link} title={newLink.title} onClose={() => setNewLink(null)} />}
+    {gapFor && <ShareGaps pres={gapFor} gaps={gapsOf(gapFor)} lines={map.lines} toast={toast} onClose={() => setGapFor(null)} onShare={() => { const p = gapFor; setGapFor(null); share(myDrafts.find((x) => x.id === p.id) || p); }} />}<Studio key={studentId} map={publicMap} drafts={myDrafts} audience={audience} setAudience={setAudience} tier={tier} setTier={setTier} updateDraft={updateDraft} onShare={askShare} toast={toast} /></>;
   if (screen === 'shared') return <SharedView key={studentId} publicMap={publicMap} drafts={myDrafts} links={links} />;
   if (screen === 'inbox') return <IntegrationsPanel map={map} lens={applyLens(map, null)} newIds={new Set()} onAdded={(e) => { toast(`Added “${e.title}” to the map`); go(persona.id, 'map', e.id); }} toast={toast} version={version} />;
   return null;
