@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { applyLens, LENSES } from '../api.js';
 import { THEMES, LAYOUTS } from '../themes/themes.js';
 import LensSwitcher from './LensSwitcher.jsx';
@@ -6,6 +6,9 @@ import TierToggle from './TierToggle.jsx';
 import PresentationView from './PresentationView.jsx';
 import CodeView from './CodeView.jsx';
 import StationPanel from './StationPanel.jsx';
+import CustomView from '../custom/CustomView.jsx';
+import CustomBuilder, { useDesignHistory } from '../custom/CustomBuilder.jsx';
+import { defaultDesign } from '../custom/design.js';
 
 export default function Studio({ map, drafts, audience, setAudience, tier, setTier, updateDraft, onShare, toast }) {
   const pres = drafts.find((p) => p.audience === audience) || drafts[0];
@@ -16,6 +19,12 @@ export default function Studio({ map, drafts, audience, setAudience, tier, setTi
   const event = map.events.find((e) => e.id === selected && lens.visible.has(e.id));
   const specific = drafts.find((p) => p.audience === 'specific');
   const set = (patch) => updateDraft(pres.id, patch);
+  const custom = pres.layout === 'custom';
+  const design = useMemo(() => pres.design || defaultDesign(map), [pres.design, map]); // eslint-disable-line react-hooks/exhaustive-deps
+  const history = useDesignHistory(design, (d) => set({ design: d }));
+  const [blockId, setBlockId] = useState(null);
+  const [editing, setEditing] = useState(true);
+  useEffect(() => { if (custom && !pres.design) set({ design }); history.reset(); setBlockId(null); }, [custom, pres.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleLine = (id) => {
     const h = pres.filters.hiddenLines;
@@ -33,14 +42,17 @@ export default function Studio({ map, drafts, audience, setAudience, tier, setTi
     <div className="studio">
       <div className="studio-bar">
         <div className="bar-group"><label>Audience</label><LensSwitcher value={audience} onChange={(a) => { setAudience(a); setSelected(null); }} targetName={specific?.targetName} /></div>
-        <div className="bar-group"><label>Skill tier</label><TierToggle value={tier} onChange={setTier} /></div>
+        {custom
+          ? <div className="bar-group"><label>Mode</label><div className="seg"><button className={editing ? 'on' : ''} onClick={() => setEditing(true)}>Design</button><button className={!editing ? 'on' : ''} onClick={() => { setEditing(false); setBlockId(null); }}>Preview</button></div></div>
+          : <div className="bar-group"><label>Skill tier</label><TierToggle value={tier} onChange={setTier} /></div>}
         <button className="collapse-btn" onClick={() => setCollapsed(!collapsed)} aria-pressed={collapsed}>{collapsed ? 'Show controls' : 'Hide controls'}</button>
       </div>
       <p className="lens-blurb">{LENSES[pres.audience].blurb}</p>
 
-      <div className={`studio-body tier-${tier}${collapsed ? ' collapsed' : ''}`}>
-        <aside className="studio-controls" aria-label={`${tier} controls`}>
-          {tier === 'template' && (
+      <div className={`studio-body tier-${tier}${custom ? ' custom' : ''}${collapsed ? ' collapsed' : ''}`}>
+        <aside className="studio-controls" aria-label={`${custom ? 'custom page' : tier} controls`}>
+          {custom && <CustomBuilder map={map} lens={lens} design={design} history={history} selectedBlockId={blockId} setSelectedBlockId={setBlockId} onShare={() => onShare(pres)} />}
+          {!custom && tier === 'template' && (
             <>
               <h3>Theme</h3>
               <div className="themes">
@@ -64,7 +76,7 @@ export default function Studio({ map, drafts, audience, setAudience, tier, setTi
               <p className="fineprint">Three choices and a link: a polished page in about two minutes. Ended lines and reflections stay private unless {first} publishes them.</p>
             </>
           )}
-          {tier === 'builder' && (
+          {!custom && tier === 'builder' && (
             <>
               <h3>Layout</h3>
               <div className="seg small">
@@ -100,7 +112,7 @@ export default function Studio({ map, drafts, audience, setAudience, tier, setTi
               <button className="primary wide" onClick={() => onShare(pres)}>Create share link</button>
             </>
           )}
-          {tier === 'code' && (
+          {!custom && tier === 'code' && (
             <>
               <h3>Build your own site</h3>
               <p>Export this presentation's data through the read API and build any site you like with the starter files.</p>
@@ -115,7 +127,9 @@ export default function Studio({ map, drafts, audience, setAudience, tier, setTi
         </aside>
 
         <div className={`studio-preview theme-${pres.theme}`}>
-          {tier === 'code'
+          {custom
+            ? <CustomView map={map} lens={lens} design={design} editable={editing} selectedBlockId={blockId} onSelectBlock={setBlockId} onChange={history.commit} onOpenStation={setSelected} />
+            : tier === 'code'
             ? <CodeView pres={pres} map={map} lens={lens} />
             : <PresentationView map={map} lens={lens} pres={pres} selectedId={selected} onSelect={setSelected} />}
           <StationPanel event={event} map={map} onClose={() => setSelected(null)} readOnly />

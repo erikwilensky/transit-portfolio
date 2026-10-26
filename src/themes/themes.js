@@ -16,4 +16,4 @@ export const LAYOUTS = {
   impact: 'Impact timeline',
   map: 'Metro map',
 };
-export const DEFAULT_LAYOUT = { general: 'profile', university: 'narrative', specific: 'letter', employer: 'cv', scholarship: 'impact' };
+export const DEFAULT_LAYOUT = { general: 'profile', university: 'narrative', specific: 'letter', employer: 'cv', scholarship: 'impact', custom: 'custom' };

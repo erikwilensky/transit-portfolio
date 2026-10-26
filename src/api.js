@@ -67,6 +67,7 @@ export const LENSES = {
   specific: { label: 'Specific university', blurb: 'Lines that match the target course in full; everything else becomes thin context.' },
   employer: { label: 'Employer', blurb: 'Projects, skills and responsibility. Grades are hidden by default.' },
   scholarship: { label: 'Scholarship', blurb: 'Service, impact and leadership as a timeline. Unrelated activities drop out.' },
+  custom: { label: 'Custom', blurb: 'Design your own page: pick a theme or make one, add blocks, drag them into place and resize them. Verified stations can be placed, never edited.' },
 };
 const IMPACT_TYPES = ['service', 'cas', 'award', 'competition'];
 

@@ -3,6 +3,8 @@ import MetroMap from './MetroMap.jsx';
 import { VerifyBadge, VerifyLegend } from './Badge.jsx';
 import { LENSES } from '../api.js';
 import { fmtDate, TYPE_LABEL } from '../format.js';
+import CustomView from '../custom/CustomView.jsx';
+import { defaultDesign } from '../custom/design.js';
 
 // Each audience reads a different format. The metro map is the student's
 // own tool; here it is optional (a small overview) or one format among many.
@@ -13,6 +15,7 @@ const month = (d) => fmtDate(d).split(' ').slice(1).join(' ');
 
 export default function PresentationView({ map, lens, pres, selectedId, onSelect }) {
   const visibleEvents = useMemo(() => map.events.filter((e) => lens.visible.has(e.id)), [map, lens]);
+  if (pres.layout === 'custom') return <CustomView map={map} lens={lens} design={pres.design || defaultDesign(map)} onOpenStation={onSelect} />;
   const lineById = Object.fromEntries(map.lines.map((l) => [l.id, l]));
   const shownLines = lens.order.filter((id) => lens.lineState[id] !== 'hidden').map((id) => lineById[id]);
   const fullLines = shownLines.filter((l) => lens.lineState[l.id] === 'full');

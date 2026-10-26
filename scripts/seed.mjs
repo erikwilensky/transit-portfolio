@@ -352,6 +352,8 @@ const presentations = [
 
 // Ended lines are private by default: hide them in every presentation unless the
 // student chose to publish (Maya keeps Swimming in her university portfolio).
+for (const [sid, pid, name, links] of [['st-01', 'pr-06', 'Maya Chen', [{ token: 'tp-c7m1', presentationId: 'pr-06', expiresAt: '2027-02-28', revoked: false, views: 6 }]], ['st-02', 'pr-16', 'Arun Mehta', []], ['st-03', 'pr-26', 'Lena Fischer', []]])
+  presentations.push({ id: pid, studentId: sid, audience: 'custom', targetName: null, tier: 'builder', title: `${name}: my page`, filters: { hiddenLines: [] }, order: null, theme: 'metro', layout: 'custom', showMap: false, narratives: {}, design: null, shareLinks: links });
 const ENDED = { 'st-01': ['maya-swim'], 'st-02': ['arun-french'], 'st-03': ['lena-ceramics'] };
 for (const p of presentations) if (p.id !== 'pr-02') p.filters.hiddenLines = [...ENDED[p.studentId]];
 

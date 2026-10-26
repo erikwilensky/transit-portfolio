@@ -409,5 +409,73 @@
     "showMap": false,
     "narratives": {},
     "shareLinks": []
+  },
+  {
+    "id": "pr-06",
+    "studentId": "st-01",
+    "audience": "custom",
+    "targetName": null,
+    "tier": "builder",
+    "title": "Maya Chen: my page",
+    "filters": {
+      "hiddenLines": [
+        "maya-swim"
+      ]
+    },
+    "order": null,
+    "theme": "metro",
+    "layout": "custom",
+    "showMap": false,
+    "narratives": {},
+    "design": null,
+    "shareLinks": [
+      {
+        "token": "tp-c7m1",
+        "presentationId": "pr-06",
+        "expiresAt": "2027-02-28",
+        "revoked": false,
+        "views": 6
+      }
+    ]
+  },
+  {
+    "id": "pr-16",
+    "studentId": "st-02",
+    "audience": "custom",
+    "targetName": null,
+    "tier": "builder",
+    "title": "Arun Mehta: my page",
+    "filters": {
+      "hiddenLines": [
+        "arun-french"
+      ]
+    },
+    "order": null,
+    "theme": "metro",
+    "layout": "custom",
+    "showMap": false,
+    "narratives": {},
+    "design": null,
+    "shareLinks": []
+  },
+  {
+    "id": "pr-26",
+    "studentId": "st-03",
+    "audience": "custom",
+    "targetName": null,
+    "tier": "builder",
+    "title": "Lena Fischer: my page",
+    "filters": {
+      "hiddenLines": [
+        "lena-ceramics"
+      ]
+    },
+    "order": null,
+    "theme": "metro",
+    "layout": "custom",
+    "showMap": false,
+    "narratives": {},
+    "design": null,
+    "shareLinks": []
   }
 ]
