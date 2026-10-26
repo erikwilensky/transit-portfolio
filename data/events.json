@@ -95,7 +95,7 @@
       },
       {
         "kind": "image",
-        "url": "#",
+        "url": "evidence/compost-bin.svg",
         "caption": "Compost bin site"
       }
     ],
@@ -186,7 +186,7 @@
     "evidence": [
       {
         "kind": "image",
-        "url": "#",
+        "url": "evidence/beach-cleanup.svg",
         "caption": "Volunteers sorting litter"
       },
       {
@@ -215,7 +215,7 @@
     "evidence": [
       {
         "kind": "image",
-        "url": "#",
+        "url": "evidence/sci-fair-poster.svg",
         "caption": "Poster"
       },
       {
@@ -470,7 +470,13 @@
     ],
     "type": "cas",
     "summary": "Three days planting and tagging mangroves in Chanthaburi.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/mangroves.svg",
+        "caption": "Tagged seedlings"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
@@ -524,7 +530,13 @@
     ],
     "type": "cas",
     "summary": "Co-founded a Friday STEM club; 14 regular members.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/stem-club.svg",
+        "caption": "Friday STEM club"
+      }
+    ],
     "verification": "teacher-endorsed",
     "visibility": "publishable",
     "source": {
@@ -593,13 +605,18 @@
       },
       {
         "kind": "image",
-        "url": "#",
+        "url": "evidence/aq-sensor.svg",
         "caption": "Sensor on the canteen roof"
       },
       {
         "kind": "file",
         "url": "#",
         "caption": "Calibration notes"
+      },
+      {
+        "kind": "image",
+        "url": "evidence/aq-dashboard.svg",
+        "caption": "Live dashboard"
       }
     ],
     "verification": "teacher-endorsed",
@@ -630,6 +647,11 @@
         "kind": "link",
         "url": "https://example.org/aq-notebook",
         "caption": "Notebook"
+      },
+      {
+        "kind": "image",
+        "url": "evidence/aq-dashboard.svg",
+        "caption": "PM2.5 by location"
       }
     ],
     "verification": "student-added",
@@ -726,6 +748,11 @@
         "kind": "link",
         "url": "https://example.org/flood",
         "caption": "Demo video"
+      },
+      {
+        "kind": "image",
+        "url": "evidence/hackathon.svg",
+        "caption": "Results board"
       }
     ],
     "verification": "school-verified",
@@ -922,7 +949,7 @@
     "evidence": [
       {
         "kind": "image",
-        "url": "#",
+        "url": "evidence/phone-stands.svg",
         "caption": "Prototype line-up"
       }
     ],
@@ -947,7 +974,7 @@
     "evidence": [
       {
         "kind": "image",
-        "url": "#",
+        "url": "evidence/piano-stage.svg",
         "caption": "On stage"
       }
     ],
@@ -968,7 +995,13 @@
     ],
     "type": "club",
     "summary": "Solo arrangement of a Thai folk song for piano.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/piano-stage.svg",
+        "caption": "Spring concert"
+      }
+    ],
     "verification": "school-verified",
     "visibility": "publishable",
     "source": {
@@ -1160,6 +1193,11 @@
         "kind": "file",
         "url": "#",
         "caption": "Audio design document"
+      },
+      {
+        "kind": "image",
+        "url": "evidence/rainfall-game.svg",
+        "caption": "In-game storm sequence"
       }
     ],
     "verification": "teacher-endorsed",
@@ -1201,7 +1239,7 @@
     "evidence": [
       {
         "kind": "image",
-        "url": "#",
+        "url": "evidence/arcade.svg",
         "caption": "Arcade cabinet"
       }
     ],
@@ -1312,7 +1350,13 @@
     ],
     "type": "project",
     "summary": "Designed my own 16-pad controller board.",
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "image",
+        "url": "evidence/pcb.svg",
+        "caption": "PCB layout"
+      }
+    ],
     "verification": "student-added",
     "visibility": "publishable",
     "source": {
@@ -1513,7 +1557,7 @@
     "evidence": [
       {
         "kind": "image",
-        "url": "#",
+        "url": "evidence/sketchbook.svg",
         "caption": "Sketchbook spread"
       }
     ],
@@ -1540,6 +1584,11 @@
         "kind": "file",
         "url": "#",
         "caption": "Welcome pack (DE)"
+      },
+      {
+        "kind": "image",
+        "url": "evidence/welcome-pack.svg",
+        "caption": "Welcome pack cover"
       }
     ],
     "verification": "teacher-endorsed",
@@ -1562,7 +1611,7 @@
     "evidence": [
       {
         "kind": "image",
-        "url": "#",
+        "url": "evidence/bowl.svg",
         "caption": "The bowl"
       }
     ],
@@ -1641,7 +1690,7 @@
     "evidence": [
       {
         "kind": "image",
-        "url": "#",
+        "url": "evidence/mural.svg",
         "caption": "Finished mural"
       }
     ],

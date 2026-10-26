@@ -62,18 +62,33 @@
         ],
         "type": "project",
         "summary": "Pushed v2: alerts when PM2.5 crosses the WHO limit.",
-        "evidence": [
-          {
-            "kind": "link",
-            "url": "https://example.org/aq-v2",
-            "caption": "Release notes"
-          }
-        ],
+        "evidence": [],
         "verification": "student-added",
         "visibility": "advisor",
         "source": {
           "system": "GitHub",
           "ref": "repo-aq@v2.0"
+        }
+      }
+    },
+    {
+      "sourceId": "github",
+      "event": {
+        "id": "ev-040",
+        "studentId": "st-01",
+        "title": "Forked a weather-API library",
+        "date": "2026-10-12",
+        "lineIds": [
+          "computing"
+        ],
+        "type": "project",
+        "summary": "Forked a library to read the Thai Meteorological Department feed.",
+        "evidence": [],
+        "verification": "student-added",
+        "visibility": "advisor",
+        "source": {
+          "system": "GitHub",
+          "ref": "fork-tmd-api"
         }
       }
     },
@@ -99,6 +114,27 @@
       }
     },
     {
+      "sourceId": "lms",
+      "event": {
+        "id": "ev-041",
+        "studentId": "st-01",
+        "title": "CS IA: proposal submitted",
+        "date": "2026-10-16",
+        "lineIds": [
+          "computing"
+        ],
+        "type": "assessment",
+        "summary": "Proposal for a flood-alert app for the school bus routes.",
+        "evidence": [],
+        "verification": "school-verified",
+        "visibility": "advisor",
+        "source": {
+          "system": "ManageBac",
+          "ref": "task-cs-ia-1"
+        }
+      }
+    },
+    {
       "sourceId": "cas",
       "event": {
         "id": "ev-039",
@@ -116,6 +152,84 @@
         "source": {
           "system": "CAS log",
           "ref": "cas-stem-20"
+        }
+      }
+    },
+    {
+      "sourceId": "sis",
+      "event": {
+        "id": "ev-043",
+        "studentId": "st-01",
+        "title": "Term 1 report: Biology HL",
+        "date": "2026-10-25",
+        "lineIds": [
+          "science"
+        ],
+        "type": "assessment",
+        "summary": "Term 1 report published: predicted 7.",
+        "evidence": [],
+        "verification": "school-verified",
+        "visibility": "advisor",
+        "source": {
+          "system": "SIS",
+          "ref": "rpt-t1-bio"
+        }
+      }
+    },
+    {
+      "sourceId": "sis",
+      "event": {
+        "id": "ev-044",
+        "studentId": "st-01",
+        "title": "Attendance: 100% in Term 1",
+        "date": "2026-10-25",
+        "lineIds": [],
+        "type": "award",
+        "summary": "Full attendance recorded for Term 1.",
+        "evidence": [],
+        "verification": "school-verified",
+        "visibility": "advisor",
+        "source": {
+          "system": "SIS",
+          "ref": "att-t1"
+        }
+      }
+    },
+    {
+      "sourceId": "clubs",
+      "event": {
+        "id": "ev-045",
+        "studentId": "st-01",
+        "title": "Joined Model UN",
+        "date": "2026-10-08",
+        "lineIds": [],
+        "type": "club",
+        "summary": "Added to the Model UN roster for the November conference.",
+        "evidence": [],
+        "verification": "school-verified",
+        "visibility": "advisor",
+        "source": {
+          "system": "Clubs & Sports",
+          "ref": "club-mun"
+        }
+      }
+    },
+    {
+      "sourceId": "exams",
+      "event": {
+        "id": "ev-046",
+        "studentId": "st-01",
+        "title": "IELTS Academic: 8.0",
+        "date": "2026-10-05",
+        "lineIds": [],
+        "type": "award",
+        "summary": "External English test result received.",
+        "evidence": [],
+        "verification": "school-verified",
+        "visibility": "advisor",
+        "source": {
+          "system": "Exam boards",
+          "ref": "ielts-8"
         }
       }
     },
@@ -162,6 +276,90 @@
       }
     },
     {
+      "sourceId": "lms",
+      "event": {
+        "id": "ev-133",
+        "studentId": "st-02",
+        "title": "Music HL: listening paper",
+        "date": "2026-10-19",
+        "lineIds": [
+          "music"
+        ],
+        "type": "assessment",
+        "summary": "First practice listening paper.",
+        "evidence": [],
+        "verification": "school-verified",
+        "visibility": "advisor",
+        "source": {
+          "system": "ManageBac",
+          "ref": "task-mus-l1"
+        }
+      }
+    },
+    {
+      "sourceId": "cas",
+      "event": {
+        "id": "ev-134",
+        "studentId": "st-02",
+        "title": "Sound desk for G6 assembly",
+        "date": "2026-10-23",
+        "lineIds": [
+          "arun-musictech"
+        ],
+        "type": "cas",
+        "summary": "Ran sound for the Grade 6 assembly.",
+        "evidence": [],
+        "verification": "school-verified",
+        "visibility": "advisor",
+        "source": {
+          "system": "CAS log",
+          "ref": "cas-sound-1"
+        }
+      }
+    },
+    {
+      "sourceId": "sis",
+      "event": {
+        "id": "ev-135",
+        "studentId": "st-02",
+        "title": "Term 1 report: Spanish ab initio",
+        "date": "2026-10-25",
+        "lineIds": [
+          "languages"
+        ],
+        "type": "assessment",
+        "summary": "Term 1 report published.",
+        "evidence": [],
+        "verification": "school-verified",
+        "visibility": "advisor",
+        "source": {
+          "system": "SIS",
+          "ref": "rpt-t1-sp"
+        }
+      }
+    },
+    {
+      "sourceId": "clubs",
+      "event": {
+        "id": "ev-136",
+        "studentId": "st-02",
+        "title": "Jazz band: new season",
+        "date": "2026-10-09",
+        "lineIds": [
+          "music"
+        ],
+        "type": "club",
+        "summary": "Re-registered for jazz band, now as band captain.",
+        "evidence": [],
+        "verification": "school-verified",
+        "visibility": "advisor",
+        "source": {
+          "system": "Clubs & Sports",
+          "ref": "club-jazz-26"
+        }
+      }
+    },
+    {
       "sourceId": "cas",
       "event": {
         "id": "ev-222",
@@ -200,6 +398,69 @@
         "source": {
           "system": "ManageBac",
           "ref": "task-jp-2"
+        }
+      }
+    },
+    {
+      "sourceId": "clubs",
+      "event": {
+        "id": "ev-224",
+        "studentId": "st-03",
+        "title": "Art club: exhibition helper",
+        "date": "2026-10-11",
+        "lineIds": [
+          "art"
+        ],
+        "type": "club",
+        "summary": "Helped hang the Grade 12 art exhibition.",
+        "evidence": [],
+        "verification": "school-verified",
+        "visibility": "advisor",
+        "source": {
+          "system": "Clubs & Sports",
+          "ref": "club-art-ex"
+        }
+      }
+    },
+    {
+      "sourceId": "sis",
+      "event": {
+        "id": "ev-225",
+        "studentId": "st-03",
+        "title": "Term 1 report: Thai B",
+        "date": "2026-10-25",
+        "lineIds": [
+          "languages"
+        ],
+        "type": "assessment",
+        "summary": "Term 1 report published.",
+        "evidence": [],
+        "verification": "school-verified",
+        "visibility": "advisor",
+        "source": {
+          "system": "SIS",
+          "ref": "rpt-t1-th"
+        }
+      }
+    },
+    {
+      "sourceId": "exams",
+      "event": {
+        "id": "ev-226",
+        "studentId": "st-03",
+        "title": "JLPT N5: registration confirmed",
+        "date": "2026-10-15",
+        "lineIds": [
+          "lena-japanese"
+        ],
+        "type": "goal",
+        "summary": "Registered for the December JLPT sitting.",
+        "evidence": [],
+        "verification": "school-verified",
+        "visibility": "advisor",
+        "source": {
+          "system": "Exam boards",
+          "ref": "jlpt-reg"
         }
       }
     }

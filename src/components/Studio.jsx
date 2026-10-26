@@ -48,6 +48,7 @@ export default function Studio({ map, drafts, audience, setAudience, tier, setTi
                   </button>
                 ))}
               </div>
+              <label className="map-toggle"><input type="checkbox" checked={!!pres.showMap} onChange={() => set({ showMap: !pres.showMap })} /> Include a small journey map</label>
               <h3>Lines to show</h3>
               <ul className="line-toggles">
                 {map.lines.map((l) => (
@@ -65,6 +66,7 @@ export default function Studio({ map, drafts, audience, setAudience, tier, setTi
               <div className="seg small">
                 {Object.entries(LAYOUTS).map(([id, label]) => <button key={id} className={pres.layout === id ? 'on' : ''} onClick={() => set({ layout: id })}>{label}</button>)}
               </div>
+              <label className="map-toggle"><input type="checkbox" checked={!!pres.showMap} onChange={() => set({ showMap: !pres.showMap })} /> Include a small journey map</label>
               <h3>Line order and narrative</h3>
               <ol className="builder-lines">
                 {lens.order.map((id, i) => {

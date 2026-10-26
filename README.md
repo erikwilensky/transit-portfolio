@@ -18,10 +18,12 @@ npx serve dist     # quick static server, or point Apache / nginx / Caddy at dis
 ## Screens
 
 1. **Student map** — full metro map, tap a station for evidence, reflection and verification.
-2. **Presentation studio** — audience lens (General, University, Specific university, Employer)
-   and skill tier (Template, Builder, Code).
+2. **Presentation studio** — each audience gets its own format: General (profile), University
+   (narrative), Specific university ("why this course" statement), Employer (CV), Scholarship
+   (impact timeline). The metro map is optional here. Skill tiers: Template, Builder, Code.
 3. **Shared view** — what an external viewer sees from a share link.
-4. **Integrations** — mock adapters; *Sync* drops new stations onto the map.
+4. **Integrations** — mock adapters; *Sync* pulls items into the student's inbox, and the
+   student chooses a line for each one (or skips it) before it joins the map.
 5. **Advisor** — cohort grid of mini-maps with reflection flags.
 
 The **Pitch tour** button (top right) jumps straight to each scripted moment.
@@ -37,5 +39,6 @@ src/components/  MetroMap, StationPanel, LensSwitcher, TierToggle, PresentationV
 src/themes/      presentation themes and layouts
 ```
 
-To change the mock data, edit `scripts/seed.mjs` and run `npm run seed`.
+To change the mock data, edit `scripts/seed.mjs` and run `npm run seed`. Evidence images are
+flat SVG illustrations drawn by `scripts/illustrations.mjs` into `public/evidence/`.
 Synced items live in memory only; reload to reset the demo.

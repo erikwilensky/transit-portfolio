@@ -5,10 +5,15 @@ export const THEMES = {
   slate: { label: 'Slate', note: 'Crisp, for employers', swatch: ['#eef1f4', '#111827', '#00A39E'] },
   night: { label: 'Night', note: 'Dark', swatch: ['#14161b', '#eceef2', '#F2A100'] },
 };
+// Presentation formats. The metro map is the student's own tool; each
+// audience gets a format that suits how that reader reads.
 export const LAYOUTS = {
-  metro: 'Metro map',
-  timeline: 'Timeline',
-  story: 'Story scroll',
-  cards: 'Cards',
+  profile: 'Profile',
+  narrative: 'Narrative',
+  letter: 'Why this course',
+  cv: 'CV',
+  cards: 'Project cards',
+  impact: 'Impact timeline',
+  map: 'Metro map',
 };
-export const DEFAULT_LAYOUT = { general: 'metro', university: 'metro', specific: 'metro', employer: 'cards' };
+export const DEFAULT_LAYOUT = { general: 'profile', university: 'narrative', specific: 'letter', employer: 'cv', scholarship: 'impact' };

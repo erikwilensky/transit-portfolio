@@ -11,8 +11,10 @@
     },
     "order": null,
     "theme": "metro",
-    "layout": "metro",
+    "layout": "profile",
+    "showMap": true,
     "narratives": {},
+    "intro": "I am a Grade 12 IB student in Bangkok who likes turning local problems into data: canals, classrooms, beaches and air.",
     "shareLinks": [
       {
         "token": "tp-g3n2",
@@ -30,6 +32,7 @@
     "targetName": null,
     "tier": "builder",
     "title": "Maya Chen: university portfolio",
+    "intro": "My map has six lines, but one question runs through all of them: what can careful measurement tell us about the place we live? This page follows how that question grew from a Grade 9 science fair into a plan to study Data Science.",
     "filters": {
       "hiddenLines": []
     },
@@ -42,7 +45,8 @@
       "maya-swim"
     ],
     "theme": "ivy",
-    "layout": "metro",
+    "layout": "narrative",
+    "showMap": false,
     "narratives": {
       "maya-datasci": "Data Science branched off my Biology line in Grade 11, when an air-quality project showed me I enjoy the analysis more than the collection. Since then I have modelled algae growth for my IA and I am predicting dengue outbreaks from weather data for my Extended Essay.",
       "science": "Biology gave me my questions: microplastics in canals, enzyme kinetics, algae growth. Each project pushed me toward more careful measurement.",
@@ -74,7 +78,8 @@
     },
     "order": null,
     "theme": "ivy",
-    "layout": "metro",
+    "layout": "letter",
+    "showMap": false,
     "focusLines": [
       "maya-datasci",
       "computing",
@@ -98,13 +103,22 @@
     "audience": "employer",
     "targetName": null,
     "tier": "template",
-    "title": "Maya Chen: projects",
+    "title": "Maya Chen: projects and experience",
+    "intro": "Student builder with hands-on experience in sensors, Python data analysis and running volunteer teams.",
+    "skills": [
+      "Python (pandas, matplotlib)",
+      "Raspberry Pi and sensors",
+      "Dashboards and data visualisation",
+      "Team leadership",
+      "Public speaking"
+    ],
     "filters": {
       "hiddenLines": []
     },
     "order": null,
     "theme": "slate",
-    "layout": "cards",
+    "layout": "cv",
+    "showMap": false,
     "narratives": {},
     "shareLinks": [
       {
@@ -128,7 +142,8 @@
     },
     "order": null,
     "theme": "metro",
-    "layout": "metro",
+    "layout": "profile",
+    "showMap": true,
     "narratives": {},
     "shareLinks": [
       {
@@ -152,7 +167,8 @@
     },
     "order": null,
     "theme": "ivy",
-    "layout": "metro",
+    "layout": "narrative",
+    "showMap": false,
     "narratives": {
       "music": "Music has been my steadiest line: graded piano, jazz band and now Music HL.",
       "arun-musictech": "Music Technology branched off when I started writing music for my own games.",
@@ -182,7 +198,8 @@
     },
     "order": null,
     "theme": "ivy",
-    "layout": "metro",
+    "layout": "letter",
+    "showMap": false,
     "focusLines": [
       "arun-musictech",
       "music",
@@ -198,13 +215,22 @@
     "audience": "employer",
     "targetName": null,
     "tier": "template",
-    "title": "Arun Mehta: projects",
+    "title": "Arun Mehta: projects and experience",
+    "intro": "Musician and developer who builds interactive audio for games and live events.",
+    "skills": [
+      "Unity and C#",
+      "Digital audio workstations",
+      "Live sound",
+      "3D printing and PCB design",
+      "Piano (Grade 7)"
+    ],
     "filters": {
       "hiddenLines": []
     },
     "order": null,
     "theme": "slate",
-    "layout": "cards",
+    "layout": "cv",
+    "showMap": false,
     "narratives": {},
     "shareLinks": []
   },
@@ -220,7 +246,8 @@
     },
     "order": null,
     "theme": "metro",
-    "layout": "metro",
+    "layout": "profile",
+    "showMap": true,
     "narratives": {},
     "shareLinks": [
       {
@@ -244,7 +271,8 @@
     },
     "order": null,
     "theme": "ivy",
-    "layout": "metro",
+    "layout": "narrative",
+    "showMap": false,
     "narratives": {
       "languages": "I arrived in Bangkok in Grade 9 speaking no Thai. Languages became the line everything else hangs from.",
       "service": "Language Buddies is where my languages turned into something useful for other people.",
@@ -265,7 +293,8 @@
     },
     "order": null,
     "theme": "ivy",
-    "layout": "metro",
+    "layout": "letter",
+    "showMap": false,
     "focusLines": [
       "lena-japanese",
       "languages"
@@ -280,13 +309,76 @@
     "audience": "employer",
     "targetName": null,
     "tier": "template",
-    "title": "Lena Fischer: volunteering",
+    "title": "Lena Fischer: volunteering and experience",
+    "intro": "Multilingual volunteer who helps new families settle in, with experience in translation and community art.",
+    "skills": [
+      "German, English, Thai",
+      "Translation",
+      "Peer tutoring",
+      "Mural design",
+      "Workshop leading"
+    ],
     "filters": {
       "hiddenLines": []
     },
     "order": null,
     "theme": "slate",
-    "layout": "cards",
+    "layout": "cv",
+    "showMap": false,
+    "narratives": {},
+    "shareLinks": []
+  },
+  {
+    "id": "pr-05",
+    "studentId": "st-01",
+    "audience": "scholarship",
+    "targetName": null,
+    "tier": "template",
+    "title": "Maya Chen: service and impact",
+    "intro": "Four years of service, from beach cleanups to a STEM club for younger girls, and the data that made each one useful.",
+    "filters": {
+      "hiddenLines": []
+    },
+    "order": null,
+    "theme": "metro",
+    "layout": "impact",
+    "showMap": false,
+    "narratives": {},
+    "shareLinks": []
+  },
+  {
+    "id": "pr-15",
+    "studentId": "st-02",
+    "audience": "scholarship",
+    "targetName": null,
+    "tier": "template",
+    "title": "Arun Mehta: contribution and impact",
+    "intro": "Music and technology used for the school community: concerts, the school play and an arcade for open day.",
+    "filters": {
+      "hiddenLines": []
+    },
+    "order": null,
+    "theme": "metro",
+    "layout": "impact",
+    "showMap": false,
+    "narratives": {},
+    "shareLinks": []
+  },
+  {
+    "id": "pr-25",
+    "studentId": "st-03",
+    "audience": "scholarship",
+    "targetName": null,
+    "tier": "template",
+    "title": "Lena Fischer: service and impact",
+    "intro": "Since arriving in Bangkok without the language, I have helped other new students do the same.",
+    "filters": {
+      "hiddenLines": []
+    },
+    "order": null,
+    "theme": "metro",
+    "layout": "impact",
+    "showMap": false,
     "narratives": {},
     "shareLinks": []
   }

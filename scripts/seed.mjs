@@ -58,7 +58,9 @@ function ev(studentId, id, date, lineIds, type, title, summary, o = {}) {
 }
 const link = (url, caption) => ({ kind: 'link', url, caption });
 const file = (caption) => ({ kind: 'file', url: '#', caption });
-const img = (caption) => ({ kind: 'image', url: '#', caption });
+const IMG = { 'Compost bin site': 'compost-bin', 'Volunteers sorting litter': 'beach-cleanup', Poster: 'sci-fair-poster', 'Sensor on the canteen roof': 'aq-sensor',
+  'Prototype line-up': 'phone-stands', 'On stage': 'piano-stage', 'Arcade cabinet': 'arcade', 'Sketchbook spread': 'sketchbook', 'The bowl': 'bowl', 'Finished mural': 'mural' };
+const img = (caption, name) => ({ kind: 'image', url: `evidence/${name || IMG[caption]}.svg`, caption });
 const grade = (caption) => ({ kind: 'grade', url: null, caption });
 const cert = (caption) => ({ kind: 'certificate', url: '#', caption });
 
@@ -171,6 +173,94 @@ L('ev-219', '2026-12-06', ['lena-japanese'], 'goal', 'JLPT N5', 'Planned: sit th
 L('ev-220', '2027-03-15', ['art'], 'goal', 'Personal Project: bilingual zine', 'Planned: MYP Personal Project.', {});
 L('ev-221', '2027-06-10', ['languages'], 'goal', 'Target: DP Japanese ab initio', 'Planned: choose Japanese for the Diploma.', {});
 
+// ── Extra illustrated evidence (drawn by scripts/illustrations.mjs) ─────
+const EXTRA_IMAGES = {
+  'ev-042': ['aq-dashboard', 'Live dashboard'], 'ev-029': ['aq-dashboard', 'PM2.5 by location'], 'ev-022': ['mangroves', 'Tagged seedlings'],
+  'ev-025': ['stem-club', 'Friday STEM club'], 'ev-033': ['hackathon', 'Results board'], 'ev-109': ['piano-stage', 'Spring concert'],
+  'ev-117': ['rainfall-game', 'In-game storm sequence'], 'ev-125': ['pcb', 'PCB layout'], 'ev-207': ['welcome-pack', 'Welcome pack cover'],
+};
+for (const [id, [name, caption]] of Object.entries(EXTRA_IMAGES)) events.find((e) => e.id === id).evidence.push(img(caption, name));
+
+// ── Full reflections, in the students' own voices ────────────────────────
+const FULL = {
+  'ev-010': `Counting fibres by hand took forever. I had three jars of canal water, a cheap microscope from the science store and a tally sheet, and every session ended with sore eyes and numbers I didn't fully trust.
+
+Halfway through, Mr Okafor asked how I knew I hadn't counted the same fibre twice. I didn't. So I started photographing each slide and marking fibres on the photo instead, which was slower but meant someone else could check me.
+
+What surprised me most wasn't the result (canal B was much worse) but how much of science is bookkeeping. I kept thinking a program could do the counting. I didn't know how to write one yet.`,
+  'ev-012': `Looking back at Grade 9, my projects look unrelated on paper: a composting audit, a science fair, a quiz website. But they were all really about counting things carefully and finding a pattern.
+
+The best part of the composting audit wasn't the bin we eventually got. It was the spreadsheet: six weeks of canteen waste, and the moment the chart showed Mondays were twice as bad as Fridays. I sat with it for an hour trying to work out why (it was the weekend fridge clear-out).
+
+I want next year to have fewer projects and deeper ones. And I want to learn enough code to stop doing the boring parts by hand.`,
+  'ev-018': `Swimming taught me to train on a schedule. Five mornings a week for three years builds a kind of discipline I don't think I would have found anywhere else, and I'm proud of the 2:31.
+
+I stopped because I wanted my evenings for building things, not because I fell out of love with it. That was a hard conversation with my coach and with my parents, who had driven me to 6 a.m. sessions for years.
+
+Ending a line doesn't feel like failing anymore. It feels like choosing. I still swim on Sundays, just without a stopwatch.`,
+  'ev-042': `I started this as an environment project: the canteen felt smoky at lunch and I wanted proof. Building the six sensors was the fun part. The hard part was everything after.
+
+Two sensors drifted. One died for four days when a cleaner unplugged it, and the gap made the dashboard lie. I spent more time cleaning data than soldering: spotting the broken unit from its readings alone, deciding how to fill gaps honestly, checking every unit against the school weather station.
+
+That's when I realised the part I enjoy most isn't the hardware or even the environment question. It's turning messy readings into something someone can trust and act on. Ms Nair said the calibration notes were the most impressive part, and I think she's right. That's why I want to study data.`,
+  'ev-029': `Biology gave me the questions; the sensor project showed me I enjoy the analysis even more. Data Science is where those meet, so I've started treating it as its own line.
+
+This report was the first time I wrote Python that someone else depended on. Forty thousand readings, a lunch-time PM2.5 spike in the canteen, and a recommendation the facilities team actually followed (they moved the extractor fan schedule).
+
+I'm nervous about calling it a "line" when it's only a few months old. But the map shows it clearly: everything I've done since March has run along it.`,
+  'ev-034': `When I joined Beach Guardians in Grade 9 I thought service meant picking up rubbish. It does, but the cleanups that changed anything were the ones where we counted what we found and sent it to the district office.
+
+The STEM club taught me the same lesson from the other side. The girls stayed when they could see their sensor readings change in real time, not when I explained theory.
+
+Every service project I loved ended with a dataset someone could act on. I think that is what I want my degree, and my work after it, to be about.`,
+  'ev-111': `Writing the music for my Pygame game made me want to understand production, not just playing. My piano teacher can tell me why a chord works; she can't tell me why my game music sounded thin through laptop speakers.
+
+The DAW course was two weeks of headphones and frustration. I learned that most of what makes music sound "finished" is invisible: levels, space, removing things rather than adding them.
+
+It's strange to see this branch off my Music line on the map, because it doesn't feel separate to me. But I play differently now. I listen for the room, not just the notes.`,
+  'ev-117': `This project joins three lines and it's the first time all of me was useful at once. Design gave me the player's view: what should a storm feel like, and when should the music get out of the way? Code made the music react to the weather system in real time. Music technology made it sound right.
+
+The hardest bug was musical, not technical: transitions between calm and storm sounded like someone changing the radio station. I rewrote the system three times before it crossfaded on the beat.
+
+Mr Hale asked me which subject this was for. I didn't have an answer, and I think that's the point. I want to keep doing work that doesn't fit in one box.`,
+  'ev-120': `I chose Spanish for the Diploma because my cousins in Madrid speak it, and I want to talk to them without my mum translating. Dropping French felt like quitting something I'd been good at.
+
+But French taught me how to learn a language: flashcards every night, speaking before I felt ready, singing in front of people at Francophonie night. So I'm not starting from zero with Spanish, even if the vocabulary is new.
+
+I'm keeping the DELF certificate on my map. It's a finished line, not a failed one.`,
+  'ev-204': `Not understanding the canteen staff at first was the hardest part. I had moved from Munich in July and spoke no Thai, and ordering lunch became a small daily test I kept failing.
+
+Learning ten Thai phrases a week helped more than anything. Kru Napat gave me a list, and I practised them on the bus. By November I could order, say thank you properly and make the auntie at the noodle stall laugh.
+
+I'm writing this down because I want to remember how it felt. Someone else will arrive next year feeling exactly the same.`,
+  'ev-207': `I knew what it felt like to arrive without the language, so when admissions asked for volunteers to translate the welcome pack into German, I said yes straight away.
+
+It was harder than I expected. Some phrases don't translate, like "uniform shop" or "house points", and I had to explain them rather than translate them. I added a page of the phrases I wished someone had given me.
+
+Two families have already used it. One mum found me at pick-up to say thank you. That moment is the reason this station sits where my Languages and Service lines meet.`,
+  'ev-209': `The drawings got better after day 60, when I stopped drawing what I thought I should and started drawing what was in front of me: my shoes, the bus window, my brother asleep.
+
+The first 59 days weren't wasted, though. They were how I got there. Some days I drew for two minutes because I had a test; I still counted them.
+
+What I learned is that repetition is boring until suddenly it isn't. I think that's true for languages too.`,
+  'ev-210': `The ceramics club moved to Thursdays, which clashed with Language Buddies. I had to choose, and I chose tutoring.
+
+I was sad about it. Clay is the one thing that makes my brain completely quiet, and my wheel-thrown bowl took six weeks of collapsed attempts. But Language Buddies is where I feel most useful, and the new students rely on me being there.
+
+The line ends here on my map, but I still love clay. Maybe it will come back as a branch later.`,
+  'ev-213': `Self-study got serious enough that I wanted a teacher and a test. I'd been learning Japanese from an app and anime subtitles since May, mostly for fun.
+
+Passing the kana test proved to me that this wasn't just a phase. It also helped that learning a third script made Thai feel less scary in hindsight.
+
+I like seeing Japanese branch off Languages on my map. It started as a hobby and now it's going somewhere: I want to take it in the Diploma.`,
+  'ev-218': `I am more patient with my buddies than with myself. When a Grade 6 student mixes up words, I tell them it's normal. When I mix up Thai tones, I get angry.
+
+This term I have two new buddies, one from Korea and one from Brazil. We use a mix of English, gestures and translation apps, and somehow it works.
+
+I'm trying to talk to myself the way I talk to them. That might be the most useful thing tutoring has taught me.`,
+};
+for (const r of reflections) if (FULL[r.eventId]) r.text = FULL[r.eventId];
+
 // ── Cohort sample (advisor grid only), generated deterministically ──────
 let seed = 7;
 const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -201,9 +291,10 @@ for (const [id, name, grade, ls, nRefl] of cohort) {
 
 // ── Presentations (saved lenses) ──────────────────────────────────────
 const presentations = [
-  { id: 'pr-01', studentId: 'st-01', audience: 'general', targetName: null, tier: 'template', title: 'Maya Chen: my journey', filters: { hiddenLines: [] }, order: null, theme: 'metro', layout: 'metro', narratives: {},
+  { id: 'pr-01', studentId: 'st-01', audience: 'general', targetName: null, tier: 'template', title: 'Maya Chen: my journey', filters: { hiddenLines: [] }, order: null, theme: 'metro', layout: 'profile', showMap: true, narratives: {},
+    intro: 'I am a Grade 12 IB student in Bangkok who likes turning local problems into data: canals, classrooms, beaches and air.',
     shareLinks: [{ token: 'tp-g3n2', presentationId: 'pr-01', expiresAt: '2026-11-30', revoked: false, views: 9 }] },
-  { id: 'pr-02', studentId: 'st-01', audience: 'university', targetName: null, tier: 'builder', title: 'Maya Chen: university portfolio', filters: { hiddenLines: [] }, order: ['maya-datasci', 'science', 'computing', 'environment', 'service', 'maya-swim'], theme: 'ivy', layout: 'metro',
+  { id: 'pr-02', studentId: 'st-01', audience: 'university', targetName: null, tier: 'builder', title: 'Maya Chen: university portfolio', intro: 'My map has six lines, but one question runs through all of them: what can careful measurement tell us about the place we live? This page follows how that question grew from a Grade 9 science fair into a plan to study Data Science.', filters: { hiddenLines: [] }, order: ['maya-datasci', 'science', 'computing', 'environment', 'service', 'maya-swim'], theme: 'ivy', layout: 'narrative', showMap: false,
     narratives: {
       'maya-datasci': 'Data Science branched off my Biology line in Grade 11, when an air-quality project showed me I enjoy the analysis more than the collection. Since then I have modelled algae growth for my IA and I am predicting dengue outbreaks from weather data for my Extended Essay.',
       science: 'Biology gave me my questions: microplastics in canals, enzyme kinetics, algae growth. Each project pushed me toward more careful measurement.',
@@ -212,26 +303,30 @@ const presentations = [
       service: 'Beach Guardians and the STEM club taught me that data is only useful when someone can act on it.',
       'maya-swim': 'Four years of competitive swimming taught me to train on a schedule.' },
     shareLinks: [{ token: 'tp-u8k4', presentationId: 'pr-02', expiresAt: '2026-12-15', revoked: false, views: 14 }] },
-  { id: 'pr-03', studentId: 'st-01', audience: 'specific', targetName: 'Data Science', institution: 'Northbridge University (fictional), BSc Data Science', tier: 'builder', title: 'Maya Chen: why Data Science', filters: { hiddenLines: [] }, order: null, theme: 'ivy', layout: 'metro', focusLines: ['maya-datasci', 'computing', 'science'],
+  { id: 'pr-03', studentId: 'st-01', audience: 'specific', targetName: 'Data Science', institution: 'Northbridge University (fictional), BSc Data Science', tier: 'builder', title: 'Maya Chen: why Data Science', filters: { hiddenLines: [] }, order: null, theme: 'ivy', layout: 'letter', showMap: false, focusLines: ['maya-datasci', 'computing', 'science'],
     whyCourse: 'Every line on my map that kept growing ended in a dataset. Data Science is the course that joins the questions I learned to ask in Biology with the tools I taught myself in Computing.',
     narratives: {}, shareLinks: [{ token: 'tp-nb7d', presentationId: 'pr-03', expiresAt: '2027-01-31', revoked: false, views: 3 }] },
-  { id: 'pr-04', studentId: 'st-01', audience: 'employer', targetName: null, tier: 'template', title: 'Maya Chen: projects', filters: { hiddenLines: [] }, order: null, theme: 'slate', layout: 'cards', narratives: {},
+  { id: 'pr-04', studentId: 'st-01', audience: 'employer', targetName: null, tier: 'template', title: 'Maya Chen: projects and experience', intro: 'Student builder with hands-on experience in sensors, Python data analysis and running volunteer teams.', skills: ['Python (pandas, matplotlib)', 'Raspberry Pi and sensors', 'Dashboards and data visualisation', 'Team leadership', 'Public speaking'], filters: { hiddenLines: [] }, order: null, theme: 'slate', layout: 'cv', showMap: false, narratives: {},
     shareLinks: [{ token: 'tp-e1x9', presentationId: 'pr-04', expiresAt: '2026-09-30', revoked: true, views: 2 }] },
 
-  { id: 'pr-11', studentId: 'st-02', audience: 'general', targetName: null, tier: 'template', title: 'Arun Mehta: my journey', filters: { hiddenLines: [] }, order: null, theme: 'metro', layout: 'metro', narratives: {}, shareLinks: [{ token: 'tp-a1g0', presentationId: 'pr-11', expiresAt: '2026-12-01', revoked: false, views: 5 }] },
-  { id: 'pr-12', studentId: 'st-02', audience: 'university', targetName: null, tier: 'builder', title: 'Arun Mehta: university portfolio', filters: { hiddenLines: [] }, order: null, theme: 'ivy', layout: 'metro',
+  { id: 'pr-11', studentId: 'st-02', audience: 'general', targetName: null, tier: 'template', title: 'Arun Mehta: my journey', filters: { hiddenLines: [] }, order: null, theme: 'metro', layout: 'profile', showMap: true, narratives: {}, shareLinks: [{ token: 'tp-a1g0', presentationId: 'pr-11', expiresAt: '2026-12-01', revoked: false, views: 5 }] },
+  { id: 'pr-12', studentId: 'st-02', audience: 'university', targetName: null, tier: 'builder', title: 'Arun Mehta: university portfolio', filters: { hiddenLines: [] }, order: null, theme: 'ivy', layout: 'narrative', showMap: false,
     narratives: { music: 'Music has been my steadiest line: graded piano, jazz band and now Music HL.', 'arun-musictech': 'Music Technology branched off when I started writing music for my own games.', design: 'Design taught me to start from the person using the thing.', computing: 'Code is how I make music react.' },
     shareLinks: [{ token: 'tp-a2u1', presentationId: 'pr-12', expiresAt: '2027-01-15', revoked: false, views: 2 }] },
-  { id: 'pr-13', studentId: 'st-02', audience: 'specific', targetName: 'Music Technology', institution: 'Lakeside Conservatoire (fictional), BMus Music Technology', tier: 'builder', title: 'Arun Mehta: why Music Technology', filters: { hiddenLines: [] }, order: null, theme: 'ivy', layout: 'metro', focusLines: ['arun-musictech', 'music', 'computing'],
+  { id: 'pr-13', studentId: 'st-02', audience: 'specific', targetName: 'Music Technology', institution: 'Lakeside Conservatoire (fictional), BMus Music Technology', tier: 'builder', title: 'Arun Mehta: why Music Technology', filters: { hiddenLines: [] }, order: null, theme: 'ivy', layout: 'letter', showMap: false, focusLines: ['arun-musictech', 'music', 'computing'],
     whyCourse: 'My Music line never stopped, and every time it met Design or Computing something new happened. Music Technology is the course where all three are the point.', narratives: {}, shareLinks: [] },
-  { id: 'pr-14', studentId: 'st-02', audience: 'employer', targetName: null, tier: 'template', title: 'Arun Mehta: projects', filters: { hiddenLines: [] }, order: null, theme: 'slate', layout: 'cards', narratives: {}, shareLinks: [] },
+  { id: 'pr-14', studentId: 'st-02', audience: 'employer', targetName: null, tier: 'template', title: 'Arun Mehta: projects and experience', intro: 'Musician and developer who builds interactive audio for games and live events.', skills: ['Unity and C#', 'Digital audio workstations', 'Live sound', '3D printing and PCB design', 'Piano (Grade 7)'], filters: { hiddenLines: [] }, order: null, theme: 'slate', layout: 'cv', showMap: false, narratives: {}, shareLinks: [] },
 
-  { id: 'pr-21', studentId: 'st-03', audience: 'general', targetName: null, tier: 'template', title: 'Lena Fischer: my journey', filters: { hiddenLines: [] }, order: null, theme: 'metro', layout: 'metro', narratives: {}, shareLinks: [{ token: 'tp-l5g2', presentationId: 'pr-21', expiresAt: '2026-12-20', revoked: false, views: 4 }] },
-  { id: 'pr-22', studentId: 'st-03', audience: 'university', targetName: null, tier: 'template', title: 'Lena Fischer: portfolio', filters: { hiddenLines: [] }, order: null, theme: 'ivy', layout: 'metro',
+  { id: 'pr-21', studentId: 'st-03', audience: 'general', targetName: null, tier: 'template', title: 'Lena Fischer: my journey', filters: { hiddenLines: [] }, order: null, theme: 'metro', layout: 'profile', showMap: true, narratives: {}, shareLinks: [{ token: 'tp-l5g2', presentationId: 'pr-21', expiresAt: '2026-12-20', revoked: false, views: 4 }] },
+  { id: 'pr-22', studentId: 'st-03', audience: 'university', targetName: null, tier: 'template', title: 'Lena Fischer: portfolio', filters: { hiddenLines: [] }, order: null, theme: 'ivy', layout: 'narrative', showMap: false,
     narratives: { languages: 'I arrived in Bangkok in Grade 9 speaking no Thai. Languages became the line everything else hangs from.', service: 'Language Buddies is where my languages turned into something useful for other people.', art: 'Art is where I slow down.' }, shareLinks: [] },
-  { id: 'pr-23', studentId: 'st-03', audience: 'specific', targetName: 'Japanese', institution: 'IB Diploma course choice: Japanese ab initio', tier: 'template', title: 'Lena Fischer: why Japanese', filters: { hiddenLines: [] }, order: null, theme: 'ivy', layout: 'metro', focusLines: ['lena-japanese', 'languages'],
+  { id: 'pr-23', studentId: 'st-03', audience: 'specific', targetName: 'Japanese', institution: 'IB Diploma course choice: Japanese ab initio', tier: 'template', title: 'Lena Fischer: why Japanese', filters: { hiddenLines: [] }, order: null, theme: 'ivy', layout: 'letter', showMap: false, focusLines: ['lena-japanese', 'languages'],
     whyCourse: 'Japanese started as a hobby and became a branch of my Languages line within a year. I want to take it further in the Diploma.', narratives: {}, shareLinks: [] },
-  { id: 'pr-24', studentId: 'st-03', audience: 'employer', targetName: null, tier: 'template', title: 'Lena Fischer: volunteering', filters: { hiddenLines: [] }, order: null, theme: 'slate', layout: 'cards', narratives: {}, shareLinks: [] },
+  { id: 'pr-24', studentId: 'st-03', audience: 'employer', targetName: null, tier: 'template', title: 'Lena Fischer: volunteering and experience', intro: 'Multilingual volunteer who helps new families settle in, with experience in translation and community art.', skills: ['German, English, Thai', 'Translation', 'Peer tutoring', 'Mural design', 'Workshop leading'], filters: { hiddenLines: [] }, order: null, theme: 'slate', layout: 'cv', showMap: false, narratives: {}, shareLinks: [] },
+
+  { id: 'pr-05', studentId: 'st-01', audience: 'scholarship', targetName: null, tier: 'template', title: 'Maya Chen: service and impact', intro: 'Four years of service, from beach cleanups to a STEM club for younger girls, and the data that made each one useful.', filters: { hiddenLines: [] }, order: null, theme: 'metro', layout: 'impact', showMap: false, narratives: {}, shareLinks: [] },
+  { id: 'pr-15', studentId: 'st-02', audience: 'scholarship', targetName: null, tier: 'template', title: 'Arun Mehta: contribution and impact', intro: 'Music and technology used for the school community: concerts, the school play and an arcade for open day.', filters: { hiddenLines: [] }, order: null, theme: 'metro', layout: 'impact', showMap: false, narratives: {}, shareLinks: [] },
+  { id: 'pr-25', studentId: 'st-03', audience: 'scholarship', targetName: null, tier: 'template', title: 'Lena Fischer: service and impact', intro: 'Since arriving in Bangkok without the language, I have helped other new students do the same.', filters: { hiddenLines: [] }, order: null, theme: 'metro', layout: 'impact', showMap: false, narratives: {}, shareLinks: [] },
 ];
 
 // ── Integrations (adapters) and items waiting at the next sync ──────────
@@ -243,14 +338,32 @@ const integrations = [
   { id: 'github', name: 'GitHub', detail: 'Student-linked repositories (opt-in)', lastSynced: '2026-10-25T18:45:00Z', mode: 'Webhook', itemCount: 97 },
   { id: 'exams', name: 'Exam boards', detail: 'Music, language and external exams', lastSynced: '2026-10-01T00:00:00Z', mode: 'Monthly pull', itemCount: 156 },
 ];
+// Items waiting at the next sync. They land in the student's inbox as
+// candidates; the student decides which line (if any) each joins.
+const P = (sourceId, id, studentId, date, lineIds, type, title, summary, ref, verification = 'school-verified') =>
+  ({ sourceId, event: { id, studentId, title, date, lineIds, type, summary, evidence: [], verification, visibility: 'advisor', source: { system: SYSTEM[sourceId], ref } } });
+const SYSTEM = { sis: 'SIS', lms: 'ManageBac', cas: 'CAS log', clubs: 'Clubs & Sports', github: 'GitHub', exams: 'Exam boards' };
 const pending = [
-  { sourceId: 'github', event: { id: 'ev-037', studentId: 'st-01', title: 'Air-quality dashboard v2', date: '2026-10-20', lineIds: ['computing'], type: 'project', summary: 'Pushed v2: alerts when PM2.5 crosses the WHO limit.', evidence: [{ kind: 'link', url: 'https://example.org/aq-v2', caption: 'Release notes' }], verification: 'student-added', visibility: 'advisor', source: { system: 'GitHub', ref: 'repo-aq@v2.0' } } },
-  { sourceId: 'lms', event: { id: 'ev-038', studentId: 'st-01', title: 'EE: research question approved', date: '2026-10-22', lineIds: ['maya-datasci'], type: 'assessment', summary: 'Supervisor approved the Extended Essay research question.', evidence: [], verification: 'school-verified', visibility: 'advisor', source: { system: 'ManageBac', ref: 'ee-maya-rq' } } },
-  { sourceId: 'cas', event: { id: 'ev-039', studentId: 'st-01', title: 'STEM club: 20th session', date: '2026-10-24', lineIds: ['service'], type: 'cas', summary: 'Logged the 20th session of the G6 STEM club.', evidence: [], verification: 'school-verified', visibility: 'advisor', source: { system: 'CAS log', ref: 'cas-stem-20' } } },
-  { sourceId: 'github', event: { id: 'ev-131', studentId: 'st-02', title: 'MIDI controller firmware', date: '2026-10-21', lineIds: ['computing'], type: 'project', summary: 'First firmware release for the 16-pad controller.', evidence: [], verification: 'student-added', visibility: 'advisor', source: { system: 'GitHub', ref: 'repo-midi@v0.1' } } },
-  { sourceId: 'exams', event: { id: 'ev-132', studentId: 'st-02', title: 'Piano Grade 7: Merit', date: '2026-10-18', lineIds: ['music'], type: 'award', summary: 'Graded piano exam result received.', evidence: [], verification: 'school-verified', visibility: 'advisor', source: { system: 'Exam boards', ref: 'pno-7' } } },
-  { sourceId: 'cas', event: { id: 'ev-222', studentId: 'st-03', title: 'Language Buddies: 30 hours', date: '2026-10-23', lineIds: ['service'], type: 'service', summary: 'Passed 30 logged hours of peer support.', evidence: [], verification: 'school-verified', visibility: 'advisor', source: { system: 'CAS log', ref: 'svc-lb-30' } } },
-  { sourceId: 'lms', event: { id: 'ev-223', studentId: 'st-03', title: 'Japanese: first quiz', date: '2026-10-21', lineIds: ['lena-japanese'], type: 'assessment', summary: 'Vocabulary quiz, unit 2.', evidence: [], verification: 'school-verified', visibility: 'advisor', source: { system: 'ManageBac', ref: 'task-jp-2' } } },
+  P('github', 'ev-037', 'st-01', '2026-10-20', ['computing'], 'project', 'Air-quality dashboard v2', 'Pushed v2: alerts when PM2.5 crosses the WHO limit.', 'repo-aq@v2.0', 'student-added'),
+  P('github', 'ev-040', 'st-01', '2026-10-12', ['computing'], 'project', 'Forked a weather-API library', 'Forked a library to read the Thai Meteorological Department feed.', 'fork-tmd-api', 'student-added'),
+  P('lms', 'ev-038', 'st-01', '2026-10-22', ['maya-datasci'], 'assessment', 'EE: research question approved', 'Supervisor approved the Extended Essay research question.', 'ee-maya-rq'),
+  P('lms', 'ev-041', 'st-01', '2026-10-16', ['computing'], 'assessment', 'CS IA: proposal submitted', 'Proposal for a flood-alert app for the school bus routes.', 'task-cs-ia-1'),
+  P('cas', 'ev-039', 'st-01', '2026-10-24', ['service'], 'cas', 'STEM club: 20th session', 'Logged the 20th session of the G6 STEM club.', 'cas-stem-20'),
+  P('sis', 'ev-043', 'st-01', '2026-10-25', ['science'], 'assessment', 'Term 1 report: Biology HL', 'Term 1 report published: predicted 7.', 'rpt-t1-bio'),
+  P('sis', 'ev-044', 'st-01', '2026-10-25', [], 'award', 'Attendance: 100% in Term 1', 'Full attendance recorded for Term 1.', 'att-t1'),
+  P('clubs', 'ev-045', 'st-01', '2026-10-08', [], 'club', 'Joined Model UN', 'Added to the Model UN roster for the November conference.', 'club-mun'),
+  P('exams', 'ev-046', 'st-01', '2026-10-05', [], 'award', 'IELTS Academic: 8.0', 'External English test result received.', 'ielts-8'),
+  P('github', 'ev-131', 'st-02', '2026-10-21', ['computing'], 'project', 'MIDI controller firmware', 'First firmware release for the 16-pad controller.', 'repo-midi@v0.1', 'student-added'),
+  P('exams', 'ev-132', 'st-02', '2026-10-18', ['music'], 'award', 'Piano Grade 7: Merit', 'Graded piano exam result received.', 'pno-7'),
+  P('lms', 'ev-133', 'st-02', '2026-10-19', ['music'], 'assessment', 'Music HL: listening paper', 'First practice listening paper.', 'task-mus-l1'),
+  P('cas', 'ev-134', 'st-02', '2026-10-23', ['arun-musictech'], 'cas', 'Sound desk for G6 assembly', 'Ran sound for the Grade 6 assembly.', 'cas-sound-1'),
+  P('sis', 'ev-135', 'st-02', '2026-10-25', ['languages'], 'assessment', 'Term 1 report: Spanish ab initio', 'Term 1 report published.', 'rpt-t1-sp'),
+  P('clubs', 'ev-136', 'st-02', '2026-10-09', ['music'], 'club', 'Jazz band: new season', 'Re-registered for jazz band, now as band captain.', 'club-jazz-26'),
+  P('cas', 'ev-222', 'st-03', '2026-10-23', ['service'], 'service', 'Language Buddies: 30 hours', 'Passed 30 logged hours of peer support.', 'svc-lb-30'),
+  P('lms', 'ev-223', 'st-03', '2026-10-21', ['lena-japanese'], 'assessment', 'Japanese: first quiz', 'Vocabulary quiz, unit 2.', 'task-jp-2'),
+  P('clubs', 'ev-224', 'st-03', '2026-10-11', ['art'], 'club', 'Art club: exhibition helper', 'Helped hang the Grade 12 art exhibition.', 'club-art-ex'),
+  P('sis', 'ev-225', 'st-03', '2026-10-25', ['languages'], 'assessment', 'Term 1 report: Thai B', 'Term 1 report published.', 'rpt-t1-th'),
+  P('exams', 'ev-226', 'st-03', '2026-10-15', ['lena-japanese'], 'goal', 'JLPT N5: registration confirmed', 'Registered for the December JLPT sitting.', 'jlpt-reg'),
 ];
 
 out('lines.json', lines); out('students.json', students); out('teachers.json', teachers); out('events.json', events);

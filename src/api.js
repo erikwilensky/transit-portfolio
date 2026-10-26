@@ -15,6 +15,8 @@ export const TODAY = '2026-10-26';
 const store = {
   events: [...eventsData],
   pending: [...integrationsData.pending],
+  inbox: [],      // synced, waiting for the student's decision
+  dismissed: [],  // skipped by the student (can be undone)
   integrations: integrationsData.integrations.map((i) => ({ ...i })),
 };
 const listeners = new Set();
@@ -63,7 +65,9 @@ export const LENSES = {
   university: { label: 'University', blurb: 'Academic depth, independent projects and reflection. Minor clubs and routine classes collapse.' },
   specific: { label: 'Specific university', blurb: 'Lines that match the target course in full; everything else becomes thin context.' },
   employer: { label: 'Employer', blurb: 'Projects, skills and responsibility. Grades are hidden by default.' },
+  scholarship: { label: 'Scholarship', blurb: 'Service, impact and leadership as a timeline. Unrelated activities drop out.' },
 };
+const IMPACT_TYPES = ['service', 'cas', 'award', 'competition'];
 
 export function applyLens(map, pres, { hiddenLines = [] } = {}) {
   const lens = pres?.audience || 'general';
@@ -71,6 +75,9 @@ export function applyLens(map, pres, { hiddenLines = [] } = {}) {
   for (const l of map.lines) lineState[l.id] = hiddenLines.includes(l.id) ? 'hidden' : 'full';
   if (lens === 'university') {
     for (const l of map.lines) if (lineState[l.id] === 'full' && (l.parentLineId === 'sport' || l.id === 'sport')) lineState[l.id] = 'thin';
+  }
+  if (lens === 'scholarship') {
+    for (const l of map.lines) if (lineState[l.id] === 'full' && l.id !== 'service' && l.id !== 'environment') lineState[l.id] = 'thin';
   }
   if (lens === 'specific') {
     const focus = pres.focusLines || [];
@@ -82,6 +89,7 @@ export function applyLens(map, pres, { hiddenLines = [] } = {}) {
     const isInterchange = e.lineIds.filter((id) => lineState[id] && lineState[id] !== 'hidden').length > 1;
     if (lens === 'university' && (e.type === 'club' || e.type === 'class') && !isInterchange && !e.reflections?.length) continue;
     if (lens === 'employer' && (e.type === 'assessment' || e.type === 'class')) continue;
+    if (lens === 'scholarship' && !(IMPACT_TYPES.includes(e.type) || e.lineIds.includes('service') || e.endorsements?.length)) continue;
     visible.add(e.id);
   }
   let order = pres?.order || map.lines.map((l) => l.id);
@@ -111,22 +119,50 @@ export const getIntegrations = (studentId) => store.integrations.map((i) => ({
   ...i, pendingForStudent: store.pending.filter((p) => p.sourceId === i.id && p.event.studentId === studentId).length,
 }));
 
+// Sync pulls new items into the student's inbox. Nothing reaches the map
+// until the student accepts it and chooses its line(s).
 export function sync(sourceIds, studentId) {
   const now = new Date().toISOString();
-  const added = [];
+  const arrived = [];
   store.pending = store.pending.filter((p) => {
-    if (sourceIds.includes(p.sourceId) && p.event.studentId === studentId) { added.push(p.event); return false; }
+    if (sourceIds.includes(p.sourceId) && p.event.studentId === studentId) { arrived.push({ ...p.event, sourceId: p.sourceId, suggestedLineIds: p.event.lineIds }); return false; }
     return true;
   });
-  store.events.push(...added);
+  store.inbox.push(...arrived);
   for (const i of store.integrations) if (sourceIds.includes(i.id)) {
     i.lastSynced = now;
-    i.itemCount += added.filter((e) => e.source.system === sourceSystem(i.id)).length;
+    i.itemCount += arrived.filter((e) => e.sourceId === i.id).length;
   }
+  emit();
+  return arrived;
+}
+export const getInbox = (studentId) => store.inbox.filter((e) => e.studentId === studentId).sort((a, b) => b.date.localeCompare(a.date));
+export const getDismissed = (studentId) => store.dismissed.filter((e) => e.studentId === studentId);
+
+export function acceptCandidate(id, lineIds, visibility = 'advisor') {
+  const c = store.inbox.find((e) => e.id === id);
+  if (!c || !lineIds.length) return null;
+  store.inbox = store.inbox.filter((e) => e.id !== id);
+  const { sourceId, suggestedLineIds, ...event } = c;
+  const added = { ...event, lineIds, visibility };
+  store.events.push(added);
   emit();
   return added;
 }
-const sourceSystem = (id) => ({ sis: 'SIS', lms: 'ManageBac', cas: 'CAS log', clubs: 'Clubs & Sports', github: 'GitHub', exams: 'Exam boards' })[id];
+export function dismissCandidate(id) {
+  const c = store.inbox.find((e) => e.id === id);
+  if (!c) return;
+  store.inbox = store.inbox.filter((e) => e.id !== id);
+  store.dismissed.push(c);
+  emit();
+}
+export function restoreCandidate(id) {
+  const c = store.dismissed.find((e) => e.id === id);
+  if (!c) return;
+  store.dismissed = store.dismissed.filter((e) => e.id !== id);
+  store.inbox.push(c);
+  emit();
+}
 
 // ── Advisor ───────────────────────────────────────────────────────────
 export function getCohort(advisorId) {

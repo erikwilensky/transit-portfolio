@@ -58,18 +58,19 @@ export default function App() {
     updateDraft(pres.id, { shareLinks: [...pres.shareLinks, link] });
     toast(`Share link created: /s/${token}, expires 31 Dec 2026`);
   };
-  const onSynced = (added) => {
-    setNewIds(new Set(added.map((e) => e.id)));
-    toast(added.length ? `${added.length} new station${added.length > 1 ? 's' : ''}: ${added.map((e) => e.title).join(', ')}` : 'Already up to date');
+  const onAdded = (e) => {
+    setNewIds(new Set([e.id]));
+    toast(`Added “${e.title}” to the map`);
     setTimeout(() => setNewIds(new Set()), 2600);
   };
 
   const tour = [
     ['Open Maya’s interchange', 'Air-quality sensor network: evidence and endorsement', () => { switchStudent('st-01'); setHiddenLines({ ...hiddenLines, 'st-01': [] }); go('map'); setTimeout(() => setSelected('ev-042'), 60); }],
-    ['Lens: General → University', 'Minor clubs and routine classes collapse', () => { switchStudent('st-01'); setTier('template'); setAudience('general'); go('studio'); setTimeout(() => setAudience('university'), 900); }],
-    ['Lens: Specific university', '“Data Science”: other lines thin out', () => { switchStudent('st-01'); setTier('builder'); go('studio'); setAudience('specific'); }],
+    ['Lens: General → University', 'Same data, new format: profile becomes a narrative', () => { switchStudent('st-01'); setTier('template'); setAudience('general'); go('studio'); setTimeout(() => setAudience('university'), 1200); }],
+    ['Lens: Specific university', '“Why Data Science” statement with focused evidence', () => { switchStudent('st-01'); setTier('builder'); go('studio'); setAudience('specific'); }],
+    ['Lens: Employer and Scholarship', 'A CV, then an impact timeline', () => { switchStudent('st-01'); setTier('template'); go('studio'); setAudience('employer'); }],
     ['Tier: Code', 'The JSON behind the same view', () => { switchStudent('st-01'); go('studio'); setTier('code'); }],
-    ['Integrations: Sync', 'A new station slides onto Computing', () => { switchStudent('st-01'); go('integrations'); }],
+    ['Integrations: Sync and choose', 'Items land in an inbox; add one to Computing', () => { switchStudent('st-01'); go('integrations'); }],
   ];
 
   const student = map.student;
@@ -105,7 +106,7 @@ export default function App() {
             <button className="icon-btn tour-btn" onClick={() => setTourOpen(!tourOpen)} aria-expanded={tourOpen}>Pitch tour</button>
             {tourOpen && (
               <div className="tour" role="menu">
-                <div className="tour-title">Four-minute pitch</div>
+                <div className="tour-title">Five-minute pitch</div>
                 {tour.map(([t, sub, fn], i) => (
                   <button key={i} role="menuitem" onClick={() => { fn(); setTourOpen(false); }}><span className="n">{i + 1}</span><span><b>{t}</b><small>{sub}</small></span></button>
                 ))}
@@ -148,7 +149,7 @@ export default function App() {
         )}
         {route === 'studio' && <Studio key={studentId} map={publicMap} drafts={myDrafts} audience={audience} setAudience={setAudience} tier={tier} setTier={setTier} updateDraft={updateDraft} onShare={share} toast={toast} />}
         {route === 'shared' && <SharedView key={studentId} publicMap={publicMap} drafts={myDrafts} links={links} />}
-        {route === 'integrations' && <IntegrationsPanel map={map} lens={fullLens} newIds={newIds} onSynced={onSynced} version={version} />}
+        {route === 'integrations' && <IntegrationsPanel map={map} lens={fullLens} newIds={newIds} onAdded={onAdded} toast={toast} version={version} />}
         {route === 'advisor' && <AdvisorGrid advisorId="t-07" version={version} toast={toast} onOpen={(id) => { switchStudent(id); go('map'); }} />}
       </main>
       <div className={`toast${toastMsg ? ' show' : ''}`} role="status" aria-live="polite">{toastMsg}</div>

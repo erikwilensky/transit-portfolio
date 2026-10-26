@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" width="640" height="420"><rect width="640" height="420" fill="#e6f2dc"/><rect y="300" width="640" height="120" fill="#7cb46b"/>
+    <rect x="230" y="160" width="180" height="150" rx="10" fill="#2E9E4F"/><rect x="220" y="145" width="200" height="26" rx="8" fill="#22803e"/>
+    <path d="M300 220 l20 -26 l20 26 h-12 v26 h-16 v-26z" fill="#fff"/><text x="320" y="285" text-anchor="middle" font-family="Helvetica,Arial" font-size="20" font-weight="700" fill="#fff">COMPOST</text>
+    <ellipse cx="120" cy="320" rx="20" ry="12" fill="#F2A100"/><ellipse cx="480" cy="330" rx="20" ry="12" fill="#E2343C"/><ellipse cx="160" cy="360" rx="20" ry="12" fill="#8A5A44"/><ellipse cx="520" cy="370" rx="20" ry="12" fill="#F2A100"/></svg>

@@ -27,11 +27,12 @@ export default function StationPanel({ event, map, onClose, readOnly = false }) 
             <section>
               <h3>Evidence</h3>
               <ul className="evidence">
-                {event.evidence.map((ev, i) => (
+                {event.evidence.filter((ev) => ev.kind === 'image').map((ev, i) => (
+                  <li key={`img-${i}`} className="ev-image"><img src={ev.url} alt={ev.caption} loading="lazy" /><span><b>{ev.caption}</b><small>image</small></span></li>
+                ))}
+                {event.evidence.filter((ev) => ev.kind !== 'image').map((ev, i) => (
                   <li key={i}>
-                    {ev.kind === 'image'
-                      ? <span className="thumb" aria-hidden="true"><svg viewBox="0 0 40 28"><rect width="40" height="28" rx="3" /><path d="M4 24l10-11 7 7 5-4 10 8z" /><circle cx="30" cy="8" r="3" /></svg></span>
-                      : <span className="ev-icon" aria-hidden="true">{KIND_ICON[ev.kind]}</span>}
+                    <span className="ev-icon" aria-hidden="true">{KIND_ICON[ev.kind]}</span>
                     <span><b>{ev.caption}</b><small>{ev.kind}</small></span>
                   </li>
                 ))}
@@ -51,7 +52,7 @@ export default function StationPanel({ event, map, onClose, readOnly = false }) 
             <section key={r.id} className="reflection">
               <h3>Reflection</h3>
               <div className="prompt">Signal: {r.prompt}</div>
-              <p>{r.text}</p>
+              {r.text.split('\n\n').map((para, i) => <p key={i}>{para}</p>)}
             </section>
           ))}
 
