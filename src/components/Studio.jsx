@@ -11,6 +11,7 @@ import CustomBuilder, { useDesignHistory } from '../custom/CustomBuilder.jsx';
 import { defaultDesign } from '../custom/design.js';
 import { CommentStrip } from './DraftComments.jsx';
 import LensCompare from './LensCompare.jsx';
+import { draftNarrative } from './drafts.js';
 
 export default function Studio({ map, drafts, audience, setAudience, tier, setTier, updateDraft, onShare, toast }) {
   const pres = drafts.find((p) => p.audience === audience) || drafts[0];
@@ -18,6 +19,7 @@ export default function Studio({ map, drafts, audience, setAudience, tier, setTi
   const [selected, setSelected] = useState(null);
   const [collapsed, setCollapsed] = useState(false);
   const [compare, setCompare] = useState(false);
+  const [undoText, setUndoText] = useState({}); // N10: what a line said before the last draft
   const first = map.student.name.split(' ')[0];
   const event = map.events.find((e) => e.id === selected && lens.visible.has(e.id));
   const specific = drafts.find((p) => p.audience === 'specific');
@@ -103,8 +105,14 @@ export default function Studio({ map, drafts, audience, setAudience, tier, setTi
                         <button onClick={() => move(id, 1)} disabled={i === lens.order.length - 1} aria-label={`Move ${l.name} down`}>↓</button>
                         <button onClick={() => toggleLine(id)} aria-label={hidden ? `Show ${l.name}` : `Hide ${l.name}`}>{hidden ? 'Show' : 'Hide'}</button>
                       </div>
-                      {!hidden && <textarea rows={2} placeholder={`What does your ${l.name} line say about you?`} value={pres.narratives?.[id] || ''}
+                      {!hidden && <textarea rows={pres.narratives?.[id]?.length > 140 ? 5 : 2} placeholder={`What does your ${l.name} line say about you?`} value={pres.narratives?.[id] || ''}
                         onChange={(e) => set({ narratives: { ...pres.narratives, [id]: e.target.value } })} />}
+                      {!hidden && (
+                        <div className="bl-draft">
+                          <button className="linkish" onClick={() => { const d = draftNarrative(map, lens, id, pres.audience); if (!d) return toast(`No ${l.name} stations in this presentation yet`); setUndoText({ ...undoText, [id]: pres.narratives?.[id] || '' }); set({ narratives: { ...pres.narratives, [id]: d } }); }}>{pres.narratives?.[id] ? 'Replace with a draft from my stations' : 'Draft from my stations'}</button>
+                          {id in undoText && <button className="linkish" onClick={() => { set({ narratives: { ...pres.narratives, [id]: undoText[id] } }); const u = { ...undoText }; delete u[id]; setUndoText(u); }}>Undo</button>}
+                        </div>
+                      )}
                     </li>
                   );
                 })}
