@@ -87,6 +87,8 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // A new station in the URL (from a notification or the launcher) opens even when the map is already showing.
+  useEffect(() => { if (focusId?.startsWith('ev-')) { setSelected(focusId); setView('map'); } }, [focusId]);
   const markNew = (id) => { setNewIds(new Set([id])); setTimeout(() => setNewIds(new Set()), 8000); };
   const event = shown.events.find((e) => e.id === selected);
 

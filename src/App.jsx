@@ -38,6 +38,7 @@ import Pilot from './screens/Pilot.jsx';
 import AuditLog from './screens/AuditLog.jsx';
 import Logo from './components/Logo.jsx';
 import NavBar from './components/NavBar.jsx';
+import Launcher from './components/Launcher.jsx';
 import ShareDialog from './components/ShareDialog.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { VerifyProvider } from './components/VerifyModal.jsx';
@@ -68,6 +69,16 @@ export default function App() {
   const [menu, setMenu] = useState(null); // 'persona' | 'bell' | 'tour'
   const [tourState, setTourState] = useState(null); // { tour, step }
   const [auto, setAuto] = useState(false);
+  const [launch, setLaunch] = useState(false);
+  // F16: / or Ctrl+K opens the launcher from anywhere (except while typing).
+  useEffect(() => {
+    const k = (e) => {
+      const typing = e.target.closest?.('input, textarea, select, [contenteditable]');
+      if ((e.key === 'k' || e.key === 'K') && (e.ctrlKey || e.metaKey)) { e.preventDefault(); setLaunch((v) => !v); }
+      else if (e.key === '/' && !typing && !e.ctrlKey && !e.metaKey) { e.preventDefault(); setLaunch(true); }
+    };
+    addEventListener('keydown', k); return () => removeEventListener('keydown', k);
+  }, []);
 
   useEffect(() => subscribe(() => setVersion((v) => v + 1)), []);
   const fromOtherTab = useRef(false);
@@ -126,6 +137,7 @@ export default function App() {
           <a className="brand" href={`#/${persona.id}`} aria-label="NIST Transit Portfolio home"><Logo className="brand-logo" /><span className="brand-name"><b>Transit</b> Portfolio</span></a>
           <NavBar items={nav} hrefOf={(id) => `#/${persona.id}/${id}`} isOn={(id) => route.screen === id || (id === 'advisory' && route.screen === 'student')} onGo={(id) => go(persona.id, id)} />
           <div className="nav-right">
+            <button className="icon-btn nav-search" onClick={() => setLaunch(true)} aria-label="Jump to anything (Ctrl+K)" title="Jump to anything (/ or Ctrl+K)"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" strokeWidth="1.8" /><path d="M11 11l3.5 3.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg></button>
             <div className="menu-wrap">
               <button className="persona-btn" onClick={() => setMenu(menu === 'persona' ? null : 'persona')} aria-expanded={menu === 'persona'} aria-haspopup="menu">
                 <span className="av" style={{ background: persona.colour }}>{persona.initials}</span>
@@ -228,6 +240,7 @@ export default function App() {
             <button onClick={() => { setAuto(false); setTourState(null); }} aria-label="Close tour">×</button>
           </div>
         )}
+        {launch && <Launcher onGo={go} onClose={() => setLaunch(false)} />}
         <div className={`toast${toastMsg ? ' show' : ''}`} role="status" aria-live="polite">{toastMsg?.m}{toastMsg?.undo && <button className="toast-undo" onClick={() => { restore(toastMsg.undo); setToastMsg(null); }}>Undo</button>}</div>
       </div>
     </VerifyProvider>
