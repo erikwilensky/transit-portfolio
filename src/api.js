@@ -436,6 +436,9 @@ export function getActivity(studentId) {
   return [...live, ...hist.filter((h) => h.ts.slice(0, 10) <= TODAY).sort((a, b) => b.ts.localeCompare(a.ts))];
 }
 export const SHARED_LABEL = { 'tp-nb7d': 'Northbridge University admissions', 'tp-u8k4': 'University applications', 'tp-c7m1': 'Anyone with the link', 'tp-g3n2': 'Family and friends', 'tp-e1x9': 'Summer internship' };
+// Links that ask the reader for an email before opening (the student turns this on per link).
+export const EMAIL_GATED = ['tp-u8k4'];
+export const isGated = (l) => l.emailGate ?? EMAIL_GATED.includes(l.token);
 export function logLink(studentId, text) { log(studentId, getStudent(studentId).name, 'link', text); emit(); }
 
 // Graduation export: the full record as the student sees it.
@@ -475,3 +478,84 @@ export function decideBranch(id, ok, mergeInto) {
   }
   emit();
 }
+
+// ── Wave 3 demo additions: a few more computing students, and sub-line names waiting for the coordinator ─
+const SEED_LINES = [
+  { id: 'st-04-robotics', name: 'Robotics', parentLineId: 'computing', studentId: 'st-04', requestedOn: '2026-10-05' },
+  { id: 'st-08-marine-biology', name: 'Marine Biology', parentLineId: 'science', studentId: 'st-08', requestedOn: '2026-09-21' },
+  { id: 'st-05-calligraphy', name: 'arabic calligraphy', parentLineId: 'art', studentId: 'st-05', requestedOn: '2026-10-18' },
+];
+const SEED_EVENTS = [
+  ['ev-901', 'st-04', 'Started MYP Computer Science', '2025-08-21', ['computing'], 'class', 'school-verified', 'SIS', 'enrol-myp-cs', 'Enrolled in Year 11 Computer Science with Ms Nair.'],
+  ['ev-902', 'st-04', 'Robot arm for the physics lab', '2026-05-12', ['computing', 'science'], 'project', 'teacher-endorsed', 'ManageBac', 'task-9120', 'A three-joint arm that pours reagents for the Year 10 titration practical, programmed in Python.'],
+  ['ev-903', 'st-04', 'VEX robotics regional: 3rd', '2026-10-04', ['computing', 'st-04-robotics'], 'competition', 'school-verified', 'Clubs & Sports', 'vex-2610', 'Drove and coded the team robot at the Bangkok regional.'],
+  ['ev-904', 'st-08', 'Started MYP Computer Science', '2025-08-21', ['computing'], 'class', 'school-verified', 'SIS', 'enrol-myp-cs', 'Enrolled in Year 11 Computer Science with Ms Nair.'],
+  ['ev-905', 'st-08', 'Reef temperature logger', '2026-02-20', ['computing', 'environment'], 'project', 'teacher-endorsed', 'ManageBac', 'task-8840', 'A waterproof logger for the Koh Tao reef trip, with a dashboard the marine club still uses.'],
+  ['ev-906', 'st-08', 'Canteen carbon calculator', '2026-06-02', ['computing', 'service'], 'project', 'student-added', 'Manual entry', 'self', 'A web form that estimates the carbon cost of each canteen menu.'],
+  ['ev-907', 'st-08', 'Coral spawning survey', '2026-09-20', ['science', 'st-08-marine-biology'], 'project', 'school-verified', 'CAS log', 'cas-coral', 'Night dives counting spawning colonies with the marine club.'],
+  ['ev-908', 'st-05', 'Calligraphy workshop series', '2026-10-17', ['art', 'st-05-calligraphy'], 'club', 'student-added', 'Manual entry', 'self', 'Six Saturday workshops in Arabic calligraphy, ending with a small exhibition.'],
+  ['ev-909', 'st-07', 'Started IB Computer Science HL', '2025-08-21', ['computing'], 'class', 'school-verified', 'SIS', 'enrol-cshl', 'Enrolled in IB Computer Science HL with Ms Nair.'],
+];
+for (const [id, studentId, title, date, lineIds, type, verification, system, ref, about] of SEED_EVENTS) {
+  store.events.push({ id, studentId, title, date, lineIds, type, summary: about, about, evidence: [], verification, visibility: 'publishable', source: { system, ref } });
+  const s = getStudent(studentId); for (const lid of lineIds) if (!SEED_LINES.some((l) => l.id === lid) && !s.laneOrder.includes(lid)) s.laneOrder.push(lid);
+  if (verification === 'teacher-endorsed') store.endorsements.push({ id: `en-${id}`, eventId: id, teacherId: 't-01', note: 'Independent work, well beyond the syllabus.', date });
+}
+for (const l of SEED_LINES) {
+  store.lines.push({ ...l, colour: BRANCH_TINT[l.parentLineId], status: 'active', approval: 'pending' });
+  const s = getStudent(l.studentId); const at = s.laneOrder.indexOf(l.parentLineId);
+  s.laneOrder.splice(at < 0 ? s.laneOrder.length : at + 1, 0, l.id);
+}
+
+// ── Coordinator: school line list ─────────────────────────────────────
+export function addSchoolLine(name, colour) {
+  const id = slug(name);
+  if (!id || lineById(id)) return null;
+  store.lines.push({ id, name, colour, status: 'active' });
+  emit();
+  return lineById(id);
+}
+export const lineUse = (id) => {
+  const evs = store.events.filter((e) => e.lineIds.some((x) => rootLine(x) === id));
+  return { stations: evs.length, students: new Set(evs.map((e) => e.studentId)).size, subLines: store.lines.filter((l) => l.parentLineId === id).length };
+};
+
+// ── Coordinator: DP core milestones (from the LMS, mock) ──────────────
+const DP_PLAN = {
+  12: [['ee-prop', 'EE', 'Proposal', '2025-11-14'], ['tok-ex', 'TOK', 'Exhibition', '2026-02-27'], ['ee-draft', 'EE', 'First draft', '2026-03-20'], ['ia-1', 'IA', 'First IA draft', '2026-05-22'], ['ee-viva', 'EE', 'Viva voce', '2026-09-25'], ['tok-draft', 'TOK', 'Essay draft', '2026-10-16'], ['ee-final', 'EE', 'Final submission', '2027-01-15'], ['tok-final', 'TOK', 'Essay final', '2027-02-12']],
+  11: [['tok-intro', 'TOK', 'Knowledge questions', '2026-10-09'], ['ee-topic', 'EE', 'Topic and supervisor', '2026-10-23'], ['ee-prop', 'EE', 'Proposal', '2026-11-13'], ['tok-ex', 'TOK', 'Exhibition', '2027-02-26']],
+};
+const DP_SUPERVISOR = { 'st-01': 't-02', 'st-02': 't-03', 'st-04': 't-01', 'st-05': 't-05', 'st-07': 't-01', 'st-08': 't-02' };
+const DP_TOPIC = { 'st-01': 'Biology: dengue and weather', 'st-02': 'Music: rhythm in game audio', 'st-04': 'CS: path planning', 'st-05': 'Language A: exile poetry', 'st-07': 'CS: sorting on GPUs', 'st-08': 'Biology: reef bleaching' };
+// Who handed in what, and when. Missing means not handed in yet.
+const DP_DONE = {
+  'st-01': { 'ee-prop': '2025-11-10', 'tok-ex': '2026-02-25', 'ee-draft': '2026-03-18', 'ia-1': '2026-04-20', 'ee-viva': '2026-09-15', 'tok-draft': '2026-10-15' },
+  'st-05': { 'ee-prop': '2025-11-14', 'tok-ex': '2026-02-27', 'ee-draft': '2026-04-02', 'ia-1': '2026-05-20', 'ee-viva': '2026-09-24' },
+  'st-07': { 'ee-prop': '2025-11-21', 'tok-ex': '2026-02-26', 'ee-draft': '2026-03-20', 'ia-1': '2026-06-05' },
+  'st-02': { 'tok-intro': '2026-10-08', 'ee-topic': '2026-10-20' },
+  'st-04': { 'tok-intro': '2026-10-09' },
+  'st-08': { 'tok-intro': '2026-10-06', 'ee-topic': '2026-10-22' },
+};
+const DP_EVENT = { 'st-01': { 'ia-1': 'ev-030', 'ee-viva': 'ev-032', 'ee-final': 'ev-035' } };
+export function getDpCore() {
+  return store.students.filter((s) => s.programme === 'IB Diploma' && DP_PLAN[s.grade]).map((s) => ({
+    student: s, supervisor: teacherById[DP_SUPERVISOR[s.id]], topic: DP_TOPIC[s.id],
+    milestones: DP_PLAN[s.grade].map(([id, part, name, due]) => {
+      const done = (store.dpDone?.[s.id]?.[id]) || DP_DONE[s.id]?.[id];
+      const status = done ? (done > due ? 'done-late' : 'done') : due < TODAY ? 'late' : 'upcoming';
+      return { id, part, name, due, done, status, eventId: DP_EVENT[s.id]?.[id], nudged: store.dpNudges?.[`${s.id}:${id}`] };
+    }),
+  })).sort((a, b) => b.student.grade - a.student.grade || a.student.name.localeCompare(b.student.name));
+}
+export function nudgeMilestone(studentId, milestone) {
+  (store.dpNudges ||= {})[`${studentId}:${milestone.id}`] = TODAY;
+  const s = getStudent(studentId);
+  notify(PERSONA_OF_STUDENT[studentId], `Ms Brandt: your ${milestone.part} ${milestone.name.toLowerCase()} was due ${milestone.due}. Can you upload it this week?`, { persona: PERSONA_OF_STUDENT[studentId], screen: 'map' });
+  log(studentId, 'Ms Clara Brandt', 'prompt', `Reminded ${s.name.split(' ')[0]} about the ${milestone.part} ${milestone.name.toLowerCase()}`);
+  emit();
+}
+export function markMilestone(studentId, id) { ((store.dpDone ||= {})[studentId] ||= {})[id] = TODAY; emit(); }
+
+// ── Counsellor: activities list drafts (Common App style, 10 slots) ────
+export const getActivityList = (studentId) => store.activityLists?.[studentId];
+export function saveActivityList(studentId, list) { (store.activityLists ||= {})[studentId] = list; emit(); }

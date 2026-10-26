@@ -25,6 +25,13 @@ import Applications from './screens/Applications.jsx';
 import SignalBoard from './screens/SignalBoard.jsx';
 import SchoolLine from './screens/SchoolLine.jsx';
 import SchoolMetro from './screens/SchoolMetro.jsx';
+import Crosslinks from './screens/Crosslinks.jsx';
+import Depot from './screens/Depot.jsx';
+import ActivitiesList from './screens/ActivitiesList.jsx';
+import CohortSearch from './screens/CohortSearch.jsx';
+import DpCore from './screens/DpCore.jsx';
+import Governance from './screens/Governance.jsx';
+import Rollout from './screens/Rollout.jsx';
 import Logo from './components/Logo.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { VerifyProvider } from './components/VerifyModal.jsx';
@@ -174,6 +181,13 @@ export default function App() {
           {persona.kind === 'advisor' && route.screen === 'signals' && <SignalBoard {...ctx} />}
           {persona.kind === 'coordinator' && route.screen === 'schoolline' && <SchoolLine {...ctx} />}
           {persona.kind === 'leadership' && route.screen === 'schoolmetro' && <SchoolMetro {...ctx} />}
+          {persona.kind === 'teacher' && route.screen === 'crosslinks' && <Crosslinks {...ctx} />}
+          {persona.kind === 'teacher' && route.screen === 'depot' && <Depot {...ctx} />}
+          {persona.kind === 'counsellor' && route.screen === 'activities' && <ActivitiesList {...ctx} />}
+          {persona.kind === 'counsellor' && route.screen === 'search' && <CohortSearch {...ctx} />}
+          {persona.kind === 'coordinator' && route.screen === 'core' && <DpCore {...ctx} />}
+          {persona.kind === 'coordinator' && route.screen === 'governance' && <Governance {...ctx} />}
+          {persona.kind === 'leadership' && route.screen === 'rollout' && <Rollout {...ctx} />}
           {persona.kind === 'external' && <ShareLanding token={persona.token} drafts={drafts} version={version} embedded />}
           <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} />
           </ErrorBoundary>
