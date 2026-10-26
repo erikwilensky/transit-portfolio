@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 
 // Screens in the top bar. Whatever does not fit goes under "More", so nothing is hidden without a cue.
-export default function NavBar({ items, isOn, onGo, hrefOf }) {
+export default function NavBar({ items, isOn, onGo, hrefOf, moreLabel = 'More' }) {
   const wrap = useRef(null);
   const measure = useRef(null);
   const [fit, setFit] = useState(items.length);
@@ -30,11 +30,11 @@ export default function NavBar({ items, isOn, onGo, hrefOf }) {
   );
   return (
     <nav aria-label="Screens" ref={wrap} className="navbar">
-      <div className="nav-measure" ref={measure} aria-hidden="true">{items.map(([id, label]) => <a key={id}>{label}</a>)}<a>More ▾</a></div>
+      <div className="nav-measure" ref={measure} aria-hidden="true">{items.map(([id, label]) => <a key={id}>{label}</a>)}<a>{moreLabel} ▾</a></div>
       {shown.map((it) => link(it))}
       {rest.length > 0 && (
         <div className="menu-wrap nav-more">
-          <button className={activeRest ? 'on' : ''} aria-expanded={open} aria-haspopup="menu" onClick={() => setOpen(!open)}>{activeRest ? activeRest[1] : 'More'} ▾</button>
+          <button className={activeRest ? 'on' : ''} aria-expanded={open} aria-haspopup="menu" onClick={() => setOpen(!open)}>{activeRest ? activeRest[1] : moreLabel} ▾</button>
           {open && <div className="menu nav-menu" role="menu" onMouseLeave={() => setOpen(false)}>{rest.map((it) => link(it, { role: 'menuitem' }))}</div>}
         </div>
       )}

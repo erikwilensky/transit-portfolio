@@ -30,6 +30,14 @@ const TH = {
   'Is there a line you want to start, or stop?': 'มีเส้นไหนที่อยากเริ่มใหม่ หรืออยากหยุดไหม',
   'What would you like help with next term?': 'ภาคเรียนหน้าอยากให้ช่วยเรื่องอะไร',
   'Advisor’s agenda': 'หัวข้อที่ครูที่ปรึกษาจะคุย',
+  'My map': 'แผนที่ของฉัน', 'Presentation studio': 'สตูดิโองานนำเสนอ', 'Shared view': 'มุมมองที่แบ่งปัน', Inbox: 'กล่องรับเข้า', 'Share links': 'ลิงก์ที่แบ่งปัน',
+  Activity: 'กิจกรรม', Privacy: 'ความเป็นส่วนตัว', 'Advisory 4B': 'ห้องที่ปรึกษา 4B', Signals: 'สัญญาณ', Endorsements: 'การรับรอง', 'Cross-subject': 'ข้ามวิชา',
+  'Class depot': 'คลังของชั้นเรียน', Applications: 'การสมัครเรียน', 'Reference letter': 'จดหมายรับรอง', 'Activities list': 'รายการกิจกรรม', 'Cohort search': 'ค้นหาในรุ่น',
+  'CAS outcomes': 'ผลลัพธ์ CAS', 'One line': 'เส้นเดียว', 'DP core': 'แกนหลัก DP', Lines: 'เส้นทาง', Dashboard: 'แดชบอร์ด', 'Privacy & PDPA': 'ความเป็นส่วนตัวและ PDPA',
+  Rollout: 'แผนการใช้งาน', 'School metro': 'แผนที่ทั้งโรงเรียน', 'Learner profile': 'คุณลักษณะผู้เรียน', 'Pilot options': 'ทางเลือกโครงการนำร่อง', 'Audit log': 'บันทึกการตรวจสอบ',
+  'Scan-in': 'สแกนเข้าชม', 'Shared portfolio': 'แฟ้มผลงานที่แบ่งปัน', More: 'เพิ่มเติม', 'Viewing as': 'ดูในฐานะ', 'Pitch tour': 'ทัวร์นำเสนอ', 'Notifications for': 'การแจ้งเตือนสำหรับ',
+  'Nothing yet. Things other people do with this record will show up here.': 'ยังไม่มี สิ่งที่ผู้อื่นทำกับบันทึกนี้จะแสดงที่นี่',
+  Students: 'นักเรียน', Advisor: 'ครูที่ปรึกษา', 'Subject teacher': 'ครูประจำวิชา', Counsellor: 'ครูแนะแนว', Coordinator: 'ผู้ประสานงาน', Leadership: 'ผู้บริหาร', Family: 'ครอบครัว', 'External viewer': 'ผู้ชมภายนอก',
   'Family view': 'มุมมองครอบครัว', Consent: 'การให้ความยินยอม', 'Weekly digest': 'สรุปประจำสัปดาห์',
 };
 

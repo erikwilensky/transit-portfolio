@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { answerConsent, applyLens, consentOnFile, familyViewer, getConsentReqs, getDigest, getFamily, getStudent, getStudentMap, setFamily, TERM_START, TODAY, youngStudent } from '../api.js';
+import { answerConsent, applyLens, consentOnFile, familyViewer, getConsentReqs, getDigest, getFamily, getLang, setLang, getStudent, getStudentMap, setFamily, TERM_START, TODAY, youngStudent } from '../api.js';
 import MetroMap from '../components/MetroMap.jsx';
 import StationPanel from '../components/StationPanel.jsx';
 import { dateIn, LangContext, lineName, tr } from '../i18n.js';
@@ -58,7 +58,6 @@ const QUESTIONS = ['Which line are you most proud of?', 'Is there a line you wan
 const first = (s) => s.name.split(' ')[0];
 
 function Head({ persona, childId, screen, go, title, lede, lang }) {
-  const fam = getFamily();
   return (
     <header className="page-head fam-head">
       <div>
@@ -76,8 +75,8 @@ function Head({ persona, childId, screen, go, title, lede, lang }) {
           ); })}
         </div>
         <div className="seg small" role="group" aria-label="Language / ภาษา">
-          <button className={fam.lang === 'en' ? 'on' : ''} aria-pressed={fam.lang === 'en'} onClick={() => setFamily({ lang: 'en' })} lang="en">English</button>
-          <button className={fam.lang === 'th' ? 'on' : ''} aria-pressed={fam.lang === 'th'} onClick={() => setFamily({ lang: 'th' })} lang="th">ไทย</button>
+          <button className={getLang() === 'en' ? 'on' : ''} aria-pressed={getLang() === 'en'} onClick={() => setLang('en')} lang="en">English</button>
+          <button className={getLang() === 'th' ? 'on' : ''} aria-pressed={getLang() === 'th'} onClick={() => setLang('th')} lang="th">ไทย</button>
         </div>
       </div>
     </header>
@@ -85,7 +84,7 @@ function Head({ persona, childId, screen, go, title, lede, lang }) {
 }
 
 export default function Family({ persona, screen, param, go, toast, version }) {
-  const lang = getFamily().lang;
+  const lang = getLang();
   const childId = persona.children.includes(param) ? param : persona.children[0];
   const props = { persona, childId, go, toast, lang, version };
   return (

@@ -970,6 +970,9 @@ export function remindParent(studentId) {
   emit();
 }
 export const getFamily = () => store.family;
+// N2: one language setting for the app shell and the family screens.
+export const getLang = () => store.family.lang;
+export function setLang(lang) { store.family.lang = lang; emit(); }
 export function setFamily(patch) { Object.assign(store.family, patch); emit(); }
 // A week of one child's record, as a family would see it.
 export function getDigest(studentId, days = 7) {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { applyLens, getPresentations, getStudentMap, getStudents, subscribe, getNotifications, markNotificationsRead, resetDemo, restore, logLink, addStation, getFamily } from './api.js';
+import { applyLens, getPresentations, getStudentMap, getStudents, subscribe, getNotifications, markNotificationsRead, resetDemo, restore, logLink, addStation, getLang, setLang } from './api.js';
 import { ensureEndorsed } from './tourStory.js';
 import { PERSONAS, KIND_LABEL, NAV, personaById, home } from './personas.js';
 import { ago, appUrl } from './format.js';
@@ -152,7 +152,9 @@ export default function App() {
   const persona = personaById(route.persona);
   const studentId = persona.studentId;
   // N1: a parent's navigation follows their language.
-  const nav = persona.kind === 'parent' ? NAV.parent.map(([id, l]) => [id, tr(getFamily().lang, l)]) : NAV[persona.kind];
+  const lang = getLang();
+  const T = (s) => tr(lang, s);
+  const nav = NAV[persona.kind].map(([id, l]) => [id, T(l)]);
   const notes = getNotifications(persona.id);
   const unread = notes.filter((n) => !n.read).length;
   const ctx = { go, toast, version, persona, drafts, setDrafts, audience, setAudience, tier, setTier, startTour: (t) => { setTourState({ tour: t, step: 0 }); TOURS[t].steps[0].run(ctx); } };
@@ -171,22 +173,22 @@ export default function App() {
 
   return (
     <VerifyProvider>
-      <div className={`app kind-${persona.kind}`}>
+      <div className={`app kind-${persona.kind}`} lang={lang}>
         <header className="topnav">
           <a className="brand" href={`#/${persona.id}`} aria-label="NIST Transit Portfolio home"><Logo className="brand-logo" /><span className="brand-name"><b>Transit</b> Portfolio</span></a>
-          <NavBar items={nav} hrefOf={(id) => `#/${persona.id}/${id}`} isOn={(id) => route.screen === id || (id === 'advisory' && route.screen === 'student')} onGo={(id) => go(persona.id, id)} />
+          <NavBar items={nav} hrefOf={(id) => `#/${persona.id}/${id}`} isOn={(id) => route.screen === id || (id === 'advisory' && route.screen === 'student')} onGo={(id) => go(persona.id, id)} moreLabel={T('More')} />
           <div className="nav-right">
             <button className="icon-btn nav-search" onClick={() => setLaunch(true)} aria-label="Jump to anything (Ctrl+K)" title="Jump to anything (/ or Ctrl+K)"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" strokeWidth="1.8" /><path d="M11 11l3.5 3.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg></button>
             <div className="menu-wrap">
               <button className="persona-btn" onClick={() => setMenu(menu === 'persona' ? null : 'persona')} aria-expanded={menu === 'persona'} aria-haspopup="menu">
                 <span className="av" style={{ background: persona.colour }}>{persona.initials}</span>
-                <span className="pb-text"><small>Viewing as</small><b>{persona.name}</b></span><span aria-hidden="true">▾</span>
+                <span className="pb-text"><small>{T('Viewing as')}</small><b>{persona.name}</b></span><span aria-hidden="true">▾</span>
               </button>
               {menu === 'persona' && (
                 <div className="menu persona-menu" role="menu">
                   {Object.entries(KIND_LABEL).map(([kind, label]) => (
                     <div key={kind} className="pm-group">
-                      <div className="menu-title">{label}</div>
+                      <div className="menu-title">{T(label)}</div>
                       {PERSONAS.filter((p) => p.kind === kind).map((p) => (
                         <button key={p.id} role="menuitem" className={p.id === persona.id ? 'on' : ''} onClick={() => go(p.id)}>
                           <span className="av" style={{ background: p.colour }}>{p.initials}</span><span><b>{p.name}</b><small>{p.role}</small></span>
@@ -204,8 +206,8 @@ export default function App() {
               </button>
               {menu === 'bell' && (
                 <div className="menu bell-menu" role="menu">
-                  <div className="menu-title">Notifications for {persona.name}</div>
-                  {!notes.length && <p className="menu-empty">Nothing yet. Things other people do with this record will show up here.</p>}
+                  <div className="menu-title">{T('Notifications for')} {persona.name}</div>
+                  {!notes.length && <p className="menu-empty">{T('Nothing yet. Things other people do with this record will show up here.')}</p>}
                   {notes.map((n) => (
                     <button key={n.id} role="menuitem" className={n.read ? '' : 'unread'} onClick={() => n.go && go(n.go.persona, n.go.screen, n.go.param)}>
                       <span><b>{n.text}</b><small>{ago(n.ts)}</small></span>
@@ -214,9 +216,10 @@ export default function App() {
                 </div>
               )}
             </div>
+            <button className="icon-btn lang-btn" onClick={() => setLang(lang === 'th' ? 'en' : 'th')} aria-label={lang === 'th' ? 'Switch to English' : 'เปลี่ยนเป็นภาษาไทย'} title={lang === 'th' ? 'English' : 'ภาษาไทย'} lang={lang === 'th' ? 'en' : 'th'}>{lang === 'th' ? 'EN' : 'ไทย'}</button>
             <button className="icon-btn" onClick={() => setDark(!dark)} aria-label={dark ? 'Light mode' : 'Dark mode'}>{dark ? '☀' : '☾'}</button>
             <div className="menu-wrap">
-              <button className="icon-btn tour-btn" onClick={() => setMenu(menu === 'tour' ? null : 'tour')} aria-expanded={menu === 'tour'}>Pitch tour</button>
+              <button className="icon-btn tour-btn" onClick={() => setMenu(menu === 'tour' ? null : 'tour')} aria-expanded={menu === 'tour'}>{T('Pitch tour')}</button>
               {menu === 'tour' && (
                 <div className="menu tour" role="menu">
                   <div className="menu-title">Tours</div>
