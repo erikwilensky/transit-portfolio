@@ -42,3 +42,7 @@ src/themes/      presentation themes and layouts
 To change the mock data, edit `scripts/seed.mjs` and run `npm run seed`. Evidence images are
 flat SVG illustrations drawn by `scripts/illustrations.mjs` into `public/evidence/`.
 Synced items live in memory only; reload to reset the demo.
+
+## Custom audience
+
+The Custom audience opens a page builder (`src/custom/`). Students start from one of eight themes or set their own colours, font pair, corner radius, background pattern, card style, spacing and page width. They add any of 13 blocks (hero, text, metro map, feature station, stations, gallery, quote, stats, timeline, lines, skills, next stops, divider), drag them into place, drag a block's edge to resize it on a 6-column grid, and edit their own text in place. Undo and redo are built in. Blocks reference verified stations by id and never edit them, and the public view applies the same visibility rules.

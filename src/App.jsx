@@ -70,6 +70,7 @@ export default function App() {
     ['Lens: Specific university', '“Why Data Science” statement with focused evidence', () => { switchStudent('st-01'); setTier('builder'); go('studio'); setAudience('specific'); }],
     ['Lens: Employer and Scholarship', 'A CV, then an impact timeline', () => { switchStudent('st-01'); setTier('template'); go('studio'); setAudience('employer'); }],
     ['Tier: Code', 'The JSON behind the same view', () => { switchStudent('st-01'); go('studio'); setTier('code'); }],
+    ['Custom: design your own page', 'Themes, blocks, drag to place and resize', () => { switchStudent('st-01'); go('studio'); setAudience('custom'); }],
     ['Integrations: Sync and choose', 'Items land in an inbox; add one to Computing', () => { switchStudent('st-01'); go('integrations'); }],
   ];
 
