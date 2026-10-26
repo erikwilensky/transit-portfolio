@@ -1,7 +1,7 @@
 :root {
   /* NIST brand: navy #002855 primary; secondary #4F529B #78D5E1 #008A60 #E73C3E #FF8F1C #FFB81C; Switzer, Arial fallback. */
   --navy: #002855; --b-purple: #4F529B; --b-sky: #78D5E1; --b-green: #008A60; --b-red: #E73C3E; --b-orange: #FF8F1C; --b-gold: #FFB81C;
-  --font: "Switzer", Arial, sans-serif;
+  --font: "Switzer", Arial, "TH SarabunPSK", Sarabun, sans-serif;
   --bg: #f4f6fa; --surface: #ffffff; --surface-2: #e9edf4; --ink: #0b2240; --muted: #56627a; --rule: #d9dfe9;
   --col-a: #f4f6fa; --col-b: #eaeef5; --station: #ffffff; --halo: #f4f6fa; --accent: #002855;
   --v-solid: #002855; --shadow: 0 10px 30px rgba(0, 40, 85, .14); --radius: 12px;
@@ -949,7 +949,7 @@ select { font: inherit; font-size: 14px; padding: 7px 10px; border-radius: 9px; 
 .scan-card { position: relative; overflow: hidden; display: flex; gap: 32px; align-items: center; background: var(--navy); color: #fff; border-radius: 22px; padding: 36px 40px; max-width: 980px; width: 100%; }
 .scan-card .tri-a { position: absolute; right: -10px; bottom: -6px; width: 180px; height: 156px; background: var(--b-sky); opacity: 1; }
 .scan-card .tri-a::after { background: var(--b-gold); width: 50%; height: 50%; margin: 78px 0 0 45px; }
-.scan-card .tri-b { position: absolute; right: 150px; top: -40px; width: 70px; height: 60px; background: var(--b-purple); transform: rotate(180deg); }
+.scan-card .tri-b { position: absolute; right: 150px; top: 14px; width: 70px; height: 60px; background: var(--b-purple); }
 .scan-card .tri-b::after { display: none; }
 .scan-qr { position: relative; z-index: 1; background: #fff; border-radius: 14px; padding: 12px; line-height: 0; }
 .scan-text { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 10px; max-width: 420px; }
@@ -1644,7 +1644,10 @@ button, a, .station, .sl-row { -webkit-tap-highlight-color: transparent; }
 .prr-card { fill: transparent; stroke: rgba(255,255,255,.6); stroke-width: 1.5; } .prr-card.on { fill: var(--b-gold); stroke: var(--b-gold); }
 .presenter .pr-qa { font-size: 13px; font-weight: 600; }
 .tour-card { position: fixed; inset: 0; z-index: 75; background: var(--navy); color: #fff; overflow: auto; padding: clamp(24px, 6vw, 72px) clamp(20px, 7vw, 96px) 140px; display: flex; flex-direction: column; gap: 18px; }
-.tc-tri { position: absolute; right: clamp(-80px, -4vw, -20px); top: 50%; width: min(46vw, 560px); aspect-ratio: 1 / .87; transform: translateY(-50%); background: var(--b-sky); clip-path: polygon(50% 0, 100% 100%, 0 100%); opacity: .14; pointer-events: none; }
+/* P8: flat and solid, the smaller triangle inside the larger one, never outlined, faded or rotated. */
+.tc-tri { position: absolute; right: 6vw; top: 48px; width: min(22vw, 280px); aspect-ratio: 1 / .87; background: var(--b-sky); clip-path: polygon(50% 0, 100% 100%, 0 100%); pointer-events: none; }
+.tc-tri::after { content: ''; position: absolute; left: 25%; bottom: 0; width: 50%; height: 50%; background: var(--b-gold); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+@media (max-width: 900px) { .tc-tri { width: 90px; top: 24px; right: 20px; } }
 .tc-logo { width: 150px; height: auto; color: #fff; }
 .tc-kicker { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--b-gold); }
 .tour-card h1 { margin: 0; font-size: clamp(30px, 4.4vw, 54px); line-height: 1.08; font-weight: 600; max-width: 18ch; }
@@ -1679,3 +1682,11 @@ button, a, .station, .sl-row { -webkit-tap-highlight-color: transparent; }
 @media (max-width: 700px) { .presenter { flex-wrap: wrap; justify-content: flex-end; } .pr-main { flex-basis: 100%; } .pr-text span { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; } .tour-card { padding-bottom: 230px; } }
 .menu .tr-head .tour-play { font-size: 13.5px; }
 .line-case { stroke: var(--surface); }
+
+/* P7: brandbook type weights. Semibold headings, Medium for descriptions, Light for body copy; nothing above 600. */
+b, strong, th { font-weight: 600; }
+p, .lede, .panel-about, .pres-intro, .narrative p, .tc-cols p, td { font-weight: 300; }
+p b, p strong, td b { font-weight: 600; }
+.fineprint, small { font-weight: 400; }
+.page-head p, .kicker + h1 + p { font-weight: 300; }
+.tc-roles .av, .topnav .av, .persona-menu .av { box-shadow: 0 0 0 1.5px rgba(255,255,255,.55); }
