@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { applyLens, getPresentations, getStudentMap, getStudents, subscribe, getNotifications, markNotificationsRead, resetDemo, restore, logLink } from './api.js';
+import { applyLens, getPresentations, getStudentMap, getStudents, subscribe, getNotifications, markNotificationsRead, resetDemo, restore, logLink, addStation } from './api.js';
 import { ensureEndorsed } from './tourStory.js';
 import { PERSONAS, KIND_LABEL, NAV, personaById, home } from './personas.js';
-import { ago } from './format.js';
+import { ago, appUrl } from './format.js';
 import Studio from './components/Studio.jsx';
 import SharedView from './components/SharedView.jsx';
 import IntegrationsPanel from './components/IntegrationsPanel.jsx';
@@ -254,11 +254,19 @@ function StudentScreens({ screen, param, studentId, drafts, setDrafts, audience,
   const links = myDrafts.flatMap((p) => p.shareLinks);
   const updateDraft = (presId, patch) => setDrafts((d) => ({ ...d, [studentId]: d[studentId].map((p) => (p.id === presId ? { ...p, ...patch } : p)) }));
   const [newLink, setNewLink] = useState(null);
-  const share = (pres) => {
-    const link = { token: `tp-${Math.random().toString(36).slice(2, 6)}`, presentationId: pres.id, expiresAt: '2026-12-31', revoked: false, views: 0 };
-    updateDraft(pres.id, { shareLinks: [...pres.shareLinks, link] });
-    logLink(studentId, `Created share link /s/${link.token} for “${pres.title}”`);
-    setNewLink({ link, title: pres.title });
+  const share = (pres, { site } = {}) => {
+    const link = { token: `tp-${Math.random().toString(36).slice(2, 6)}`, presentationId: pres.id, expiresAt: '2026-12-31', revoked: false, views: 0, ...(site ? { site: true, sharedWith: 'Anyone with the link' } : {}) };
+    const patch = { shareLinks: [...pres.shareLinks, link] };
+    if (site) {
+      // F17: the hand-built site goes out under a share link and becomes a station on the Computing line.
+      const lines = map.lines.some((l) => l.id === 'computing') ? ['computing'] : [map.lines[0].id];
+      const e = addStation(studentId, { title: 'Published my own portfolio site', type: 'project', lineIds: lines, summary: 'Hand-built in HTML on the read API, published through a share link.', visibility: 'publishable', via: 'Code tier' });
+      e.evidence = [{ kind: 'link', url: appUrl(`s/${link.token}`), caption: `Live site /s/${link.token}` }];
+      patch.site = { ...(pres.site || {}), token: link.token, publishedAt: new Date().toISOString(), eventId: e.id };
+    }
+    updateDraft(pres.id, patch);
+    logLink(studentId, `${site ? 'Published a hand-built site' : 'Created share link'} /s/${link.token} for “${pres.title}”`);
+    setNewLink({ link, title: site ? `${pres.title} (your own site)` : pres.title });
   };
   if (map.student.onboarding) return <Onboarding map={map} studentId={studentId} onDone={() => { toast('Your map is ready.'); go(persona.id, 'map'); }} />;
   if (screen === 'links') return <ShareLinks studentId={studentId} drafts={myDrafts} updateDraft={updateDraft} toast={toast} version={version} />;

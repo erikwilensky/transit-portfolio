@@ -124,6 +124,18 @@ export default function Studio({ map, drafts, audience, setAudience, tier, setTi
                 <li>Publish through the share system so links expire and log views.</li>
               </ol>
               <p className="fineprint">Tier 3 uses the same read API and visibility rules as Templates and Builder, so a hand-built site can never expose private data. The site itself becomes a portfolio station on the Computing line.</p>
+              <h3>Publish</h3>
+              {pres.site?.token ? (
+                <div className="site-live">
+                  <p><b>Your site is live</b> at <code>/s/{pres.site.token}</code>. Edits to index.html show up there straight away.</p>
+                  <a className="ghost" href={`#/s/${pres.site.token}`} target="_blank" rel="noreferrer">Open my site</a>
+                </div>
+              ) : (
+                <>
+                  <p className="fineprint">{pres.site?.html != null ? 'Publishes your index.html' : 'Publishes the starter index.html (edit or upload your own first if you like)'} under a share link that expires and logs views.</p>
+                  <button className="primary wide" onClick={() => onShare(pres, { site: true })}>Publish my site</button>
+                </>
+              )}
             </>
           )}
         </aside>
@@ -132,7 +144,7 @@ export default function Studio({ map, drafts, audience, setAudience, tier, setTi
           {custom
             ? <CustomView map={map} lens={lens} design={design} editable={editing} selectedBlockId={blockId} onSelectBlock={setBlockId} onChange={history.commit} onOpenStation={setSelected} />
             : tier === 'code'
-            ? <CodeView pres={pres} map={map} lens={lens} />
+            ? <CodeView pres={pres} map={map} lens={lens} onHtml={(h) => set({ site: { ...(pres.site || {}), html: h } })} />
             : <PresentationView map={map} lens={lens} pres={pres} selectedId={selected} onSelect={setSelected} />}
           <StationPanel event={event} map={map} onClose={() => setSelected(null)} readOnly />
         </div>

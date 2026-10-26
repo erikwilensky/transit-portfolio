@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { exportPresentation } from '../api.js';
 
 const starter = (id) => `<!doctype html>
@@ -38,11 +38,25 @@ li[data-v="school-verified"]::after  { content: " ●"; }
 li[data-v="teacher-endorsed"]::after { content: " ○"; }
 li[data-v="student-added"]::after    { content: " ◌"; }`;
 
-export default function CodeView({ pres, map, lens }) {
+// F17: any index.html runs in a sandbox with the presentation's data. The fetch in the starter is swapped
+// for the data itself, and window.PORTFOLIO carries it for pages written from scratch.
+export function siteDoc(html, data) {
+  const inline = JSON.stringify(data).replace(/</g, '\\u003c');
+  let doc = html.replace('<link rel="stylesheet" href="style.css">', `<style>${css}</style>`)
+    .replace(/const res = await fetch\([^)]*\);\n\s*const \{ student, lines, stations \} = await res\.json\(\);/, () => `const { student, lines, stations } = ${inline};`);
+  const boot = `<script>window.PORTFOLIO = ${inline};</script>`;
+  doc = /<head[^>]*>/i.test(doc) ? doc.replace(/<head[^>]*>/i, (m) => `${m}${boot}`) : boot + doc;
+  return doc;
+}
+export const starterHtml = starter;
+
+export default function CodeView({ pres, map, lens, onHtml }) {
   const data = useMemo(() => exportPresentation(pres, map, lens), [pres, map, lens]);
   const json = JSON.stringify(data, null, 2);
-  const [tab, setTab] = useState('data.json');
-  const files = { 'data.json': json, 'index.html': starter(pres.id), 'style.css': css };
+  const [tab, setTab] = useState('index.html');
+  const html = pres.site?.html ?? starter(pres.id);
+  const files = { 'data.json': json, 'index.html': html, 'style.css': css };
+  const upload = (f) => { if (!f) return; const r = new FileReader(); r.onload = () => onHtml?.(String(r.result)); r.readAsText(f); };
   const [copied, setCopied] = useState(false);
   const copy = async () => { try { await navigator.clipboard.writeText(files[tab]); setCopied(true); setTimeout(() => setCopied(false), 1200); } catch { /* clipboard blocked */ } };
   const download = () => {
@@ -50,10 +64,10 @@ export default function CodeView({ pres, map, lens }) {
     const a = Object.assign(document.createElement('a'), { href: url, download: `${pres.id}.json` });
     a.click(); URL.revokeObjectURL(url);
   };
-  // The same starter files, rendered live with this presentation's data.
-  const previewDoc = useMemo(() => starter(pres.id)
-    .replace('<link rel="stylesheet" href="style.css">', `<style>${css}</style>`)
-    .replace(/const res = await fetch\([^)]*\);\n\s*const \{ student, lines, stations \} = await res\.json\(\);/, () => `const { student, lines, stations } = ${JSON.stringify(data).replace(/</g, '\\u003c')};`), [pres.id, data]);
+  // The student's index.html (or the starter), rendered live with this presentation's data.
+  const [live, setLive] = useState(html);
+  useEffect(() => { const t = setTimeout(() => setLive(html), 400); return () => clearTimeout(t); }, [html]);
+  const previewDoc = useMemo(() => siteDoc(live, data), [live, data]);
   return (
     <div className="code-view fade-in">
       <div className="code-head">
@@ -63,13 +77,19 @@ export default function CodeView({ pres, map, lens }) {
       <div className="code-tabs" role="tablist">
         {Object.keys(files).map((f) => <button key={f} role="tab" aria-selected={tab === f} className={tab === f ? 'on' : ''} onClick={() => setTab(f)}>{f}</button>)}
         <span className="spacer" />
+        {tab === 'index.html' && onHtml && <>
+          <label className="code-up">Upload index.html<input type="file" accept=".html,.htm,text/html" onChange={(e) => upload(e.target.files[0])} /></label>
+          {pres.site?.html != null && <button onClick={() => onHtml(null)}>Back to the starter</button>}
+        </>}
         <button onClick={copy}>{copied ? 'Copied' : 'Copy'}</button>
         <button onClick={download}>Download JSON</button>
       </div>
       <div className="code-split">
-        <pre className="code" tabIndex={0}><code>{tab === 'data.json' ? <Json text={json} /> : files[tab]}</code></pre>
+        {tab === 'index.html' && onHtml
+          ? <textarea className="code code-edit" value={html} onChange={(e) => onHtml(e.target.value)} spellCheck={false} aria-label="index.html" />
+          : <pre className="code" tabIndex={0}><code>{tab === 'data.json' ? <Json text={json} /> : files[tab]}</code></pre>}
         <div className="code-preview">
-          <div className="code-preview-bar">Live preview: index.html rendered with this data</div>
+          <div className="code-preview-bar">Live preview: {pres.site?.html != null ? 'your' : 'the starter'} index.html, sandboxed, with this data</div>
           <iframe title="Rendered preview" sandbox="allow-scripts" srcDoc={previewDoc} />
         </div>
       </div>

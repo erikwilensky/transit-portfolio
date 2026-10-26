@@ -1608,3 +1608,14 @@ button.tile:hover { border-color: var(--b-purple); border-top-color: var(--navy)
 .launch-foot { border-top: 1px solid var(--rule); padding: 8px 14px; font-size: 12px; color: var(--muted); }
 kbd { font: 500 11px ui-monospace, Menlo, monospace; border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; margin-right: 2px; background: var(--bg); }
 @media (max-width: 600px) { .nav-search { display: none; } }
+
+/* F17: publish a hand-built site */
+.code-edit { resize: none; border: 0; outline: none; width: 100%; min-height: 420px; background: transparent; color: #e6e8eb; caret-color: #78D5E1; font: 12.5px/1.55 ui-monospace, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 2; }
+.code-up { position: relative; overflow: hidden; cursor: pointer; }
+.code-up input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.site-live { border: 1.5px solid var(--b-green); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.site-live p { margin: 0; font-size: 14px; } .site-live a.ghost { text-decoration: none; }
+.landing-site { flex: 1; display: flex; flex-direction: column; padding: 16px; gap: 8px; min-height: 0; }
+.landing-site iframe { flex: 1; min-height: 70vh; width: 100%; border: 1px solid var(--rule); border-radius: 12px; background: #fff; }
+.code-up { border: 1px solid #2f343e; color: #9aa1ac; padding: 5px 10px; border-radius: 7px; font-size: 13px; }
+.landing-foot a { color: inherit; font-weight: 600; }
