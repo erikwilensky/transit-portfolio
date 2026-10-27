@@ -413,7 +413,7 @@ export function getAlumMap(viewer = 'student') {
   return { student: { ...base.student, endGrade: ALUM.endGrade, grade: 14 }, lines: base.lines, events, signals: [], today: ALUM.today, alum: true };
 }
 export function addAlumStation(f) {
-  const e = after(`al-${Date.now().toString(36)}`, f.date, f.title, f.lineIds, f.type || 'project', f.summary || '', null, f.link ? [doc('link', f.link.replace(/^https?:\/\//, '').slice(0, 40), f.link)] : [], f.reflection ? ['What did this teach you?', f.reflection] : null);
+  const e = after(`al-${Date.now().toString(36)}`, f.date, f.title, f.lineIds, f.type || 'project', f.summary || '', null, [...(f.link ? [doc('link', f.link.replace(/^https?:\/\//, '').slice(0, 40), f.link)] : []), ...(f.files || [])], f.reflection ? ['What did this teach you?', f.reflection] : null);
   store.alumEvents.push(e);
   log(ALUM.studentId, 'Maya Chen (alum)', 'station', `Added “${f.title}” after graduating`);
   emit();
@@ -462,8 +462,8 @@ export const getNotifications = (persona) => store.notifications.filter((n) => n
 export function markNotificationsRead(persona) { store.notifications.forEach((n) => { if (n.to === persona) n.read = true; }); emit(); }
 
 // ── Student actions ───────────────────────────────────────────────────
-export function addReflection({ studentId, eventId, prompt, text, visibility = 'advisor', signal }) {
-  const r = { id: `rf-x${seq++}`, eventId, text, prompt, date: TODAY, visibility };
+export function addReflection({ studentId, eventId, prompt, text, visibility = 'advisor', signal, files }) {
+  const r = { id: `rf-x${seq++}`, eventId, text, prompt, date: TODAY, visibility, ...(files?.length ? { files } : {}) };
   store.reflections.push(r);
   if (signal) {
     store.answered[signal.key] = r.id;
@@ -481,7 +481,7 @@ let evSeq = 900;
 export function addStation(studentId, f) {
   const e = {
     id: `ev-${evSeq++}`, studentId, title: f.title, date: f.date || TODAY, lineIds: f.lineIds, type: f.type || 'project', summary: f.summary || '',
-    about: f.about || '', evidence: f.image ? [{ kind: 'image', url: f.image, caption: f.imageCaption || 'Photo' }] : [],
+    about: f.about || '', evidence: [...(f.image ? [{ kind: 'image', url: f.image, caption: f.imageCaption || 'Photo' }] : []), ...(f.files || [])],
     verification: 'student-added', visibility: f.visibility || 'advisor', source: { system: f.via || 'Manual entry', ref: null },
     ...(f.cas ? { cas: f.cas } : {}),
   };

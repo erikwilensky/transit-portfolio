@@ -3,6 +3,7 @@ import MetroMap from '../components/MetroMap.jsx';
 import StationPanel from '../components/StationPanel.jsx';
 import { ALUM, addAlumStation, applyLens, getAlumMap } from '../api.js';
 import { fmtDate, inkOn } from '../format.js';
+import { AttachButton, PendingFiles } from '../components/FileAttach.jsx';
 
 const TYPES = [['project', 'Project'], ['class', 'Course or module'], ['club', 'Society or club'], ['service', 'Volunteering'], ['award', 'Award'], ['assessment', 'Result']];
 
@@ -56,6 +57,7 @@ function AlumAdd({ map, onClose, onDone }) {
   const [summary, setSummary] = useState('');
   const [link, setLink] = useState('');
   const [reflection, setReflection] = useState('');
+  const [files, setFiles] = useState([]);
   const ok = title.trim().length >= 4 && date && date > '2027-06-12' && date <= ALUM.today;
   return (
     <div className="modal-back" onClick={onClose}>
@@ -71,12 +73,16 @@ function AlumAdd({ map, onClose, onDone }) {
           <label className="span2">On which line<select value={lineId} onChange={(e) => setLineId(e.target.value)}>{lines.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</select></label>
           <label className="span2">A sentence about it<input value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="What it was and what you did" /></label>
           <label className="span2">Link (optional)<input value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://" /></label>
+          <div className="span2 field"><span>Photo or file (optional)</span>
+            <PendingFiles files={files} onRemove={(i) => setFiles(files.filter((_, j) => j !== i))} />
+            <AttachButton label={files.length ? 'Attach another' : 'Attach a photo or file'} onAdded={(ev) => setFiles((x) => [...x, ev])} />
+          </div>
           <label className="span2">What did it teach you? (optional)<textarea rows={3} value={reflection} onChange={(e) => setReflection(e.target.value)} /></label>
         </div>
         <div className="composer-foot">
           <span className="spacer" />
           <button className="ghost" onClick={onClose}>Cancel</button>
-          <button className="primary" disabled={!ok} onClick={() => onDone(addAlumStation({ title: title.trim(), date, lineIds: [lineId], type, summary: summary.trim(), link: link.trim(), reflection: reflection.trim() }))}>Add to my map</button>
+          <button className="primary" disabled={!ok} onClick={() => onDone(addAlumStation({ title: title.trim(), date, lineIds: [lineId], type, summary: summary.trim(), link: link.trim(), reflection: reflection.trim(), files }))}>Add to my map</button>
         </div>
       </div>
     </div>
