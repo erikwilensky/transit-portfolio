@@ -33,7 +33,7 @@
 
 .imp-table { border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
 .imp-tr { display: grid; grid-template-columns: 48px minmax(120px, 1fr) minmax(160px, 1.6fr) 110px minmax(120px, 1fr) minmax(140px, 1.1fr); gap: 10px; padding: 9px 12px; align-items: start; border-top: 1px solid var(--rule); font-size: 13.5px; }
-.imp-table.no-student .imp-tr { grid-template-columns: 40px minmax(140px, 1.6fr) 100px minmax(100px, 1fr) minmax(120px, 1fr); }
+.imp-table.no-student .imp-tr { grid-template-columns: 32px minmax(0, 1.5fr) 92px minmax(0, 1fr) minmax(0, 1.3fr); }
 .imp-tr.head { border-top: 0; background: var(--surface-2); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
 .imp-tr > span { min-width: 0; display: flex; flex-direction: column; gap: 2px; overflow-wrap: anywhere; }
 .imp-tr b { font-weight: 600; } .imp-tr small { color: var(--muted); font-size: 12px; }
@@ -44,7 +44,7 @@
 .imp-line { --c: #888; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 12.5px; }
 .imp-line i { width: 14px; height: 4px; border-radius: 2px; background: var(--c); flex: none; }
 .imp-check { flex-direction: row !important; flex-wrap: wrap; gap: 4px !important; }
-.imp-flag { display: inline-block; border-radius: 6px; padding: 2px 7px; font-size: 12px; font-weight: 600; border: 1px solid; }
+.imp-flag { display: inline-block; max-width: 100%; overflow-wrap: anywhere; border-radius: 6px; padding: 2px 7px; font-size: 12px; font-weight: 600; border: 1px solid; }
 .imp-flag.ok { color: var(--b-green); border-color: var(--b-green); }
 .imp-flag.bad { color: #B3261E; border-color: var(--b-red); background: color-mix(in srgb, var(--b-red) 8%, transparent); }
 .imp-flag.warn { color: #8A4B00; border-color: var(--b-orange); }
@@ -64,6 +64,7 @@
 /* Phone width: each row becomes a small card with its labels. */
 @media (max-width: 760px) {
   .imp-formats.two { grid-template-columns: 1fr; }
+  .imp-format:not(.on) small { display: none; }
   .imp-tr.head { display: none; }
   .imp-tr, .imp-table.no-student .imp-tr { grid-template-columns: 1fr 1fr; gap: 6px 12px; }
   .imp-tr:nth-child(2) { border-top: 0; }

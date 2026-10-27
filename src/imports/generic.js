@@ -40,7 +40,7 @@ export function parseGeneric(text, { students, lines, today, selfId, by, file = 
     const m = who ? match(who.includes('@') ? { email: who } : /^st-\d+$/i.test(who) || /^\d+$/.test(who) ? { studentId: who } : { studentId: who, name: who }) : self ? { student: self, by: 'your file' } : { problem: 'No student on this row' };
     if (!title) return items.push(rowResult(rowNo, '(no title)', m, null, 'No title'));
     if (self && m.student && m.student.id !== self.id) return items.push(rowResult(rowNo, title, null, null, 'This row is for someone else'));
-    if (self && !m.student) return items.push(rowResult(rowNo, title, null, null, `${m.problem}. Leave the student column blank in your own file.`));
+    if (self && !m.student) return items.push(rowResult(rowNo, title, null, null, `Names ${who}: leave the student column blank in your own file`));
     if (!m.student) return items.push(rowResult(rowNo, title, m, null, m.problem));
     const date = parseDate(c('date'));
     if (!date) return items.push(rowResult(rowNo, title, m, null, c('date') ? `Cannot read the date “${c('date')}”` : 'No date'));
