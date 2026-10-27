@@ -22,6 +22,7 @@ const store = {
   reflections: reflectionsData.map((r) => ({ ...r })),
   endorsements: endorsementsData.map((n) => ({ ...n })),
   students: structuredClone(studentsData),
+  teachers: structuredClone(teachersData), // staff records; the pilot adds real ones with addTeacher
   lines: structuredClone(linesData),
   requests: structuredClone(schoolData.requests),
   prompts: structuredClone(schoolData.prompts),
@@ -41,12 +42,43 @@ export const subscribe = (fn) => (listeners.add(fn), () => listeners.delete(fn))
 const emit = () => { listeners.forEach((fn) => fn()); persist(); };
 
 const lineById = (id) => store.lines.find((l) => l.id === id);
-const teacherById = Object.fromEntries(teachersData.map((t) => [t.id, t]));
+// Looks staff up in the live record, so a teacher added in the pilot (or restored from a save) is found.
+const teacherList = () => store.teachers || teachersData;
+const teacherById = new Proxy({}, { get: (_, id) => teacherList().find((t) => t.id === id) });
 
 export const getStudents = ({ includeCohort = false } = {}) => store.students.filter((s) => includeCohort || !s.cohortOnly);
 export const getStudent = (id) => store.students.find((s) => s.id === id);
 export const getTeacher = (id) => teacherById[id];
-export const getTeachers = () => teachersData;
+export const getTeachers = () => teacherList();
+
+// ── Pilot: real people join the record. A new student starts with an empty map and the onboarding flow. ─
+// Years are British (7 to 13); student.grade is the US grade number, so Year = grade + 1.
+// Passing an id that already exists returns that record unchanged (safe to repeat).
+const AVATAR_COLOURS = ['#4F529B', '#008A60', '#E73C3E', '#FF8F1C', '#002855', '#FFB81C', '#78D5E1'];
+const initialsOf = (name) => name.replace(/^(Mr|Mrs|Ms|Miss|Dr|Kru|Khun)\.?\s+/i, '').split(/\s+/).filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase() || '?';
+const nextId = (prefix, list) => `${prefix}-${String(Math.max(0, ...list.map((x) => Number(x.id.slice(prefix.length + 1)) || 0)) + 1).padStart(2, '0')}`;
+export function addStudent(f) {
+  const { id, name, year, programme, homeroom = '', advisorId = null } = f;
+  if (id && getStudent(id)) return getStudent(id);
+  // A whole record copied from the server (it already has a grade) goes in as it is.
+  if (id && Number.isInteger(f.grade)) { const copy = structuredClone(f); store.students.push(copy); (store.drafts ||= {})[id] ||= []; emit(); return copy; }
+  const grade = Math.min(12, Math.max(6, Number(year) - 1));
+  const s = { id: id || nextId('st', store.students), name, grade, startGrade: grade, programme: programme || (grade >= 11 ? 'IB Diploma' : 'IB MYP'),
+    avatar: { initials: initialsOf(name), colour: AVATAR_COLOURS[store.students.length % AVATAR_COLOURS.length] },
+    homeroom, advisorId, g9StartYear: 2026 - (grade - 9), laneOrder: [], lineLabels: {}, onboarding: true, pilot: true };
+  store.students.push(s);
+  (store.drafts ||= {})[s.id] ||= [];
+  emit();
+  return s;
+}
+export function addTeacher({ id, name, role = 'Teacher' }) {
+  if (id && getTeacher(id)) return getTeacher(id);
+  store.teachers ||= structuredClone(teachersData);
+  const t = { id: id || nextId('t', store.teachers), name, role, pilot: true };
+  store.teachers.push(t);
+  emit();
+  return t;
+}
 export const getLine = (id) => lineById(id);
 export const getSchoolLines = () => store.lines.filter((l) => !l.studentId);
 export const getAllLines = () => store.lines;
@@ -195,6 +227,64 @@ export function restoreCandidate(id) {
   store.dismissed = store.dismissed.filter((e) => e.id !== id);
   store.inbox.push(c);
   emit();
+}
+
+// ── Real imports: items parsed from an export file (src/imports/) land in the inbox, like a sync.
+// Arguments are plain JSON so the server can replay the call. The student still decides each item.
+const IMPORT_CARDS = {
+  classroom: { name: 'Google Classroom', detail: 'Assignments and marks', mode: 'File import' },
+  csv: { name: 'Spreadsheets', detail: 'Our template, filled in by staff', mode: 'File import' },
+  calendar: { name: 'Calendars', detail: 'Fixtures and events (.ics)', mode: 'File import' },
+};
+// The most an import from each source can claim. A student's own file is never more than student-added.
+const IMPORT_MAX = { mine: 'student-added', csv: 'teacher-endorsed', calendar: 'school-verified' };
+const IMPORT_RANK = { 'student-added': 0, 'teacher-endorsed': 1, 'school-verified': 2 };
+const IMPORT_TYPES = ['class', 'assessment', 'project', 'competition', 'cas', 'club', 'sport', 'service', 'award'];
+const importKey = (studentId, src) => `${studentId}|${src?.system}|${src?.ref}`;
+export function importCandidates(rows, { sourceId, by, file } = {}) {
+  const max = IMPORT_RANK[IMPORT_MAX[sourceId] || 'school-verified'];
+  const seen = new Set([...store.inbox, ...store.dismissed, ...store.events].flatMap((e) => [importKey(e.studentId, e.source), e.id, ...(e.mergedFrom || []).map((m) => importKey(e.studentId, m))]));
+  const added = []; let duplicates = 0, refused = 0;
+  for (const c of Array.isArray(rows) ? rows : []) {
+    const st = getStudent(c?.studentId);
+    if (!st || !c.title || !c.source?.ref || !/^\d{4}-\d{2}-\d{2}$/.test(c.date)) { refused++; continue; }
+    if (seen.has(importKey(st.id, c.source)) || seen.has(c.id)) { duplicates++; continue; }
+    let verification = IMPORT_RANK[c.verification] <= max ? c.verification : Object.keys(IMPORT_RANK)[max];
+    const endorsement = verification === 'teacher-endorsed' && teacherById[c.classEndorsement?.teacherId] ? { teacherId: c.classEndorsement.teacherId, note: String(c.classEndorsement.note || '').slice(0, 300), date: TODAY } : null;
+    if (verification === 'teacher-endorsed' && !endorsement) verification = 'student-added';
+    const e = {
+      id: String(c.id || uid('ev-')), studentId: st.id, title: String(c.title).slice(0, 140), date: c.date, lineIds: [],
+      suggestedLineIds: (c.suggestedLineIds || []).filter((id) => st.laneOrder.includes(id)),
+      type: IMPORT_TYPES.includes(c.type) ? c.type : 'project', summary: String(c.summary || '').slice(0, 600),
+      evidence: (c.evidence || []).filter((v) => v.kind === 'grade' || (v.kind === 'link' && /^https?:\/\//i.test(v.url || ''))).map((v) => ({ kind: v.kind, url: v.kind === 'link' ? String(v.url) : null, caption: String(v.caption || '').slice(0, 140) })),
+      verification, visibility: 'advisor', source: { system: String(c.source.system || 'Import'), ref: String(c.source.ref) }, sourceId: sourceId || c.sourceId || 'import',
+      ...(c.cas && ['C', 'A', 'S'].includes(c.cas.strand) ? { cas: { strand: c.cas.strand, outcomes: (c.cas.outcomes || []).filter((n) => Number.isInteger(n) && n >= 1 && n <= 7) } } : {}),
+      ...(c.quickReflection ? { quickReflection: String(c.quickReflection).slice(0, 4000) } : {}),
+      ...(endorsement ? { classEndorsement: endorsement } : {}),
+    };
+    seen.add(importKey(st.id, e.source)); seen.add(e.id);
+    added.push(e);
+  }
+  store.inbox.push(...added);
+  const byStudent = {};
+  for (const e of added) byStudent[e.studentId] = (byStudent[e.studentId] || 0) + 1;
+  const system = added[0]?.source.system || 'a file';
+  const actor = by?.name || 'File import';
+  for (const [sid, n] of Object.entries(byStudent)) {
+    const items = `${n} item${n === 1 ? '' : 's'}`;
+    if (sourceId === 'mine') log(sid, actor, 'sync', `Imported ${items} from ${file || 'a file'} into the inbox`);
+    else {
+      log(sid, actor, 'sync', `Imported ${items} from ${system}${file ? ` (${file})` : ''} into the inbox`);
+      notify(PERSONA_OF_STUDENT[sid], `${items} from ${system} ${n === 1 ? 'is' : 'are'} in your inbox. You choose where ${n === 1 ? 'it goes' : 'they go'}.`, { persona: PERSONA_OF_STUDENT[sid], screen: 'inbox' });
+    }
+  }
+  if (sourceId && sourceId !== 'mine') {
+    let card = store.integrations.find((i) => i.id === sourceId);
+    if (!card && IMPORT_CARDS[sourceId]) store.integrations.push(card = { id: sourceId, ...IMPORT_CARDS[sourceId], lastSynced: nowIso(), itemCount: 0 });
+    if (card) { card.lastSynced = nowIso(); card.itemCount += added.length; }
+  }
+  emit();
+  return { added: added.length, duplicates, refused, students: Object.keys(byStudent).length, byStudent };
 }
 
 // F11: GitHub is opt-in per repository, and "Simulate next week" gives every system something new to send.
@@ -381,7 +471,7 @@ export function getAlumMap(viewer = 'student') {
   return { student: { ...base.student, endGrade: ALUM.endGrade, grade: 14 }, lines: base.lines, events, signals: [], today: ALUM.today, alum: true };
 }
 export function addAlumStation(f) {
-  const e = after(uid('al-'), f.date, f.title, f.lineIds, f.type || 'project', f.summary || '', null, f.link ? [doc('link', f.link.replace(/^https?:\/\//, '').slice(0, 40), f.link)] : [], f.reflection ? ['What did this teach you?', f.reflection] : null);
+  const e = after(uid('al-'), f.date, f.title, f.lineIds, f.type || 'project', f.summary || '', null, [...(f.link ? [doc('link', f.link.replace(/^https?:\/\//, '').slice(0, 40), f.link)] : []), ...(f.files || [])], f.reflection ? ['What did this teach you?', f.reflection] : null);
   store.alumEvents.push(e);
   log(ALUM.studentId, 'Maya Chen (alum)', 'station', `Added “${f.title}” after graduating`);
   emit();
@@ -442,8 +532,8 @@ export const getNotifications = (persona) => store.notifications.filter((n) => n
 export function markNotificationsRead(persona) { store.notifications.forEach((n) => { if (n.to === persona) n.read = true; }); emit(); }
 
 // ── Student actions ───────────────────────────────────────────────────
-export function addReflection({ studentId, eventId, prompt, text, visibility = 'advisor', signal }) {
-  const r = { id: uid('rf-x'), eventId, text, prompt, date: TODAY, visibility };
+export function addReflection({ studentId, eventId, prompt, text, visibility = 'advisor', signal, files }) {
+  const r = { id: uid('rf-x'), eventId, text, prompt, date: TODAY, visibility, ...(files?.length ? { files } : {}) };
   store.reflections.push(r);
   if (signal) {
     store.answered[signal.key] = r.id;
@@ -460,7 +550,7 @@ export function addReflection({ studentId, eventId, prompt, text, visibility = '
 export function addStation(studentId, f) {
   const e = {
     id: uid('ev-'), studentId, title: f.title, date: f.date || TODAY, lineIds: f.lineIds, type: f.type || 'project', summary: f.summary || '',
-    about: f.about || '', evidence: f.evidence || (f.image ? [{ kind: 'image', url: f.image, caption: f.imageCaption || 'Photo' }] : []),
+    about: f.about || '', evidence: f.evidence || [...(f.image ? [{ kind: 'image', url: f.image, caption: f.imageCaption || 'Photo' }] : []), ...(f.files || [])],
     verification: 'student-added', visibility: f.visibility || 'advisor', source: { system: f.via || 'Manual entry', ref: null },
     ...(f.cas ? { cas: f.cas } : {}),
   };
@@ -941,9 +1031,9 @@ store.events.push(
 const SEED = JSON.stringify(store);
 // The key carries a hash of the seed, so a deploy that changes the seed data starts everyone clean.
 const STORE_KEY = `tp-store-${[...SEED].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0, 2166136261).toString(36)}`;
-let saveTimer = null, applying = false;
+let saveTimer = null, applying = false, publicCopy = false;
 function persist() {
-  if (applying) return;
+  if (applying || publicCopy) return;
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     try { localStorage.setItem(STORE_KEY, JSON.stringify({ store, seq, at: Date.now() })); } catch { /* storage full or blocked: the demo still works in memory */ }
@@ -960,7 +1050,7 @@ function apply(saved) {
 try { const raw = localStorage.getItem(STORE_KEY); if (raw) apply(JSON.parse(raw)); } catch { /* ignore a broken save */ }
 // Another tab changed the record: take its copy. Endorse on the laptop, see the badge flip on the iPad.
 // (With the pilot server, tabs keep in step through the server instead.)
-try { addEventListener('storage', (e) => { if (!hook && e.key === STORE_KEY && e.newValue) { try { apply(JSON.parse(e.newValue)); } catch { /* ignore */ } } }); } catch { /* no window */ }
+try { addEventListener('storage', (e) => { if (!hook && !publicCopy && e.key === STORE_KEY && e.newValue) { try { apply(JSON.parse(e.newValue)); } catch { /* ignore */ } } }); } catch { /* no window */ }
 export const isSaved = () => { try { return !!localStorage.getItem(STORE_KEY); } catch { return false; } };
 // F3: back to the seeded record, in every open tab.
 export function resetDemo() {
@@ -973,8 +1063,12 @@ export function resetDemo() {
 // ── F9: undo. A copy of the record before a quick action; Undo puts it back. ─
 export const snapshot = () => JSON.stringify({ store, seq });
 export function restore(snap) { apply(JSON.parse(snap)); persist(); }
-// The server's copy of the record arrived (src/sync.js). Not a change of its own, so never sent back.
-export function load(saved) { apply(saved); persist(); }
+// The server's copy of the record arrived (src/sync.js). Not a change of its own, so never sent back,
+// and not saved here either: only changes made in this browser are kept here (for when the server is away).
+export function load(saved) { publicCopy = false; apply(saved); }
+// Public share and verify pages: show the pruned copy the server sent. It is never saved in this browser.
+export const hasPublicCopy = () => publicCopy;
+export function loadPublic(snap) { publicCopy = true; clearTimeout(saveTimer); apply(typeof snap === 'string' ? JSON.parse(snap) : snap); }
 
 // ── F5: students act on their own stations ────────────────────────────
 export function editStation(id, patch) {
@@ -1206,6 +1300,7 @@ answerSponsor = act('answerSponsor', answerSponsor); addCheckIn = act('addCheckI
 editStation = act('editStation', editStation); deleteStation = act('deleteStation', deleteStation); resubmit = act('resubmit', resubmit);
 answerConsent = act('answerConsent', answerConsent); remindParent = act('remindParent', remindParent); setLang = act('setLang', setLang); setFamily = act('setFamily', setFamily);
 endorseClassTask = act('endorseClassTask', endorseClassTask);
+importCandidates = act('importCandidates', importCandidates); addStudent = act('addStudent', addStudent); addTeacher = act('addTeacher', addTeacher);
 // Undo puts a whole earlier copy back, and reset goes back to the seed (sync.js sends it to /api/reset).
 restore = act('restore', restore); resetDemo = act('resetDemo', resetDemo);
 export const MUTATORS = Object.keys(ACTIONS);

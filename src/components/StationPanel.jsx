@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { VerifyBadge } from './Badge.jsx';
 import RecordInspector from './RecordInspector.jsx';
-import { ATL, LEARNER_PROFILE, setTags, addCheckIn, addReflection, completeGoal, deleteStation, editStation, getTeacher, getTeachers, requestEndorsement, requestFor, resubmit, setVisibility, snapshot, TODAY } from '../api.js';
+import { ATL, LEARNER_PROFILE, setTags, addCheckIn, addReflection, completeGoal, deleteStation, editStation, getTeacher, getTeachers, requestEndorsement, getEvent, requestFor, resubmit, setVisibility, snapshot, TODAY } from '../api.js';
 import { createPortal } from 'react-dom';
 import EvidenceDoc, { docLabel } from './EvidenceDoc.jsx';
+import { AttachButton, FileView, FILE_ICON, PendingFiles, VoiceNote, evKind, fileLabel, isUploaded } from './FileAttach.jsx';
 import { docFor, useEvidenceDocs } from '../evidence/load.js';
 import { fmtDate, fmtTerm, TYPE_LABEL, VIS_LABEL, VERIFY_HELP } from '../format.js';
 import { dateIn, daysIn, lineName, termText, tr, useLang } from '../i18n.js';
@@ -50,10 +51,11 @@ export default function StationPanel({ event, map, onClose, readOnly = false, on
                 ))}
                 {event.evidence.filter((ev) => ev.kind !== 'image').map((ev, i) => (
                   <li key={i}>
+                    {isUploaded(ev) ? <FileRow ev={ev} onOpen={() => setView(ev)} t={t} /> : (
                     <button className="ev-open ev-row" onClick={() => setView(ev)}>
                       <span className="ev-icon" aria-hidden="true">{KIND_ICON[ev.kind]}</span>
                       <span><b>{ev.caption}</b><small>{docLabel(docFor(docs, event, ev, map.student)) || t(ev.kind)} · {t('open')}</small></span>
-                    </button>
+                    </button>)}
                   </li>
                 ))}
               </ul>
@@ -72,7 +74,10 @@ export default function StationPanel({ event, map, onClose, readOnly = false, on
             <section key={r.id} className="reflection">
               <h3>{t('Reflection')}{!readOnly && <span className="vis-tag">· {VIS_LABEL[r.visibility || 'private']}</span>}</h3>
               <div className="prompt">{t('Signal:')} {r.prompt}</div>
-              {r.text.split('\n\n').map((para, i) => <p key={i}>{para}</p>)}
+              {r.text && r.text.split('\n\n').map((para, i) => <p key={i}>{para}</p>)}
+              {r.files?.length > 0 && <ul className="evidence rf-files">{r.files.map((ev, i) => <li key={i}>{ev.kind === 'image'
+                ? <button className="ev-open" onClick={() => setView(ev)} aria-label={`Open ${ev.caption} full size`}><img src={ev.url} alt={ev.caption} loading="lazy" /></button>
+                : <FileRow ev={ev} onOpen={() => setView(ev)} t={t} />}</li>)}</ul>}
             </section>
           ))}
 
@@ -90,7 +95,7 @@ export default function StationPanel({ event, map, onClose, readOnly = false, on
         </div>
       )}
       {inspect && <RecordInspector eventId={inspect} onClose={() => setInspect(null)} />}
-      {view && event && <EvidenceView ev={view} event={event} student={map.student} doc={docFor(docs, event, view, map.student)} onClose={() => setView(null)} />}
+      {view && event && <EvidenceView ev={view} event={event} student={map.student} doc={isUploaded(view) ? null : docFor(docs, event, view, map.student)} onClose={() => setView(null)} />}
     </aside>
   );
 }
@@ -164,15 +169,36 @@ function AskBox({ first, onAsk }) {
   );
 }
 
+// A file a student uploaded: a recording plays right here, anything else opens in the viewer.
+function FileRow({ ev, onOpen, t }) {
+  const k = evKind(ev);
+  return (
+    <div className="file-row">
+      <button className="ev-open ev-row" onClick={onOpen}>
+        <span className="ev-icon" aria-hidden="true">{FILE_ICON[k]}</span>
+        <span><b>{ev.caption}</b><small>{fileLabel(ev)} · {t('open')}</small></span>
+      </button>
+      {k === 'audio' && <audio controls preload="none" src={ev.url} aria-label={ev.caption} />}
+    </div>
+  );
+}
+
 // F8: evidence opens. Images full size; everything else as the real thing it stands for
 // (a certificate, a result slip, a repository, a report), stamped with where it came from.
 function EvidenceView({ ev, event, student, doc, onClose }) {
   const poster = event.evidence.find((x) => x.kind === 'image')?.url;
   return createPortal(
     <div className="modal-back ev-back" onClick={onClose} onKeyDown={(k) => k.key === 'Escape' && onClose()}>
-      <div className={`ev-view ${ev.kind === 'image' ? 'img' : 'doc'}${doc ? ` wide-${doc.t}` : ''}`} role="dialog" aria-label={ev.caption} onClick={(x) => x.stopPropagation()}>
+      <div className={`ev-view ${ev.kind === 'image' ? 'img' : 'doc'}${doc ? ` wide-${doc.t}` : ''}${isUploaded(ev) && ev.kind !== 'image' ? ` wide-file fk-${evKind(ev)}` : ''}`} role="dialog" aria-label={ev.caption} onClick={(x) => x.stopPropagation()}>
         <button className="panel-close" onClick={onClose} aria-label="Close" autoFocus>×</button>
-        {ev.kind === 'image' ? <img src={ev.url} alt={ev.caption} /> : (
+        {ev.kind === 'image' ? <img src={ev.url} alt={ev.caption} /> : isUploaded(ev) ? (
+          <div className="ev-doc">
+            <div className="ev-doc-stamp">{event.verification === 'student-added' ? 'Added by the student' : 'Uploaded'} · {fmtDate(event.date)}</div>
+            <h2>{ev.caption}</h2>
+            <p className="fineprint">{fileLabel(ev)} attached to “{event.title}”</p>
+            <FileView ev={ev} />
+          </div>
+        ) : (
           <div className="ev-doc">
             <div className="ev-doc-stamp">{event.source?.system || 'Uploaded'}{event.source?.ref ? ` · ${event.source.ref}` : ''} · {fmtDate(event.date)}</div>
             <h2>{ev.caption}</h2>
@@ -198,10 +224,11 @@ function StudentActions({ event, onClose, toast = () => {} }) {
   const [title, setTitle] = useState(event.title);
   const [summary, setSummary] = useState(event.summary);
   const [link, setLink] = useState('');
+  const [files, setFiles] = useState([]);
   const own = event.verification === 'student-added';
   const rq = requestFor(event.id);
   const t = rq && getTeacher(rq.teacherId);
-  const done = (msg, snap) => { setMode(null); setText(''); toast(msg, snap); };
+  const done = (msg, snap) => { setMode(null); setText(''); setFiles([]); toast(msg, snap); };
   return (
     <section className="st-actions">
       {rq?.status === 'returned' && (
@@ -210,20 +237,24 @@ function StudentActions({ event, onClose, toast = () => {} }) {
           <p>“{rq.reason || 'More evidence please.'}”</p>
           <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="Link to the code, a photo or a file" aria-label="Evidence link" />
           <button className="primary small-btn" disabled={link.trim().length < 4} onClick={() => { const snap = snapshot(); resubmit(rq.id, { kind: 'link', url: link.trim(), caption: link.trim().replace(/^https?:\/\//, '').slice(0, 48) }); setLink(''); toast(`Resubmitted to ${t.name}`, snap); }}>Add evidence and resubmit</button>
+          <div className="attach-row"><span className="fineprint">or</span><AttachButton label="Attach a file and resubmit" className="ghost small-btn file-btn" onAdded={(ev) => { const snap = snapshot(); resubmit(rq.id, ev); toast(`Resubmitted to ${t.name}`, snap); }} /></div>
         </div>
       )}
       {rq?.status === 'pending' && <p className="pending-note">Waiting for {t.name} to endorse{rq.resubmitted ? ' (resubmitted with more evidence)' : ''}.</p>}
       <div className="st-btns">
         <button className="ghost small-btn" aria-pressed={mode === 'reflect'} onClick={() => setMode(mode === 'reflect' ? null : 'reflect')}>Add a reflection</button>
         {own && !rq && <button className="ghost small-btn" aria-pressed={mode === 'request'} onClick={() => setMode(mode === 'request' ? null : 'request')}>Ask for an endorsement</button>}
+        {own && <AttachButton label="Add a file" className="ghost small-btn file-btn" onAdded={(ev) => { const snap = snapshot(); editStation(event.id, { evidence: [...(getEvent(event.id) || event).evidence, ev] }); toast(`Added ${ev.caption}`, snap); }} />}
         {own && <button className="ghost small-btn" aria-pressed={mode === 'edit'} onClick={() => setMode(mode === 'edit' ? null : 'edit')}>Edit</button>}
         {own && <button className="ghost small-btn danger" onClick={() => { const snap = snapshot(); deleteStation(event.id); onClose(); toast(`Deleted “${event.title}”`, snap); }}>Delete</button>}
       </div>
       {mode === 'reflect' && (
         <div className="st-form">
           <textarea rows={3} value={text} onChange={(e) => setText(e.target.value)} placeholder="What did this give you? What would you do differently?" aria-label="Reflection" />
+          <PendingFiles files={files} onRemove={(i) => setFiles(files.filter((_, j) => j !== i))} />
+          <div className="attach-row"><VoiceNote onAdded={(ev) => setFiles((x) => [...x, ev])} /><AttachButton label="Attach a photo or file" className="ghost small-btn file-btn" onAdded={(ev) => setFiles((x) => [...x, ev])} /></div>
           <div className="st-row"><select value={vis} onChange={(e) => setVis(e.target.value)} aria-label="Who can read it">{Object.entries(VIS_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
-            <button className="primary small-btn" disabled={text.trim().length < 8} onClick={() => { const snap = snapshot(); addReflection({ studentId: event.studentId, eventId: event.id, prompt: 'My own reflection', text: text.trim(), visibility: vis }); done('Reflection saved', snap); }}>Save reflection</button></div>
+            <button className="primary small-btn" disabled={!files.length && text.trim().length < 8} onClick={() => { const snap = snapshot(); addReflection({ studentId: event.studentId, eventId: event.id, prompt: 'My own reflection', text: text.trim(), visibility: vis, files }); done('Reflection saved', snap); }}>Save reflection</button></div>
         </div>
       )}
       {mode === 'request' && (

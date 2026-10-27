@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { addStation, getIntensity, getTeachers, TODAY } from '../api.js';
 import { TYPE_LABEL, VIS_LABEL } from '../format.js';
+import { AttachButton, PendingFiles, UploadStatus, useUpload } from './FileAttach.jsx';
+import { evidenceFor } from '../upload.js';
 
 const SUGGEST = { computing: 't-01', science: 't-02', music: 't-03', design: 't-04', languages: 't-05', art: 't-06', service: 't-08', environment: 't-08', 'maya-datasci': 't-01', 'arun-musictech': 't-03' };
 const PHOTOS = [['hackathon-1st', 'Results board'], ['stem-club', 'Club session'], ['aq-dashboard', 'Screenshot'], ['mural', 'Finished work']];
@@ -9,7 +11,7 @@ export const OUTCOMES = ['Strengths and growth', 'New challenges', 'Initiative a
 // A student-added station: dotted until a teacher endorses it.
 export default function AddStation({ map, studentId, onClose, onAdded, prefill = {}, compact = false }) {
   const lines = map.lines.filter((l) => l.status !== 'ended');
-  const [f, setF] = useState({ title: '', date: TODAY, type: 'project', lineIds: [], summary: '', reflection: '', visibility: 'advisor', image: null, imageCaption: '', requestFrom: '', requestNote: '', cas: null, ...prefill });
+  const [f, setF] = useState({ title: '', date: TODAY, type: 'project', lineIds: [], summary: '', reflection: '', visibility: 'advisor', image: null, imageCaption: '', files: [], requestFrom: '', requestNote: '', cas: null, ...prefill });
   const set = (patch) => setF((x) => ({ ...x, ...patch }));
   const teachers = getTeachers().filter((t) => !['t-07', 't-09', 't-10'].includes(t.id));
   const dp = map.student.grade >= 11;
@@ -19,8 +21,10 @@ export default function AddStation({ map, studentId, onClose, onAdded, prefill =
     const lineIds = f.lineIds.includes(id) ? f.lineIds.filter((x) => x !== id) : [...f.lineIds, id];
     set({ lineIds, requestFrom: f.requestFrom || SUGGEST[lineIds[0]] || '' });
   };
-  const ok = f.title.trim() && f.lineIds.length;
+  const photo = useUpload();
+  const ok = f.title.trim() && f.lineIds.length && !photo.busy;
   const save = () => { const e = addStation(studentId, { ...f, requestFrom: f.requestFrom || null }); onAdded?.(e); };
+  const pickPhoto = (file) => photo.run(file, (r) => { const ev = evidenceFor(r, file.name); if (ev.kind === 'image') set({ image: ev.url, imageCaption: file.name }); else set({ files: [...f.files, ev] }); });
   return (
     <div className="modal-back" onClick={onClose}>
       <div className={`modal add-station${compact ? ' compact' : ''}`} role="dialog" aria-label="Add a station" onClick={(ev) => ev.stopPropagation()}>
@@ -38,9 +42,14 @@ export default function AddStation({ map, studentId, onClose, onAdded, prefill =
           <div className="span2 field"><span>Photo</span>
             <div className="photo-row">
               {f.image && <img src={f.image} alt="" className="photo-prev" />}
-              <label className="ghost file-btn">From this device<input type="file" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; if (file) toDataUrl(file).then((url) => set({ image: url, imageCaption: file.name })); }} /></label>
+              <label className={`ghost file-btn${photo.busy ? ' busy' : ''}`}>{photo.busy ? 'Uploading…' : 'From this device'}<input type="file" accept="image/*" disabled={photo.busy} onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; pickPhoto(file); }} /></label>
               {PHOTOS.map(([n, cap]) => <button key={n} type="button" className={`photo-pick${f.image?.includes(n) ? ' on' : ''}`} onClick={() => set({ image: `evidence/${n}.svg`, imageCaption: cap })}><img src={`evidence/${n}.svg`} alt={cap} /></button>)}
             </div>
+            <UploadStatus up={photo} />
+          </div>
+          <div className="span2 field"><span>{simple ? 'Anything else? (optional)' : 'Files: a PDF, document, recording or video (optional)'}</span>
+            <PendingFiles files={f.files} onRemove={(i) => set({ files: f.files.filter((_, j) => j !== i) })} />
+            <AttachButton label={f.files.length ? 'Attach another file' : 'Attach a file'} onAdded={(ev) => setF((x) => ({ ...x, files: [...x.files, ev] }))} />
           </div>
           <label className="span2">{simple ? 'What did you learn? (optional)' : 'Quick reflection (optional)'}<textarea rows={2} value={f.reflection} onChange={(e) => set({ reflection: e.target.value })} placeholder="What did you learn?" /></label>
           {dp && !simple && (
@@ -62,20 +71,4 @@ export default function AddStation({ map, studentId, onClose, onAdded, prefill =
       </div>
     </div>
   );
-}
-
-// Photos are shrunk to a data URL so they survive a reload with the rest of the demo.
-function toDataUrl(file, max = 1000) {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      const k = Math.min(1, max / Math.max(img.width, img.height));
-      const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
-      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-      URL.revokeObjectURL(img.src);
-      resolve(c.toDataURL('image/jpeg', 0.8));
-    };
-    img.onerror = () => resolve(URL.createObjectURL(file));
-    img.src = URL.createObjectURL(file);
-  });
 }

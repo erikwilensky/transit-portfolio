@@ -17,7 +17,7 @@ const start = () => new Promise((res, rej) => {
 const stop = (s) => new Promise((res) => { s.removeAllListeners('exit'); s.on('exit', res); s.kill(); });
 const state = async () => (await (await fetch(`${API}/state`)).json()).snapshot;
 const evByTitle = (snap, t) => snap.store.events.find((e) => e.title === t);
-const local = (p) => p.evaluate(() => { const k = Object.keys(localStorage).find((x) => x.startsWith('tp-store-')); return k && JSON.parse(localStorage.getItem(k)).store; });
+const local = (p) => p.evaluate(() => globalThis.__tpRecord?.()); // this device's copy of the record
 const until = async (f, ms = 6000) => { const t = Date.now(); while (Date.now() - t < ms) { if (await f().catch(() => false)) return true; await new Promise((r) => setTimeout(r, 150)); } return false; };
 async function addStation(p, title, teacher) {
   await p.click('text=Add a station');

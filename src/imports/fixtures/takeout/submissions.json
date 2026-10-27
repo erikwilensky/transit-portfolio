@@ -1,0 +1,32 @@
+[
+  {
+    "courseId": "6612345",
+    "courseWorkId": "cw1",
+    "userId": "1001",
+    "state": "RETURNED",
+    "assignedGrade": 9,
+    "late": false,
+    "updateTime": "2026-10-10T05:00:00Z"
+  },
+  {
+    "courseId": "6612345",
+    "courseWorkId": "cw2",
+    "userId": "1001",
+    "state": "TURNED_IN",
+    "late": true,
+    "updateTime": "2026-10-16T05:00:00Z"
+  },
+  {
+    "courseId": "6612345",
+    "courseWorkId": "cw1",
+    "userId": "1002",
+    "state": "RETURNED",
+    "assignedGrade": 7
+  },
+  {
+    "courseId": "6612345",
+    "courseWorkId": "cw2",
+    "userId": "1003",
+    "state": "CREATED"
+  }
+]

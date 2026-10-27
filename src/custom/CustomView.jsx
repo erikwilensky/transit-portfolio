@@ -107,6 +107,7 @@ export default function CustomView({ map, lens, design, editable = false, select
         return (
           <div>{heading}
             <div className="cv-gallery" style={{ '--cols': p.columns }}>
+              {(p.extra || []).map((x, i) => <figure key={`x${i}`}><img src={x.url} alt={x.caption} loading="lazy" /><figcaption>{x.caption.replace(/\.[a-z0-9]+$/i, '')}</figcaption></figure>)}
               {imgs.map((x, i) => <figure key={i} onClick={() => open(x.e.id)}><img src={x.url} alt={x.caption} loading="lazy" /><figcaption>{x.e.title}</figcaption></figure>)}
             </div>
           </div>

@@ -1,0 +1,52 @@
+# NIST Transit Portfolio on Erik's Mac. Deploy with scripts/deploy-mac.sh (see docs/pilot-server.md).
+#
+#   transit-portfolio  the demo, host port 8080: the Cloudflare tunnel already points at localhost:8080
+#   transit-pilot      optional real pilot (TP_MODE=pilot, sign-in), host port 8081, its own data.
+#                      Off unless the `pilot` profile is on: COMPOSE_PROFILES=pilot in .env,
+#                      or docker compose --profile pilot up -d
+#
+# Settings come from .env (copy .env.example; .env is not committed). Data folders sit next to the
+# repo, outside it, so a git pull or a rebuild never touches them.
+name: transit-portfolio
+
+x-app: &app
+  build: .
+  image: transit-portfolio:local
+  restart: unless-stopped
+  init: true                 # a tiny init as PID 1: passes SIGTERM on, reaps zombies
+  stop_grace_period: 15s     # the server finishes in-flight requests within 8 s (SHUTDOWN_TIMEOUT_MS)
+  env_file:
+    - path: .env
+      required: false
+  logging:
+    driver: json-file
+    options: { max-size: 10m, max-file: "5" }
+
+services:
+  transit-portfolio:
+    <<: *app
+    container_name: transit-portfolio
+    environment:
+      TP_MODE: ${TP_MODE:-demo}
+    # 127.0.0.1 only: cloudflared runs on the Mac, and nothing else on the network should reach the
+    # server directly. Set TP_BIND=0.0.0.0 in .env to open it to the local network.
+    ports:
+      - "${TP_BIND:-127.0.0.1}:8080:8080"
+    volumes:
+      - ${TP_DATA:-../transit-portfolio-data}:/data
+
+  transit-pilot:
+    <<: *app
+    container_name: transit-pilot
+    profiles: [pilot]
+    env_file:
+      - path: .env
+        required: false
+      - path: .env.pilot       # optional settings for the pilot only
+        required: false
+    environment:
+      TP_MODE: pilot
+    ports:
+      - "${TP_BIND:-127.0.0.1}:8081:8080"
+    volumes:
+      - ${TP_PILOT_DATA:-../transit-pilot-data}:/data

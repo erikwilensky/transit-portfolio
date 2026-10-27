@@ -1,0 +1,14 @@
+node_modules
+dist
+server/build
+.data
+.git
+shots
+.claude
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+Dockerfile
+docker-compose.yml

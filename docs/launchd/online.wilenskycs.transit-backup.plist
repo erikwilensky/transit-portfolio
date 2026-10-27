@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Nightly backup of the Transit Portfolio data at 02:30 (scripts/backup.sh).
+  If the Mac is asleep at 02:30, launchd runs it when the Mac wakes.
+
+  Install (paths assume the repo is at /Users/erik/Server/transit-portfolio):
+    mkdir -p /Users/erik/Server/transit-portfolio-backups
+    cp docs/launchd/online.wilenskycs.transit-backup.plist ~/Library/LaunchAgents/
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/online.wilenskycs.transit-backup.plist
+  Run once now to test:
+    launchctl kickstart gui/$(id -u)/online.wilenskycs.transit-backup
+    tail /Users/erik/Server/transit-portfolio-backups/backup.log
+  Remove:
+    launchctl bootout gui/$(id -u)/online.wilenskycs.transit-backup
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>online.wilenskycs.transit-backup</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/erik/Server/transit-portfolio/scripts/backup.sh</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>/Users/erik/Server/transit-portfolio</string>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>2</integer>
+    <key>Minute</key>
+    <integer>30</integer>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>/Users/erik/Server/transit-portfolio-backups/backup.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/erik/Server/transit-portfolio-backups/backup.log</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+</dict>
+</plist>

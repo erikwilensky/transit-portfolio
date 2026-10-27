@@ -3,6 +3,8 @@ import { getActivityList, getStudentMap, getStudents, rootLine, saveActivityList
 import { termOf } from '../layout/metroLayout.js';
 import { VerifyBadge } from '../components/Badge.jsx';
 import { fmtDate } from '../format.js';
+import { PrintButton, PrintFooter, PrintHead } from '../components/PrintKit.jsx';
+import { docName } from '../print.js';
 
 const TYPES = ['Academic', 'Art', 'Athletics: Club', 'Athletics: JV/Varsity', 'Career-Oriented', 'Community Service (Volunteer)', 'Computer/Technology', 'Environmental', 'Foreign Language', 'Music: Instrumental', 'Research', 'Robotics', 'Science/Math', 'Other Club/Activity'];
 const TYPE_BY_ROOT = { science: 'Science/Math', computing: 'Computer/Technology', environment: 'Environmental', sport: 'Athletics: JV/Varsity', service: 'Community Service (Volunteer)', music: 'Music: Instrumental', design: 'Other Club/Activity', languages: 'Foreign Language', art: 'Art' };
@@ -61,6 +63,7 @@ export default function ActivitiesList({ toast, version }) {
         <span className="spacer" />
         <button className="ghost" onClick={() => saveActivityList(sid, build(map))}>Rebuild from map</button>
         <button className="ghost" onClick={download}>Download .txt</button>
+        <PrintButton title={docName(map.student.name, 'Activities list')} />
         <button className="primary" onClick={copy}>Copy list</button>
       </div>
       <ol className="al-list">
@@ -93,7 +96,37 @@ export default function ActivitiesList({ toast, version }) {
           );
         })}
       </ol>
+      <PaperList map={map} list={list} byId={byId} />
       <p className="fineprint">Drafted only from stations the student made visible to the school. Common App counts Grades 9 to 12, which are Years 10 to 13 here.</p>
+      <PrintFooter name={map.student.name} />
     </div>
+  );
+}
+
+// What goes to paper: the included activities as the application will show them, without the form.
+function PaperList({ map, list, byId }) {
+  const shown = list.filter((a) => a.include);
+  return (
+    <section className="al-paper">
+      <PrintHead kicker="Activities list" />
+      <h1>{map.student.name}</h1>
+      <p className="al-paper-sub">{map.student.programme} · Year {map.student.grade + 1} · {shown.length} activit{shown.length === 1 ? 'y' : 'ies'}, in the Common App format. Each one is a line on {map.student.name.split(' ')[0]}’s Transit Portfolio map.</p>
+      <ol>
+        {shown.map((a) => {
+          const evs = a.stations.map((id) => byId[id]).filter(Boolean);
+          const verified = evs.filter((e) => e.verification !== 'student-added').length;
+          return (
+            <li key={a.id}>
+              <div className="alp-type">{a.type}</div>
+              <h2>{a.position}</h2>
+              <div className="alp-org">{a.org}</div>
+              <p>{a.desc}</p>
+              <div className="alp-meta">Years {a.years.join(', ') || 'none'} · {a.hours} hours a week · {a.weeks} weeks a year · from {evs.length} station{evs.length === 1 ? '' : 's'}, {verified} verified</div>
+            </li>
+          );
+        })}
+      </ol>
+      <p className="alp-note">Years 10 to 13 at NIST are Grades 9 to 12 in Common App terms.</p>
+    </section>
   );
 }

@@ -1,0 +1,191 @@
+// Pilot sign-in: accounts, password hashes, sessions and the per-role action check.
+// Routes live in server/routes/10-auth.mjs; other modules import from here (canAct, MODE, userOf).
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import { promisify } from 'node:util';
+import { DATA_DIR, writeAtomic } from './lib.mjs';
+import { api } from './store.mjs';
+
+export const MODE = process.env.TP_MODE === 'pilot' ? 'pilot' : 'demo';
+export const KINDS = ['student', 'advisor', 'teacher', 'counsellor', 'coordinator', 'leadership', 'parent', 'admin'];
+export const STAFF = ['advisor', 'teacher', 'counsellor', 'coordinator', 'leadership'];
+const SESSION_DAYS = 30;
+const SETUP_DAYS = 7;
+export const COOKIE = 'tp_session';
+
+// ── Files ──
+const ACCOUNTS = path.join(DATA_DIR, 'accounts.json');
+const SESSIONS = path.join(DATA_DIR, 'sessions.json');
+const readFile = (f, empty) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return empty; } };
+let accounts = readFile(ACCOUNTS, []);
+let sessions = readFile(SESSIONS, {});
+const saveAccounts = () => writeAtomic(ACCOUNTS, JSON.stringify(accounts, null, 2));
+const saveSessions = () => writeAtomic(SESSIONS, JSON.stringify(sessions));
+
+// ── Hashing ──
+const scrypt = promisify(crypto.scrypt);
+const SCRYPT = { N: 16384, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
+export async function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = (await scrypt(String(password), salt, 64, SCRYPT)).toString('hex');
+  return { salt, hash };
+}
+// Always runs scrypt, even for an unknown email, so timing does not reveal which emails exist.
+const DUMMY = { salt: '00000000000000000000000000000000', hash: '0'.repeat(128) };
+export async function checkPassword(account, password) {
+  const ref = account?.password || DUMMY;
+  const got = await scrypt(String(password ?? ''), ref.salt, 64, SCRYPT);
+  const ok = crypto.timingSafeEqual(got, Buffer.from(ref.hash, 'hex'));
+  return ok && !!account?.password;
+}
+const sha = (s) => crypto.createHash('sha256').update(String(s)).digest('hex');
+const token = () => crypto.randomBytes(32).toString('base64url');
+export const passwordProblem = (p) => (typeof p !== 'string' || p.length < 8 ? 'Use at least 8 characters.' : p.length > 200 ? 'That password is too long.' : null);
+
+// ── Accounts ──
+export const normEmail = (e) => String(e || '').trim().toLowerCase();
+export const allAccounts = () => accounts;
+export const accountById = (id) => accounts.find((a) => a.id === id);
+export const accountByEmail = (email) => accounts.find((a) => a.email === normEmail(email));
+export const isAdmin = (a) => !!a && (a.kind === 'admin' || !!a.admin);
+// What the browser sees of an account: never the hash or setup token.
+export function publicUser(a) {
+  if (!a) return null;
+  const { password, setup, ...rest } = a;
+  return { ...rest, admin: isAdmin(a), hasPassword: !!password };
+}
+// Checks the record link for a kind. Returns an error message or null.
+export function linkProblem({ kind, studentId, teacherId, children }) {
+  if (!KINDS.includes(kind)) return 'Pick a role.';
+  if (kind === 'student' && !api.getStudent(studentId)) return 'Link a student record.';
+  if (STAFF.includes(kind) && !api.getTeacher(teacherId)) return 'Link a staff record.';
+  if (kind === 'parent' && (!Array.isArray(children) || !children.length || children.some((c) => !api.getStudent(c)))) return 'Link at least one child.';
+  return null;
+}
+export function linkOf({ kind, studentId, teacherId, children }) {
+  if (kind === 'student') return { studentId };
+  if (STAFF.includes(kind)) return { teacherId };
+  if (kind === 'parent') return { children: [...children] };
+  return {};
+}
+export function createAccount({ email, name, kind, admin = false, ...link }) {
+  const a = { id: `u-${crypto.randomBytes(5).toString('hex')}`, email: normEmail(email), name: String(name).trim(), kind, ...linkOf({ kind, ...link }), admin: kind === 'admin' || (kind === 'leadership' && !!admin), createdAt: new Date().toISOString() };
+  accounts.push(a); saveAccounts();
+  return a;
+}
+export function updateAccount(a, patch) {
+  for (const k of ['studentId', 'teacherId', 'children']) delete a[k];
+  Object.assign(a, patch); saveAccounts();
+}
+export function removeAccount(id) { accounts = accounts.filter((a) => a.id !== id); endSessionsOf(id); saveAccounts(); }
+export async function setPassword(a, password) { a.password = await hashPassword(password); delete a.setup; saveAccounts(); }
+
+// ── One-time setup links ──
+// First run (no accounts yet): a setup token held in memory only, printed to the log.
+let firstRun = null;
+export function firstRunToken() {
+  if (accounts.length) return null;
+  if (!firstRun) firstRun = token();
+  return firstRun;
+}
+export const isFirstRunToken = (t) => !accounts.length && !!firstRun && typeof t === 'string' && t.length === firstRun.length && crypto.timingSafeEqual(Buffer.from(t), Buffer.from(firstRun));
+export const clearFirstRun = () => { firstRun = null; };
+// An account's setup link: shown once to the admin, stored only as a hash. It also ends the old password and sessions.
+export function newSetup(a) {
+  const t = token();
+  a.setup = { hash: sha(t), expiresAt: new Date(Date.now() + SETUP_DAYS * 864e5).toISOString() };
+  delete a.password; endSessionsOf(a.id); saveAccounts();
+  return t;
+}
+export function accountBySetup(t) {
+  if (typeof t !== 'string' || !t) return null;
+  const h = sha(t);
+  return accounts.find((a) => a.setup?.hash === h && a.setup.expiresAt > new Date().toISOString()) || null;
+}
+
+// ── Sessions: random token in a cookie, its hash on disk, 30 days ──
+const prune = () => { const now = Date.now(); let n = 0; for (const [k, s] of Object.entries(sessions)) if (s.expiresAt < now || !accountById(s.userId)) { delete sessions[k]; n++; } return n; };
+if (prune()) saveSessions();
+export function startSession(userId) {
+  const t = token();
+  sessions[sha(t)] = { userId, createdAt: Date.now(), expiresAt: Date.now() + SESSION_DAYS * 864e5 };
+  prune(); saveSessions();
+  return { token: t, maxAge: SESSION_DAYS * 86400 };
+}
+export function sessionUser(t) {
+  if (!t) return null;
+  const s = sessions[sha(t)];
+  if (!s || s.expiresAt < Date.now()) return null;
+  return accountById(s.userId) || null;
+}
+export function endSession(t) { if (t && sessions[sha(t)]) { delete sessions[sha(t)]; saveSessions(); } }
+export function endSessionsOf(userId, keep) {
+  for (const [k, s] of Object.entries(sessions)) if (s.userId === userId && k !== (keep && sha(keep))) delete sessions[k];
+  saveSessions();
+}
+export const cookieHeader = (req, value, maxAge) => {
+  const secure = req.socket.encrypted || req.headers['x-forwarded-proto'] === 'https' || process.env.COOKIE_SECURE === '1';
+  return `${COOKIE}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure ? '; Secure' : ''}`;
+};
+
+// ── Slowing down repeated failed sign-ins, per email and per address ──
+const fails = new Map(); // key → { n, first }
+const WINDOW = 15 * 60 * 1000;
+const failCount = (k) => { const f = fails.get(k); if (!f || Date.now() - f.first > WINDOW) { fails.delete(k); return 0; } return f.n; };
+export const clientIp = (req) => (process.env.TRUST_PROXY === '1' && String(req.headers['x-forwarded-for'] || '').split(',')[0].trim()) || req.socket.remoteAddress || '?';
+export function throttle(email, ip) {
+  const n = Math.max(failCount(`e:${email}`), Math.floor(failCount(`i:${ip}`) / 3));
+  if (failCount(`e:${email}`) >= 10 || failCount(`i:${ip}`) >= 30) return { blocked: true };
+  return { delay: n >= 3 ? Math.min(250 * 2 ** (n - 3), 8000) : 0 };
+}
+export function noteFailure(email, ip) {
+  for (const k of [`e:${email}`, `i:${ip}`]) { const n = failCount(k); fails.set(k, { n: n + 1, first: n ? fails.get(k).first : Date.now() }); }
+}
+export const noteSuccess = (email) => fails.delete(`e:${email}`);
+
+// ── canAct: may this signed-in person call this api.js mutator with these arguments? ──
+// Cheap, server-side, per role. Students may only change their own record; families only answer
+// consent for their own children; staff may call any mutator except the admin-only ones.
+// /api/action should call it before running a mutator: `if (!canAct(req.user, fn, args)) 403`.
+// In demo mode there are no accounts, so callers skip it (req.user is null).
+const ADMIN_ONLY = new Set(['resetDemo', 'restore', 'addStudent', 'addTeacher']);
+const ANYONE = new Set(['recordView', 'markNotificationsRead', 'setLang']);
+const ev = (id) => api.getEvent(id)?.studentId;
+const st = () => api.getStore();
+const inboxItem = (id) => (st().inbox.find((e) => e.id === id) || st().dismissed.find((e) => e.id === id))?.studentId;
+// For each mutator a student may call: the studentId it acts on (or every one it touches).
+const STUDENT_OWNS = {
+  setStudentDrafts: (a) => [a[0]], setGithub: (a) => [a[0]], disconnectGithub: (a) => [a[0]], simulateWeek: (a) => [a[0]],
+  addStation: (a) => [a[0]], addBranch: (a) => [a[0]], endLine: (a) => [a[0]], restartLine: (a) => [a[0]],
+  completeOnboarding: (a) => [a[0]], capturePhone: (a) => [a[0]], setPrivacy: (a) => [a[0]], logLink: (a) => [a[0]],
+  addGoal: (a) => [a[0], ...(a[2] ? ['(as staff)'] : [])], setIntensity: (a) => [a[0]], remindParent: (a) => [a[0]],
+  sync: (a) => [a[1]],
+  addReflection: (a) => [a[0]?.studentId, ev(a[0]?.eventId)],
+  setVisibility: (a) => [ev(a[0])], editStation: (a) => [ev(a[0])], deleteStation: (a) => [ev(a[0])], completeGoal: (a) => [ev(a[0])],
+  setTags: (a) => [ev(a[0])], requestEndorsement: (a) => [ev(a[0])], addCheckIn: (a) => [ev(a[0]), ...(a[2] !== 'student' ? ['(as staff)'] : [])],
+  acceptCandidate: (a) => [inboxItem(a[0])], dismissCandidate: (a) => [inboxItem(a[0])], restoreCandidate: (a) => [inboxItem(a[0])],
+  mergeCandidate: (a) => [inboxItem(a[0]), ev(a[1])],
+  resubmit: (a) => [st().requests.find((r) => r.id === a[0])?.studentId],
+  answerEvidence: (a) => [st().evidenceRequests.find((r) => r.id === a[0])?.studentId],
+  acceptInterchange: (a) => [ev(a[0]?.b?.id)],
+  ignoreInterchange: () => [],
+};
+export function canAct(user, fn, args = []) {
+  if (!user || typeof fn !== 'string') return false;
+  if (isAdmin(user)) return true;
+  if (ADMIN_ONLY.has(fn)) return false;
+  if (ANYONE.has(fn)) return true;
+  if (STAFF.includes(user.kind)) return true;
+  try {
+    if (user.kind === 'student') {
+      const owns = STUDENT_OWNS[fn];
+      return !!owns && owns(args).every((sid) => sid === user.studentId);
+    }
+    if (user.kind === 'parent') {
+      if (fn === 'setFamily') return true;
+      if (fn === 'answerConsent') return user.children.includes(st().consentReqs.find((r) => r.id === args[0])?.studentId);
+    }
+  } catch { /* malformed arguments */ }
+  return false;
+}

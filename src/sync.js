@@ -2,10 +2,11 @@
 // each change runs here first (instant), is replayed there (/api/action), and other devices hear
 // of it on /api/stream and fetch the new state. Without a server (static hosting, vite preview)
 // none of this starts and the record stays in this browser's localStorage, as before.
-import { load, setActionHook } from './api.js';
+import { load, setActionHook, snapshot } from './api.js';
+import { isPublicRoute } from './publicRoute.js';
 
-// Public pages (#/s/<token>, #/v/<code>) read /api/public/* and never take the whole record.
-export const isPublicRoute = (hash = location.hash) => /^#\/?(s|v)(\/|$)/.test(hash);
+// Public pages (#/s/<token>, #/v/<code>) read /api/public/* and never take the whole record (see publicRoute.js).
+export { isPublicRoute };
 
 let live = false, rev = 0, seen = 0, busy = false, status = 'local';
 const queue = []; // changes waiting for the server, in order
@@ -29,7 +30,7 @@ async function getState(ms) {
 
 // Take the server's copy, unless a change of ours is still on its way (then try again after it).
 async function refresh() {
-  if (busy || queue.length) return;
+  if (busy || queue.length || isPublicRoute()) return;
   const s = await getState(10000);
   if (!s) return;
   if (busy || queue.length) { rev = -1; return; }
@@ -67,8 +68,10 @@ async function flush() {
   if (seen !== rev) refresh();
 }
 
+let es = null;
 function listen() {
-  const es = new EventSource('/api/stream');
+  if (es) return;
+  es = new EventSource('/api/stream');
   es.onmessage = (m) => { try { seen = JSON.parse(m.data).rev; } catch { return; } if (seen !== rev) refresh(); };
   es.onerror = () => setStatus('offline'); // EventSource reconnects by itself; the server then sends its rev
   es.onopen = () => { if (!busy) setStatus('saved'); };
@@ -83,7 +86,11 @@ export async function startSync() {
   live = true; rev = seen = s.rev;
   load(s.snapshot);
   setActionHook(send);
+  globalThis.__tpRecord = () => JSON.parse(snapshot()).store; // for scripts/checks/sync.cjs: this device's copy
   listen();
+  // On a public page (an in-app preview of a share link) step aside: it shows only what the link shares.
+  // Coming back, reconnect; the server's rev then differs from ours (-1) and the full record is fetched.
+  addEventListener('hashchange', () => { if (isPublicRoute()) { es?.close(); es = null; rev = -1; } else listen(); });
   setStatus('saved');
   return 'server';
 }

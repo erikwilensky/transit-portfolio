@@ -3,6 +3,7 @@
 // the same api.js function with the recorded ids and times (api.runAction), so both end identical.
 import { send, readJson } from '../lib.mjs';
 import { api, changed, onChange, rev } from '../store.mjs';
+import { MODE, canAct } from '../auth.mjs';
 
 // The changes a browser may ask for: every api.js mutator, except reset (POST /api/reset).
 const ALLOW = new Set(api.MUTATORS.filter((n) => n !== 'resetDemo'));
@@ -19,6 +20,8 @@ export default (app) => {
     const { fn, args = [], rec = [] } = await readJson(req);
     if (!ALLOW.has(fn)) return send(res, 400, { error: `Not an allowed change: ${fn}` });
     if (!Array.isArray(args) || !Array.isArray(rec)) return send(res, 400, { error: 'args and rec must be arrays' });
+    // Pilot: each person may only make the changes their role allows (server/auth.mjs). Demo: no accounts, all allowed.
+    if (MODE === 'pilot' && !canAct(req.user, fn, decode(args))) return send(res, 403, { error: 'Not allowed for your account' });
     const out = await serial(() => {
       const prev = rev;
       try {
@@ -34,7 +37,7 @@ export default (app) => {
   });
 
   app.post('/api/reset', async (req, res) => {
-    if (process.env.TP_MODE === 'pilot') return send(res, 403, { error: 'Reset is only for the demo' });
+    if (MODE === 'pilot') return send(res, 403, { error: 'Reset is only for the demo' });
     const out = await serial(() => { const prev = rev; api.resetDemo(); return { rev: changed({ fn: 'resetDemo' }), prev }; });
     send(res, 200, out);
   });

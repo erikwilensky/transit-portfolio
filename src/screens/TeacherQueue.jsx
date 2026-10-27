@@ -5,6 +5,7 @@ import { fmtDate, TYPE_LABEL, inkOn } from '../format.js';
 import { VerifyBadge } from '../components/Badge.jsx';
 import SponsorPanel from '../components/SponsorPanel.jsx';
 import { getSponsored } from '../api.js';
+import { FileLinks } from '../components/FileAttach.jsx';
 
 const CHIPS = ['Independent work', 'Beyond the syllabus', 'Strong collaboration', 'Real-world impact', 'Clear progress'];
 
@@ -91,6 +92,7 @@ export default function TeacherQueue({ teacherId, toast, version, focus }) {
                   <span className="q-src">{e.source.system}{e.source.ref ? ` · ${e.source.ref}` : ''}</span>
                 </div>
                 {r.note && <blockquote className="q-note">“{r.note}”</blockquote>}
+                <FileLinks evidence={e.evidence} />
                 <div className="q-chips">{CHIPS.map((c) => { const on = (chips[r.id] || []).includes(c); return <button key={c} className={on ? 'on' : ''} onClick={() => setChips({ ...chips, [r.id]: on ? chips[r.id].filter((x) => x !== c) : [...(chips[r.id] || []), c] })}>{c}</button>; })}</div>
                 <div className="q-actions">
                   <input value={notes[r.id] || ''} onChange={(ev) => setNotes({ ...notes, [r.id]: ev.target.value })} placeholder="A note for the record, or what you need to see" aria-label="Note" />

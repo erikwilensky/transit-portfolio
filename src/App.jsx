@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { applyLens, getAlumMap, getPresentations, getStudentMap, getStudents, subscribe, getDrafts, setStudentDrafts, getNotifications, markNotificationsRead, resetDemo, restore, logLink, addStation, getLang, setLang, getIntensity, setIntensity, INTENSITY, INTENSITY_NAV, INTENSITY_LABEL } from './api.js';
+import { applyLens, getAlumMap, getPresentations, getStudentMap, getStudents, subscribe, getDrafts, setStudentDrafts, hasPublicCopy, getNotifications, markNotificationsRead, resetDemo, restore, logLink, addStation, getLang, setLang, getIntensity, setIntensity, INTENSITY, INTENSITY_NAV, INTENSITY_LABEL } from './api.js';
 import SimpleHome, { ShowFamily } from './screens/SimpleHome.jsx';
 import IntensityControl from './components/IntensityControl.jsx';
 import { ensureEndorsed } from './tourStory.js';
-import { PERSONAS, KIND_LABEL, NAV, personaById, home } from './personas.js';
+import { PERSONAS, KIND_LABEL, NAV, personaById, home, navOf, pilotPersona } from './personas.js';
+import { signOut } from './auth.js';
+import Accounts from './screens/Accounts.jsx';
+import { PasswordDialog } from './screens/SignIn.jsx';
 import { ago, appUrl, inkOn } from './format.js';
 import Studio from './components/Studio.jsx';
 import SharedView from './components/SharedView.jsx';
@@ -16,7 +19,7 @@ import CasDashboard from './screens/CasDashboard.jsx';
 import ReferenceLetter from './screens/ReferenceLetter.jsx';
 import SchoolDashboard from './screens/SchoolDashboard.jsx';
 import ShareLanding from './screens/ShareLanding.jsx';
-import VerifyPage from './screens/VerifyPage.jsx';
+import { PublicShare, PublicVerify } from './screens/PublicPage.jsx';
 import ScanIn from './screens/ScanIn.jsx';
 import ComingSoon from './screens/ComingSoon.jsx';
 import ShareLinks from './screens/ShareLinks.jsx';
@@ -39,10 +42,12 @@ import ParentView from './screens/ParentView.jsx';
 import Family from './screens/Family.jsx';
 import LearnerProfile from './screens/LearnerProfile.jsx';
 import { tr } from './i18n.js';
+import { isPublicRoute } from './publicRoute.js';
 import Pilot from './screens/Pilot.jsx';
 import AuditLog from './screens/AuditLog.jsx';
 import Poster from './screens/Poster.jsx';
 import AlumJourney from './screens/AlumJourney.jsx';
+import ImportFile from './screens/ImportFile.jsx';
 import Logo from './components/Logo.jsx';
 import NavBar from './components/NavBar.jsx';
 import Launcher from './components/Launcher.jsx';
@@ -60,7 +65,7 @@ const parse = () => {
   const [a, b, c] = location.hash.replace(/^#\/?/, '').split('/');
   if (a === 's' || a === 'v' || a === 'p') return { publicKind: a, param: b, lang: c };
   const p = personaById(a);
-  const screens = NAV[p.kind].map(([id]) => id).concat(p.kind === 'advisor' ? ['student'] : p.kind === 'student' ? ['poster'] : []);
+  const screens = navOf(p).map(([id]) => id).concat(p.kind === 'advisor' ? ['student'] : p.kind === 'student' ? ['poster'] : []);
   return { persona: p.id, screen: screens.includes(b) ? b : home(p), param: c || null };
 };
 
@@ -83,6 +88,9 @@ export default function App() {
   const [auto, setAuto] = useState(false);
   const [launch, setLaunch] = useState(false);
   const [qa, setQa] = useState(false);
+  const [pwOpen, setPwOpen] = useState(false);
+  // Pilot mode: the signed-in person's own persona; no switcher, tours, presenter or reset.
+  const pilot = pilotPersona();
   // F18: Escape closes the top dialog, else an open station panel; Tab stays inside an open dialog;
   // focus moves into a dialog when it opens and returns to where it was when it closes.
   useEffect(() => {
@@ -129,10 +137,11 @@ export default function App() {
   const drafts = getDrafts();
   // F3: #/reset puts the demo back to its seeded state (handy on a shared screen).
   useEffect(() => {
-    const f = () => { if (location.hash.startsWith('#/reset')) { resetDemo(); history.replaceState(null, '', '#/principal/dashboard'); setRoute(parse()); } };
+    const f = () => { if (location.hash.startsWith('#/reset') && !pilotPersona()) { resetDemo(); history.replaceState(null, '', '#/principal/dashboard'); setRoute(parse()); } };
     f(); addEventListener('hashchange', f); return () => removeEventListener('hashchange', f);
   }, []);
-  useEffect(() => { const f = () => setRoute(parse()); addEventListener('hashchange', f); return () => removeEventListener('hashchange', f); }, []);
+  // Leaving a public page that holds only the server's pruned copy: start again with the full record.
+  useEffect(() => { const f = () => { if (hasPublicCopy() && !isPublicRoute()) location.reload(); else setRoute(parse()); }; addEventListener('hashchange', f); return () => removeEventListener('hashchange', f); }, []);
   useEffect(() => { document.documentElement.dataset.theme = dark ? 'dark' : 'light'; }, [dark]);
   useEffect(() => { const f = (e) => { if (!e.target.closest('.menu-wrap')) setMenu(null); }; addEventListener('pointerdown', f); return () => removeEventListener('pointerdown', f); }, []);
 
@@ -149,8 +158,9 @@ export default function App() {
   // F9: a toast can carry a snapshot taken before the action; Undo restores it.
   const toast = (m, undo) => { setToastMsg({ m, undo }); clearTimeout(window.__toast); window.__toast = setTimeout(() => setToastMsg(null), undo ? 6000 : 3400); };
 
-  if (route.publicKind === 's') return <VerifyProvider><ShareLanding token={route.param} drafts={drafts} version={version} /></VerifyProvider>;
-  if (route.publicKind === 'v') return <VerifyPage code={route.param} />;
+  // Share links and verify codes: with the pilot server, only what was shared is fetched (see publicRoute.js).
+  if (route.publicKind === 's') return <PublicShare key={route.param} token={route.param} version={version} />;
+  if (route.publicKind === 'v') return <PublicVerify key={route.param || ''} code={route.param} />;
   if (route.publicKind === 'p') return <VerifyProvider><ParentView studentId={route.param} lang={route.lang} /></VerifyProvider>;
 
   const persona = personaById(route.persona);
@@ -161,7 +171,7 @@ export default function App() {
   // Students choose how much interface they see; the record is the same at every level.
   const level = persona.kind === 'student' ? getIntensity(persona.studentId) : null;
   const changeLevel = (v) => { setIntensity(persona.studentId, v); if (INTENSITY_NAV[v] && !INTENSITY_NAV[v].includes(route.screen)) go(persona.id, 'map'); toast(`Interface set to ${v}. Your map and everything on it stay the same.`); };
-  const nav = NAV[persona.kind].filter(([id]) => !level || !INTENSITY_NAV[level] || INTENSITY_NAV[level].includes(id)).map(([id, l]) => [id, T(INTENSITY_LABEL[level]?.[id] || l)]);
+  const nav = navOf(persona).filter(([id]) => !level || !INTENSITY_NAV[level] || INTENSITY_NAV[level].includes(id)).map(([id, l]) => [id, T(INTENSITY_LABEL[level]?.[id] || l)]);
   const notes = getNotifications(persona.id);
   const unread = notes.filter((n) => !n.read).length;
   const ctx = { go, toast, version, persona, drafts, setDrafts, audience, setAudience, tier, setTier, startTour: (t) => { setTourState({ tour: t, step: 0 }); TOURS[t].steps[0].run(ctx); } };
@@ -190,9 +200,16 @@ export default function App() {
             <div className="menu-wrap">
               <button className="persona-btn" onClick={() => setMenu(menu === 'persona' ? null : 'persona')} aria-expanded={menu === 'persona'} aria-haspopup="menu">
                 <span className="av" style={{ background: persona.colour, color: inkOn(persona.colour) }}>{persona.initials}</span>
-                <span className="pb-text"><small>{T('Viewing as')}</small><b>{persona.name}</b></span><span aria-hidden="true">▾</span>
+                <span className="pb-text"><small>{T(pilot ? 'Signed in' : 'Viewing as')}</small><b>{persona.name}</b></span><span aria-hidden="true">▾</span>
               </button>
-              {menu === 'persona' && (
+              {menu === 'persona' && pilot && (
+                <div className="menu persona-menu acct-menu" role="menu">
+                  <div className="acct-who"><b>{persona.name}</b><small>{persona.role}</small><small>{persona.account?.email}</small></div>
+                  <button role="menuitem" onClick={() => { setMenu(null); setPwOpen(true); }}><span><b>Change password</b></span></button>
+                  <button role="menuitem" className="sign-out" onClick={() => signOut()}><span><b>Sign out</b></span></button>
+                </div>
+              )}
+              {menu === 'persona' && !pilot && (
                 <div className="menu persona-menu" role="menu">
                   {Object.entries(KIND_LABEL).map(([kind, label]) => (
                     <div key={kind} className="pm-group">
@@ -239,7 +256,7 @@ export default function App() {
                 </div>
               )}
             </div>
-            <div className="menu-wrap">
+            {!pilot && <div className="menu-wrap">
               <button className="icon-btn tour-btn" onClick={() => setMenu(menu === 'tour' ? null : 'tour')} aria-expanded={menu === 'tour'}>{T('Pitch tour')}</button>
               {menu === 'tour' && (
                 <div className="menu tour" role="menu">
@@ -264,7 +281,7 @@ export default function App() {
                   <p className="fineprint demo-note">{serverMode() ? 'Changes are saved on the server, so every device sees them at once. Reset puts every device back.' : 'Changes are saved in this browser, so a rehearsal is still here tomorrow. Open a second tab to show two people at once.'}</p>
                 </div>
               )}
-            </div>
+            </div>}
           </div>
         </header>
 
@@ -289,6 +306,7 @@ export default function App() {
           {persona.kind === 'counsellor' && route.screen === 'search' && <CohortSearch {...ctx} />}
           {persona.kind === 'coordinator' && route.screen === 'core' && <DpCore {...ctx} />}
           {persona.kind === 'coordinator' && route.screen === 'governance' && <Governance {...ctx} />}
+          {(persona.kind === 'coordinator' || persona.kind === 'teacher') && route.screen === 'import' && <ImportFile {...ctx} />}
           {persona.kind === 'leadership' && route.screen === 'rollout' && <Rollout {...ctx} />}
           {persona.kind === 'leadership' && route.screen === 'pilot' && <Pilot {...ctx} />}
           {persona.kind === 'leadership' && route.screen === 'audit' && <AuditLog {...ctx} />}
@@ -297,7 +315,8 @@ export default function App() {
           {persona.kind === 'alum' && route.screen === 'journey' && <AlumJourney {...ctx} />}
           {persona.kind === 'alum' && route.screen === 'poster' && <AlumPoster {...ctx} />}
           {persona.kind === 'external' && <ShareLanding token={persona.token} drafts={drafts} version={version} embedded />}
-          <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} />
+          {persona.admin && route.screen === 'accounts' && <Accounts {...ctx} />}
+          {route.screen !== 'accounts' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} />}
           </ErrorBoundary>
         </main>
 
@@ -317,7 +336,8 @@ export default function App() {
             <button onClick={() => { setAuto(false); setTourState(null); }} aria-label="Close tour">×</button>
           </div>
         )}
-        {launch && <Launcher onGo={go} onClose={() => setLaunch(false)} />}
+        {launch && <Launcher onGo={go} onClose={() => setLaunch(false)} only={pilot} />}
+        {pwOpen && <PasswordDialog onClose={() => setPwOpen(false)} toast={toast} />}
         <div className={`toast${toastMsg ? ' show' : ''}`} role="status" aria-live="polite">{toastMsg?.m}{toastMsg?.undo && <button className="toast-undo" onClick={() => { restore(toastMsg.undo); setToastMsg(null); }}>Undo</button>}</div>
       </div>
     </VerifyProvider>

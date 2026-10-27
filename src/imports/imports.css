@@ -1,0 +1,74 @@
+/* Import a file: staff screen and the student dialog. NIST brand, flat: no shadows or gradients, weights up to 600. */
+.imp { max-width: 1100px; }
+.imp-step { margin-bottom: 14px; }
+.imp-step h3 { display: flex; align-items: center; gap: 8px; font-size: 16px; margin-bottom: 12px; }
+.imp-n { flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--navy); color: #fff; display: grid; place-items: center; font-size: 13px; font-weight: 600; }
+:root[data-theme="dark"] .imp-n { background: var(--b-sky); color: var(--navy); }
+
+.imp-formats { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+.imp-formats.two { grid-template-columns: 1fr 1fr; margin: 12px 0 8px; }
+.imp-format { text-align: left; display: flex; flex-direction: column; gap: 3px; border: 1.5px solid var(--rule); background: var(--surface); border-radius: 10px; padding: 10px 12px; }
+.imp-format b { font-weight: 600; font-size: 14px; }
+.imp-format small { color: var(--muted); font-size: 12.5px; line-height: 1.35; }
+.imp-format:hover { border-color: var(--b-purple); }
+.imp-format.on { border-color: var(--navy); background: color-mix(in srgb, var(--b-sky) 16%, var(--surface)); }
+:root[data-theme="dark"] .imp-format.on { border-color: var(--b-sky); }
+.imp-tpl { margin: 10px 0 0; }
+
+.imp-drop { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; border: 2px dashed var(--rule); border-radius: 12px; padding: 26px 16px; background: var(--bg); cursor: pointer; }
+.imp-drop:hover, .imp-drop.over { border-color: var(--b-purple); background: color-mix(in srgb, var(--b-sky) 12%, var(--bg)); }
+.imp-drop:focus-within { outline: 3px solid var(--b-purple); outline-offset: 2px; }
+.imp-drop b { font-weight: 600; } .imp-drop small { color: var(--muted); font-size: 12.5px; max-width: 520px; }
+.imp-drop-tri { width: 34px; height: 30px; background: var(--b-sky); clip-path: polygon(0 100%, 50% 0, 100% 100%); margin-bottom: 6px; }
+.imp-file { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: space-between; border: 1px solid var(--rule); border-radius: 10px; padding: 10px 12px; background: var(--bg); margin: 8px 0; }
+.imp-file span { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; } .imp-file small { color: var(--muted); font-size: 12.5px; }
+.imp-hint { margin: 8px 0 0; font-size: 13.5px; border-left: 3px solid var(--b-gold); padding: 4px 10px; }
+
+.imp-people { margin: 4px 0 14px; } .imp-people small { color: var(--muted); }
+.imp-people .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.imp-person { border: 1.5px solid var(--rule); background: var(--surface); border-radius: 999px; padding: 4px 11px; font-size: 13px; font-weight: 500; }
+.imp-person.on { border-color: var(--b-green); background: color-mix(in srgb, var(--b-green) 14%, var(--surface)); font-weight: 600; }
+.imp-meter { margin-bottom: 12px; }
+.imp-only { margin-bottom: 8px; }
+
+.imp-table { border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
+.imp-tr { display: grid; grid-template-columns: 48px minmax(120px, 1fr) minmax(160px, 1.6fr) 110px minmax(120px, 1fr) minmax(140px, 1.1fr); gap: 10px; padding: 9px 12px; align-items: start; border-top: 1px solid var(--rule); font-size: 13.5px; }
+.imp-table.no-student .imp-tr { grid-template-columns: 32px minmax(0, 1.5fr) 92px minmax(0, 1fr) minmax(0, 1.3fr); }
+.imp-tr.head { border-top: 0; background: var(--surface-2); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.imp-tr > span { min-width: 0; display: flex; flex-direction: column; gap: 2px; overflow-wrap: anywhere; }
+.imp-tr b { font-weight: 600; } .imp-tr small { color: var(--muted); font-size: 12px; }
+.imp-tr em { color: var(--b-red); font-style: normal; font-weight: 600; }
+.imp-tr.bad { background: color-mix(in srgb, var(--b-red) 6%, var(--surface)); }
+.imp-tr.dup { color: var(--muted); }
+.imp-row { color: var(--muted); font-variant-numeric: tabular-nums; }
+.imp-line { --c: #888; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 12.5px; }
+.imp-line i { width: 14px; height: 4px; border-radius: 2px; background: var(--c); flex: none; }
+.imp-check { flex-direction: row !important; flex-wrap: wrap; gap: 4px !important; }
+.imp-flag { display: inline-block; max-width: 100%; overflow-wrap: anywhere; border-radius: 6px; padding: 2px 7px; font-size: 12px; font-weight: 600; border: 1px solid; }
+.imp-flag.ok { color: var(--b-green); border-color: var(--b-green); }
+.imp-flag.bad { color: #B3261E; border-color: var(--b-red); background: color-mix(in srgb, var(--b-red) 8%, transparent); }
+.imp-flag.warn { color: #8A4B00; border-color: var(--b-orange); }
+.imp-flag.dup { color: var(--muted); border-color: var(--rule); }
+.imp-flag.block { display: block; margin: 0 0 10px; font-size: 13.5px; padding: 8px 10px; }
+:root[data-theme="dark"] .imp-flag.ok { color: #3cc08f; border-color: #3cc08f; }
+:root[data-theme="dark"] .imp-flag.bad { color: #ff9b95; }
+:root[data-theme="dark"] .imp-flag.warn { color: var(--b-gold); border-color: var(--b-gold); }
+
+.imp-done-list { list-style: none; margin: 0; padding: 0; }
+.imp-done-list li { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 9px 0; border-top: 1px solid var(--rule); }
+.imp-done-list li:first-child { border-top: 0; }
+.imp-done-list span { display: flex; flex-direction: column; } .imp-done-list small { color: var(--muted); font-size: 12.5px; }
+.imp-dlg { width: min(860px, 100%); }
+.imp-dlg .imp-preview { max-height: 46vh; overflow: auto; margin-top: 8px; }
+
+/* Phone width: each row becomes a small card with its labels. */
+@media (max-width: 760px) {
+  .imp-formats.two { grid-template-columns: 1fr; }
+  .imp-format:not(.on) small { display: none; }
+  .imp-tr.head { display: none; }
+  .imp-tr, .imp-table.no-student .imp-tr { grid-template-columns: 1fr 1fr; gap: 6px 12px; }
+  .imp-tr:nth-child(2) { border-top: 0; }
+  .imp-tr > span::before { content: attr(data-l); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .imp-tr > span[data-l="Item"], .imp-tr > span[data-l="Check"] { grid-column: span 2; }
+  .imp-check::before { width: 100%; }
+}

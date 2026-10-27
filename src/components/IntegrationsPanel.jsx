@@ -5,13 +5,15 @@ import MetroMap from './MetroMap.jsx';
 import StationPanel from './StationPanel.jsx';
 import { VerifyBadge } from './Badge.jsx';
 import ReaderRequests from './ReaderRequests.jsx';
+import ImportDialog from './ImportDialog.jsx';
 
-const GLYPH = { sis: 'SIS', lms: 'LMS', cas: 'CAS', clubs: 'CLB', github: 'GH', exams: 'EXM' };
+const GLYPH = { sis: 'SIS', lms: 'LMS', cas: 'CAS', clubs: 'CLB', github: 'GH', exams: 'EXM', classroom: 'GC', csv: 'CSV', calendar: 'ICS', mine: 'ME' };
 
 export default function IntegrationsPanel({ map, lens, newIds, onAdded, toast, version }) {
   const [syncing, setSyncing] = useState([]);
   const [selected, setSelected] = useState(null);
   const [gh, setGh] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [, tick] = useState(0);
   const inboxRef = useRef(null);
   useEffect(() => { const t = setInterval(() => tick((n) => n + 1), 30000); return () => clearInterval(t); }, []);
@@ -47,6 +49,7 @@ export default function IntegrationsPanel({ map, lens, newIds, onAdded, toast, v
 
       <div className="int-head">
         <h2>Connected systems</h2>
+        <button className="ghost" onClick={() => setImporting(true)} title="Bring in your own records from a spreadsheet or a calendar file">Import a file</button>
         <button className="ghost" onClick={simulate} disabled={!!syncing.length} title="Each connected system sends one new item, as if a school week had passed">Simulate next week</button>
         <button className="primary" onClick={() => run(integrations.map((i) => i.id))} disabled={!!syncing.length || !totalPending}>
           {syncing.length ? 'Syncing…' : `Sync all · ${totalPending} new`}
@@ -79,6 +82,7 @@ export default function IntegrationsPanel({ map, lens, newIds, onAdded, toast, v
         })}
       </div>
 
+      {importing && <ImportDialog student={map.student} toast={toast} onClose={(r) => { setImporting(false); if (r?.added) inboxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }} />}
       {gh && github && <GithubDialog github={github} first={first} onClose={() => setGh(false)}
         onSave={(names) => { setGithub(studentId, names); setGh(false); toast(names.length ? `Sharing ${names.length} repositor${names.length === 1 ? 'y' : 'ies'}. Only those can send items.` : 'Connected, with nothing shared yet'); }}
         onDisconnect={() => { const snap = snapshot(); disconnectGithub(studentId); setGh(false); toast('GitHub disconnected', snap); }} />}

@@ -12,6 +12,8 @@ import { defaultDesign } from '../custom/design.js';
 import { CommentStrip } from './DraftComments.jsx';
 import LensCompare from './LensCompare.jsx';
 import { draftNarrative } from './drafts.js';
+import { PrintButton, PrintFooter, PrintHead } from './PrintKit.jsx';
+import { presentationName } from '../print.js';
 
 export default function Studio({ level = 'full', map, drafts, audience, setAudience, tier, setTier, updateDraft, onShare, toast }) {
   const pres = drafts.find((p) => p.audience === audience) || drafts[0];
@@ -29,6 +31,9 @@ export default function Studio({ level = 'full', map, drafts, audience, setAudie
   const history = useDesignHistory(design, (d) => set({ design: d }));
   const [blockId, setBlockId] = useState(null);
   const [editing, setEditing] = useState(true);
+  // Anything that reads as a document can be saved as a PDF; the Code tier shows source instead.
+  const printable = !compare && (custom || tier !== 'code');
+  const docTitle = presentationName(map.student.name, pres);
   useEffect(() => { if (custom && !pres.design) set({ design }); history.reset(); setBlockId(null); }, [custom, pres.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleLine = (id) => {
@@ -54,7 +59,7 @@ export default function Studio({ level = 'full', map, drafts, audience, setAudie
         {!compare && <button className="collapse-btn" onClick={() => setCollapsed(!collapsed)} aria-pressed={collapsed}>{collapsed ? 'Show controls' : 'Hide controls'}</button>}
       </div>
       {compare ? <LensCompare map={map} drafts={drafts} initial={audience} /> : <>
-      <p className="lens-blurb">{LENSES[pres.audience].blurb}</p>
+      <div className="studio-sub"><p className="lens-blurb">{LENSES[pres.audience].blurb}</p>{printable && <PrintButton title={docTitle} />}</div>
       <CommentStrip presId={pres.id} onPick={setSelected} />
 
       <div className={`studio-body tier-${tier}${custom ? ' custom' : ''}${collapsed ? ' collapsed' : ''}`}>
@@ -153,12 +158,14 @@ export default function Studio({ level = 'full', map, drafts, audience, setAudie
         </aside>
 
         <div className={`studio-preview theme-${pres.theme}`}>
+          {printable && !custom && <PrintHead kicker={LENSES[pres.audience].label} />}
           {custom
             ? <CustomView map={map} lens={lens} design={design} editable={editing} selectedBlockId={blockId} onSelectBlock={setBlockId} onChange={history.commit} onOpenStation={setSelected} />
             : tier === 'code'
             ? <CodeView pres={pres} map={map} lens={lens} onHtml={(h) => set({ site: { ...(pres.site || {}), html: h } })} />
             : <PresentationView map={map} lens={lens} pres={pres} selectedId={selected} onSelect={setSelected} />}
           <StationPanel event={event} map={map} onClose={() => setSelected(null)} readOnly />
+          {printable && <PrintFooter name={map.student.name} margin={custom ? '10mm 10mm 17mm' : undefined} />}
         </div>
       </div>
       </>}

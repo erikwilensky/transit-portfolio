@@ -64,7 +64,11 @@ export default function PresentationView({ map, lens, pres, selectedId, onSelect
       </header>
 
       {layout === 'map' ? (
-        <div className="pres-map"><MetroMap map={map} lens={lens} selectedId={selectedId} onSelect={onSelect} fitKey={`${map.student.id}-map`} /></div>
+        <>
+          <div className="pres-map"><MetroMap map={map} lens={lens} selectedId={selectedId} onSelect={onSelect} fitKey={`${map.student.id}-map`} /></div>
+          {/* On paper: the whole map at once, as a vector drawing scaled to the page width. */}
+          <figure className="pres-printmap"><MetroMap print aspect={0.62} map={map} lens={lens} duration={0} /></figure>
+        </>
       ) : pres.showMap && (
         <figure className="pres-minimap">
           <MetroMap map={map} lens={lens} mini />
@@ -123,8 +127,8 @@ export default function PresentationView({ map, lens, pres, selectedId, onSelect
                         <li key={e.id} className={e.type === 'goal' ? 'goal' : ''} onClick={() => open(e.id)}>
                           <span className="p-date">{month(e.date)}</span>
                           <div>
-                            <b>{e.title}</b> <VerifyBadge level={e.verification} event={e} />
-                            <p>{e.about || e.summary}</p>
+                            <div className="narr-stop-head"><b>{e.title}</b> <VerifyBadge level={e.verification} event={e} />
+                              <p>{e.about || e.summary}</p></div>
                             {firstImage(e) && <img className="narr-img" src={firstImage(e).url} alt={firstImage(e).caption} loading="lazy" />}
                             {e.reflections.map((r) => <blockquote key={r.id} className="refl-quote"><span className="refl-prompt">Reflection: {r.prompt}</span>{r.text.split('\n\n').map((para, i) => <p key={i}>{para}</p>)}</blockquote>)}
                           </div>
