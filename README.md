@@ -1,8 +1,9 @@
 # NIST Transit Portfolio — pitch demo
 
-A static, clickable demo of NIST Transit Portfolio: each student's journey drawn as a metro map,
-fed (in mock) by school systems and re-presented for different audiences. No backend, no
-logins, no external calls. All students, teachers and records are fictional.
+A clickable demo of NIST Transit Portfolio: each student's journey drawn as a metro map,
+fed (in mock) by school systems and re-presented for different audiences. It runs as a static
+app, or with the small pilot server for a shared record. All students, teachers and records are
+fictional.
 
 ## Run it
 
@@ -13,7 +14,30 @@ npm run build      # writes dist/ (plain HTML, CSS, JS)
 npx serve dist     # quick static server, or point Apache / nginx / Caddy at dist/
 ```
 
-`dist/` uses relative paths (`base: './'`), so it works from any folder or URL path.
+`dist/` uses relative paths (`base: './'`), so it works from any folder or URL path. On plain static
+hosting the app saves everything in the browser.
+
+With the pilot server (one shared record, files, share links, sign-in; see `docs/pilot-server.md`):
+
+```sh
+npm run build && npm run server    # app and /api on http://localhost:8787, data in .data/
+```
+
+## Deploy (Docker, Erik's Mac)
+
+The live site, https://transit.wilenskycs.online, is a Cloudflare tunnel to `localhost:8080` on the
+Mac. Docker runs the app and the pilot server together (`Dockerfile`, `docker-compose.yml`); the
+data lives next to the repo in `../transit-portfolio-data`, never inside it.
+
+```sh
+cd /Users/erik/Server/transit-portfolio
+scripts/deploy-mac.sh     # git pull, build the image, (re)start on :8080, wait until healthy
+scripts/backup.sh         # copy the data into ../transit-portfolio-backups (keeps the last 30)
+```
+
+Run `scripts/deploy-mac.sh` for every update: it is safe to run again. Settings (demo or pilot mode,
+a second pilot instance on :8081) are in `.env`, copied from `.env.example`. Nightly backups, restore
+and the Mac's sleep settings: `docs/pilot-server.md`.
 
 ## Screens
 
