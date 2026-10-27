@@ -4,6 +4,7 @@ import App from './App.jsx';
 import SignIn from './screens/SignIn.jsx';
 import { getAuth, loadAuth, onAuth } from './auth.js';
 import './styles.css';
+import './print.css';
 
 // Pilot mode: sign in first (public share, verify and family links stay open). Demo mode: straight into the app.
 const isPublic = () => /^#\/?(s|v|p)(\/|$)/.test(location.hash);

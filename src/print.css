@@ -1,0 +1,173 @@
+/* Paper: what a student or counsellor hands over. A4 portrait, white, NIST navy headings,
+   nothing from the app around it. The A4 page size and running footer come from
+   PrintFooter (src/components/PrintKit.jsx), so screens without one (the poster) keep theirs. */
+
+/* On screen */
+.print-head, .print-colophon, .pres-printmap, .al-paper, .vb-code, .letter-doc.lt-paper-only { display: none; }
+.print-btn { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.studio-sub { display: flex; align-items: center; gap: 8px 16px; flex-wrap: wrap; }
+.studio-sub .lens-blurb { flex: 1 1 240px; }
+.studio-sub .print-btn { border: 1px solid var(--rule); background: var(--surface); border-radius: 10px; padding: 7px 12px; font-weight: 600; font-size: 13px; }
+.shared-picker .print-btn { margin-left: auto; }
+.lt-head { display: flex; align-items: center; gap: 10px; }
+.lt-logo { height: 22px; width: auto; flex: none; line-height: 0; }
+.lt-logo svg { height: 100%; width: auto; }
+.lt-date { margin: 0 0 14px; color: var(--muted); }
+
+@media print {
+  /* The document flows from page to page instead of scrolling inside the app. */
+  html, body, #root, .app, .screen { height: auto !important; min-height: 0 !important; overflow: visible !important; }
+  html, body { background: #fff !important; }
+  *, *::before, *::after { animation: none !important; transition: none !important; box-shadow: none !important; text-shadow: none !important; }
+
+  /* Dark mode never reaches paper (print.js also switches it off while the dialog is open). */
+  :root[data-theme="dark"] {
+    --bg: #fff !important; --surface: #fff !important; --surface-2: #eef1f6 !important; --ink: #0b2240 !important; --muted: #4a566c !important; --rule: #cfd6e2 !important;
+    --col-a: #fff !important; --col-b: #f5f7fa !important; --station: #fff !important; --halo: #fff !important; --accent: #002855 !important; --v-solid: #002855 !important;
+    --b-purple: #4F529B !important; --ok: #007A55 !important; --warn: #A35200 !important; color-scheme: light;
+  }
+
+  /* App chrome */
+  .topnav, .presenter, .toast, .tour-card, .modal-back, .station-panel, .menu, .print-btn,
+  .studio-bar, .studio-sub, .cm-strip, .studio-controls,
+  .landing-bar, .landing-banner, .landing-foot, .shared-picker, .browser-bar, .share-note,
+  .letter-page > .page-head, .letter-tools, .letter-ta, .claims, .letter-side,
+  .actlist > :not(.al-paper):not(.print-colophon):not(style) { display: none !important; }
+
+  /* Containers lose their frames */
+  .studio, .shared, .page.letter-page, .page.actlist { padding: 0 !important; margin: 0 !important; max-width: none !important; display: block !important; gap: 0 !important; }
+  .studio-body, .letter-body, .letter-main { display: block !important; }
+  .studio-preview, .browser, .browser-body, .landing, .landing-body {
+    border: 0 !important; border-radius: 0 !important; overflow: visible !important; min-height: 0 !important; max-height: none !important; height: auto !important; background: #fff !important; padding: 0 !important; margin: 0 !important;
+  }
+
+  /* Documents print in the school's colours whatever theme was chosen on screen.
+     A Custom page is the student's own design and keeps its look. */
+  .studio-preview:not(:has(.cv-page)), .landing-body, .browser-body, .letter-page, .actlist {
+    --bg: #fff !important; --surface: #fff !important; --surface-2: #eef1f6 !important; --ink: #0b2240 !important; --muted: #4a566c !important; --rule: #cfd6e2 !important;
+    --col-a: #fff !important; --col-b: #f5f7fa !important; --station: #fff !important; --halo: #fff !important; --accent: #002855 !important; --v-solid: #002855 !important;
+    --b-purple: #4F529B !important; --head-font: var(--font) !important;
+    color: #0b2240 !important; font-family: var(--font);
+  }
+  .pres, .skim, .cv-page, .letter-doc, .al-paper, .print-head, .print-colophon, .pres-printmap, .pres-minimap { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  /* Letterhead and closing block */
+  .print-head { display: flex !important; align-items: center; gap: 3mm; color: #002855; border-bottom: 1.5pt solid #002855; padding-bottom: 2.5mm; margin: 0 0 5mm; }
+  .print-head .ph-logo { height: 9mm; width: auto; line-height: 0; color: #002855; }
+  .print-head .ph-logo svg { height: 100%; width: auto; }
+  .print-head .ph-name { display: flex; flex-direction: column; font-size: 9.5pt; font-weight: 600; line-height: 1.25; }
+  .print-head .ph-name small { font-size: 8.5pt; font-weight: 400; color: #4a566c; }
+  .print-head .ph-kicker { margin-left: auto; font-size: 8pt; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #002855; }
+  .print-colophon { display: flex !important; gap: 4mm; align-items: center; margin: 5mm 0 0; padding-top: 3mm; border-top: 1px solid #cfd6e2; font-size: 8.5pt; line-height: 1.4; color: #4a566c; break-inside: avoid; font-family: var(--font); }
+  .print-colophon > div { display: flex; flex-direction: column; gap: 1mm; }
+  .print-colophon b { color: #002855; font-size: 9pt; }
+  .print-colophon .pc-url { color: #002855; font-weight: 600; word-break: break-all; }
+  .print-colophon .qr { padding: 0; }
+  .studio-preview:has(.cv-page) .print-colophon { margin: 6mm 0 0; }
+
+  /* Verification codes stand in for the clickable badges */
+  .vb-code { display: inline !important; margin-left: 5px; font: 600 7.5pt/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: .03em; color: #002855; }
+  .vb-check, .lt-notes .vb-code, .skim-card .vb-code { display: none !important; }
+  .vbadge.as-btn { padding: 0 !important; background: none !important; border: 0 !important; }
+
+  /* Type */
+  .pres, .skim, .letter-doc, .al-paper { font-size: 10pt; line-height: 1.45; }
+  .pres h1, .pres h2, .pres h3, .skim h1, .al-paper h1, .al-paper h2 { color: #002855; font-weight: 600; }
+  .pres-kicker, .p-h2, .cv-h, .cv-side h3, .narr-side h3, .skim-h { color: #002855 !important; }
+  .pres-head h1 { font-size: 19pt; }
+  .pres-sub, .pres-kicker { font-size: 9pt; }
+  .pres-intro { font-size: 11pt; max-width: none; }
+  a { color: inherit; text-decoration: none; }
+  :is(.pres, .skim, .letter-doc, .al-paper) a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 8pt; color: #4a566c; word-break: break-all; }
+
+  /* Keep things whole, and headings with what follows */
+  h1, h2, h3, h4, .p-h2, .cv-h, .skim-h, .pres-kicker, .narr-lede, .p-item-head, .lt-head { break-after: avoid; page-break-after: avoid; }
+  .p-item, .case-card, .chapter, .narr-stop-head, .timeline li, .skim-card, .skim-lines li, .cv-card, .cv-stats div, .cv-hero, .cv-quote, .cv-lines section, .cv-gallery figure, .cv-timeline li, .cv-goals li,
+  .al-paper li, .refl-quote, .endorse-quote, .pull, .goal-list li, .narr-side, .impact-stats, .pres-head, .pres-foot, .pres-minimap, .pres-printmap,
+  .letter-doc p, .lt-sign, .lt-notes li, .evidence-line h3, figure, img, svg, .print-colophon { break-inside: avoid; page-break-inside: avoid; }
+  .letter-doc p { orphans: 3; widows: 3; }
+
+  /* Presentation formats */
+  .pres { padding: 0 1px !important; gap: 4mm !important; } /* 1px keeps the right-hand card borders inside the page */
+  .pres .fade-in { opacity: 1 !important; }
+  .pres-avatar { width: 13mm; height: 13mm; font-size: 12pt; }
+  .p-item, .case-card, .chapter, .narr-side, .cv-side, .impact-stats span, .skim-card, .refl-quote, .pull, .letter { background: #fff !important; }
+  .p-item.sel { outline: 0; }
+  .case-card:hover { transform: none; }
+  .case-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 4mm; }
+  .case-grid > * { min-width: 0; }
+  .layout-profile .case-grid, .layout-letter .case-grid, .layout-cards .case-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  .layout-letter .p-img, .layout-cards .p-img { max-height: 30mm; }
+  .evidence-line { break-before: auto; }
+  .evidence-line h3 { margin: 3mm 0 2mm; }
+  .chapter-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 4mm; }
+  .p-img { max-height: 42mm; }
+  .narr-img, .tl-img { width: 58mm !important; max-width: 58mm !important; height: auto; max-height: 38mm; object-fit: contain; object-position: left top; }
+  .narr-stops li { padding: 2.5mm 0; }
+  .refl-quote { font-size: 9.5pt; }
+  /* The side panel becomes a strip above the story, so every page uses the full width. */
+  .narr { display: block !important; margin-top: 2mm; }
+  .narr-side { position: static !important; margin-bottom: 6mm; padding: 3mm 4mm !important; }
+  .narr-side dl { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-flow: column; grid-template-rows: auto auto; column-gap: 5mm; margin: 0; }
+  .narr-side dt { margin-top: 0 !important; }
+  .narr-side h3 { margin-bottom: 2mm !important; }
+  .narr-side p { margin: 2mm 0 0; }
+  .narr-stops li { grid-template-columns: 20mm minmax(0, 1fr) !important; }
+  .narr-body { max-width: none; }
+  .narr-sec { margin-bottom: 6mm; }
+  .narr-sec h2 { font-size: 15pt; display: block; width: fit-content; }
+  /* Pictures sit to the right of the words so a long story does not run to twenty pages. */
+  .narr-img { float: right; width: 46mm !important; max-width: 46mm !important; margin: 0 0 2mm 5mm !important; }
+  .narr-stops li > div::after { content: ''; display: block; clear: both; }
+  .narr-lede { font-size: 10.5pt; }
+  .cv { grid-template-columns: 52mm minmax(0, 1fr) !important; gap: 6mm !important; }
+  .cv .p-img { display: none; } /* a CV reads as text; the evidence is one scan away */
+  .cv-main .p-item { margin-bottom: 3mm; }
+  .letter { max-width: none; padding: 0 !important; border: 0 !important; }
+  .letter p { font-size: 11pt; line-height: 1.55; }
+  .timeline li { grid-template-columns: 22mm 6mm minmax(0, 1fr); }
+  .pres-foot { font-size: 8pt; }
+  .pres-map { display: none !important; }
+  .pres-printmap { display: block !important; margin: 0; border: 1px solid #cfd6e2; border-radius: 3mm; padding: 2mm; }
+  .pres-printmap svg { display: block; width: 100%; height: auto; }
+  .pres-minimap { max-width: none !important; background: #fff !important; }
+  .pres-minimap svg { height: 34mm !important; }
+
+  /* The shared view's 60-second summary */
+  .skim { max-width: none; padding: 0 !important; }
+  .skim-top { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4mm; }
+
+  /* Custom page: the student's design, without the editing handles */
+  .cv-page { min-height: 0 !important; padding: 0 0 4mm !important; }
+  .cv-tools, .cv-resize, .cv-empty, .cv-block.drop-before::before, .cv-block.drop-after::after { display: none !important; }
+  .cv-page.editing .cv-block { outline: 0 !important; }
+  .editable { box-shadow: none !important; background: none !important; }
+  .cv-gallery figure:hover img { transform: none; }
+
+  /* Reference letter */
+  .letter-doc, .letter-doc.lt-paper-only { display: block !important; border: 0 !important; border-radius: 0 !important; padding: 0 !important; background: #fff !important; font-size: 11pt; line-height: 1.55; }
+  .letter-doc .lt-head { font-size: 9pt; border-bottom-width: 1.5pt; padding-bottom: 3mm; margin-bottom: 6mm; }
+  .letter-doc .lt-logo { height: 11mm; color: #002855; }
+  .letter-doc .lt-date { margin-bottom: 5mm; color: #4a566c; }
+  .letter-doc p { margin: 0 0 3.5mm; }
+  .letter-doc .unsup { background: none !important; }
+  .letter-doc .cite-btn { text-decoration: none; }
+  .letter-doc .cite { color: #002855; }
+  .lt-sign { margin-top: 8mm; }
+  .lt-notes { font-size: 8.5pt; margin-top: 8mm; padding-left: 5mm; }
+  .lt-notes code { color: #002855; font-weight: 600; }
+
+  /* Activities list */
+  .al-paper { display: block !important; }
+  .al-paper h1 { font-size: 19pt; margin: 0 0 1mm; }
+  .al-paper-sub { margin: 0 0 5mm; color: #4a566c; font-size: 9.5pt; }
+  .al-paper ol { list-style: none; margin: 0; padding: 0; counter-reset: alp; }
+  .al-paper li { counter-increment: alp; position: relative; padding: 2.2mm 0 2.2mm 11mm; border-top: 1px solid #cfd6e2; }
+  .al-paper li::before { content: counter(alp); position: absolute; left: 0; top: 3mm; width: 7mm; height: 7mm; border-radius: 50%; background: #002855; color: #fff; font-weight: 600; font-size: 9pt; display: grid; place-items: center; }
+  .al-paper h2 { font-size: 11.5pt; margin: 0; }
+  .al-paper .alp-type { font-size: 7.5pt; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #4F529B; }
+  .al-paper .alp-org { font-weight: 600; font-size: 9.5pt; color: #4a566c; }
+  .al-paper p { margin: 0.6mm 0; }
+  .al-paper .alp-meta { font-size: 8.5pt; color: #4a566c; }
+  .al-paper .alp-note { font-size: 8.5pt; color: #4a566c; border-top: 1px solid #cfd6e2; padding-top: 2mm; margin: 0; }
+}

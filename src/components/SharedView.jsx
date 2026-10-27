@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react';
 import { applyLens, TODAY } from '../api.js';
-import { fmtDate } from '../format.js';
+import { appUrl, fmtDate } from '../format.js';
 import PresentationView from './PresentationView.jsx';
 import StationPanel from './StationPanel.jsx';
 import { VerifyScope } from './VerifyModal.jsx';
+import { PrintButton, PrintFooter, PrintHead } from './PrintKit.jsx';
+import { presentationName } from '../print.js';
 
 export default function SharedView({ publicMap, drafts, links }) {
   const [token, setToken] = useState(links.find((l) => !l.revoked)?.token || links[0]?.token);
@@ -26,6 +28,7 @@ export default function SharedView({ publicMap, drafts, links }) {
           })}
         </select>
         <span className="fineprint">This is what an external viewer sees: read-only, publishable items only.</span>
+        {pres && !link.revoked && !expired && <PrintButton title={presentationName(publicMap.student.name, pres)} />}
       </div>
       <div className="browser">
         <div className="browser-bar">
@@ -44,8 +47,10 @@ export default function SharedView({ publicMap, drafts, links }) {
               <span>Link expires {fmtDate(link.expiresAt)}</span>
               <span>{link.views} views logged</span>
             </div>
+            <PrintHead kicker="Shared portfolio" />
             <VerifyScope.Provider value><PresentationView map={publicMap} lens={lens} pres={pres} selectedId={selected} onSelect={setSelected} />
             <StationPanel event={event} map={publicMap} onClose={() => setSelected(null)} readOnly /></VerifyScope.Provider>
+            <PrintFooter name={publicMap.student.name} verifyUrl={appUrl(`s/${link.token}`)} />
           </div>
         )}
       </div>

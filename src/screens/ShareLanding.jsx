@@ -7,6 +7,8 @@ import PresentationView from '../components/PresentationView.jsx';
 import { siteDoc, starterHtml } from '../components/CodeView.jsx';
 import StationPanel from '../components/StationPanel.jsx';
 import Logo from '../components/Logo.jsx';
+import { PrintButton, PrintFooter, PrintHead } from '../components/PrintKit.jsx';
+import { docName, presentationName } from '../print.js';
 import { VerifyScope } from '../components/VerifyModal.jsx';
 
 const SHARED_WITH = SHARED_LABEL;
@@ -78,7 +80,7 @@ export default function ShareLanding({ token, drafts, embedded = false, remote =
             <span>{link.views + extraViews(token)} views logged</span>
             <span className="spacer" />
             {!link.site && <div className="seg small" role="group" aria-label="Reading mode"><button className={view === 'full' ? 'on' : ''} aria-pressed={view === 'full'} onClick={() => setView('full')}>Full portfolio</button><button className={view === 'skim' ? 'on' : ''} aria-pressed={view === 'skim'} onClick={() => setView('skim')}>60-second view</button></div>}
-            <button className="ghost" onClick={() => window.print()}>Print</button>
+            {!link.site && <PrintButton title={view === 'skim' ? docName(map.student.name, 'Portfolio summary') : presentationName(map.student.name, pres)} />}
             <button className="ghost" disabled={asked} onClick={() => { setAsked(true); if (remote) { remote.extend(reader); return; } notify(PERSONA_OF_STUDENT[pres.studentId], `${link.sharedWith || SHARED_WITH[token] || 'A viewer'} asked to extend link /s/${token}`, { persona: PERSONA_OF_STUDENT[pres.studentId], screen: 'links' }); }}>{asked ? 'Extension requested' : 'Request more time'}</button>
           </div>
           {link.site ? (
@@ -87,12 +89,13 @@ export default function ShareLanding({ token, drafts, embedded = false, remote =
               <p className="fineprint">Built by {map.student.name.split(' ')[0]} on the school’s read API. It can only show what {map.student.name.split(' ')[0]} made publishable.</p>
             </div>
           ) : <div className={`landing-body theme-${pres.theme}`}>
+            <PrintHead kicker={view === 'skim' ? 'Portfolio summary' : 'Shared portfolio'} />
             <VerifyScope.Provider value>
               {view === 'skim' ? <Skim map={map} lens={lens} pres={pres} onOpen={setSelected} /> : <PresentationView map={map} lens={lens} pres={pres} selectedId={selected} onSelect={setSelected} />}
               <StationPanel event={event} map={map} onClose={() => setSelected(null)} readOnly onAsk={(id, t) => (remote ? remote.ask(id, t, reader) : askEvidence(id, from() || 'A reader', t))} />
             </VerifyScope.Provider>
           </div>}
-          <div className="print-only print-link"><Qr text={appUrl(`s/${token}`)} size={80} /><span>Read the full portfolio at {appUrl(`s/${token}`)}. Check any verified station by typing its NIST code at {appUrl('v').replace(/^https?:\/\//, '')}.</span></div>
+          {!link.site && <PrintFooter name={map.student.name} verifyUrl={appUrl(`s/${token}`)} />}
           <footer className="landing-foot">Every badge links to its verification record, and printed codes can be typed in at <a href="#/v">/v</a>. Items appear only if the student made them publishable. Views of this link are logged.</footer>
         </>
       )}

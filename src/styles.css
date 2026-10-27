@@ -1443,18 +1443,15 @@ a.ghost { text-decoration: none; display: inline-flex; align-items: center; font
   .mt-body { grid-template-columns: 1fr; grid-template-rows: 1fr auto; } .mt-side { border-left: 0; border-top: 1px solid var(--rule); max-height: 40vh; }
   .pv-body, .cm-body, .pl-grid { grid-template-columns: 1fr; } .pv-intro { border-right: 0; } .tr-pair { grid-template-columns: 1fr; } .tr-join { display: none; }
 }
-/* E5: print layouts. Only the presentation prints, with QR codes back to verified records. */
+/* E5: print layouts. Only the presentation prints, with QR codes back to verified records. More in print.css. */
 @media print {
   .topnav, .landing-banner, .landing-foot, .station-panel, .panel-close, .seg, .skim-foot .linkish, .vb-check, .ask-box { display: none !important; }
   .linkish { color: #000 !important; text-decoration: none !important; padding: 0 !important; }
-  .landing-logo svg, .landing-logo svg * { fill: #002855 !important; color: #002855 !important; }
   .print-only { display: flex !important; }
   body, .landing, .landing-body { background: #fff !important; color: #000 !important; }
-  .landing-bar { background: #fff !important; color: #002855 !important; border-bottom: 2px solid #002855; }
   .skim-card, .card-sec, .pres-section { break-inside: avoid; box-shadow: none !important; }
   .skim-top { grid-template-columns: repeat(3, 1fr); }
   .skim-qr { gap: 8px; align-items: center; margin-top: 6px; font-size: 11px; }
-  .print-link { gap: 12px; align-items: center; margin: 16px 20px; font-size: 12px; border-top: 1px solid #ccc; padding-top: 12px; }
   a { color: inherit; text-decoration: none; }
 }
 .sp-jump { display: inline-block; margin-top: 8px; font-size: 13.5px; font-weight: 600; color: var(--navy); background: color-mix(in srgb, var(--b-gold) 35%, transparent); padding: 4px 10px; border-radius: 999px; text-decoration: none; }
@@ -2130,11 +2127,12 @@ details.card-sec[open] > summary { margin-bottom: 10px; }
 .ps-key svg { vertical-align: -3px; margin: 0 3px 0 6px; overflow: visible; }
 .ps-key svg:first-child { margin-left: 0; }
 @media print {
-  @page { size: A3 landscape; margin: 0; }
+  /* A named page, so the A3 sheet never leaks into the A4 documents (print.css). */
+  @page poster { size: A3 landscape; margin: 0; }
   body:has(.poster-sheet) .topnav, body:has(.poster-sheet) .poster-head, body:has(.poster-sheet) .presenter, body:has(.poster-sheet) .toast { display: none !important; }
   body:has(.poster-sheet) .screen, body:has(.poster-sheet) .poster-screen { padding: 0; overflow: visible; }
   .poster-wrap { height: auto !important; overflow: visible; }
-  .poster-sheet { position: static; transform: none !important; zoom: 0.944; break-inside: avoid; box-shadow: none; border-radius: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .poster-sheet { page: poster; position: static; transform: none !important; zoom: 0.944; break-inside: avoid; box-shadow: none; border-radius: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 
 /* ── Life after Year 13 ──────────────────────────────────── */

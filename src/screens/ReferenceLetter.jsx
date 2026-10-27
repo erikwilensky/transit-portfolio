@@ -3,6 +3,9 @@ import { getLetter, getStudentMap, getStudents, getTeacher, LETTER_STATUSES, sav
 import { ago, fmtDate, verifyCode } from '../format.js';
 import { VerifyBadge } from '../components/Badge.jsx';
 import { useVerify } from '../components/VerifyModal.jsx';
+import Logo from '../components/Logo.jsx';
+import { PrintButton, PrintFooter } from '../components/PrintKit.jsx';
+import { docName, printDate } from '../print.js';
 
 const DRAFTS = {
   'st-01': `I have known Maya Chen for four years as her university counsellor, and it is a pleasure to recommend her for Data Science.
@@ -84,21 +87,21 @@ export default function ReferenceLetter({ studentId, go, persona, version, toast
             <span className="spacer" />
             <label className="lt-status">Status <select value={status} onChange={(e) => { setLetterStatus(studentId, e.target.value, persona.name); if (!saved?.text) saveLetter(studentId, text); toast(`${map.student.name.split(' ')[0]}’s letter: ${e.target.value.toLowerCase()}`); }}>{LETTER_STATUSES.map((x) => <option key={x}>{x}</option>)}</select></label>
             <span className={`check ${unsupported.length ? 'warn' : 'ok'}`}>{unsupported.length ? `${unsupported.length} claim${unsupported.length > 1 ? 's' : ''} without evidence` : 'Every claim has evidence'}</span>
+            <PrintButton title={docName(map.student.name, 'Reference letter')} />
           </div>
-          {view === 'edit'
-            ? <textarea ref={ta} className="letter-ta" value={text} onChange={(e) => setText(e.target.value)} spellCheck readOnly={locked} aria-label="Letter text" />
-            : (
-              <article className="letter-doc">
-                <div className="lt-head">NIST International School · University Counselling</div>
-                {text.split('\n\n').map(render)}
-                <p className="lt-sign">{me.name}<br /><small>{me.role}</small></p>
-                {cited.length > 0 && (
-                  <ol className="lt-notes">
-                    {cited.map((id) => { const e = byId[id]; return e && <li key={id}><b>{e.title}</b>, {fmtDate(e.date)}. <VerifyBadge level={e.verification} event={e} verifiable /> <code>{verifyCode(id)}</code></li>; })}
-                  </ol>
-                )}
-              </article>
+          {view === 'edit' && <textarea ref={ta} className="letter-ta" value={text} onChange={(e) => setText(e.target.value)} spellCheck readOnly={locked} aria-label="Letter text" />}
+          {/* While writing, the finished letter is still what goes to paper. */}
+          <article className={`letter-doc${view === 'edit' ? ' lt-paper-only' : ''}`}>
+            <div className="lt-head"><Logo className="lt-logo" /><span>NIST International School · University Counselling</span></div>
+            <p className="lt-date">{locked && saved?.sentOn ? fmtDate(saved.sentOn) : printDate()}</p>
+            {text.split('\n\n').map(render)}
+            <p className="lt-sign">{me.name}<br /><small>{me.role}</small></p>
+            {cited.length > 0 && (
+              <ol className="lt-notes">
+                {cited.map((id) => { const e = byId[id]; return e && <li key={id}><b>{e.title}</b>, {fmtDate(e.date)}. <VerifyBadge level={e.verification} event={e} verifiable /> <code>{verifyCode(id)}</code></li>; })}
+              </ol>
             )}
+          </article>
           {(unsupported.length > 0 || weak.length > 0) && (
             <div className="claims">
               <h3>Claim check</h3>
@@ -122,6 +125,7 @@ export default function ReferenceLetter({ studentId, go, persona, version, toast
           </ul>
         </aside>
       </div>
+      <PrintFooter name={`Reference for ${map.student.name}`} />
     </div>
   );
 }
