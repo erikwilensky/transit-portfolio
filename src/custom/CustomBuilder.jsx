@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { BLOCKS, FONTS, PRESETS, SPANS, newBlock, defaultDesign } from './design.js';
 import { TYPE_LABEL } from '../format.js';
+import { AttachButton, PendingFiles } from '../components/FileAttach.jsx';
 
 // Undo/redo for the design. Transient changes (mid-drag resize) skip history.
 export function useDesignHistory(design, save) {
@@ -130,6 +131,10 @@ export default function CustomBuilder({ map, lens, design, history, selectedBloc
         <Field label="Line">{lineSelect(p.lineId, (v) => setProps({ lineId: v }))}</Field>
         <Field label={`Up to ${p.limit} images`}><input type="range" min={1} max={12} value={p.limit} onChange={(e) => setProps({ limit: +e.target.value })} /></Field>
         <Field label="Columns"><Seg value={p.columns} onChange={(v) => setProps({ columns: v })} options={[[1, '1'], [2, '2'], [3, '3'], [4, '4']]} /></Field>
+        <div className="cb-field"><span>Your own images</span>
+          <PendingFiles files={p.extra || []} onRemove={(i) => setProps({ extra: (p.extra || []).filter((_, j) => j !== i) })} />
+          <AttachButton label="Add an image" accept="image/*" className="ghost small-btn file-btn" onAdded={(ev) => ev.kind === 'image' && setProps({ extra: [...(p.extra || []), ev] })} />
+        </div>
       </>);
       case 'quote': return (<>
         <Field label="Quote from"><Seg value={p.source} onChange={(v) => setProps({ source: v })} options={[['reflection', 'My reflection'], ['endorsement', 'A teacher']]} /></Field>
