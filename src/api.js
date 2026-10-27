@@ -197,6 +197,64 @@ export function restoreCandidate(id) {
   emit();
 }
 
+// ── Real imports: items parsed from an export file (src/imports/) land in the inbox, like a sync.
+// Arguments are plain JSON so the server can replay the call. The student still decides each item.
+const IMPORT_CARDS = {
+  classroom: { name: 'Google Classroom', detail: 'Assignments and marks', mode: 'File import' },
+  csv: { name: 'Spreadsheets', detail: 'Our template, filled in by staff', mode: 'File import' },
+  calendar: { name: 'Calendars', detail: 'Fixtures and events (.ics)', mode: 'File import' },
+};
+// The most an import from each source can claim. A student's own file is never more than student-added.
+const IMPORT_MAX = { mine: 'student-added', csv: 'teacher-endorsed', calendar: 'school-verified' };
+const IMPORT_RANK = { 'student-added': 0, 'teacher-endorsed': 1, 'school-verified': 2 };
+const IMPORT_TYPES = ['class', 'assessment', 'project', 'competition', 'cas', 'club', 'sport', 'service', 'award'];
+const importKey = (studentId, src) => `${studentId}|${src?.system}|${src?.ref}`;
+export function importCandidates(rows, { sourceId, by, file } = {}) {
+  const max = IMPORT_RANK[IMPORT_MAX[sourceId] || 'school-verified'];
+  const seen = new Set([...store.inbox, ...store.dismissed, ...store.events].flatMap((e) => [importKey(e.studentId, e.source), e.id, ...(e.mergedFrom || []).map((m) => importKey(e.studentId, m))]));
+  const added = []; let duplicates = 0, refused = 0;
+  for (const c of Array.isArray(rows) ? rows : []) {
+    const st = getStudent(c?.studentId);
+    if (!st || !c.title || !c.source?.ref || !/^\d{4}-\d{2}-\d{2}$/.test(c.date)) { refused++; continue; }
+    if (seen.has(importKey(st.id, c.source)) || seen.has(c.id)) { duplicates++; continue; }
+    let verification = IMPORT_RANK[c.verification] <= max ? c.verification : Object.keys(IMPORT_RANK)[max];
+    const endorsement = verification === 'teacher-endorsed' && teacherById[c.classEndorsement?.teacherId] ? { teacherId: c.classEndorsement.teacherId, note: String(c.classEndorsement.note || '').slice(0, 300), date: TODAY } : null;
+    if (verification === 'teacher-endorsed' && !endorsement) verification = 'student-added';
+    const e = {
+      id: String(c.id || `ev-${evSeq++}`), studentId: st.id, title: String(c.title).slice(0, 140), date: c.date, lineIds: [],
+      suggestedLineIds: (c.suggestedLineIds || []).filter((id) => st.laneOrder.includes(id)),
+      type: IMPORT_TYPES.includes(c.type) ? c.type : 'project', summary: String(c.summary || '').slice(0, 600),
+      evidence: (c.evidence || []).filter((v) => v.kind === 'grade' || (v.kind === 'link' && /^https?:\/\//i.test(v.url || ''))).map((v) => ({ kind: v.kind, url: v.kind === 'link' ? String(v.url) : null, caption: String(v.caption || '').slice(0, 140) })),
+      verification, visibility: 'advisor', source: { system: String(c.source.system || 'Import'), ref: String(c.source.ref) }, sourceId: sourceId || c.sourceId || 'import',
+      ...(c.cas && ['C', 'A', 'S'].includes(c.cas.strand) ? { cas: { strand: c.cas.strand, outcomes: (c.cas.outcomes || []).filter((n) => Number.isInteger(n) && n >= 1 && n <= 7) } } : {}),
+      ...(c.quickReflection ? { quickReflection: String(c.quickReflection).slice(0, 4000) } : {}),
+      ...(endorsement ? { classEndorsement: endorsement } : {}),
+    };
+    seen.add(importKey(st.id, e.source)); seen.add(e.id);
+    added.push(e);
+  }
+  store.inbox.push(...added);
+  const byStudent = {};
+  for (const e of added) byStudent[e.studentId] = (byStudent[e.studentId] || 0) + 1;
+  const system = added[0]?.source.system || 'a file';
+  const actor = by?.name || 'File import';
+  for (const [sid, n] of Object.entries(byStudent)) {
+    const items = `${n} item${n === 1 ? '' : 's'}`;
+    if (sourceId === 'mine') log(sid, actor, 'sync', `Imported ${items} from ${file || 'a file'} into the inbox`);
+    else {
+      log(sid, actor, 'sync', `Imported ${items} from ${system}${file ? ` (${file})` : ''} into the inbox`);
+      notify(PERSONA_OF_STUDENT[sid], `${items} from ${system} ${n === 1 ? 'is' : 'are'} in your inbox. You choose where ${n === 1 ? 'it goes' : 'they go'}.`, { persona: PERSONA_OF_STUDENT[sid], screen: 'inbox' });
+    }
+  }
+  if (sourceId && sourceId !== 'mine') {
+    let card = store.integrations.find((i) => i.id === sourceId);
+    if (!card && IMPORT_CARDS[sourceId]) store.integrations.push(card = { id: sourceId, ...IMPORT_CARDS[sourceId], lastSynced: nowIso(), itemCount: 0 });
+    if (card) { card.lastSynced = nowIso(); card.itemCount += added.length; }
+  }
+  emit();
+  return { added: added.length, duplicates, refused, students: Object.keys(byStudent).length, byStudent };
+}
+
 // F11: GitHub is opt-in per repository, and "Simulate next week" gives every system something new to send.
 const GH_SEED = {
   'st-01': { connected: true, user: 'mayachen-nist', repos: [

@@ -43,6 +43,7 @@ import Pilot from './screens/Pilot.jsx';
 import AuditLog from './screens/AuditLog.jsx';
 import Poster from './screens/Poster.jsx';
 import AlumJourney from './screens/AlumJourney.jsx';
+import ImportFile from './screens/ImportFile.jsx';
 import Logo from './components/Logo.jsx';
 import NavBar from './components/NavBar.jsx';
 import Launcher from './components/Launcher.jsx';
@@ -286,6 +287,7 @@ export default function App() {
           {persona.kind === 'counsellor' && route.screen === 'search' && <CohortSearch {...ctx} />}
           {persona.kind === 'coordinator' && route.screen === 'core' && <DpCore {...ctx} />}
           {persona.kind === 'coordinator' && route.screen === 'governance' && <Governance {...ctx} />}
+          {(persona.kind === 'coordinator' || persona.kind === 'teacher') && route.screen === 'import' && <ImportFile {...ctx} />}
           {persona.kind === 'leadership' && route.screen === 'rollout' && <Rollout {...ctx} />}
           {persona.kind === 'leadership' && route.screen === 'pilot' && <Pilot {...ctx} />}
           {persona.kind === 'leadership' && route.screen === 'audit' && <AuditLog {...ctx} />}
