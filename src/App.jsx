@@ -3,7 +3,10 @@ import { applyLens, getAlumMap, getPresentations, getStudentMap, getStudents, su
 import SimpleHome, { ShowFamily } from './screens/SimpleHome.jsx';
 import IntensityControl from './components/IntensityControl.jsx';
 import { ensureEndorsed } from './tourStory.js';
-import { PERSONAS, KIND_LABEL, NAV, personaById, home } from './personas.js';
+import { PERSONAS, KIND_LABEL, NAV, personaById, home, navOf, pilotPersona } from './personas.js';
+import { signOut } from './auth.js';
+import Accounts from './screens/Accounts.jsx';
+import { PasswordDialog } from './screens/SignIn.jsx';
 import { ago, appUrl, inkOn } from './format.js';
 import Studio from './components/Studio.jsx';
 import SharedView from './components/SharedView.jsx';
@@ -58,7 +61,7 @@ const parse = () => {
   const [a, b, c] = location.hash.replace(/^#\/?/, '').split('/');
   if (a === 's' || a === 'v' || a === 'p') return { publicKind: a, param: b, lang: c };
   const p = personaById(a);
-  const screens = NAV[p.kind].map(([id]) => id).concat(p.kind === 'advisor' ? ['student'] : p.kind === 'student' ? ['poster'] : []);
+  const screens = navOf(p).map(([id]) => id).concat(p.kind === 'advisor' ? ['student'] : p.kind === 'student' ? ['poster'] : []);
   return { persona: p.id, screen: screens.includes(b) ? b : home(p), param: c || null };
 };
 
@@ -81,6 +84,9 @@ export default function App() {
   const [auto, setAuto] = useState(false);
   const [launch, setLaunch] = useState(false);
   const [qa, setQa] = useState(false);
+  const [pwOpen, setPwOpen] = useState(false);
+  // Pilot mode: the signed-in person's own persona; no switcher, tours, presenter or reset.
+  const pilot = pilotPersona();
   // F18: Escape closes the top dialog, else an open station panel; Tab stays inside an open dialog;
   // focus moves into a dialog when it opens and returns to where it was when it closes.
   useEffect(() => {
@@ -127,7 +133,7 @@ export default function App() {
   const drafts = getDrafts();
   // F3: #/reset puts the demo back to its seeded state (handy on a shared screen).
   useEffect(() => {
-    const f = () => { if (location.hash.startsWith('#/reset')) { resetDemo(); history.replaceState(null, '', '#/principal/dashboard'); setRoute(parse()); } };
+    const f = () => { if (location.hash.startsWith('#/reset') && !pilotPersona()) { resetDemo(); history.replaceState(null, '', '#/principal/dashboard'); setRoute(parse()); } };
     f(); addEventListener('hashchange', f); return () => removeEventListener('hashchange', f);
   }, []);
   useEffect(() => { const f = () => setRoute(parse()); addEventListener('hashchange', f); return () => removeEventListener('hashchange', f); }, []);
@@ -159,7 +165,7 @@ export default function App() {
   // Students choose how much interface they see; the record is the same at every level.
   const level = persona.kind === 'student' ? getIntensity(persona.studentId) : null;
   const changeLevel = (v) => { setIntensity(persona.studentId, v); if (INTENSITY_NAV[v] && !INTENSITY_NAV[v].includes(route.screen)) go(persona.id, 'map'); toast(`Interface set to ${v}. Your map and everything on it stay the same.`); };
-  const nav = NAV[persona.kind].filter(([id]) => !level || !INTENSITY_NAV[level] || INTENSITY_NAV[level].includes(id)).map(([id, l]) => [id, T(INTENSITY_LABEL[level]?.[id] || l)]);
+  const nav = navOf(persona).filter(([id]) => !level || !INTENSITY_NAV[level] || INTENSITY_NAV[level].includes(id)).map(([id, l]) => [id, T(INTENSITY_LABEL[level]?.[id] || l)]);
   const notes = getNotifications(persona.id);
   const unread = notes.filter((n) => !n.read).length;
   const ctx = { go, toast, version, persona, drafts, setDrafts, audience, setAudience, tier, setTier, startTour: (t) => { setTourState({ tour: t, step: 0 }); TOURS[t].steps[0].run(ctx); } };
@@ -187,9 +193,16 @@ export default function App() {
             <div className="menu-wrap">
               <button className="persona-btn" onClick={() => setMenu(menu === 'persona' ? null : 'persona')} aria-expanded={menu === 'persona'} aria-haspopup="menu">
                 <span className="av" style={{ background: persona.colour, color: inkOn(persona.colour) }}>{persona.initials}</span>
-                <span className="pb-text"><small>{T('Viewing as')}</small><b>{persona.name}</b></span><span aria-hidden="true">▾</span>
+                <span className="pb-text"><small>{T(pilot ? 'Signed in' : 'Viewing as')}</small><b>{persona.name}</b></span><span aria-hidden="true">▾</span>
               </button>
-              {menu === 'persona' && (
+              {menu === 'persona' && pilot && (
+                <div className="menu persona-menu acct-menu" role="menu">
+                  <div className="acct-who"><b>{persona.name}</b><small>{persona.role}</small><small>{persona.account?.email}</small></div>
+                  <button role="menuitem" onClick={() => { setMenu(null); setPwOpen(true); }}><span><b>Change password</b></span></button>
+                  <button role="menuitem" className="sign-out" onClick={() => signOut()}><span><b>Sign out</b></span></button>
+                </div>
+              )}
+              {menu === 'persona' && !pilot && (
                 <div className="menu persona-menu" role="menu">
                   {Object.entries(KIND_LABEL).map(([kind, label]) => (
                     <div key={kind} className="pm-group">
@@ -236,7 +249,7 @@ export default function App() {
                 </div>
               )}
             </div>
-            <div className="menu-wrap">
+            {!pilot && <div className="menu-wrap">
               <button className="icon-btn tour-btn" onClick={() => setMenu(menu === 'tour' ? null : 'tour')} aria-expanded={menu === 'tour'}>{T('Pitch tour')}</button>
               {menu === 'tour' && (
                 <div className="menu tour" role="menu">
@@ -261,7 +274,7 @@ export default function App() {
                   <p className="fineprint demo-note">Changes are saved in this browser, so a rehearsal is still here tomorrow. Open a second tab to show two people at once.</p>
                 </div>
               )}
-            </div>
+            </div>}
           </div>
         </header>
 
@@ -294,7 +307,8 @@ export default function App() {
           {persona.kind === 'alum' && route.screen === 'journey' && <AlumJourney {...ctx} />}
           {persona.kind === 'alum' && route.screen === 'poster' && <AlumPoster {...ctx} />}
           {persona.kind === 'external' && <ShareLanding token={persona.token} drafts={drafts} version={version} embedded />}
-          <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} />
+          {persona.admin && route.screen === 'accounts' && <Accounts {...ctx} />}
+          {route.screen !== 'accounts' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} />}
           </ErrorBoundary>
         </main>
 
@@ -314,7 +328,8 @@ export default function App() {
             <button onClick={() => { setAuto(false); setTourState(null); }} aria-label="Close tour">×</button>
           </div>
         )}
-        {launch && <Launcher onGo={go} onClose={() => setLaunch(false)} />}
+        {launch && <Launcher onGo={go} onClose={() => setLaunch(false)} only={pilot} />}
+        {pwOpen && <PasswordDialog onClose={() => setPwOpen(false)} toast={toast} />}
         <div className={`toast${toastMsg ? ' show' : ''}`} role="status" aria-live="polite">{toastMsg?.m}{toastMsg?.undo && <button className="toast-undo" onClick={() => { restore(toastMsg.undo); setToastMsg(null); }}>Undo</button>}</div>
       </div>
     </VerifyProvider>

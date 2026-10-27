@@ -22,6 +22,7 @@ const store = {
   reflections: reflectionsData.map((r) => ({ ...r })),
   endorsements: endorsementsData.map((n) => ({ ...n })),
   students: structuredClone(studentsData),
+  teachers: structuredClone(teachersData), // staff records; the pilot adds real ones with addTeacher
   lines: structuredClone(linesData),
   requests: structuredClone(schoolData.requests),
   prompts: structuredClone(schoolData.prompts),
@@ -41,12 +42,43 @@ export const subscribe = (fn) => (listeners.add(fn), () => listeners.delete(fn))
 const emit = () => { listeners.forEach((fn) => fn()); persist(); };
 
 const lineById = (id) => store.lines.find((l) => l.id === id);
-const teacherById = Object.fromEntries(teachersData.map((t) => [t.id, t]));
+// Looks staff up in the live record, so a teacher added in the pilot (or restored from a save) is found.
+const teacherList = () => store.teachers || teachersData;
+const teacherById = new Proxy({}, { get: (_, id) => teacherList().find((t) => t.id === id) });
 
 export const getStudents = ({ includeCohort = false } = {}) => store.students.filter((s) => includeCohort || !s.cohortOnly);
 export const getStudent = (id) => store.students.find((s) => s.id === id);
 export const getTeacher = (id) => teacherById[id];
-export const getTeachers = () => teachersData;
+export const getTeachers = () => teacherList();
+
+// ── Pilot: real people join the record. A new student starts with an empty map and the onboarding flow. ─
+// Years are British (7 to 13); student.grade is the US grade number, so Year = grade + 1.
+// Passing an id that already exists returns that record unchanged (safe to repeat).
+const AVATAR_COLOURS = ['#4F529B', '#008A60', '#E73C3E', '#FF8F1C', '#002855', '#FFB81C', '#78D5E1'];
+const initialsOf = (name) => name.replace(/^(Mr|Mrs|Ms|Miss|Dr|Kru|Khun)\.?\s+/i, '').split(/\s+/).filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase() || '?';
+const nextId = (prefix, list) => `${prefix}-${String(Math.max(0, ...list.map((x) => Number(x.id.slice(prefix.length + 1)) || 0)) + 1).padStart(2, '0')}`;
+export function addStudent(f) {
+  const { id, name, year, programme, homeroom = '', advisorId = null } = f;
+  if (id && getStudent(id)) return getStudent(id);
+  // A whole record copied from the server (it already has a grade) goes in as it is.
+  if (id && Number.isInteger(f.grade)) { const copy = structuredClone(f); store.students.push(copy); (store.drafts ||= {})[id] ||= []; emit(); return copy; }
+  const grade = Math.min(12, Math.max(6, Number(year) - 1));
+  const s = { id: id || nextId('st', store.students), name, grade, startGrade: grade, programme: programme || (grade >= 11 ? 'IB Diploma' : 'IB MYP'),
+    avatar: { initials: initialsOf(name), colour: AVATAR_COLOURS[store.students.length % AVATAR_COLOURS.length] },
+    homeroom, advisorId, g9StartYear: 2026 - (grade - 9), laneOrder: [], lineLabels: {}, onboarding: true, pilot: true };
+  store.students.push(s);
+  (store.drafts ||= {})[s.id] ||= [];
+  emit();
+  return s;
+}
+export function addTeacher({ id, name, role = 'Teacher' }) {
+  if (id && getTeacher(id)) return getTeacher(id);
+  store.teachers ||= structuredClone(teachersData);
+  const t = { id: id || nextId('t', store.teachers), name, role, pilot: true };
+  store.teachers.push(t);
+  emit();
+  return t;
+}
 export const getLine = (id) => lineById(id);
 export const getSchoolLines = () => store.lines.filter((l) => !l.studentId);
 export const getAllLines = () => store.lines;
