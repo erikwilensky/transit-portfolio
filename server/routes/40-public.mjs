@@ -2,7 +2,6 @@
 // No sign-in. Each answer carries only what that one link or code shares, never the whole record.
 import { send, readJson } from '../lib.mjs';
 import { api, changed } from '../store.mjs';
-import { verifyCode } from '../../src/format.js';
 
 const fail = (status, message) => Object.assign(new Error(message), { status });
 const EMAIL = /^\S+@\S+\.\S+$/;
@@ -66,7 +65,7 @@ export function publicSnapshot(token, { gate = false } = {}) {
 // What the verification page needs for one station, looked up by its printed code.
 export function publicVerify(code) {
   const want = String(code || '').toUpperCase();
-  const e = api.getStore().events.find((x) => x.visibility === 'publishable' && verifyCode(x.id) === want);
+  const e = api.getStore().events.find((x) => x.visibility === 'publishable' && api.verifyCode(x.id) === want);
   if (!e) throw fail(404, 'No public record for this code. The code may be mistyped, or the student has not made this item publishable.');
   const s = api.getStudent(e.studentId);
   return {

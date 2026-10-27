@@ -9,6 +9,8 @@ import teachersData from '../data/teachers.json';
 import presentationsData from '../data/presentations.json';
 import integrationsData from '../data/integrations.json';
 import schoolData from '../data/school.json';
+// Re-exported so the server bundle carries it (public verify codes); the server never loads src/.
+export { verifyCode } from './format.js';
 
 export const TODAY = '2026-10-26';
 
