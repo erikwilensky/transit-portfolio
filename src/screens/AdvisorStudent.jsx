@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { addNote, applyLens, getNotes, getPrompts, getStudentMap, growth, log, sendPrompt, snapshot, TODAY } from '../api.js';
+import { addNote, applyLens, getNotes, getPrompts, getStudentMap, growth, addLog, sendPrompt, snapshot, TODAY } from '../api.js';
 import { appUrl, fmtDate, inkOn } from '../format.js';
 import MeetingMode from '../components/MeetingMode.jsx';
 import Qr from '../components/Qr.jsx';
@@ -78,7 +78,7 @@ export default function AdvisorStudent({ studentId, version, toast, go, persona 
               </div>
             ) : (
               <><p className="fineprint">A short-lived link for parents before the conference. It shows what {first} chose to share publicly, never advisor notes or private reflections.</p>
-                <button className="ghost" onClick={() => { setParent(true); log(studentId, persona.name, 'link', 'Made a 7-day parent conference link'); toast('Parent link ready for 7 days'); }}>Make a parent link</button></>
+                <button className="ghost" onClick={() => { setParent(true); addLog(studentId, persona.name, 'link', 'Made a 7-day parent conference link'); toast('Parent link ready for 7 days'); }}>Make a parent link</button></>
             )}
           </details>
           <details className="card-sec">

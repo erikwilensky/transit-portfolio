@@ -2168,3 +2168,12 @@ details.card-sec[open] > summary { margin-bottom: 10px; }
 :root[data-theme="dark"] :is(.ghost.danger, .small-btn.danger, .dc-flag) { color: #FF7B7D; }
 .s-warn i, .status.as-btn i { color: var(--navy); } .status.s-off i { color: var(--bg); }
 :root:not([data-theme="dark"]) :is(.ghost.danger, .small-btn.danger, .dc-flag) { color: #C8292B; }
+
+/* Pilot server: where the record is saved (header). */
+/* On the navy bar: quiet white text, a sky dot when saved, gold when offline. */
+.sync-state { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; color: rgba(255,255,255,.78); white-space: nowrap; }
+.sync-state i { width: 7px; height: 7px; border-radius: 50%; background: var(--b-sky); flex: none; }
+.sync-state.st-saving i { background: rgba(255,255,255,.5); }
+.sync-state.st-offline { color: var(--b-gold); } .sync-state.st-offline i { background: var(--b-gold); }
+@media (max-width: 900px) { .sync-state:not(.st-offline) span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } }
+@media (max-width: 640px) { .sync-state:not(.st-offline) { display: none; } .sync-state span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } }

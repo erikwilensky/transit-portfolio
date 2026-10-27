@@ -49,6 +49,8 @@ import Launcher from './components/Launcher.jsx';
 import ShareDialog from './components/ShareDialog.jsx';
 import ShareGaps from './components/ShareGaps.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
+import SyncStatus from './components/SyncStatus.jsx';
+import { serverMode } from './sync.js';
 import { VerifyProvider } from './components/VerifyModal.jsx';
 import { TOURS, tourMinutes, stopCount } from './tour.js';
 import { QADrawer, TourCard, TourRoute } from './components/TourCards.jsx';
@@ -183,6 +185,7 @@ export default function App() {
           <a className="brand" href={`#/${persona.id}`} aria-label="NIST Transit Portfolio home"><Logo className="brand-logo" /><span className="brand-name"><b>Transit</b> Portfolio</span></a>
           <NavBar items={nav} hrefOf={(id) => `#/${persona.id}/${id}`} isOn={(id) => route.screen === id || (id === 'advisory' && route.screen === 'student')} onGo={(id) => go(persona.id, id)} moreLabel={T('More')} />
           <div className="nav-right">
+            <SyncStatus />
             <button className="icon-btn nav-search" onClick={() => setLaunch(true)} aria-label="Jump to anything (Ctrl+K)" title="Jump to anything (/ or Ctrl+K)"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" strokeWidth="1.8" /><path d="M11 11l3.5 3.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg></button>
             <div className="menu-wrap">
               <button className="persona-btn" onClick={() => setMenu(menu === 'persona' ? null : 'persona')} aria-expanded={menu === 'persona'} aria-haspopup="menu">
@@ -258,7 +261,7 @@ export default function App() {
                     <button onClick={() => { resetDemo(); setTourState(null); setMenu(null); go('principal', 'dashboard'); toast('Demo reset. Ready for the tour.'); }}><b>Reset, ready for the tour</b><small>Clean record, starts on the dashboard</small></button>
                     <button onClick={() => { resetDemo(); ensureEndorsed(); setTourState(null); setMenu(null); go('maya', 'map'); toast('Reset with the tour already played'); }}><b>Reset, tour already played</b><small>Hackathon added and endorsed</small></button>
                   </div>
-                  <p className="fineprint demo-note">Changes are saved in this browser, so a rehearsal is still here tomorrow. Open a second tab to show two people at once.</p>
+                  <p className="fineprint demo-note">{serverMode() ? 'Changes are saved on the server, so every device sees them at once. Reset puts every device back.' : 'Changes are saved in this browser, so a rehearsal is still here tomorrow. Open a second tab to show two people at once.'}</p>
                 </div>
               )}
             </div>
@@ -338,8 +341,8 @@ function StudentScreens({ screen, param, studentId, drafts, setDrafts, audience,
     if (site) {
       // F17: the hand-built site goes out under a share link and becomes a station on the Computing line.
       const lines = map.lines.some((l) => l.id === 'computing') ? ['computing'] : [map.lines[0].id];
-      const e = addStation(studentId, { title: 'Published my own portfolio site', type: 'project', lineIds: lines, summary: 'Hand-built in HTML on the read API, published through a share link.', visibility: 'publishable', via: 'Code tier' });
-      e.evidence = [{ kind: 'link', url: appUrl(`s/${link.token}`), caption: `Live site /s/${link.token}` }];
+      const e = addStation(studentId, { title: 'Published my own portfolio site', type: 'project', lineIds: lines, summary: 'Hand-built in HTML on the read API, published through a share link.', visibility: 'publishable', via: 'Code tier',
+        evidence: [{ kind: 'link', url: appUrl(`s/${link.token}`), caption: `Live site /s/${link.token}` }] });
       patch.site = { ...(pres.site || {}), token: link.token, publishedAt: new Date().toISOString(), eventId: e.id };
     }
     updateDraft(pres.id, patch);

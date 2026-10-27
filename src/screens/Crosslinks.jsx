@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { getLine, getStudent, getTeacher, log, rootLine, schoolEvents } from '../api.js';
+import { getLine, getStudent, getTeacher, addLog, rootLine, schoolEvents } from '../api.js';
 import { fmtDate, TYPE_LABEL } from '../format.js';
 import { VerifyBadge } from '../components/Badge.jsx';
 
@@ -23,7 +23,7 @@ export default function Crosslinks({ persona, toast, version }) {
   const share = (e, lid) => {
     const t = getTeacher(COLLEAGUE[lid]);
     setShared({ ...shared, [`${e.id}:${lid}`]: true });
-    log(e.studentId, persona.name, 'share', `Ms Nair pointed ${t.name} to “${e.title}”`);
+    addLog(e.studentId, persona.name, 'share', `Ms Nair pointed ${t.name} to “${e.title}”`);
     toast(`Sent “${e.title}” to ${t.name}`);
   };
   return (

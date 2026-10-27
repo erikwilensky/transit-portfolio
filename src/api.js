@@ -150,7 +150,7 @@ export const getIntegrations = (studentId) => store.integrations.map((i) => ({
 // Sync pulls new items into the student's inbox. Nothing reaches the map
 // until the student accepts it and chooses its line(s).
 export function sync(sourceIds, studentId) {
-  const now = new Date().toISOString();
+  const now = nowIso();
   const arrived = [];
   store.pending = store.pending.filter((p) => {
     if (sourceIds.includes(p.sourceId) && p.event.studentId === studentId && ghAllowed(p)) { arrived.push({ ...p.event, sourceId: p.sourceId, suggestedLineIds: p.event.lineIds }); return false; }
@@ -176,8 +176,8 @@ export function acceptCandidate(id, lineIds, visibility = 'advisor') {
   const added = { ...event, lineIds, visibility };
   store.events.push(added);
   // N12: a class task arrives already endorsed by the teacher; the endorsement joins the station when the student accepts it.
-  if (classEndorsement) store.endorsements.push({ id: `en-x${seq++}`, eventId: added.id, teacherId: classEndorsement.teacherId, note: classEndorsement.note, date: classEndorsement.date, live: true });
-  if (quickReflection) store.reflections.push({ id: `rf-x${seq++}`, eventId: added.id, text: quickReflection, prompt: 'Quick reflection', date: added.date, visibility: 'advisor' });
+  if (classEndorsement) store.endorsements.push({ id: uid('en-x'), eventId: added.id, teacherId: classEndorsement.teacherId, note: classEndorsement.note, date: classEndorsement.date, live: true });
+  if (quickReflection) store.reflections.push({ id: uid('rf-x'), eventId: added.id, text: quickReflection, prompt: 'Quick reflection', date: added.date, visibility: 'advisor' });
   log(added.studentId, getStudent(added.studentId).name, 'station', `Accepted “${added.title}” from the inbox`);
   emit();
   return added;
@@ -299,7 +299,7 @@ export function setCasProject(sid, status, title, by) {
 }
 export const getCasNudges = (sid) => store.casNudges.filter((n) => n.studentId === sid);
 export function casNudge(sid, about, text, by) {
-  store.casNudges.push({ id: `cn-${seq++}`, studentId: sid, about, text, by, date: TODAY });
+  store.casNudges.push({ id: uid('cn-'), studentId: sid, about, text, by, date: TODAY });
   notify(PERSONA_OF_STUDENT[sid], `${by}: ${text}`, { persona: PERSONA_OF_STUDENT[sid], screen: 'map' });
   log(sid, by, 'prompt', `CAS nudge about ${about}: “${text}”`);
   emit();
@@ -381,7 +381,7 @@ export function getAlumMap(viewer = 'student') {
   return { student: { ...base.student, endGrade: ALUM.endGrade, grade: 14 }, lines: base.lines, events, signals: [], today: ALUM.today, alum: true };
 }
 export function addAlumStation(f) {
-  const e = after(`al-${Date.now().toString(36)}`, f.date, f.title, f.lineIds, f.type || 'project', f.summary || '', null, f.link ? [doc('link', f.link.replace(/^https?:\/\//, '').slice(0, 40), f.link)] : [], f.reflection ? ['What did this teach you?', f.reflection] : null);
+  const e = after(uid('al-'), f.date, f.title, f.lineIds, f.type || 'project', f.summary || '', null, f.link ? [doc('link', f.link.replace(/^https?:\/\//, '').slice(0, 40), f.link)] : [], f.reflection ? ['What did this teach you?', f.reflection] : null);
   store.alumEvents.push(e);
   log(ALUM.studentId, 'Maya Chen (alum)', 'station', `Added “${f.title}” after graduating`);
   emit();
@@ -422,16 +422,28 @@ export function getSignals(studentId, lines = getStudentMap(studentId).lines) {
 // ── Personas: who receives notifications ──────────────────────────────
 export const PERSONA_OF_STUDENT = { 'st-01': 'maya', 'st-02': 'arun', 'st-03': 'lena', 'st-09': 'pim' };
 export const PERSONA_OF_TEACHER = { 't-07': 'whitfield', 't-01': 'nair', 't-09': 'adeyemi', 't-08': 'brandt', 't-10': 'principal' };
+// Ids and the clock. Every value a change cannot repeat on its own comes from here, so the server
+// can replay a browser's change and end with the same ids and times (see "Shared record" below).
+// Ids carry a tag drawn once per page load, so two devices never both make `nt-5`.
 let seq = 1;
-const nowIso = () => new Date().toISOString();
-export function notify(to, text, go) { if (!to) return; store.notifications.unshift({ id: `nt-${seq++}`, to, text, go, ts: nowIso(), read: false }); }
-export function log(studentId, actor, kind, text) { store.activity.unshift({ id: `ac-${seq++}`, studentId, actor, kind, text, ts: nowIso() }); }
+const TAG = Math.random().toString(36).slice(2, 7);
+let tape = null, replay = null; // values recorded by the change running now / to hand back when replaying one
+const nd = (k, make) => { if (replay?.[0]?.[0] === k) return replay.shift()[1]; const v = make(); tape?.push([k, v]); return v; };
+const uid = (p) => nd('i', () => `${p}${seq++}_${TAG}`);
+const nowIso = () => nd('t', () => new Date().toISOString());
+// Made during the demo (not seeded)? Only generated ids contain '_'.
+export const isLiveId = (id) => id.includes('_');
+export function notify(to, text, go) { if (!to) return; store.notifications.unshift({ id: uid('nt-'), to, text, go, ts: nowIso(), read: false }); }
+export function log(studentId, actor, kind, text) { store.activity.unshift({ id: uid('ac-'), studentId, actor, kind, text, ts: nowIso() }); }
+// The same two, as changes a screen can make on its own.
+export function addLog(studentId, actor, kind, text) { log(studentId, actor, kind, text); emit(); }
+export function addNotification(to, text, go) { notify(to, text, go); emit(); }
 export const getNotifications = (persona) => store.notifications.filter((n) => n.to === persona);
 export function markNotificationsRead(persona) { store.notifications.forEach((n) => { if (n.to === persona) n.read = true; }); emit(); }
 
 // ── Student actions ───────────────────────────────────────────────────
 export function addReflection({ studentId, eventId, prompt, text, visibility = 'advisor', signal }) {
-  const r = { id: `rf-x${seq++}`, eventId, text, prompt, date: TODAY, visibility };
+  const r = { id: uid('rf-x'), eventId, text, prompt, date: TODAY, visibility };
   store.reflections.push(r);
   if (signal) {
     store.answered[signal.key] = r.id;
@@ -445,16 +457,15 @@ export function addReflection({ studentId, eventId, prompt, text, visibility = '
   return r;
 }
 
-let evSeq = 900;
 export function addStation(studentId, f) {
   const e = {
-    id: `ev-${evSeq++}`, studentId, title: f.title, date: f.date || TODAY, lineIds: f.lineIds, type: f.type || 'project', summary: f.summary || '',
-    about: f.about || '', evidence: f.image ? [{ kind: 'image', url: f.image, caption: f.imageCaption || 'Photo' }] : [],
+    id: uid('ev-'), studentId, title: f.title, date: f.date || TODAY, lineIds: f.lineIds, type: f.type || 'project', summary: f.summary || '',
+    about: f.about || '', evidence: f.evidence || (f.image ? [{ kind: 'image', url: f.image, caption: f.imageCaption || 'Photo' }] : []),
     verification: 'student-added', visibility: f.visibility || 'advisor', source: { system: f.via || 'Manual entry', ref: null },
     ...(f.cas ? { cas: f.cas } : {}),
   };
   store.events.push(e);
-  if (f.reflection) store.reflections.push({ id: `rf-x${seq++}`, eventId: e.id, text: f.reflection, prompt: 'Quick reflection', date: e.date, visibility: f.visibility || 'advisor' });
+  if (f.reflection) store.reflections.push({ id: uid('rf-x'), eventId: e.id, text: f.reflection, prompt: 'Quick reflection', date: e.date, visibility: f.visibility || 'advisor' });
   const who = getStudent(studentId).name;
   log(studentId, who, 'station', `Added “${e.title}”${f.via ? ` from ${f.via}` : ''}`);
   if (f.requestFrom) requestEndorsement(e.id, f.requestFrom, f.requestNote);
@@ -463,7 +474,7 @@ export function addStation(studentId, f) {
 }
 export function requestEndorsement(eventId, teacherId, note) {
   const e = getEvent(eventId);
-  const rq = { id: `rq-x${seq++}`, eventId, studentId: e.studentId, teacherId, date: TODAY, source: 'student', note: note || null, status: 'pending', fresh: true };
+  const rq = { id: uid('rq-x'), eventId, studentId: e.studentId, teacherId, date: TODAY, source: 'student', note: note || null, status: 'pending', fresh: true };
   store.requests.unshift(rq);
   const name = getStudent(e.studentId).name;
   notify(PERSONA_OF_TEACHER[teacherId], `${name.split(' ')[0]} asked you to endorse “${e.title}”`, { persona: PERSONA_OF_TEACHER[teacherId], screen: 'queue' });
@@ -482,7 +493,7 @@ export function endorse(requestIds, teacherId, note) {
     if (!r || r.status !== 'pending') continue;
     r.status = 'endorsed'; r.decidedAt = nowIso();
     const e = getEvent(r.eventId);
-    store.endorsements.push({ id: `en-x${seq++}`, eventId: e.id, teacherId, note: note || 'Endorsed.', date: TODAY, live: true });
+    store.endorsements.push({ id: uid('en-x'), eventId: e.id, teacherId, note: note || 'Endorsed.', date: TODAY, live: true });
     e.verification = 'teacher-endorsed';
     const t = teacherById[teacherId];
     log(e.studentId, t.name, 'endorsement', `Endorsed “${e.title}”`);
@@ -503,7 +514,7 @@ export const getNotes = (studentId) => store.notes[studentId] || [];
 export function addNote(studentId, text) { (store.notes[studentId] ||= []).push({ date: TODAY, text }); emit(); }
 export const getPrompts = (studentId) => store.prompts.filter((p) => p.studentId === studentId);
 export function sendPrompt(studentId, eventId, text, from = 't-07') {
-  const p = { id: `pm-x${seq++}`, studentId, eventId, from, date: TODAY, text, answered: false };
+  const p = { id: uid('pm-x'), studentId, eventId, from, date: TODAY, text, answered: false };
   store.prompts.push(p);
   notify(PERSONA_OF_STUDENT[studentId], `${teacherById[from].name} sent you a reflection prompt`, { persona: PERSONA_OF_STUDENT[studentId], screen: 'map', param: eventId });
   log(studentId, teacherById[from].name, 'prompt', `Sent a reflection prompt on “${getEvent(eventId)?.title}”`);
@@ -577,7 +588,7 @@ export function completeOnboarding(studentId, lineIds, template) {
   lineIds.forEach((l, i) => {
     const st = STARTERS[l]; if (!st) return;
     const img = STARTER_IMG[st.img];
-    store.events.push({ id: `ev-${evSeq++}`, studentId, title: st.title, date: `2026-08-${String(14 + i * 3).padStart(2, '0')}`, lineIds: [l], type: st.type, summary: st.summary,
+    store.events.push({ id: uid('ev-'), studentId, title: st.title, date: `2026-08-${String(14 + i * 3).padStart(2, '0')}`, lineIds: [l], type: st.type, summary: st.summary,
       evidence: [...(img ? [{ kind: 'image', url: `evidence/${img}.svg`, caption: st.title }] : []), ...(st.ev || []).map(([kind, caption, url]) => ({ kind, caption, url: url || (kind === 'grade' ? null : '#') }))], verification: 'school-verified', visibility: 'advisor', source: st.source });
   });
   log(studentId, s.name, 'onboarding', `Picked ${lineIds.length} starter lines and the “${template}” template`);
@@ -586,7 +597,7 @@ export function completeOnboarding(studentId, lineIds, template) {
 
 // A quick capture from the phone lands in the inbox, like any other import.
 export function capturePhone(studentId, f) {
-  const e = { id: `ev-${evSeq++}`, studentId, title: f.title, date: TODAY, lineIds: f.lineIds || [], type: f.type || 'project', summary: f.summary || '',
+  const e = { id: uid('ev-'), studentId, title: f.title, date: TODAY, lineIds: f.lineIds || [], type: f.type || 'project', summary: f.summary || '',
     evidence: f.image ? [{ kind: 'image', url: f.image, caption: 'Photo from phone' }] : [], verification: 'student-added', visibility: 'advisor',
     source: { system: 'Phone capture', ref: null }, sourceId: 'phone', suggestedLineIds: f.lineIds || [], quickReflection: f.reflection };
   store.inbox.unshift(e);
@@ -624,7 +635,7 @@ export function getActivity(studentId) {
   for (const e of store.events.filter((x) => x.studentId === studentId && x.date <= TODAY && x.type !== 'goal')) {
     const sys = e.source?.system;
     if (sys && sys !== 'Manual entry' && sys !== 'Phone capture') hist.push({ ts: `${e.date}T${SYS_TIME[sys] || '06:00'}:00`, actor: sys, kind: 'sync', text: `Imported “${e.title}”${e.source.ref ? ` (${e.source.ref})` : ''}` });
-    else if (!e.id.startsWith('ev-9') && !e.wasGoal) hist.push({ ts: `${e.date}T18:30:00`, actor: s.name, kind: 'station', text: `Added “${e.title}”` });
+    else if (!isLiveId(e.id) && !e.wasGoal) hist.push({ ts: `${e.date}T18:30:00`, actor: s.name, kind: 'station', text: `Added “${e.title}”` });
   }
   for (const n of store.endorsements) { const e = getEvent(n.eventId); if (e?.studentId === studentId && !n.live) hist.push({ ts: `${n.date}T15:40:00`, actor: teacherById[n.teacherId]?.name, kind: 'endorse', text: `Endorsed “${e.title}”` }); }
   for (const p of presentationsData.filter((x) => x.studentId === studentId)) for (const l of p.shareLinks) {
@@ -769,7 +780,7 @@ export function saveActivityList(studentId, list) { (store.activityLists ||= {})
 // ── Wave 4: goals, term in review, suggested interchanges ─────────────
 // A goal is a dashed station with a target date. It turns solid when the student says it happened.
 export function addGoal(studentId, f, by) {
-  const e = { id: `ev-${evSeq++}`, studentId, title: f.title, date: f.date, lineIds: [f.lineId], type: 'goal', summary: f.summary || 'Planned goal.', about: '', evidence: [], verification: 'student-added', visibility: 'advisor', source: { system: 'Manual entry', ref: null }, checkIn: f.checkIn || null, setBy: by || null, ...(f.sponsor ? { sponsor: { teacherId: f.sponsor, status: 'invited', note: f.sponsorNote || '', expectations: '', checkIns: [], invitedOn: TODAY } } : {}) };
+  const e = { id: uid('ev-'), studentId, title: f.title, date: f.date, lineIds: [f.lineId], type: 'goal', summary: f.summary || 'Planned goal.', about: '', evidence: [], verification: 'student-added', visibility: 'advisor', source: { system: 'Manual entry', ref: null }, checkIn: f.checkIn || null, setBy: by || null, ...(f.sponsor ? { sponsor: { teacherId: f.sponsor, status: 'invited', note: f.sponsorNote || '', expectations: '', checkIns: [], invitedOn: TODAY } } : {}) };
   store.events.push(e);
   const s = getStudent(studentId);
   log(studentId, by ? teacherById[by]?.name : s.name, 'goal', `Planned “${e.title}” for ${e.date}${f.checkIn ? ', with an advisor check-in' : ''}`);
@@ -849,7 +860,7 @@ export function growth(studentId) {
 // ── C5: counsellor comments pinned on a student's draft presentation ───
 export const getComments = (presentationId) => store.comments.filter((c) => c.presentationId === presentationId);
 export function addComment(presentationId, studentId, text, eventId, by = 't-09') {
-  const c = { id: `cm-${seq++}`, presentationId, studentId, eventId: eventId || null, text, by, date: TODAY, resolved: false };
+  const c = { id: uid('cm-'), presentationId, studentId, eventId: eventId || null, text, by, date: TODAY, resolved: false };
   store.comments.push(c);
   notify(PERSONA_OF_STUDENT[studentId], `${teacherById[by].name} commented on your draft`, { persona: PERSONA_OF_STUDENT[studentId], screen: 'studio' });
   emit();
@@ -864,7 +875,7 @@ store.comments.push(
 // ── E4: a reader asks for more evidence; the student decides ───────────
 export function askEvidence(eventId, from, text) {
   const e = getEvent(eventId);
-  const r = { id: `er-${seq++}`, eventId, studentId: e.studentId, from, text, date: TODAY, status: 'open' };
+  const r = { id: uid('er-'), eventId, studentId: e.studentId, from, text, date: TODAY, status: 'open' };
   store.evidenceRequests.unshift(r);
   notify(PERSONA_OF_STUDENT[e.studentId], `${from} asked to see more on “${e.title}”`, { persona: PERSONA_OF_STUDENT[e.studentId], screen: 'inbox' });
   log(e.studentId, from, 'request', `Asked for more evidence on “${e.title}”`);
@@ -935,32 +946,35 @@ function persist() {
   if (applying) return;
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
-    try { localStorage.setItem(STORE_KEY, JSON.stringify({ store, seq, evSeq, at: Date.now() })); } catch { /* storage full or blocked: the demo still works in memory */ }
+    try { localStorage.setItem(STORE_KEY, JSON.stringify({ store, seq, at: Date.now() })); } catch { /* storage full or blocked: the demo still works in memory */ }
   }, 150);
 }
 function apply(saved) {
   applying = true;
   for (const k of Object.keys(store)) delete store[k];
   Object.assign(store, saved.store);
-  seq = Math.max(seq, saved.seq || 0); evSeq = Math.max(evSeq, saved.evSeq || 0);
+  seq = Math.max(seq, saved.seq || 0);
   listeners.forEach((fn) => fn());
   applying = false;
 }
 try { const raw = localStorage.getItem(STORE_KEY); if (raw) apply(JSON.parse(raw)); } catch { /* ignore a broken save */ }
 // Another tab changed the record: take its copy. Endorse on the laptop, see the badge flip on the iPad.
-try { addEventListener('storage', (e) => { if (e.key === STORE_KEY && e.newValue) { try { apply(JSON.parse(e.newValue)); } catch { /* ignore */ } } }); } catch { /* no window */ }
+// (With the pilot server, tabs keep in step through the server instead.)
+try { addEventListener('storage', (e) => { if (!hook && e.key === STORE_KEY && e.newValue) { try { apply(JSON.parse(e.newValue)); } catch { /* ignore */ } } }); } catch { /* no window */ }
 export const isSaved = () => { try { return !!localStorage.getItem(STORE_KEY); } catch { return false; } };
 // F3: back to the seeded record, in every open tab.
 export function resetDemo() {
   clearTimeout(saveTimer);
   try { Object.keys(localStorage).filter((k) => k.startsWith('tp-')).forEach((k) => localStorage.removeItem(k)); } catch { /* ignore */ }
-  apply({ store: JSON.parse(SEED), seq: 1, evSeq: 900 });
-  try { localStorage.setItem(STORE_KEY, JSON.stringify({ store, seq, evSeq, at: Date.now() })); } catch { /* ignore */ }
+  apply({ store: JSON.parse(SEED), seq: 1 });
+  try { localStorage.setItem(STORE_KEY, JSON.stringify({ store, seq, at: Date.now() })); } catch { /* ignore */ }
 }
 
 // ── F9: undo. A copy of the record before a quick action; Undo puts it back. ─
-export const snapshot = () => JSON.stringify({ store, seq, evSeq });
+export const snapshot = () => JSON.stringify({ store, seq });
 export function restore(snap) { apply(JSON.parse(snap)); persist(); }
+// The server's copy of the record arrived (src/sync.js). Not a change of its own, so never sent back.
+export function load(saved) { apply(saved); persist(); }
 
 // ── F5: students act on their own stations ────────────────────────────
 export function editStation(id, patch) {
@@ -1118,7 +1132,7 @@ export function endorseClassTask(taskId, studentIds, note) {
   for (const sid of studentIds) {
     const st = getStudent(sid);
     const line = st.laneOrder.find((l) => l === 'computing' || lineById(l)?.parentLineId === 'computing') || 'computing';
-    store.inbox.push({ id: `ev-${evSeq++}`, studentId: sid, title: t.title, date: t.due, lineIds: [line], suggestedLineIds: [line], type: t.type, summary: t.summary, evidence: [],
+    store.inbox.push({ id: uid('ev-'), studentId: sid, title: t.title, date: t.due, lineIds: [line], suggestedLineIds: [line], type: t.type, summary: t.summary, evidence: [],
       verification: 'teacher-endorsed', visibility: 'advisor', source: { system: 'ManageBac', ref: t.ref }, sourceId: 'lms', classEndorsement: { teacherId: t.teacherId, note, date: TODAY } });
     log(sid, teacher.name, 'endorsement', `Endorsed “${t.title}” for the whole class`);
     notify(PERSONA_OF_STUDENT[sid], `${teacher.name} endorsed “${t.title}”. It is in your inbox.`, { persona: PERSONA_OF_STUDENT[sid], screen: 'inbox' });
@@ -1145,3 +1159,53 @@ export function setIntensity(studentId, level) {
 // Screens each level shows. The first is home.
 export const INTENSITY_NAV = { simple: ['map', 'family'], standard: ['map', 'studio', 'inbox', 'links', 'privacy'], full: ['map', 'studio', 'shared', 'inbox', 'links', 'activity', 'privacy'] };
 export const INTENSITY_LABEL = { simple: { map: 'My journey' } };
+
+// ── Shared record: with the pilot server, every change is replayed there ──
+// A screen calls a change below; it runs here at once (instant UI) while recording the ids and
+// times it made. The hook (src/sync.js) posts { fn, args, rec } to /api/action, and the server runs
+// the same function with the same values (runAction), so both copies end identical, ids and all.
+// Only the outermost call is sent: changes that call other changes (addBranch → addStation) replay whole.
+let hook = null, depth = 0;
+export const setActionHook = (fn) => { hook = fn; };
+const ACTIONS = {};
+const act = (name, fn) => {
+  ACTIONS[name] = fn;
+  return (...args) => {
+    if (depth) return fn(...args);
+    const rec = tape = []; depth++;
+    let out;
+    try { out = fn(...args); } finally { depth--; tape = null; }
+    hook?.(name, args, rec);
+    return out;
+  };
+};
+// The server side: run a change by name, handing back the recorded values in order.
+export function runAction(name, args = [], rec = []) {
+  if (!Object.hasOwn(ACTIONS, name)) throw Object.assign(new Error(`Not a change: ${name}`), { status: 400 });
+  depth++; replay = [...rec];
+  try { return ACTIONS[name](...args); } finally { depth--; replay = null; }
+}
+// Every change a screen may make. This is the server's allowlist too.
+setStudentDrafts = act('setStudentDrafts', setStudentDrafts); sync = act('sync', sync); acceptCandidate = act('acceptCandidate', acceptCandidate);
+dismissCandidate = act('dismissCandidate', dismissCandidate); restoreCandidate = act('restoreCandidate', restoreCandidate); mergeCandidate = act('mergeCandidate', mergeCandidate);
+setGithub = act('setGithub', setGithub); disconnectGithub = act('disconnectGithub', disconnectGithub); simulateWeek = act('simulateWeek', simulateWeek);
+setCasProject = act('setCasProject', setCasProject); casNudge = act('casNudge', casNudge); saveLetter = act('saveLetter', saveLetter); setLetterStatus = act('setLetterStatus', setLetterStatus);
+matchRoster = act('matchRoster', matchRoster); setRollout = act('setRollout', setRollout); addAlumStation = act('addAlumStation', addAlumStation);
+addLog = act('addLog', addLog); addNotification = act('addNotification', addNotification); markNotificationsRead = act('markNotificationsRead', markNotificationsRead);
+addReflection = act('addReflection', addReflection); addStation = act('addStation', addStation); requestEndorsement = act('requestEndorsement', requestEndorsement);
+endorse = act('endorse', endorse); declineRequest = act('declineRequest', declineRequest); addNote = act('addNote', addNote); sendPrompt = act('sendPrompt', sendPrompt);
+recordView = act('recordView', recordView); logLink = act('logLink', logLink);
+addBranch = act('addBranch', addBranch); endLine = act('endLine', endLine); restartLine = act('restartLine', restartLine); renameLine = act('renameLine', renameLine);
+decideBranch = act('decideBranch', decideBranch); addSchoolLine = act('addSchoolLine', addSchoolLine);
+completeOnboarding = act('completeOnboarding', completeOnboarding); capturePhone = act('capturePhone', capturePhone);
+setVisibility = act('setVisibility', setVisibility); setPrivacy = act('setPrivacy', setPrivacy); setIntensity = act('setIntensity', setIntensity); setTags = act('setTags', setTags);
+nudgeMilestone = act('nudgeMilestone', nudgeMilestone); markMilestone = act('markMilestone', markMilestone); saveActivityList = act('saveActivityList', saveActivityList);
+addGoal = act('addGoal', addGoal); completeGoal = act('completeGoal', completeGoal); acceptInterchange = act('acceptInterchange', acceptInterchange); ignoreInterchange = act('ignoreInterchange', ignoreInterchange);
+addComment = act('addComment', addComment); resolveComment = act('resolveComment', resolveComment); askEvidence = act('askEvidence', askEvidence); answerEvidence = act('answerEvidence', answerEvidence);
+answerSponsor = act('answerSponsor', answerSponsor); addCheckIn = act('addCheckIn', addCheckIn);
+editStation = act('editStation', editStation); deleteStation = act('deleteStation', deleteStation); resubmit = act('resubmit', resubmit);
+answerConsent = act('answerConsent', answerConsent); remindParent = act('remindParent', remindParent); setLang = act('setLang', setLang); setFamily = act('setFamily', setFamily);
+endorseClassTask = act('endorseClassTask', endorseClassTask);
+// Undo puts a whole earlier copy back, and reset goes back to the seed (sync.js sends it to /api/reset).
+restore = act('restore', restore); resetDemo = act('resetDemo', resetDemo);
+export const MUTATORS = Object.keys(ACTIONS);
