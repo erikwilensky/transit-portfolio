@@ -160,7 +160,7 @@ const STUDENT_OWNS = {
   addStation: (a) => [a[0]], addBranch: (a) => [a[0]], endLine: (a) => [a[0]], restartLine: (a) => [a[0]],
   completeOnboarding: (a) => [a[0]], capturePhone: (a) => [a[0]], setPrivacy: (a) => [a[0]], logLink: (a) => [a[0]],
   addGoal: (a) => [a[0], ...(a[2] ? ['(as staff)'] : [])], setIntensity: (a) => [a[0]], remindParent: (a) => [a[0]],
-  sync: (a) => [a[1]],
+  sync: (a) => [a[1]], importCandidates: (a) => (a[1]?.sourceId !== 'mine' ? ['(as staff)'] : Array.isArray(a[0]) && a[0].length ? a[0].map((r) => r?.studentId) : [null]),
   addReflection: (a) => [a[0]?.studentId, ev(a[0]?.eventId)],
   setVisibility: (a) => [ev(a[0])], editStation: (a) => [ev(a[0])], deleteStation: (a) => [ev(a[0])], completeGoal: (a) => [ev(a[0])],
   setTags: (a) => [ev(a[0])], requestEndorsement: (a) => [ev(a[0])], addCheckIn: (a) => [ev(a[0]), ...(a[2] !== 'student' ? ['(as staff)'] : [])],
