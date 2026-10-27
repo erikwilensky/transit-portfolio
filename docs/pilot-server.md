@@ -36,3 +36,53 @@ Run: `npm run build && npm run server` (port 8787, or PORT). In dev: `npm run se
   `store.drafts[studentId]`, read with `getDrafts()`, written with `setStudentDrafts(id, list)`.
 - **No server** (plain static hosting, `vite preview`): the app falls back to saving in the
   browser, as before. Every feature must still work that way.
+
+## Sign-in and accounts (`server/auth.mjs`, `server/routes/10-auth.mjs`)
+
+- **Accounts** in `DATA_DIR/accounts.json`: `{ id, email, name, kind, studentId | teacherId | children,
+  admin, password: { salt, hash }, setup?, createdAt }`. `kind` is a persona kind (`student`, `advisor`,
+  `teacher`, `counsellor`, `coordinator`, `leadership`, `parent`) or `admin` (no record). Leadership can
+  be flagged `admin`. Passwords: `crypto.scrypt` with a per-user salt, compared in constant time.
+- **Sessions**: a random token in the `tp_session` cookie (HttpOnly, SameSite=Lax, Secure over https or
+  with `COOKIE_SECURE=1`); only its SHA-256 is stored, in `DATA_DIR/sessions.json`, for 30 days.
+  Non-GET requests with a cross-site `Origin` are refused (except `/api/public/*`).
+- **First run**: with no accounts, the server prints a one-time admin setup link (`/#/setup/<token>`,
+  valid until restart). There is no default password. Set `PUBLIC_URL` to print the real address.
+- **Routes**: `GET /api/auth/me` → `{ mode, user }` (user carries its linked `record`);
+  `POST /api/auth/login { email, password }` (slowed after 3 failures per email or address, refused for
+  15 minutes after 10 per email or 30 per address); `POST /api/auth/logout`;
+  `POST /api/auth/password { current, password }` (signs out other devices);
+  `GET /api/auth/setup/:token`, `POST /api/auth/setup { token, password, name?, email? }`.
+  Admin only: `GET /api/admin/accounts` (accounts, students, teachers), `POST /api/admin/accounts`
+  (create; link with `studentId`/`teacherId`/`children`, or `newStudent: { name, year, programme }` /
+  `newTeacher: { name, role }`; returns a one-time `setupUrl`, valid 7 days), `POST /api/admin/accounts/:id`
+  (edit role or link), `POST /api/admin/accounts/:id/reset` (new setup link; ends the old password and
+  sessions), `DELETE /api/admin/accounts/:id` (the record stays).
+- **Guard**: sets `req.user` (the account, or null) on every /api request. In pilot mode it answers 401
+  for unsigned requests outside the open routes, and 403 for `/api/reset` unless the user is an admin.
+- **New records**: `api.addStudent({ name, year, programme })` (British Year 7–13; `grade = year - 1`,
+  `onboarding: true`, empty map) and `api.addTeacher({ name, role })`. Teachers now live in the record
+  (`store.teachers`). Both are idempotent when given an existing `id`.
+- **`canAct(user, fn, args)`** (exported from `server/auth.mjs`, re-exported by `10-auth.mjs`): call it in
+  `/api/action` before running a mutator and answer 403 when false. Admins: anything. Staff kinds: any
+  mutator except `resetDemo`, `restore`, `addStudent`, `addTeacher`. Students: only the student mutators
+  listed in `STUDENT_OWNS`, and only when every student the call touches (looked up from the station,
+  inbox item, request or evidence request) is their own `studentId`. Parents: `answerConsent` for their own
+  children, and `setFamily`. Everyone signed in: `recordView`, `markNotificationsRead`, `setLang`.
+- **Browser** (`src/auth.js`): reads the mode from `/api/auth/me` (no server, or demo → demo). In pilot it
+  builds the signed-in person's persona in the PERSONAS shape (`personaFor`) and installs it with
+  `setPilotPersona`, so `personaById` always returns it. `navOf(p)` gives a persona's navigation
+  (an admin gets Accounts). `src/main.jsx` shows `screens/SignIn.jsx` when signed out, except on the
+  public `#/s`, `#/v`, `#/p` routes and `#/setup/<token>`.
+
+### Not enforced yet
+
+- `/api/state` (and the stream) still give any signed-in person the whole record; screens hide what a
+  role should not see, the server does not.
+- `canAct` is only a check: it does nothing until `/api/action` calls it. It checks who owns the target,
+  not every field of the arguments (a staff member can still act as any teacher, `addGoal(.., by)` etc.).
+  `restore` (Undo) is admin-only in it, so student and staff Undo needs a scoped replacement.
+- Notifications are addressed by persona id: accounts linked to a seeded persona's record keep that id;
+  everyone else is `me`, and `notify` skips students without a seeded persona.
+- `setLang` changes the one shared family language setting for everybody.
+- In the browser the record is still also saved in localStorage; signing out clears it.

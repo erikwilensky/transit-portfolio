@@ -26,6 +26,14 @@ export const NAV = {
   parent: [['family', 'Family view'], ['consent', 'Consent'], ['digest', 'Weekly digest']],
   alum: [['journey', 'My record'], ['poster', 'Map poster']],
   external: [['reader', 'Shared portfolio']],
+  admin: [['accounts', 'Accounts']], // pilot only: an admin account with no record of its own
 };
-export const personaById = (id) => PERSONAS.find((p) => p.id === id) || PERSONAS[0];
-export const home = (p) => NAV[p.kind][0][0];
+// Pilot mode (src/auth.js): the signed-in person's own persona. Every route resolves to it,
+// so nobody can switch to someone else's screens by editing the address.
+let pilot = null;
+export const setPilotPersona = (p) => { pilot = p; };
+export const pilotPersona = () => pilot;
+export const personaById = (id) => pilot || PERSONAS.find((p) => p.id === id) || PERSONAS[0];
+// A persona may carry its own navigation (a pilot admin gets Accounts added to their role's screens).
+export const navOf = (p) => p.nav || NAV[p.kind];
+export const home = (p) => navOf(p)[0][0];

@@ -1,18 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getStore, getStudents } from '../api.js';
 import { fmtDate, TYPE_LABEL } from '../format.js';
-import { KIND_LABEL, NAV, PERSONAS } from '../personas.js';
+import { KIND_LABEL, NAV, PERSONAS, navOf } from '../personas.js';
 
 const STUDENT_PERSONA = Object.fromEntries(PERSONAS.filter((p) => p.kind === 'student').map((p) => [p.studentId, p.id]));
 
 // F16: one box to jump to any person, student, station or screen. Opens on / or Ctrl+K.
-export default function Launcher({ onGo, onClose }) {
+// In pilot mode (`only` is the signed-in person's persona) it lists just their own screens.
+export default function Launcher({ onGo, onClose, only }) {
   const [q, setQ] = useState('');
   const [at, setAt] = useState(0);
   const input = useRef(null);
   const list = useRef(null);
   const items = useMemo(() => {
     const out = [];
+    if (only) {
+      for (const [id, l] of navOf(only)) out.push({ kind: 'Page', label: l, sub: 'Your screens', go: () => onGo(only.id, id) });
+      if (only.studentId) for (const e of getStore().events.filter((x) => x.studentId === only.studentId && !x.requirement)) out.push({ kind: 'Station', label: e.title, sub: `${TYPE_LABEL[e.type]} · ${fmtDate(e.date)}`, go: () => onGo(only.id, 'map', e.id) });
+      out.push({ kind: 'Page', label: 'Verify a printed code', sub: 'Public verification page', go: () => { location.hash = '#/v'; } });
+      return out;
+    }
     for (const p of PERSONAS) out.push({ kind: 'Person', label: p.name, sub: `${p.role} · switch to their view`, go: () => onGo(p.id) });
     for (const p of PERSONAS) for (const [id, l] of NAV[p.kind]) out.push({ kind: 'Screen', label: l, sub: `${p.name} · ${KIND_LABEL[p.kind]}`, go: () => onGo(p.id, id) });
     for (const s of getStudents({ includeCohort: true })) {
@@ -28,7 +35,7 @@ export default function Launcher({ onGo, onClose }) {
     out.push({ kind: 'Page', label: 'Verify a printed code', sub: 'Public verification page', go: () => { location.hash = '#/v'; } });
     out.push({ kind: 'Page', label: 'Reset the demo', sub: 'Back to the seeded state', go: () => { location.hash = '#/reset'; } });
     return out;
-  }, [onGo]);
+  }, [onGo, only]);
   const shown = useMemo(() => {
     const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
     if (!words.length) return items.filter((x) => x.kind === 'Person' || x.kind === 'Page');
