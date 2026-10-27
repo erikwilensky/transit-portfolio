@@ -11,8 +11,21 @@ import { VerifyScope } from '../components/VerifyModal.jsx';
 
 const SHARED_WITH = SHARED_LABEL;
 
+// A link that is unknown, withdrawn or expired.
+export function LinkDead({ reason }) {
+  return (
+    <div className="link-dead">
+      <div className="tri" aria-hidden="true" />
+      <h2>{reason === 'missing' ? 'This link does not exist' : reason === 'revoked' ? 'This link has been withdrawn' : 'This link has expired'}</h2>
+      <p>{reason === 'missing' ? 'Check the address, or ask the student for a new link.' : 'The student controls who can read their portfolio. Ask them for a new link.'}</p>
+    </div>
+  );
+}
+
 // What someone outside the school sees when they open a share link.
-export default function ShareLanding({ token, drafts, embedded = false }) {
+// remote (pilot server): { gated, open(email), extend(reader), ask(eventId, text, reader) }; the server
+// sent only this link's pruned record, logs the view itself, and takes the reader's requests.
+export default function ShareLanding({ token, drafts, embedded = false, remote = null }) {
   const all = Object.values(drafts).flat();
   const pres = all.find((p) => p.shareLinks.some((l) => l.token === token));
   const link = pres?.shareLinks.find((l) => l.token === token);
@@ -25,9 +38,12 @@ export default function ShareLanding({ token, drafts, embedded = false }) {
   const [view, setView] = useState('full');
   const [email, setEmail] = useState('');
   const [reader, setReader] = useState(null);
-  const gated = link && !embedded && isGated(link) && !reader;
+  const [gateErr, setGateErr] = useState(null);
+  const gated = link && !embedded && (remote ? remote.gated : isGated(link)) && !reader;
+  const from = () => reader || link.sharedWith || SHARED_WITH[token];
 
   useEffect(() => {
+    if (remote) return;
     if (!counted.current && link && !dead && !gated) { counted.current = true; recordView(token, pres.studentId, reader || (embedded ? 'Northbridge University admissions' : 'Anonymous viewer')); try { new BroadcastChannel('tp-views').postMessage({ token }); } catch { /* not supported */ } }
   }, [token, gated]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -42,20 +58,19 @@ export default function ShareLanding({ token, drafts, embedded = false }) {
         {!dead && <span className="lb-meta">Shared read-only by {map.student.name}</span>}
       </header>
       {!dead && gated ? (
-        <form className="link-gate" onSubmit={(e) => { e.preventDefault(); if (/^\S+@\S+\.\S+$/.test(email)) setReader(email.trim()); }}>
+        <form className="link-gate" onSubmit={(e) => {
+          e.preventDefault(); if (!/^\S+@\S+\.\S+$/.test(email)) return;
+          if (!remote) return setReader(email.trim());
+          setGateErr(null); remote.open(email.trim()).then(() => setReader(email.trim()), (err) => setGateErr(err.message || 'Could not open the portfolio. Try again.'));
+        }}>
           <div className="tri" aria-hidden="true" />
           <h2>{map.student.name} asked for your email first</h2>
           <p>This link was shared with <b>{link.sharedWith || SHARED_WITH[token] || 'a named reader'}</b>. Your email is shown to {map.student.name.split(' ')[0]} next to the view, and nowhere else.</p>
           <label>Work email<input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@university.ac.uk" /></label>
           <button className="primary" disabled={!/^\S+@\S+\.\S+$/.test(email)}>Open the portfolio</button>
+          {gateErr && <p className="fineprint" role="alert">{gateErr}</p>}
         </form>
-      ) : dead ? (
-        <div className="link-dead">
-          <div className="tri" aria-hidden="true" />
-          <h2>{!link ? 'This link does not exist' : link.revoked ? 'This link has been withdrawn' : 'This link has expired'}</h2>
-          <p>{!link ? 'Check the address, or ask the student for a new link.' : 'The student controls who can read their portfolio. Ask them for a new link.'}</p>
-        </div>
-      ) : (
+      ) : dead ? <LinkDead reason={!link ? 'missing' : link.revoked ? 'revoked' : 'expired'} /> : (
         <>
           <div className="landing-banner">
             <span><b>Shared with:</b> {link.sharedWith || SHARED_WITH[token] || 'Anyone with the link'}</span>
@@ -64,7 +79,7 @@ export default function ShareLanding({ token, drafts, embedded = false }) {
             <span className="spacer" />
             {!link.site && <div className="seg small" role="group" aria-label="Reading mode"><button className={view === 'full' ? 'on' : ''} aria-pressed={view === 'full'} onClick={() => setView('full')}>Full portfolio</button><button className={view === 'skim' ? 'on' : ''} aria-pressed={view === 'skim'} onClick={() => setView('skim')}>60-second view</button></div>}
             <button className="ghost" onClick={() => window.print()}>Print</button>
-            <button className="ghost" disabled={asked} onClick={() => { setAsked(true); notify(PERSONA_OF_STUDENT[pres.studentId], `${link.sharedWith || SHARED_WITH[token] || 'A viewer'} asked to extend link /s/${token}`, { persona: PERSONA_OF_STUDENT[pres.studentId], screen: 'links' }); }}>{asked ? 'Extension requested' : 'Request more time'}</button>
+            <button className="ghost" disabled={asked} onClick={() => { setAsked(true); if (remote) { remote.extend(reader); return; } notify(PERSONA_OF_STUDENT[pres.studentId], `${link.sharedWith || SHARED_WITH[token] || 'A viewer'} asked to extend link /s/${token}`, { persona: PERSONA_OF_STUDENT[pres.studentId], screen: 'links' }); }}>{asked ? 'Extension requested' : 'Request more time'}</button>
           </div>
           {link.site ? (
             <div className="landing-site">
@@ -74,10 +89,10 @@ export default function ShareLanding({ token, drafts, embedded = false }) {
           ) : <div className={`landing-body theme-${pres.theme}`}>
             <VerifyScope.Provider value>
               {view === 'skim' ? <Skim map={map} lens={lens} pres={pres} onOpen={setSelected} /> : <PresentationView map={map} lens={lens} pres={pres} selectedId={selected} onSelect={setSelected} />}
-              <StationPanel event={event} map={map} onClose={() => setSelected(null)} readOnly onAsk={(id, t) => askEvidence(id, reader || link.sharedWith || SHARED_WITH[token] || 'A reader', t)} />
+              <StationPanel event={event} map={map} onClose={() => setSelected(null)} readOnly onAsk={(id, t) => (remote ? remote.ask(id, t, reader) : askEvidence(id, from() || 'A reader', t))} />
             </VerifyScope.Provider>
           </div>}
-          <div className="print-only print-link"><Qr text={appUrl(`s/${token}`)} size={80} /><span>Read the full portfolio at /s/{token}. Check any verified station by typing its NIST code at transit.wilenskycs.online/#/v.</span></div>
+          <div className="print-only print-link"><Qr text={appUrl(`s/${token}`)} size={80} /><span>Read the full portfolio at {appUrl(`s/${token}`)}. Check any verified station by typing its NIST code at {appUrl('v').replace(/^https?:\/\//, '')}.</span></div>
           <footer className="landing-foot">Every badge links to its verification record, and printed codes can be typed in at <a href="#/v">/v</a>. Items appear only if the student made them publishable. Views of this link are logged.</footer>
         </>
       )}

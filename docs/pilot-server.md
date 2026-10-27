@@ -241,3 +241,12 @@ server makes an empty folder and begins again from the seed.
   everyone else is `me`, and `notify` skips students without a seeded persona.
 - `setLang` changes the one shared family language setting for everybody.
 - In the browser the record is still also saved in localStorage; signing out clears it.
+- **Public pages** (`server/routes/40-public.mjs`, `src/publicRoute.js`, `src/screens/PublicPage.jsx`):
+  `#/s/<token>` and `#/v/<code>` never load or sync the full record (`isPublicRoute()`). With a server,
+  `GET /api/public/share/:token` returns a pruned `{ store, seq, evSeq }` (one student, the stations that
+  presentation shows, public reflections, this one link), loaded with `loadPublic()` and never saved;
+  404 unknown, 410 revoked or expired. Gated links send no stations until `POST …/open { email }`.
+  `POST …/extend` and `…/ask` carry the reader's requests. `GET /api/public/verify/:code` returns one
+  station's verification record. Share URLs are absolute; set `VITE_PUBLIC_URL` at build time when the
+  app is built or opened somewhere other than its public address. Tests: `npm run test:server`,
+  `BASE=http://localhost:8787 node scripts/checks/public.cjs`.

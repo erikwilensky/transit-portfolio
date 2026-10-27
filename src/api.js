@@ -962,9 +962,9 @@ store.events.push(
 const SEED = JSON.stringify(store);
 // The key carries a hash of the seed, so a deploy that changes the seed data starts everyone clean.
 const STORE_KEY = `tp-store-${[...SEED].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0, 2166136261).toString(36)}`;
-let saveTimer = null, applying = false;
+let saveTimer = null, applying = false, publicCopy = false;
 function persist() {
-  if (applying) return;
+  if (applying || publicCopy) return;
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     try { localStorage.setItem(STORE_KEY, JSON.stringify({ store, seq, evSeq, at: Date.now() })); } catch { /* storage full or blocked: the demo still works in memory */ }
@@ -980,7 +980,7 @@ function apply(saved) {
 }
 try { const raw = localStorage.getItem(STORE_KEY); if (raw) apply(JSON.parse(raw)); } catch { /* ignore a broken save */ }
 // Another tab changed the record: take its copy. Endorse on the laptop, see the badge flip on the iPad.
-try { addEventListener('storage', (e) => { if (e.key === STORE_KEY && e.newValue) { try { apply(JSON.parse(e.newValue)); } catch { /* ignore */ } } }); } catch { /* no window */ }
+try { addEventListener('storage', (e) => { if (!publicCopy && e.key === STORE_KEY && e.newValue) { try { apply(JSON.parse(e.newValue)); } catch { /* ignore */ } } }); } catch { /* no window */ }
 export const isSaved = () => { try { return !!localStorage.getItem(STORE_KEY); } catch { return false; } };
 // F3: back to the seeded record, in every open tab.
 export function resetDemo() {
@@ -993,6 +993,9 @@ export function resetDemo() {
 // ── F9: undo. A copy of the record before a quick action; Undo puts it back. ─
 export const snapshot = () => JSON.stringify({ store, seq, evSeq });
 export function restore(snap) { apply(JSON.parse(snap)); persist(); }
+// Public share and verify pages: show the pruned copy the server sent. It is never saved in this browser.
+export const hasPublicCopy = () => publicCopy;
+export function loadPublic(snap) { publicCopy = true; clearTimeout(saveTimer); apply(typeof snap === 'string' ? JSON.parse(snap) : snap); }
 
 // ── F5: students act on their own stations ────────────────────────────
 export function editStation(id, patch) {
