@@ -33,6 +33,8 @@ const store = {
   comments: [],       // counsellor comments on drafts
   evidenceRequests: [],
   answered: {},       // signal key → reflection id
+  // Presentations per student (drafts, letters, custom pages, share links), edited in the studio.
+  drafts: Object.fromEntries(studentsData.filter((st) => !st.cohortOnly).map((st) => [st.id, structuredClone(presentationsData.filter((p) => p.studentId === st.id))])),
 };
 const listeners = new Set();
 export const subscribe = (fn) => (listeners.add(fn), () => listeners.delete(fn));
@@ -78,6 +80,8 @@ export function getStudentMap(studentId, viewer = 'student') {
 }
 
 export const getPresentations = (studentId) => presentationsData.filter((p) => p.studentId === studentId);
+export const getDrafts = () => store.drafts;
+export function setStudentDrafts(studentId, list) { store.drafts[studentId] = list; emit(); }
 export const getPresentation = (id) => presentationsData.find((p) => p.id === id);
 
 // ── Lenses ────────────────────────────────────────────────────────────

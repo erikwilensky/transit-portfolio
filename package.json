@@ -4,11 +4,13 @@
   "description": "",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && npm run build:server",
     "preview": "vite preview",
     "seed": "node scripts/seed.mjs",
     "serve": "npx --yes serve dist",
-    "check": "sh scripts/checks/run.sh"
+    "check": "sh scripts/checks/run.sh",
+    "build:server": "vite build --ssr src/api.js --outDir server/build --emptyOutDir",
+    "server": "node server/index.mjs"
   },
   "keywords": [],
   "author": "",

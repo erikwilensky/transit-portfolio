@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { applyLens, getAlumMap, getPresentations, getStudentMap, getStudents, subscribe, getNotifications, markNotificationsRead, resetDemo, restore, logLink, addStation, getLang, setLang, getIntensity, setIntensity, INTENSITY, INTENSITY_NAV, INTENSITY_LABEL } from './api.js';
+import { applyLens, getAlumMap, getPresentations, getStudentMap, getStudents, subscribe, getDrafts, setStudentDrafts, getNotifications, markNotificationsRead, resetDemo, restore, logLink, addStation, getLang, setLang, getIntensity, setIntensity, INTENSITY, INTENSITY_NAV, INTENSITY_LABEL } from './api.js';
 import SimpleHome, { ShowFamily } from './screens/SimpleHome.jsx';
 import IntensityControl from './components/IntensityControl.jsx';
 import { ensureEndorsed } from './tourStory.js';
@@ -62,10 +62,12 @@ const parse = () => {
   return { persona: p.id, screen: screens.includes(b) ? b : home(p), param: c || null };
 };
 
-// F2: presentations (drafts, letters, custom pages, share links) are saved in this browser too.
-const DRAFTS_KEY = 'tp-drafts-v6';
-const freshDrafts = () => Object.fromEntries(getStudents().map((s) => [s.id, structuredClone(getPresentations(s.id))]));
-const loadDrafts = () => { try { const raw = localStorage.getItem(DRAFTS_KEY); return raw ? { ...freshDrafts(), ...JSON.parse(raw) } : null; } catch { return null; } };
+// Presentations (drafts, letters, custom pages, share links) live in the record, in api.js.
+const setDrafts = (upd) => {
+  const cur = getDrafts();
+  const next = typeof upd === 'function' ? upd(cur) : upd;
+  for (const id of Object.keys(next)) if (next[id] !== cur[id]) setStudentDrafts(id, next[id]);
+};
 
 export default function App() {
   const [route, setRoute] = useState(parse);
@@ -73,7 +75,6 @@ export default function App() {
   const [dark, setDark] = useState(() => window.matchMedia?.('(prefers-color-scheme: dark)').matches);
   const [audience, setAudience] = useState('general');
   const [tier, setTier] = useState('template');
-  const [drafts, setDrafts] = useState(() => loadDrafts() || freshDrafts());
   const [toastMsg, setToastMsg] = useState(null);
   const [menu, setMenu] = useState(null); // 'persona' | 'bell' | 'tour'
   const [tourState, setTourState] = useState(null); // { tour, step }
@@ -123,13 +124,10 @@ export default function App() {
   }, []);
 
   useEffect(() => subscribe(() => setVersion((v) => v + 1)), []);
-  const fromOtherTab = useRef(false);
-  useEffect(() => { if (fromOtherTab.current) { fromOtherTab.current = false; return; } try { localStorage.setItem(DRAFTS_KEY, JSON.stringify(drafts)); } catch { /* full or blocked */ } }, [drafts]);
-  // F4: another tab changed the drafts, or reset the demo.
-  useEffect(() => { const f = (e) => { if (e.key === DRAFTS_KEY || e.key === null) { fromOtherTab.current = true; setDrafts(loadDrafts() || freshDrafts()); } }; addEventListener('storage', f); return () => removeEventListener('storage', f); }, []);
+  const drafts = getDrafts();
   // F3: #/reset puts the demo back to its seeded state (handy on a shared screen).
   useEffect(() => {
-    const f = () => { if (location.hash.startsWith('#/reset')) { resetDemo(); setDrafts(freshDrafts()); history.replaceState(null, '', '#/principal/dashboard'); setRoute(parse()); } };
+    const f = () => { if (location.hash.startsWith('#/reset')) { resetDemo(); history.replaceState(null, '', '#/principal/dashboard'); setRoute(parse()); } };
     f(); addEventListener('hashchange', f); return () => removeEventListener('hashchange', f);
   }, []);
   useEffect(() => { const f = () => setRoute(parse()); addEventListener('hashchange', f); return () => removeEventListener('hashchange', f); }, []);
@@ -257,8 +255,8 @@ export default function App() {
                   <button className="qa-open" onClick={() => { setMenu(null); setQa(true); }}><b>Q&amp;A drawer</b><small>Likely board questions, each with a screen that answers it</small></button>
                   <div className="menu-title">Demo state</div>
                   <div className="demo-states">
-                    <button onClick={() => { resetDemo(); setDrafts(freshDrafts()); setTourState(null); setMenu(null); go('principal', 'dashboard'); toast('Demo reset. Ready for the tour.'); }}><b>Reset, ready for the tour</b><small>Clean record, starts on the dashboard</small></button>
-                    <button onClick={() => { resetDemo(); setDrafts(freshDrafts()); ensureEndorsed(); setTourState(null); setMenu(null); go('maya', 'map'); toast('Reset with the tour already played'); }}><b>Reset, tour already played</b><small>Hackathon added and endorsed</small></button>
+                    <button onClick={() => { resetDemo(); setTourState(null); setMenu(null); go('principal', 'dashboard'); toast('Demo reset. Ready for the tour.'); }}><b>Reset, ready for the tour</b><small>Clean record, starts on the dashboard</small></button>
+                    <button onClick={() => { resetDemo(); ensureEndorsed(); setTourState(null); setMenu(null); go('maya', 'map'); toast('Reset with the tour already played'); }}><b>Reset, tour already played</b><small>Hackathon added and endorsed</small></button>
                   </div>
                   <p className="fineprint demo-note">Changes are saved in this browser, so a rehearsal is still here tomorrow. Open a second tab to show two people at once.</p>
                 </div>
