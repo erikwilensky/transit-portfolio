@@ -19,9 +19,9 @@ export const KIND_LABEL = { student: 'Students', advisor: 'Advisor', teacher: 'S
 export const NAV = {
   student: [['map', 'My map'], ['studio', 'Presentation studio'], ['shared', 'Shared view'], ['inbox', 'Inbox'], ['links', 'Share links'], ['activity', 'Activity'], ['privacy', 'Privacy'], ['family', 'Show my family']],
   advisor: [['advisory', 'Advisory 4B'], ['signals', 'Signals']],
-  teacher: [['queue', 'Endorsements'], ['crosslinks', 'Cross-subject'], ['depot', 'Class depot']],
+  teacher: [['queue', 'Endorsements'], ['crosslinks', 'Cross-subject'], ['depot', 'Class depot'], ['import', 'Import a file']],
   counsellor: [['applications', 'Applications'], ['letter', 'Reference letter'], ['activities', 'Activities list'], ['search', 'Cohort search']],
-  coordinator: [['cas', 'CAS outcomes'], ['schoolline', 'One line'], ['core', 'DP core'], ['governance', 'Lines']],
+  coordinator: [['cas', 'CAS outcomes'], ['schoolline', 'One line'], ['core', 'DP core'], ['governance', 'Lines'], ['import', 'Import a file']],
   leadership: [['dashboard', 'Dashboard'], ['schoolmetro', 'School metro'], ['profile', 'Learner profile'], ['pdpa', 'Privacy & PDPA'], ['rollout', 'Rollout'], ['pilot', 'Pilot options'], ['audit', 'Audit log'], ['scan', 'Scan-in']],
   parent: [['family', 'Family view'], ['consent', 'Consent'], ['digest', 'Weekly digest']],
   alum: [['journey', 'My record'], ['poster', 'Map poster']],
