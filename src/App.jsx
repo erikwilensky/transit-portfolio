@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { applyLens, getAlumMap, getPresentations, getStudentMap, getStudents, subscribe, getDrafts, setStudentDrafts, getNotifications, markNotificationsRead, resetDemo, restore, logLink, addStation, getLang, setLang, getIntensity, setIntensity, INTENSITY, INTENSITY_NAV, INTENSITY_LABEL } from './api.js';
+import { applyLens, getAlumMap, getPresentations, getStudentMap, getStudents, subscribe, getDrafts, setStudentDrafts, hasPublicCopy, getNotifications, markNotificationsRead, resetDemo, restore, logLink, addStation, getLang, setLang, getIntensity, setIntensity, INTENSITY, INTENSITY_NAV, INTENSITY_LABEL } from './api.js';
 import SimpleHome, { ShowFamily } from './screens/SimpleHome.jsx';
 import IntensityControl from './components/IntensityControl.jsx';
 import { ensureEndorsed } from './tourStory.js';
@@ -16,7 +16,7 @@ import CasDashboard from './screens/CasDashboard.jsx';
 import ReferenceLetter from './screens/ReferenceLetter.jsx';
 import SchoolDashboard from './screens/SchoolDashboard.jsx';
 import ShareLanding from './screens/ShareLanding.jsx';
-import VerifyPage from './screens/VerifyPage.jsx';
+import { PublicShare, PublicVerify } from './screens/PublicPage.jsx';
 import ScanIn from './screens/ScanIn.jsx';
 import ComingSoon from './screens/ComingSoon.jsx';
 import ShareLinks from './screens/ShareLinks.jsx';
@@ -39,6 +39,7 @@ import ParentView from './screens/ParentView.jsx';
 import Family from './screens/Family.jsx';
 import LearnerProfile from './screens/LearnerProfile.jsx';
 import { tr } from './i18n.js';
+import { isPublicRoute } from './publicRoute.js';
 import Pilot from './screens/Pilot.jsx';
 import AuditLog from './screens/AuditLog.jsx';
 import Poster from './screens/Poster.jsx';
@@ -130,7 +131,8 @@ export default function App() {
     const f = () => { if (location.hash.startsWith('#/reset')) { resetDemo(); history.replaceState(null, '', '#/principal/dashboard'); setRoute(parse()); } };
     f(); addEventListener('hashchange', f); return () => removeEventListener('hashchange', f);
   }, []);
-  useEffect(() => { const f = () => setRoute(parse()); addEventListener('hashchange', f); return () => removeEventListener('hashchange', f); }, []);
+  // Leaving a public page that holds only the server's pruned copy: start again with the full record.
+  useEffect(() => { const f = () => { if (hasPublicCopy() && !isPublicRoute()) location.reload(); else setRoute(parse()); }; addEventListener('hashchange', f); return () => removeEventListener('hashchange', f); }, []);
   useEffect(() => { document.documentElement.dataset.theme = dark ? 'dark' : 'light'; }, [dark]);
   useEffect(() => { const f = (e) => { if (!e.target.closest('.menu-wrap')) setMenu(null); }; addEventListener('pointerdown', f); return () => removeEventListener('pointerdown', f); }, []);
 
@@ -147,8 +149,9 @@ export default function App() {
   // F9: a toast can carry a snapshot taken before the action; Undo restores it.
   const toast = (m, undo) => { setToastMsg({ m, undo }); clearTimeout(window.__toast); window.__toast = setTimeout(() => setToastMsg(null), undo ? 6000 : 3400); };
 
-  if (route.publicKind === 's') return <VerifyProvider><ShareLanding token={route.param} drafts={drafts} version={version} /></VerifyProvider>;
-  if (route.publicKind === 'v') return <VerifyPage code={route.param} />;
+  // Share links and verify codes: with the pilot server, only what was shared is fetched (see publicRoute.js).
+  if (route.publicKind === 's') return <PublicShare key={route.param} token={route.param} version={version} />;
+  if (route.publicKind === 'v') return <PublicVerify key={route.param || ''} code={route.param} />;
   if (route.publicKind === 'p') return <VerifyProvider><ParentView studentId={route.param} lang={route.lang} /></VerifyProvider>;
 
   const persona = personaById(route.persona);

@@ -24,6 +24,13 @@ export function verificationRecord(eventId) {
   if (!e) return null;
   const s = getStudent(e.studentId);
   const endorsements = getStore().endorsements.filter((n) => n.eventId === e.id).map((n) => ({ ...n, teacher: getTeacher(n.teacherId) }));
+  return buildRecord(e, s, endorsements);
+}
+
+// The same record from the server's public answer for one code (GET /api/public/verify/:code).
+export const recordFromPublic = ({ event, student, endorsements }) => buildRecord(event, student, endorsements.map((n) => ({ ...n, teacher: n.teacher || { name: 'A teacher', role: 'NIST' } })));
+
+function buildRecord(e, s, endorsements) {
   const chain = [];
   if (e.source.system === 'Manual entry') chain.push(['Added by the student', s.name, e.date]);
   else chain.push([`Imported from ${e.source.system}`, e.source.ref ? `record ${e.source.ref}` : 'school system', e.date]);
@@ -32,8 +39,8 @@ export function verificationRecord(eventId) {
   return { e, s, endorsements, chain, code: verifyCode(e.id) };
 }
 
-export function VerifyRecord({ eventId, compact }) {
-  const r = verificationRecord(eventId);
+export function VerifyRecord({ eventId, record, compact }) {
+  const r = record || verificationRecord(eventId);
   if (!r) return <p>No record found for this code.</p>;
   const { e, s, endorsements, chain, code } = r;
   const confirmed = e.verification !== 'student-added';

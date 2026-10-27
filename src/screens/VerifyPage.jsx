@@ -1,17 +1,18 @@
 import { useState } from 'react';
 import { getStore } from '../api.js';
 import { verifyCode } from '../format.js';
-import { VerifyRecord } from '../components/VerifyModal.jsx';
+import { VerifyRecord, recordFromPublic } from '../components/VerifyModal.jsx';
 import Logo from '../components/Logo.jsx';
 
 // F14: people holding a printed CV type the code; anything close to NIST-XXXXXX is accepted.
 const normalise = (raw) => { const x = raw.toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^NIST/, ''); return x ? `NIST-${x}` : ''; };
 
 // Public verification page for a printed code or QR: #/v/NIST-XXXXXX, or #/v to type one.
-export default function VerifyPage({ code }) {
+// remote (pilot server): the server already looked the code up; record is its answer, or null for no public record.
+export default function VerifyPage({ code, remote }) {
   const [typed, setTyped] = useState('');
-  const e = code && getStore().events.find((x) => verifyCode(x.id) === code);
-  const ok = e && e.visibility === 'publishable';
+  const e = !remote && code && getStore().events.find((x) => verifyCode(x.id) === code);
+  const ok = remote ? !!remote.record : e && e.visibility === 'publishable';
   const go = (ev) => { ev.preventDefault(); const c = normalise(typed); if (c) { location.hash = `#/v/${c}`; setTyped(''); } };
   return (
     <div className="landing verify-page">
@@ -24,7 +25,7 @@ export default function VerifyPage({ code }) {
             <button className="primary" disabled={normalise(typed).length < 11}>Verify</button></div>
         </form>
         {code && <p className="kicker">Code {code}</p>}
-        {code && (ok ? <VerifyRecord eventId={e.id} compact /> : (
+        {code && (ok ? (remote ? <VerifyRecord record={recordFromPublic(remote.record)} compact /> : <VerifyRecord eventId={e.id} compact />) : (
           <div className="vrec"><h3>No public record for this code</h3><p>The code may be mistyped, or the student has not made this item publishable.</p></div>
         ))}
         <p className="fineprint">NIST International School confirms records imported from school systems or endorsed by its teachers. Students choose what is public.</p>

@@ -24,7 +24,11 @@ export function verifyCode(eventId) {
   for (const c of `nist:${eventId}`) h = Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0;
   return `NIST-${h.toString(36).toUpperCase().padStart(6, '0').slice(0, 6)}`;
 }
-export const appUrl = (hash) => `${location.origin}${location.pathname}#/${hash}`;
+// A full absolute link, so a share link or QR opens on any device. VITE_PUBLIC_URL (set at build time)
+// names the public address when the app is built or run somewhere else, such as localhost.
+const PUBLIC_BASE = import.meta.env?.VITE_PUBLIC_URL || '';
+export const appBase = () => (PUBLIC_BASE ? PUBLIC_BASE.replace(/[#?].*$/, '').replace(/\/?$/, '/') : location.href.replace(/[#?].*$/, ''));
+export const appUrl = (hash) => `${appBase()}#/${hash}`;
 
 // P12: a short code for each line, so lines that share a colour can be named without it.
 export const lineCode = (l) => l.code || (l.name.includes(' ') ? l.name.split(/[\s·]+/).filter(Boolean).map((w) => w[0]).join('').slice(0, 3) : l.name.slice(0, 3)).toUpperCase();
