@@ -99,6 +99,8 @@ export function personaFor(user) {
   const nav = NAV[kind].filter(([id]) => id !== 'depot').map(([id, label]) => (id === 'advisory' ? [id, 'My advisory'] : [id, label]));
   if (also.includes('advisor')) nav.push(['advisory', 'My advisory']);
   if (also.includes('teacher')) nav.push(['queue', 'Endorsements']);
+  // My classes (src/screens/MyClasses.jsx): anyone who teaches, next to Endorsements.
+  if (kind === 'teacher' || also.includes('teacher')) nav.splice(nav.findIndex(([id]) => id === 'queue') + 1, 0, ['classes', 'My classes']);
   if (also.length) p.also = also;
   if (also.length || kind === 'advisor' || kind === 'teacher') p.nav = nav;
   if (user.admin && kind !== 'admin') p.nav = [...(p.nav || NAV[kind]), ['accounts', 'Accounts']];

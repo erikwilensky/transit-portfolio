@@ -1,0 +1,28 @@
+/* My classes (MyClasses.jsx) and Subjects and lines (SubjectLines.jsx). */
+.mc .cb-back { margin-bottom: 8px; }
+.mc-wait { background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; padding: 10px 14px; min-width: 112px; display: flex; flex-direction: column; color: var(--ink); text-decoration: none; }
+.mc-wait:hover { border-color: var(--navy); }
+.mc-wait b { font-size: 22px; font-weight: 600; line-height: 1.1; } .mc-wait span { font-size: 12px; color: var(--muted); }
+.mc-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.mc-list a { display: grid; grid-template-columns: minmax(0, 1fr) auto 90px 120px; gap: 14px; align-items: center; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); padding: 12px 16px; color: var(--ink); text-decoration: none; }
+.mc-list a:hover { border-color: var(--navy); }
+.mc-name, .mc-num { display: flex; flex-direction: column; min-width: 0; }
+.mc-name b { font-weight: 600; } .mc-name small, .mc-num small { color: var(--muted); font-size: 12px; }
+.mc-num { text-align: right; } .mc-num b { font-size: 18px; font-weight: 600; }
+.mc .page-head p .line-chip { vertical-align: middle; margin-right: 4px; }
+.mc-table, .sl-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.mc-table { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); }
+.mc-table th, .mc-table td, .sl-table th, .sl-table td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.mc-table th, .sl-table th { font-size: 12px; font-weight: 600; color: var(--muted); }
+.mc-table small { color: var(--muted); }
+.mc-table a { font-weight: 600; color: inherit; }
+.mc-read .as-body { grid-template-columns: 1fr; }
+.sl { margin-top: 12px; }
+.sl-table td:nth-child(2) { width: 80px; }
+.sl-table select { font: inherit; font-size: 14px; padding: 6px 8px; border: 1px solid var(--rule); border-radius: 8px; background: var(--bg); color: var(--ink); max-width: 100%; }
+@media (max-width: 700px) {
+  .mc-list a { grid-template-columns: minmax(0, 1fr) auto; }
+  .mc-table thead { display: none; }
+  .mc-table tr { display: block; padding: 8px 0; border-bottom: 1px solid var(--rule); }
+  .mc-table td { display: block; border: 0; padding: 2px 12px; }
+}

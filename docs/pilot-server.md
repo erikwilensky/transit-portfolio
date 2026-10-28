@@ -387,7 +387,7 @@ only the students they work with. Demo mode still sends the whole record to ever
   request's teacher, `sendPrompt`'s sender, default `t-07`, `addComment`'s author, default `t-09`, `addGoal`'s
   `by`, `addCheckIn`'s `by`, the sponsor in `answerSponsor`, a class task's teacher, an import's
   `by.teacherId`). Allowed only when every touched student is in reach and every acted-as teacher is
-  their own `teacherId`. `addSchoolLine`, `renameLine`, `decideBranch`, `setRollout` and `matchRoster` are
+  their own `teacherId`. `addSchoolLine`, `renameLine`, `decideBranch`, `setRollout`, `matchRoster` and `setSubjectLine` are
   whole-school only. A mutator not in `TOUCHES`: any student or station id found in its arguments counts
   as touched; one that names none is allowed. An id that does not resolve counts as outside reach.
 - **Browser**: a change still runs first on the browser's part of the record. In pilot mode `/api/action`
@@ -517,3 +517,30 @@ Thailand's PDPA gives a student (and their parent) the right to a copy of their 
   import 49 ms, re-import 126 ms, import plus 1,093 accounts over HTTP about 0.2 s; `state.json` 1.2 MB, a save
   after any change about 33 ms. 220 classes have no line (Mathematics, I&S, EE, TOK, Business, ...).
 - Not done: removing people who left (they are only listed), and editing classes in the app.
+
+## My classes, and subjects on lines (`src/screens/MyClasses.jsx`, `src/screens/SubjectLines.jsx`)
+
+- **My classes** (`#/<persona>/classes`, pilot only): in the nav of anyone who teaches (account kind `teacher`,
+  or staff whose record roles include `teacher`, `personaFor` in src/auth.js), right after Endorsements.
+  `api.classesOf(teacherId)` → the classes listing them in `teacherIds`, with `line`, `studentIds` (current
+  places: enrolments with `to` before `TODAY` are skipped; a class whose places have all ended is left out) and
+  `recent` (stations, not goals, its students dated in the last 30 days on the class's line; a student's
+  sub-line counts for its school line). One pass over the events, so 12 classes of 30+ take a few ms.
+  `#/<persona>/classes/<classId>`: `api.classRoster(classId, teacherId)` → its students (name, Year,
+  homeroom), each with their last station on the class's line and the endorsement requests waiting for this
+  teacher. `#/<persona>/classes/<classId>~<studentId>`: that student's map, read only, at the `school` level
+  (`advisor` when the teacher is also their advisor). "Waiting for you" counts `getRequests(teacherId)` and
+  opens Endorsements. Data: `scopedSnapshot` already sends a teacher every class, their classes' enrolments and
+  students (`teacherReach`), so the server needed no change.
+- **Subjects and lines**: a card on the coordinator's Lines screen (`governance`) and at the foot of Accounts
+  (admin), shown once there are classes. It lists each subject with a class on no line, and each subject
+  already decided, with its class count and a choice of school line or "Leave off the map".
+  `api.setSubjectLine(subject, lineId | null)` (mutator; admin and whole-school staff, refused for advisors,
+  teachers, students and families by `WHOLE_SCHOOL_ONLY`) sets `lineId` on every class of that subject and keeps
+  the choice in `store.subjectLines[subject]` (null: left off on purpose). An unknown line or empty subject
+  throws (400). Returns the number of classes changed. `planRoster(..., { subjectLines })` (api.js passes
+  the stored choices) applies them on every later import, to new and existing classes: a class's own `line`
+  in the file still wins, then the subject's choice, then the usual guess. `api.subjectsOffLines()` gives the rows.
+- Tests: `server/test/my-classes.test.mjs`; browser: `node scripts/checks/my-classes.cjs` (a clean pilot on the
+  real roster from the project files, skipped when it is not there: the teacher with the most classes, a
+  class, a student's map, the queue; a coordinator puts Mathematics on Science; a re-import keeps it).
