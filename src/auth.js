@@ -56,7 +56,7 @@ export const admin = {
   // PDPA: remove a student and everything about them (confirm = their name, typed).
   erase: (id, confirm) => call('POST', `/api/admin/students/${encodeURIComponent(id)}/erase`, { confirm }),
   usage: () => call('GET', '/api/admin/usage'),
-  roster: (roster, dryRun) => call('POST', '/api/admin/roster', { roster, dryRun }),
+  roster: (roster, dryRun, opts = {}) => call('POST', '/api/admin/roster', { roster, dryRun, ...opts }), // opts: { pauseLeavers }
 };
 // An advisor (or admin): the sign-in account of a student in their advisory, and a new link for it.
 export const advisee = {
@@ -65,6 +65,14 @@ export const advisee = {
 };
 // PDPA copy: a ZIP of everything held about a student. Admins any student; students their own; parents their children.
 export const exportUrl = (studentId, asAdmin) => (asAdmin ? `/api/admin/students/${encodeURIComponent(studentId)}/export` : `/api/me/export${studentId ? `?student=${encodeURIComponent(studentId)}` : ''}`);
+// Printable sign-in cards (server/routes/16-cards.mjs): new one-time setup links in a batch; unpausing a leaver.
+export const signinCards = {
+  advisees: () => call('GET', '/api/advisor/cards').then((j) => j.students),
+  forAdvisees: (body) => call('POST', '/api/advisor/cards', body),
+  groups: () => call('GET', '/api/admin/cards'),
+  forAdmin: (body) => call('POST', '/api/admin/cards', body),
+  unpause: (id) => call('POST', `/api/admin/accounts/${encodeURIComponent(id)}/unpause`),
+};
 
 // ── An account becomes a persona in the PERSONAS shape, so every existing screen works unchanged ──
 const COLOURS = { student: '#4F529B', advisor: '#008A60', teacher: '#002855', counsellor: '#E73C3E', coordinator: '#FF8F1C', leadership: '#002855', parent: '#FFB81C', admin: '#002855' };
@@ -99,6 +107,8 @@ export function personaFor(user) {
   const nav = NAV[kind].filter(([id]) => id !== 'depot').map(([id, label]) => (id === 'advisory' ? [id, 'My advisory'] : [id, label]));
   if (also.includes('advisor')) nav.push(['advisory', 'My advisory']);
   if (also.includes('teacher')) nav.push(['queue', 'Endorsements']);
+  // My classes (src/screens/MyClasses.jsx): anyone who teaches, next to Endorsements.
+  if (kind === 'teacher' || also.includes('teacher')) nav.splice(nav.findIndex(([id]) => id === 'queue') + 1, 0, ['classes', 'My classes']);
   if (also.length) p.also = also;
   if (also.length || kind === 'advisor' || kind === 'teacher') p.nav = nav;
   if (user.admin && kind !== 'admin') p.nav = [...(p.nav || NAV[kind]), ['accounts', 'Accounts']];

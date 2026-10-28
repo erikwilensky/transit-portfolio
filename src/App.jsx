@@ -15,6 +15,7 @@ import AdvisorGrid from './components/AdvisorGrid.jsx';
 import StudentMap from './screens/StudentMap.jsx';
 import AdvisorStudent from './screens/AdvisorStudent.jsx';
 import TeacherQueue from './screens/TeacherQueue.jsx';
+import MyClasses from './screens/MyClasses.jsx';
 import CasDashboard from './screens/CasDashboard.jsx';
 import ReferenceLetter from './screens/ReferenceLetter.jsx';
 import SchoolDashboard from './screens/SchoolDashboard.jsx';
@@ -297,6 +298,7 @@ export default function App() {
           {acts(persona, 'advisor') && route.screen === 'advisory' && <AdvisorGrid advisorId={persona.teacherId} version={version} toast={toast} onOpen={(id) => go(persona.id, 'student', id)} />}
           {acts(persona, 'advisor') && route.screen === 'student' && (getStudent(route.param || 'st-01') ? <AdvisorStudent studentId={route.param || 'st-01'} {...ctx} /> : <NotInRecord onBack={() => go(persona.id, 'advisory')} />)}
           {acts(persona, 'teacher') && route.screen === 'queue' && <TeacherQueue teacherId={persona.teacherId} focus={route.param} {...ctx} />}
+          {pilot && acts(persona, 'teacher') && route.screen === 'classes' && <MyClasses teacherId={persona.teacherId} param={route.param} {...ctx} />}
           {persona.kind === 'coordinator' && route.screen === 'cas' && <CasDashboard {...ctx} />}
           {persona.kind === 'counsellor' && route.screen === 'letter' && (getStudent(route.param || 'st-01') ? <ReferenceLetter {...ctx} studentId={route.param || 'st-01'} /> : <NotInRecord onBack={() => go(persona.id, 'applications')} />)}
           {persona.kind === 'leadership' && route.screen === 'dashboard' && <SchoolDashboard {...ctx} />}

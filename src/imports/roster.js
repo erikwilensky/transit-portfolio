@@ -124,7 +124,8 @@ function validateRoster(raw, warnings = []) {
 }
 
 // ── Classes → lines ──
-// The class's own `line` wins; otherwise a guess from the subject, then the class name.
+// The class's own `line` wins; then the line a coordinator chose for its subject (subjectLines, null = leave
+// it off the map; api.setSubjectLine); otherwise a guess from the subject, then the class name.
 const GUESS = [
   ['computing', /\b(computer|computing|ict|digital|programming)\b/],
   ['science', /\b(biology|chemistry|physics|science|sciences|sehs)\b/],
@@ -136,8 +137,9 @@ const GUESS = [
   ['art', /\b(art|arts|theatre|drama|film|dance)\b/],
   ['service', /\b(service)\b/],
 ];
-export function lineForClass(c, lineIds = LINES) {
+export function lineForClass(c, lineIds = LINES, subjectLines = {}) {
   if (c.line && lineIds.includes(c.line)) return c.line;
+  if (Object.hasOwn(subjectLines, str(c.subject))) { const l = subjectLines[str(c.subject)]; return l && lineIds.includes(l) ? l : null; }
   for (const text of [c.subject, c.name]) {
     const t = str(text).toLowerCase();
     const hit = GUESS.find(([id, re]) => lineIds.includes(id) && re.test(t));
@@ -171,7 +173,7 @@ const C_KEYS = ['name', 'subject', 'year', 'level', 'teacherIds', 'lineId'];
 // What an import would do to the record, without changing it. current = { students, teachers, classes, enrolments }.
 // Returns the writes (each { op: 'add' | 'update', id, rec } with only the fields the roster owns on an update)
 // and the summary { added, updated, ended, unmatchedClasses, missingFromFile }.
-export function planRoster(roster, current, { lineIds = LINES, today = '2026-10-26' } = {}) {
+export function planRoster(roster, current, { lineIds = LINES, today = '2026-10-26', subjectLines = {} } = {}) {
   const start = academicStart(roster.school?.academicYear, today);
   const endDate = parseDate(roster.school?.exportedAt) || today;
   const byId = (xs) => new Map((xs || []).map((x) => [x.id, x]));
@@ -200,7 +202,7 @@ export function planRoster(roster, current, { lineIds = LINES, today = '2026-10-
   }
   const unmatchedClasses = [];
   for (const c of roster.classes) {
-    const lineId = lineForClass(c, lineIds);
+    const lineId = lineForClass(c, lineIds, subjectLines);
     if (!lineId) unmatchedClasses.push({ id: c.id, name: c.name, subject: c.subject });
     put('classes', curC, c.id, { name: c.name, subject: c.subject, year: c.year, level: c.level, teacherIds: c.teacherIds, lineId }, C_KEYS, () => ({ id: c.id }));
   }

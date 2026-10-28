@@ -127,7 +127,8 @@ export function sessionUser(t) {
   if (!t) return null;
   const s = sessions[sha(t)];
   if (!s || s.expiresAt < Date.now()) return null;
-  return accountById(s.userId) || null;
+  const a = accountById(s.userId);
+  return a && !a.paused ? a : null;
 }
 export const sessionCount = (userId) => Object.values(sessions).filter((s) => s.userId === userId && s.expiresAt >= Date.now()).length;
 export function endSession(t) { if (t && sessions[sha(t)]) { delete sessions[sha(t)]; saveSessions(); } }
@@ -139,6 +140,11 @@ export const cookieHeader = (req, value, maxAge) => {
   const secure = isHttps(req) || process.env.COOKIE_SECURE === '1';
   return `${COOKIE}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure ? '; Secure' : ''}`;
 };
+
+// ── Paused accounts (a leaver no longer in the class lists): no sign-in, no sessions, no setup. The record stays. ──
+export const PAUSED = 'Your account is paused. Ask your teacher.';
+export function pauseAccount(a) { a.paused = { at: new Date().toISOString() }; endSessionsOf(a.id); saveAccounts(); }
+export function unpauseAccount(a) { delete a.paused; saveAccounts(); }
 
 // ── Slowing down repeated failed sign-ins, per email and per address ──
 // The address is lib's clientIp(req) (the visitor behind cloudflared). A whole school can share one
@@ -169,7 +175,7 @@ export const noteSuccess = (email) => fails.delete(`e:${email}`);
 const ADMIN_ONLY = new Set(['resetDemo', 'restore', 'addStudent', 'addTeacher', 'eraseStudent', 'importRoster']);
 const ANYONE = new Set(['recordView', 'setLang']);
 // School-wide settings an advisor or subject teacher does not change.
-const WHOLE_SCHOOL_ONLY = new Set(['addSchoolLine', 'renameLine', 'decideBranch', 'setRollout', 'matchRoster']);
+const WHOLE_SCHOOL_ONLY = new Set(['addSchoolLine', 'renameLine', 'decideBranch', 'setRollout', 'matchRoster', 'setSubjectLine']);
 // The mutators a student may call, on their own record only.
 const STUDENT_FNS = new Set(['setStudentDrafts', 'setGithub', 'disconnectGithub', 'simulateWeek', 'addStation', 'addBranch', 'endLine', 'restartLine',
   'completeOnboarding', 'capturePhone', 'setPrivacy', 'logLink', 'addGoal', 'setIntensity', 'remindParent', 'sync', 'importCandidates', 'addReflection',

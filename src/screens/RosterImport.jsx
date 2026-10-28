@@ -12,6 +12,7 @@ export default function RosterImport({ onDone, onClose }) {
   const [step, setStep] = useState({ at: 'pick' }); // pick → preview → done
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
+  const [pause, setPause] = useState(false);
 
   const pick = async (e) => {
     setErr(null);
@@ -21,12 +22,12 @@ export default function RosterImport({ onDone, onClose }) {
     const p = parseRoster(files);
     if (p.errors.length) return setStep({ at: 'pick', files: files.map((f) => f.name), problems: p });
     setBusy(true);
-    try { const j = await admin.roster(p.roster, true); setStep({ at: 'preview', files: files.map((f) => f.name), roster: p.roster, preview: j, warnings: p.warnings }); }
+    try { const j = await admin.roster(p.roster, true); setPause(false); setStep({ at: 'preview', files: files.map((f) => f.name), roster: p.roster, preview: j, warnings: p.warnings }); }
     catch (x) { setErr(x.message); } finally { setBusy(false); }
   };
   const confirm = async () => {
     setBusy(true); setErr(null);
-    try { const j = await admin.roster(step.roster, false); setStep({ at: 'done', result: j, school: step.roster.school }); onDone?.(j); }
+    try { const j = await admin.roster(step.roster, false, { pauseLeavers: pause && !!step.preview.leavers?.length }); setStep({ at: 'done', result: j, school: step.roster.school }); onDone?.(j); }
     catch (x) { setErr(x.message); } finally { setBusy(false); }
   };
   const download = () => {
@@ -44,7 +45,7 @@ export default function RosterImport({ onDone, onClose }) {
         <label className="auth-btn acc-file">{busy ? 'Reading…' : 'Choose files'}<input type="file" accept=".json,.csv,application/json,text/csv" multiple onChange={pick} disabled={busy} /></label>
         {step.problems && <Problems files={step.files} p={step.problems} />}
       </>}
-      {step.at === 'preview' && <Preview step={step} />}
+      {step.at === 'preview' && <Preview step={step} pause={pause} setPause={setPause} />}
       {step.at === 'done' && <Done result={step.result} school={step.school} download={download} />}
       {err && <p className="auth-err" role="alert">{err}</p>}
       <div className="auth-row">
@@ -68,8 +69,8 @@ function Problems({ files, p }) {
   );
 }
 
-function Preview({ step }) {
-  const { roster, preview: { summary, newAccounts }, warnings } = step;
+function Preview({ step, pause, setPause }) {
+  const { roster, preview: { summary, newAccounts, leavers = [], returning = [] }, warnings } = step;
   const gone = Object.entries(summary.missingFromFile).flatMap(([k, xs]) => xs.map((x) => ({ ...x, k })));
   return <>
     <p className="auth-lede">{roster.school.name || step.files.join(', ')}{roster.school.academicYear ? `, ${roster.school.academicYear}` : ''}{roster.school.exportedAt ? `, exported ${roster.school.exportedAt.slice(0, 10)}` : ''}.</p>
@@ -82,8 +83,13 @@ function Preview({ step }) {
       {summary.ended.enrolments > 0 && <li>{plural(summary.ended.enrolments, 'class place')} not in this file will end (kept as history).</li>}
       {summary.unmatchedClasses.length > 0 && <li>{plural(summary.unmatchedClasses.length, 'class', 'classes')} {summary.unmatchedClasses.length === 1 ? 'matches' : 'match'} no line on the map and will have none: {summary.unmatchedClasses.map((c) => c.name).join(', ')}.</li>}
       {gone.length > 0 && <li>{plural(gone.length, 'record')} in Transit Portfolio {gone.length === 1 ? 'is' : 'are'} not in this file. Nothing is removed; check them yourself: {gone.slice(0, 20).map((x) => x.name || x.id).join(', ')}{gone.length > 20 ? ` and ${gone.length - 20} more` : ''}.</li>}
+      {returning.length > 0 && <li>{plural(returning.length, 'paused account')} {returning.length === 1 ? 'is' : 'are'} in this file again and will be unpaused: {returning.map((a) => a.name).join(', ')}.</li>}
       {warnings.map((w, i) => <li key={i}>{w}</li>)}
     </ul>
+    {leavers.length > 0 && <div className="acc-leavers">
+      <label className="acc-check"><input type="checkbox" checked={pause} onChange={(e) => setPause(e.target.checked)} /> Pause the accounts of {plural(leavers.length, 'person', 'people')} who {leavers.length === 1 ? 'is' : 'are'} no longer in the class lists</label>
+      <p className="fineprint">They cannot sign in until you unpause them on Accounts, or a later import has them again. Their record and map are kept. {leavers.slice(0, 40).map((a) => a.name).join(', ')}{leavers.length > 40 ? ` and ${leavers.length - 40} more` : ''}.</p>
+    </div>}
   </>;
 }
 
@@ -91,9 +97,9 @@ function Done({ result, school, download }) {
   const { summary, newAccounts } = result;
   const n = (o) => PARTS.map(([k, l]) => `${o[k]} ${l.toLowerCase()}`).join(', ');
   return <>
-    <p className="acc-ok" role="status">Imported{school?.name ? ` ${school.name}` : ''}. Added {n(summary.added)}. Updated {n(summary.updated)}.</p>
+    <p className="acc-ok" role="status">Imported{school?.name ? ` ${school.name}` : ''}. Added {n(summary.added)}. Updated {n(summary.updated)}.{result.paused?.length ? ` Paused ${plural(result.paused.length, 'account')}.` : ''}{result.unpaused?.length ? ` Unpaused ${plural(result.unpaused.length, 'account')}.` : ''}</p>
     {newAccounts.created.length > 0 ? <>
-      <p className="auth-lede">{plural(newAccounts.created.length, 'sign-in account')} made. Each person needs their own one-time setup link: it works once and expires in 7 days. The links are shown only now, so download them before you leave this page.</p>
+      <p className="auth-lede">{plural(newAccounts.created.length, 'sign-in account')} made. Each person needs their own one-time setup link: it works once and expires in 7 days. The links are shown only now, so download them before you leave this page. You can also print sign-in cards per homeroom from Accounts (that makes new links).</p>
       <button className="auth-btn acc-dl" onClick={download}>Download sign-in links (CSV)</button>
     </> : <p className="auth-lede">No new sign-in accounts were needed.</p>}
     {summary.unmatchedClasses.length > 0 && <p className="auth-note">Classes with no line: {summary.unmatchedClasses.map((c) => c.name).join(', ')}.</p>}

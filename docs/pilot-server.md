@@ -387,7 +387,7 @@ only the students they work with. Demo mode still sends the whole record to ever
   request's teacher, `sendPrompt`'s sender, default `t-07`, `addComment`'s author, default `t-09`, `addGoal`'s
   `by`, `addCheckIn`'s `by`, the sponsor in `answerSponsor`, a class task's teacher, an import's
   `by.teacherId`). Allowed only when every touched student is in reach and every acted-as teacher is
-  their own `teacherId`. `addSchoolLine`, `renameLine`, `decideBranch`, `setRollout` and `matchRoster` are
+  their own `teacherId`. `addSchoolLine`, `renameLine`, `decideBranch`, `setRollout`, `matchRoster` and `setSubjectLine` are
   whole-school only. A mutator not in `TOUCHES`: any student or station id found in its arguments counts
   as touched; one that names none is allowed. An id that does not resolve counts as outside reach.
 - **Browser**: a change still runs first on the browser's part of the record. In pilot mode `/api/action`
@@ -517,3 +517,84 @@ Thailand's PDPA gives a student (and their parent) the right to a copy of their 
   import 49 ms, re-import 126 ms, import plus 1,093 accounts over HTTP about 0.2 s; `state.json` 1.2 MB, a save
   after any change about 33 ms. 220 classes have no line (Mathematics, I&S, EE, TOK, Business, ...).
 - Not done: removing people who left (they are only listed), and editing classes in the app.
+
+## Simple level: own photo and asking a teacher (`src/screens/SimpleHome.jsx`)
+
+- **Own photo**: the "Add something I did" flow's first step has one big "Take or choose a photo" button
+  (`accept="image/*"`, so a phone offers the camera or the gallery) and, on touch screens
+  (`pointer: coarse`), a second "Use the camera" button with `capture="environment"`. Both use
+  `useUpload()`/`evidenceFor()` (the same `POST /api/upload` as everywhere else, or a data URL without the
+  server); the step shows the progress, then a preview with "Remove photo", and Next waits for the upload.
+  The four sample SVGs are demo props: shown in demo mode only (`!isPilot()`).
+- **Ask a teacher to check it**: a fourth step after the reflection. The big button is the first of
+  `endorserChoices(studentId, [], [lineId])` (a teacher of the student's class on that line, from the roster's
+  `classes[].lineId`), labelled with that class; "Someone else" opens up to six of their other teachers
+  (`teachersOf`); "Not now, just add it" saves without a request. The choice goes to
+  `addStation(..., { requestFrom })`, which calls `requestEndorsement`, so it lands in that teacher's
+  Endorsements queue with the usual bell notice. Demo (no class lists): the line's teacher from
+  `SUGGEST` in `AddStation.jsx`, then the demo's subject teachers. Pilot student with no classes: their
+  advisor only; with nobody to ask the step is skipped.
+- **My moments**: a student-added moment with a pending request shows "Waiting for Ms Surname"
+  (`requestFor(eventId)`); a returned one "Ms Surname asked for more". Same badge in the moment view.
+- Check: `node scripts/checks/simple-flow.cjs` (needs `npm run build`; reads the real roster from
+  `TP_ROSTER`, default the project mount, and skips without it): clean pilot, roster import as admin, a Year 8
+  student signs in on a phone, adds a moment with an uploaded photo, asks the suggested teacher; that teacher
+  sees it in their queue.
+
+## My classes, and subjects on lines (`src/screens/MyClasses.jsx`, `src/screens/SubjectLines.jsx`)
+
+- **My classes** (`#/<persona>/classes`, pilot only): in the nav of anyone who teaches (account kind `teacher`,
+  or staff whose record roles include `teacher`, `personaFor` in src/auth.js), right after Endorsements.
+  `api.classesOf(teacherId)` → the classes listing them in `teacherIds`, with `line`, `studentIds` (current
+  places: enrolments with `to` before `TODAY` are skipped; a class whose places have all ended is left out) and
+  `recent` (stations, not goals, its students dated in the last 30 days on the class's line; a student's
+  sub-line counts for its school line). One pass over the events, so 12 classes of 30+ take a few ms.
+  `#/<persona>/classes/<classId>`: `api.classRoster(classId, teacherId)` → its students (name, Year,
+  homeroom), each with their last station on the class's line and the endorsement requests waiting for this
+  teacher. `#/<persona>/classes/<classId>~<studentId>`: that student's map, read only, at the `school` level
+  (`advisor` when the teacher is also their advisor). "Waiting for you" counts `getRequests(teacherId)` and
+  opens Endorsements. Data: `scopedSnapshot` already sends a teacher every class, their classes' enrolments and
+  students (`teacherReach`), so the server needed no change.
+- **Subjects and lines**: a card on the coordinator's Lines screen (`governance`) and at the foot of Accounts
+  (admin), shown once there are classes. It lists each subject with a class on no line, and each subject
+  already decided, with its class count and a choice of school line or "Leave off the map".
+  `api.setSubjectLine(subject, lineId | null)` (mutator; admin and whole-school staff, refused for advisors,
+  teachers, students and families by `WHOLE_SCHOOL_ONLY`) sets `lineId` on every class of that subject and keeps
+  the choice in `store.subjectLines[subject]` (null: left off on purpose). An unknown line or empty subject
+  throws (400). Returns the number of classes changed. `planRoster(..., { subjectLines })` (api.js passes
+  the stored choices) applies them on every later import, to new and existing classes: a class's own `line`
+  in the file still wins, then the subject's choice, then the usual guess. `api.subjectsOffLines()` gives the rows.
+- Tests: `server/test/my-classes.test.mjs`; browser: `node scripts/checks/my-classes.cjs` (a clean pilot on the
+  real roster from the project files, skipped when it is not there: the teacher with the most classes, a
+  class, a student's map, the queue; a coordinator puts Mathematics on Science; a re-import keeps it).
+
+- Not done: editing classes in the app. People who left can be paused at import (see "Sign-in cards and paused leavers").
+
+## Sign-in cards and paused leavers (`server/routes/16-cards.mjs`, `src/components/SignInCards.jsx`)
+
+No email is sent, so people get in through one-time setup links. Cards put those links on paper, one per person.
+- **Cards**: each card is a normal setup link (`A.newSetup`: 7 days, stored only as a hash, never logged), so it
+  replaces any earlier link for that person. Without `includeSignedUp` only accounts with no password get one;
+  with it everyone chosen does, which ends their password and sessions (the screens say so and ask first).
+  Paused accounts never get a card, nor does the person asking. → `{ school, cards: [{ name, homeroom, year,
+  email, setupUrl, expiresAt }] }` (sorted by homeroom, then name). At most 30 batches per account per 15 minutes (429).
+  - `GET /api/advisor/cards` → `{ students: [{ id, name, homeroom, year, hasAccount, hasPassword }] }`;
+    `POST /api/advisor/cards { studentIds?, includeSignedUp? }`: staff whose `teacherId` is the students'
+    `advisorId`, student accounts only (403 for anyone else's student, and for anyone with no advisees).
+  - `GET /api/admin/cards` → `{ homerooms: [{ name, year, students, waiting }], staff: { total, waiting } }`;
+    `POST /api/admin/cards { homerooms?, staff?, accountIds?, includeSignedUp? }` (admin only).
+- **Screens** (pilot only): "Print sign-in cards" on the advisor's advisory page and on Accounts (pick homerooms
+  and/or staff). The sheet opens over the app; printing shows only the sheet: A4 portrait, 2 × 5 cards a page with
+  dashed cut lines, each with the school name, name, homeroom and Year, a QR code of the link, the link as text,
+  "Scan, choose a password, done." and the last day it works.
+- **Paused accounts**: `account.paused = { at }` (`A.pauseAccount`, ends every session; `A.unpauseAccount`). A paused
+  account cannot sign in (`POST /api/auth/login` → 403 "Your account is paused. Ask your teacher."), use a setup link,
+  or use an old session (`sessionUser` returns null). The record and map are never touched.
+  `POST /api/admin/accounts/:id/pause` and `/unpause` (admin) → the accounts list. Accounts lists paused accounts first,
+  with "Unpause".
+- **Leavers at import**: `POST /api/admin/roster` with `dryRun` also returns `leavers` (accounts linked to a record in
+  `missingFromFile`, not paused, never an admin) and `returning` (paused accounts whose record is in the file again).
+  The confirm step offers "Pause the accounts of N people who are no longer in the class lists" (off by default, names
+  listed); `{ pauseLeavers: true }` pauses them. Every import unpauses `returning`. The reply carries `paused` and `unpaused`.
+- Tests: `server/test/cards.test.mjs`; `node scripts/checks/signin-cards.cjs` (the real roster from `ROSTER`, default the
+  project-files copy, skipped when missing; writes its roster copy, screenshots and a PDF to `SCRATCH` or the temp folder).

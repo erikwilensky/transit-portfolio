@@ -184,7 +184,7 @@ export const TOUCHES = {
   addNotification: (a) => T(Object.entries(api.PERSONA_OF_STUDENT).filter(([, p]) => p === a[0]).map(([sid]) => sid)),
   renameLine: (a) => T(lineOwner(a[0]) ? [lineOwner(a[0])] : []),
   decideBranch: (a) => T([lineOwner(a[0])]),
-  addSchoolLine: () => T([]), setRollout: () => T([]), setFamily: () => T([]), setLang: () => T([]), markNotificationsRead: () => T([]), recordView: () => T([]),
+  addSchoolLine: () => T([]), setSubjectLine: () => T([]), setRollout: () => T([]), setFamily: () => T([]), setLang: () => T([]), markNotificationsRead: () => T([]), recordView: () => T([]),
 };
 // A mutator not listed: any student or station id found in its arguments counts as touched.
 function scan(args) {
