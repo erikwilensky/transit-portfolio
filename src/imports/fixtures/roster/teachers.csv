@@ -1,0 +1,7 @@
+id,name,email,roles,department
+T100,Ms Ada Brook,ada.brook@example.org,teacher;advisor,Biology
+T101,Mr Ben Carter,ben.carter@example.org,teacher,Computer Science
+T102,Ms Chloe Dumas,chloe.dumas@example.org,counsellor,
+T103,Dr Dan Ellis,dan.ellis@example.org,leadership;teacher,Mathematics
+T104,Ms Eve Fong,,coordinator;advisor,Visual Arts
+T105,Mr Finn Gray,finn.gray@example.org,advisor,

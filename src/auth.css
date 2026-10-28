@@ -111,3 +111,15 @@
 .acc-erase { border: 1.5px solid #E73C3E; border-left-width: 6px; background: var(--surface); border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
 .acc-erase h3 { font-size: 16px; } .acc-erase p, .acc-erase ul { margin: 0; color: var(--muted); font-size: 14px; }
 .acc-erase .auth-field { max-width: 360px; }
+/* Import class lists (screens/RosterImport.jsx) */
+.acc-file { position: relative; align-self: flex-start; cursor: pointer; }
+.acc-file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.acc-file:focus-within { outline: 2px solid #78D5E1; outline-offset: 2px; }
+.acc-problems { display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+.acc-problems ul, .acc-notes { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.acc-problems p { margin: 0; }
+.acc-counts { width: 100%; max-width: 520px; border-collapse: collapse; font-size: 14px; }
+.acc-counts th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; padding: 6px 10px 6px 0; border-bottom: 1px solid var(--rule); }
+.acc-counts td { padding: 6px 10px 6px 0; border-bottom: 1px solid var(--rule); font-variant-numeric: tabular-nums; }
+.acc-ok { margin: 0; border-left: 4px solid #008A60; background: color-mix(in srgb, #008A60 10%, var(--surface)); padding: 9px 12px; border-radius: 4px; font-weight: 500; }
+.acc-dl { align-self: flex-start; }

@@ -10,8 +10,8 @@ export { canAct } from '../auth.mjs';
 const OPEN = [/^\/api\/health$/, /^\/api\/public\//, /^\/api\/auth\//];
 const bad = (status, message) => Object.assign(new Error(message), { status });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const originOf = (req) => process.env.PUBLIC_URL?.replace(/\/$/, '') || `${isHttps(req) ? 'https' : 'http'}://${req.headers.host}`;
-const setupUrl = (base, t) => `${base}/#/setup/${t}`;
+export const originOf = (req) => process.env.PUBLIC_URL?.replace(/\/$/, '') || `${isHttps(req) ? 'https' : 'http'}://${req.headers.host}`;
+export const setupUrl = (base, t) => `${base}/#/setup/${t}`;
 // A state-changing request must come from this site's own pages (on top of SameSite=Lax).
 const sameOrigin = (req) => { const o = req.headers.origin; if (!o) return true; try { return new URL(o).host === req.headers.host; } catch { return false; } };
 
@@ -35,7 +35,7 @@ async function makeLink(req, a, kind) {
   return { setupUrl: url, emailed: await mailLink({ to: a.email, name: a.name, url, kind }) };
 }
 const FORGOT_IP = 100, FORGOT_EMAIL = 3; // per 15 minutes
-const requireAdmin = (req) => { if (!req.user) throw bad(401, 'Sign in first.'); if (!A.isAdmin(req.user)) throw bad(403, 'Only an admin can do that.'); };
+export const requireAdmin = (req) => { if (!req.user) throw bad(401, 'Sign in first.'); if (!A.isAdmin(req.user)) throw bad(403, 'Only an admin can do that.'); };
 
 // Builds and checks the record link for a new or edited account; creates a new student or teacher when asked.
 function resolveLink(b) {
@@ -60,7 +60,7 @@ function resolveLink(b) {
   if (problem) throw bad(400, problem);
   return A.linkOf({ kind, ...link });
 }
-const listBody = () => ({
+export const listBody = () => ({
   accounts: A.allAccounts().map(A.publicUser).map((u) => ({ ...u, setupPending: !u.hasPassword })),
   students: api.getStudents({ includeCohort: true }).map((s) => ({ id: s.id, name: s.name, grade: s.grade, programme: s.programme })),
   teachers: api.getTeachers().map((t) => ({ id: t.id, name: t.name, role: t.role })),

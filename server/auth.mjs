@@ -21,8 +21,11 @@ const SESSIONS = path.join(DATA_DIR, 'sessions.json');
 const readFile = (f, empty) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return empty; } };
 let accounts = readFile(ACCOUNTS, []);
 let sessions = readFile(SESSIONS, {});
-const saveAccounts = () => writeAtomic(ACCOUNTS, JSON.stringify(accounts, null, 2));
-const saveSessions = () => writeAtomic(SESSIONS, JSON.stringify(sessions));
+let hold = false; // inside batchAccounts: save once at the end
+const saveAccounts = () => hold || writeAtomic(ACCOUNTS, JSON.stringify(accounts, null, 2));
+const saveSessions = () => hold || writeAtomic(SESSIONS, JSON.stringify(sessions));
+// Many account changes at once (the roster import makes hundreds): one save at the end.
+export function batchAccounts(fn) { hold = true; try { return fn(); } finally { hold = false; saveAccounts(); saveSessions(); } }
 
 // ── Hashing ──
 const scrypt = promisify(crypto.scrypt);
@@ -163,7 +166,7 @@ export const noteSuccess = (email) => fails.delete(`e:${email}`);
 // advisors and teachers only on the students they work with (reachOf in server/scope.mjs), only as
 // themselves, and not the school-wide settings. Which students a call touches: touchedBy (scope.mjs).
 // /api/action calls it in pilot mode: `if (!canAct(req.user, fn, args)) 403`. Demo mode has no accounts.
-const ADMIN_ONLY = new Set(['resetDemo', 'restore', 'addStudent', 'addTeacher', 'eraseStudent']);
+const ADMIN_ONLY = new Set(['resetDemo', 'restore', 'addStudent', 'addTeacher', 'eraseStudent', 'importRoster']);
 const ANYONE = new Set(['recordView', 'setLang']);
 // School-wide settings an advisor or subject teacher does not change.
 const WHOLE_SCHOOL_ONLY = new Set(['addSchoolLine', 'renameLine', 'decideBranch', 'setRollout', 'matchRoster']);

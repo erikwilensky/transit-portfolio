@@ -150,6 +150,9 @@ the old static site back.
 **Settings** are in `.env` (not committed; every line also reaches the server):
 
 - `TP_MODE=demo` (persona switcher, tours, reset) or `TP_MODE=pilot` (sign-in).
+- `TP_START=empty` (default for `transit-pilot`; pilot mode only): a data folder with no `state.json`
+  yet begins with the school's lines and no fictional people. Anything else starts from the demo's
+  seeded record. It never touches a record that already exists. See "Class lists and a clean start".
 - `COMPOSE_PROFILES=pilot` also runs a real pilot, `transit-pilot`, on port 8081 with
   `TP_MODE=pilot` and its own data folder, next to the demo on 8080. Its own settings can go in
   `.env.pilot`. To publish it, add a second hostname in the Cloudflare tunnel pointing to
@@ -270,7 +273,7 @@ server makes an empty folder and begins again from the seed.
 - **`canAct(user, fn, args)`** (exported from `server/auth.mjs`, re-exported by `10-auth.mjs`): call it in
   `/api/action` before running a mutator and answer 403 when false. Admins: anything but `restore`.
   Whole-school staff (leadership, coordinator, counsellor): any mutator except `resetDemo`, `restore`,
-  `addStudent`, `addTeacher`. Advisors and teachers: see "Who sees which students" below. Students: only
+  `addStudent`, `addTeacher`, `importRoster`, `eraseStudent`. Advisors and teachers: see "Who sees which students" below. Students: only
   the mutators in `STUDENT_FNS`, and only when every student the call touches (`touchedBy`, looked up from
   the station, inbox item, request or evidence request) is their own `studentId`, never as a teacher.
   Parents: `answerConsent` for their own children, and `setFamily`. Everyone signed in: `recordView`,
@@ -453,3 +456,49 @@ Thailand's PDPA gives a student (and their parent) the right to a copy of their 
   role and person, "Download as CSV" (one row per person) and "Weeks as CSV". Pilot options links to it.
 - Tests: `node --test server/test/pdpa.test.mjs server/test/usage.test.mjs`; browser: `node scripts/checks/pdpa.cjs`
   (starts its own pilot and demo servers).
+## Class lists and a clean start (`src/imports/roster.js`, `server/routes/15-roster.mjs`)
+
+- **Clean start**: with `TP_MODE=pilot` and `TP_START=empty`, `server/store.mjs` calls `api.emptyStart()` when
+  there is no `state.json`, and saves at once. Every store key stays, emptied; kept are the nine school
+  lines, the integration cards (counts zeroed), family and rollout settings. `store.cleanStart = true`
+  also stops onboarding adding the made-up "already verified" starter stations (`hasStarters()`). Demo
+  mode ignores `TP_START`.
+- **Roster file**: `docs/roster-format.md` ("transit-roster/1" JSON, or teachers/students/classes/enrolments
+  CSVs). `parseRoster(input)` → `{ roster, errors, warnings, missing }` (pure, runs in the browser and, via the
+  api.js re-export, on the server); `planRoster(roster, current)` → the writes and the summary. Any error,
+  including a referenced id that is not in the file, stops the whole import.
+- **Record** (contracts other features use):
+  - `store.classes = [{ id, name, subject, year, level, teacherIds, lineId }]` (`year` British; `lineId` a school
+    line or null), `store.enrolments = [{ studentId, classId, from, to }]` (`to` set when a later file no
+    longer has that place; never deleted). Read with `getClasses()`, `getEnrolments()`. Old saves without
+    them load with empty lists.
+  - Students and teachers use the school's SIS ids as record ids. Teachers: `roles` (any of teacher, advisor,
+    counsellor, coordinator, leadership), `department`, `email`, and `role` (the display line, e.g.
+    "Biology · Advisor, 12B"). Students: `grade = year - 1`, `programme`, `homeroom`, `advisorId`, `email`,
+    `house`, `joinedYear`; a new one also gets `startGrade` (the Year they joined, else this Year),
+    `g9StartYear`, an empty map and `onboarding: true`; six empty starter presentations are made when they
+    finish onboarding (not at import, which keeps the record small).
+  - `store.rosterImport = { school, at, summary }` after each import.
+- **`api.importRoster(roster)`** (admin-only mutator, in `act()`): upserts teachers, students, classes and
+  enrolments; fields the roster does not own (a student's map, lines, drafts) are never touched. Returns
+  `{ added, updated, ended, unmatchedClasses, missingFromFile }` (counts per teachers/students/classes/
+  enrolments; classes with no line; records not in the file, which are listed, never removed).
+  `api.previewRoster(roster)` returns the same summary without changing anything.
+- **`POST /api/admin/roster { roster, dryRun? }`** (pilot, admin only): `roster` is the parsed JSON or
+  `{ teachers, students, classes, enrolments }` CSV texts. 400 `{ errors, missing }` on problems. `dryRun` →
+  `{ summary, newAccounts: { toCreate, skipped } }`. Otherwise it imports, then makes an account for every
+  teacher and student with an email and no account yet (by email, or already linked to that record):
+  students link `studentId`, staff `teacherId` with the kind from their roles (leadership > coordinator >
+  counsellor > advisor > teacher; the one place to change it is `kindOfRoles` in `src/imports/roster.js`). → `{ summary, newAccounts: { created: [{ name, email, role, setupUrl }],
+  skipped }, accounts, students, teachers }`. The setup links are shown once.
+- **Accounts screen**: "Import class lists" (`src/screens/RosterImport.jsx`): pick the JSON or the four CSVs,
+  see counts and problems, confirm, then "Download sign-in links (CSV)" (name, email, role, setup link).
+- **Empty records**: Studio, reference letter, activities list and scan-in show an empty state instead of
+  crashing when there are no presentations, Year 13 students or share links.
+- Tests: `node --test src/imports/roster.test.mjs`, `server/test/roster.test.mjs`, and
+  `node scripts/checks/roster.cjs` (starts a clean pilot, imports from the Accounts screen, opens every
+  role's screens on the near-empty record).
+- Size (the school's real export: 133 staff, 960 students, 727 classes, 9,586 class places): parse 47 ms,
+  import 49 ms, re-import 126 ms, import plus 1,093 accounts over HTTP about 0.2 s; `state.json` 1.2 MB, a save
+  after any change about 33 ms. 220 classes have no line (Mathematics, I&S, EE, TOK, Business, ...).
+- Not done: removing people who left (they are only listed), and editing classes in the app.

@@ -56,6 +56,7 @@ export const admin = {
   // PDPA: remove a student and everything about them (confirm = their name, typed).
   erase: (id, confirm) => call('POST', `/api/admin/students/${encodeURIComponent(id)}/erase`, { confirm }),
   usage: () => call('GET', '/api/admin/usage'),
+  roster: (roster, dryRun) => call('POST', '/api/admin/roster', { roster, dryRun }),
 };
 // An advisor (or admin): the sign-in account of a student in their advisory, and a new link for it.
 export const advisee = {

@@ -26,6 +26,9 @@ npm run build && npm run server    # app and /api on http://localhost:8787, data
 
 With the server, a toast's Undo takes back just that one change, for anyone, and keeps what other
 people changed since; on static hosting it puts the browser's earlier copy back.
+A real pilot (`TP_MODE=pilot TP_START=empty`) starts with the school's lines and no fictional people;
+an admin imports the class lists from Accounts (`docs/roster-format.md`) and downloads everyone's
+sign-in links.
 
 ## Deploy (Docker, Erik's Mac)
 
@@ -40,7 +43,7 @@ scripts/backup.sh         # copy the data into ../transit-portfolio-backups (kee
 ```
 
 Run `scripts/deploy-mac.sh` for every update: it is safe to run again. Settings (demo or pilot mode,
-a second pilot instance on :8081) are in `.env`, copied from `.env.example`. Nightly backups, restore
+a second pilot instance on :8081, which starts empty) are in `.env`, copied from `.env.example`. Nightly backups, restore
 and the Mac's sleep settings: `docs/pilot-server.md`.
 
 ## Screens

@@ -4,8 +4,13 @@ import { appUrl } from '../format.js';
 import Qr from '../components/Qr.jsx';
 
 // For the pitch: the audience scans in and opens Maya's portfolio on their own phones.
-export default function ScanIn({ drafts, version }) {
-  const links = Object.values(drafts).flat().flatMap((p) => p.shareLinks.map((l) => ({ ...l, title: p.title }))).filter((l) => !l.revoked);
+const linksOf = (drafts) => Object.values(drafts).flat().flatMap((p) => p.shareLinks.map((l) => ({ ...l, title: p.title }))).filter((l) => !l.revoked);
+export default function ScanIn(props) {
+  if (!linksOf(props.drafts).length) return <div className="empty-state"><b>No share links yet.</b> Once a student makes a share link, its QR code can be shown here for people to scan.</div>;
+  return <Scan {...props} />;
+}
+function Scan({ drafts, version }) {
+  const links = linksOf(drafts);
   const [token, setToken] = useState('tp-c7m1');
   const link = links.find((l) => l.token === token) || links[0];
   const [local, setLocal] = useState(0);
