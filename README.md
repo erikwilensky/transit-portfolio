@@ -23,6 +23,9 @@ With the pilot server (one shared record, files, share links, sign-in; see `docs
 npm run build && npm run server    # app and /api on http://localhost:8787, data in .data/
 ```
 
+With the server, a toast's Undo takes back just that one change, for anyone, and keeps what other
+people changed since; on static hosting it puts the browser's earlier copy back.
+
 ## Deploy (Docker, Erik's Mac)
 
 The live site, https://transit.wilenskycs.online, is a Cloudflare tunnel to `localhost:8080` on the

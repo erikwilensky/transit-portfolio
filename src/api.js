@@ -1063,7 +1063,11 @@ export function resetDemo() {
 }
 
 // ── F9: undo. A copy of the record before a quick action; Undo puts it back. ─
-export const snapshot = () => JSON.stringify({ store, seq });
+// With the server, Undo instead takes back the changes made since the snapshot (src/sync.js undoSince):
+// markOf(snap) is the change count when it was taken (the last few snapshots are remembered).
+const marks = new Map();
+export const snapshot = () => { const s = JSON.stringify({ store, seq }); marks.set(s, changeNo); if (marks.size > 8) marks.delete(marks.keys().next().value); return s; };
+export const markOf = (snap) => marks.get(snap);
 export function restore(snap) { apply(JSON.parse(snap)); persist(); }
 // The server's copy of the record arrived (src/sync.js). Not a change of its own, so never sent back,
 // and not saved here either: only changes made in this browser are kept here (for when the server is away).
@@ -1261,8 +1265,9 @@ export const INTENSITY_LABEL = { simple: { map: 'My journey' } };
 // times it made. The hook (src/sync.js) posts { fn, args, rec } to /api/action, and the server runs
 // the same function with the same values (runAction), so both copies end identical, ids and all.
 // Only the outermost call is sent: changes that call other changes (addBranch → addStation) replay whole.
-let hook = null, depth = 0;
+let hook = null, depth = 0, changeNo = 0;
 export const setActionHook = (fn) => { hook = fn; };
+export const changeCount = () => changeNo; // outermost changes made in this page so far
 const ACTIONS = {};
 const act = (name, fn) => {
   ACTIONS[name] = fn;
@@ -1271,7 +1276,7 @@ const act = (name, fn) => {
     const rec = tape = []; depth++;
     let out;
     try { out = fn(...args); } finally { depth--; tape = null; }
-    hook?.(name, args, rec);
+    changeNo++; hook?.(name, args, rec);
     return out;
   };
 };
