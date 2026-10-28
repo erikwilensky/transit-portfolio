@@ -517,3 +517,26 @@ Thailand's PDPA gives a student (and their parent) the right to a copy of their 
   import 49 ms, re-import 126 ms, import plus 1,093 accounts over HTTP about 0.2 s; `state.json` 1.2 MB, a save
   after any change about 33 ms. 220 classes have no line (Mathematics, I&S, EE, TOK, Business, ...).
 - Not done: removing people who left (they are only listed), and editing classes in the app.
+
+## Simple level: own photo and asking a teacher (`src/screens/SimpleHome.jsx`)
+
+- **Own photo**: the "Add something I did" flow's first step has one big "Take or choose a photo" button
+  (`accept="image/*"`, so a phone offers the camera or the gallery) and, on touch screens
+  (`pointer: coarse`), a second "Use the camera" button with `capture="environment"`. Both use
+  `useUpload()`/`evidenceFor()` (the same `POST /api/upload` as everywhere else, or a data URL without the
+  server); the step shows the progress, then a preview with "Remove photo", and Next waits for the upload.
+  The four sample SVGs are demo props: shown in demo mode only (`!isPilot()`).
+- **Ask a teacher to check it**: a fourth step after the reflection. The big button is the first of
+  `endorserChoices(studentId, [], [lineId])` (a teacher of the student's class on that line, from the roster's
+  `classes[].lineId`), labelled with that class; "Someone else" opens up to six of their other teachers
+  (`teachersOf`); "Not now, just add it" saves without a request. The choice goes to
+  `addStation(..., { requestFrom })`, which calls `requestEndorsement`, so it lands in that teacher's
+  Endorsements queue with the usual bell notice. Demo (no class lists): the line's teacher from
+  `SUGGEST` in `AddStation.jsx`, then the demo's subject teachers. Pilot student with no classes: their
+  advisor only; with nobody to ask the step is skipped.
+- **My moments**: a student-added moment with a pending request shows "Waiting for Ms Surname"
+  (`requestFor(eventId)`); a returned one "Ms Surname asked for more". Same badge in the moment view.
+- Check: `node scripts/checks/simple-flow.cjs` (needs `npm run build`; reads the real roster from
+  `TP_ROSTER`, default the project mount, and skips without it): clean pilot, roster import as admin, a Year 8
+  student signs in on a phone, adds a moment with an uploaded photo, asks the suggested teacher; that teacher
+  sees it in their queue.

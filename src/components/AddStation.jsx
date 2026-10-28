@@ -4,7 +4,7 @@ import { TYPE_LABEL, VIS_LABEL } from '../format.js';
 import { AttachButton, PendingFiles, UploadStatus, useUpload } from './FileAttach.jsx';
 import { evidenceFor } from '../upload.js';
 
-const SUGGEST = { computing: 't-01', science: 't-02', music: 't-03', design: 't-04', languages: 't-05', art: 't-06', service: 't-08', environment: 't-08', 'maya-datasci': 't-01', 'arun-musictech': 't-03' };
+export const SUGGEST = { computing: 't-01', science: 't-02', music: 't-03', design: 't-04', languages: 't-05', art: 't-06', service: 't-08', environment: 't-08', 'maya-datasci': 't-01', 'arun-musictech': 't-03' };
 const PHOTOS = [['hackathon-1st', 'Results board'], ['stem-club', 'Club session'], ['aq-dashboard', 'Screenshot'], ['mural', 'Finished work']];
 export const OUTCOMES = ['Strengths and growth', 'New challenges', 'Initiative and planning', 'Commitment', 'Collaboration', 'Global engagement', 'Ethics of choices'];
 
