@@ -1,6 +1,7 @@
 // Pilot sign-in: starts its own pilot and demo servers (needs `npm run build` first), then checks
 // first-run admin setup, a student account linked to a new student, role-only screens, sign-out,
-// 401s for unsigned API calls, slowed failed sign-ins, canAct, and that demo mode is unchanged.
+// 401s for unsigned API calls, slowed failed sign-ins, forgot password → admin makes a new link,
+// sign out everywhere, canAct, and that demo mode is unchanged.
 const { chromium } = require('playwright');
 const { spawn } = require('child_process');
 const fs = require('fs'); const os = require('os'); const path = require('path');
@@ -104,6 +105,48 @@ const status = async (url, opts) => (await fetch(url, opts)).status;
     ok(await status(`${U}/api/reset`, { method: 'POST', headers: H }) === 403, 'student cannot reset the record');
     const me1 = await (await fetch(`${U}/api/auth/me`, { headers: H })).json();
     ok(me1.user?.kind === 'student' && /^st-/.test(me1.user.studentId) && !('password' in me1.user), 'me → student account, no hash');
+    // Undo in pilot: your own change yes, once; someone else's no; a whole-record restore stays admin-only.
+    const post = (u, body, h) => fetch(`${U}/api/${u}`, { method: 'POST', headers: { 'content-type': 'application/json', ...h }, body: JSON.stringify(body) });
+    const AH = { cookie: `tp_session=${adminCookie.value}` };
+    const mine = await (await post('action', { fn: 'setIntensity', args: [me1.user.studentId, 'full'], rec: [] }, H)).json();
+    const theirs = await (await post('action', { fn: 'addNote', args: [me1.user.studentId, 'Admin note'], rec: [] }, AH)).json();
+    ok((await post('undo', { rev: theirs.rev }, H)).status === 403, 'pilot: a student cannot undo the admin’s change');
+    const u1 = await post('undo', { rev: mine.rev }, H), u1j = await u1.json();
+    ok(u1.status === 200 && Array.isArray(u1j.skipped) && u1j.undone[0] === mine.rev, 'pilot: a student undoes their own change → { rev, undone, skipped }');
+    ok((await post('undo', { rev: mine.rev }, H)).status === 409, 'pilot: the same change cannot be undone twice');
+    const st1 = (await (await fetch(`${U}/api/state`, { headers: AH })).json()).snapshot.store; // advisor notes are not in the student's own part
+    ok(st1.notes[me1.user.studentId]?.some((n) => n.text === 'Admin note'), 'pilot: the admin’s later change is kept');
+    ok((await post('action', { fn: 'restore', args: ['{}'], rec: [] }, H)).status === 403, 'pilot: whole-record restore stays admin-only');
+
+    // ── Scoping: each person downloads only their own part of the record (server/scope.mjs) ──
+    const sid = me1.user.studentId;
+    const stS = (await (await fetch(`${U}/api/state`, { headers: H })).json()).snapshot.store;
+    const evOf = (st) => new Set(st.events.map((e) => e.studentId));
+    ok(stS.students.length === 1 && stS.students[0].id === sid, `student's /api/state holds only their own student record (${stS.students.length})`);
+    ok([...evOf(stS)].every((x) => x === sid) && stS.reflections.length === 0 && Object.keys(stS.drafts).every((x) => x === sid), 'no other student’s stations, reflections or drafts');
+    ok(!JSON.stringify(stS).includes('Maya Chen') && stS.teachers.length > 5 && stS.teachers.every((t) => !t.email), 'no seeded students; the staff directory without emails');
+    const AJ = { cookie: `tp_session=${adminCookie.value}`, 'content-type': 'application/json' };
+    const made = await (await fetch(`${U}/api/admin/accounts`, { method: 'POST', headers: AJ, body: JSON.stringify({ email: 'sato@nist.ac.th', name: 'Ms Hana Sato', kind: 'teacher', teacherId: 't-06' }) })).json();
+    const tok = decodeURIComponent(made.setupUrl.split('/setup/')[1]);
+    const su = await fetch(`${U}/api/auth/setup`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: tok, password: 'sato-pass-123' }) });
+    const TH = { cookie: su.headers.get('set-cookie').split(';')[0], 'content-type': 'application/json' };
+    const stT = (await (await fetch(`${U}/api/state`, { headers: TH })).json()).snapshot.store;
+    const tReach = new Set(stT.students.map((x) => x.id));
+    ok(tReach.has('st-03') && !tReach.has('st-01') && !tReach.has(sid), `teacher's /api/state: only students they work with (${[...tReach].join(', ')})`);
+    ok([...evOf(stT)].every((x) => tReach.has(x)) && stT.reflections.every((r) => r.visibility !== 'private'), 'teacher: no stations outside reach, no private reflections');
+    const act = (h, fn, args) => fetch(`${U}/api/action`, { method: 'POST', headers: h, body: JSON.stringify({ fn, args, rec: [] }) });
+    ok((await act(TH, 'endorse', [['rq-01'], 't-06', 'x'])).status === 403, 'teacher cannot endorse a request sent to someone else');
+    ok((await act(TH, 'addNote', ['st-01', 'x'])).status === 403, 'teacher cannot change a student outside reach');
+    const okAct = await act(TH, 'addLog', ['st-03', 'Ms Hana Sato', 'share', 'Looked at the art line']);
+    ok(okAct.status === 200 && (await okAct.json()).scoped === true, 'teacher acts on a student in reach; the answer tells the browser to refetch');
+    ok((await act(H, 'addStation', ['st-01', { title: 'x', lineIds: ['science'] }])).status === 403, 'student cannot add to another student');
+    const ctxT = await b.newContext({ viewport: { width: 1300, height: 860 } });
+    await ctxT.addCookies([{ name: 'tp_session', value: TH.cookie.split('=')[1], url: U }]);
+    const tp = await ctxT.newPage(); tp.on('pageerror', (e) => errs.push(e.message));
+    await tp.goto(U + '/#/'); await tp.waitForSelector('main.screen');
+    ok(await tp.locator('.q-card').count() >= 1, 'teacher’s endorsement queue works on their part of the record');
+    for (const scr of ['crosslinks', 'depot', 'import']) { await tp.goto(`${U}/#/me/${scr}`); await tp.waitForTimeout(400); ok(await tp.locator('main.screen').count() === 1 && await tp.locator('text=This screen hit a problem').count() === 0, `teacher ${scr} screen renders`); }
+    await ctxT.close();
 
     // ── Sign out, sign back in, sign out ──
     await s.click('.persona-btn'); await s.click('.sign-out'); await s.waitForSelector('.auth-card h1');
@@ -118,7 +161,41 @@ const status = async (url, opts) => (await fetch(url, opts)).status;
     let t0 = Date.now(); const r4 = await login('wrong'); const slow = Date.now() - t0;
     ok(r4.status === 401 && slow >= 240, `4th wrong password is slowed (${slow} ms)`);
     for (let i = 0; i < 6; i++) await login('wrong');
-    ok((await login('ploy-pass-123')).status === 429, 'after 10 failures the email is locked for 15 minutes');
+    const locked = await login('ploy-pass-123');
+    ok(locked.status === 429 && (await locked.json()).error === 'Too many tries. Wait 15 minutes or ask your teacher.', 'after 10 failures the email is locked for 15 minutes, in plain words');
+
+    // ── Forgot password → the admin makes a new sign-in link ──
+    const forgot = (email) => fetch(`${U}/api/auth/forgot`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email }) }).then(async (r) => [r.status, await r.text()]);
+    ok(JSON.stringify(await forgot('nobody@nist.ac.th')) === JSON.stringify(await forgot('admin@nist.ac.th')), 'forgot: same answer for an unknown and a known email');
+    await s.click('text=Forgot your password?'); await s.waitForSelector('#forgot-h');
+    await s.fill('input[type=email]', 'ploy@nist.ac.th'); await s.click('text=Ask for a new link'); await s.waitForSelector('[role=status]');
+    ok(/Ask your teacher or the pilot admin for a new sign-in link/.test(await s.textContent('[role=status]')), 'student is told to ask their teacher or the pilot admin');
+    await s.screenshot({ path: SH + 'forgot.png' });
+    await a.reload(); await a.waitForSelector('.acc-asked');
+    const asked = await a.locator('.acc-asked li').allInnerTexts();
+    ok(asked.length === 2 && asked.some((t) => t.includes('Ploy Srisuk')) && asked.some((t) => t.includes('Pat Admin')), 'Accounts shows the requests at the top');
+    await a.screenshot({ path: SH + 'accounts-asked.png' });
+    await a.locator('.acc-asked li', { hasText: 'Pat Admin' }).locator('text=Dismiss').click();
+    await a.waitForFunction(() => document.querySelectorAll('.acc-asked li').length === 1);
+    ok(true, 'Dismiss clears a request');
+    await a.locator('.acc-asked li', { hasText: 'Ploy Srisuk' }).locator('text=Make a new sign-in link').click(); await a.waitForSelector('.acc-link input');
+    const relink = await a.inputValue('.acc-link input');
+    ok(/#\/setup\//.test(relink) && await a.locator('.acc-asked').count() === 0, 'admin makes a new sign-in link; the request is answered');
+    await s.goto(relink); await s.waitForSelector('#setup-h');
+    const rpw = s.locator('input[autocomplete=new-password]'); await rpw.nth(0).fill('ploy-new-pass-1'); await rpw.nth(1).fill('ploy-new-pass-1');
+    await s.click('button[type=submit]'); await s.waitForSelector('main.screen');
+    ok((await login('ploy-new-pass-1')).status === 200, 'the new link lifts the lock: signs in with the new password');
+    ok((await login('ploy-pass-123')).status === 401, 'the old password has ended');
+
+    // ── Own account menu: devices and sign out everywhere ──
+    await a.click('.persona-btn'); await a.waitForSelector('.acct-devices');
+    ok(/Signed in on this device only/.test(await a.locator('.acct-menu').innerText()), 'account menu says how many devices');
+    await a.screenshot({ path: SH + 'account-menu.png' });
+    await a.click('.persona-btn');
+    await s.click('.persona-btn'); await s.waitForSelector('.sign-out-all');
+    ok(/Signed in on \d+ devices/.test(await s.locator('.acct-menu').innerText()), 'student signed in on several devices sees the count');
+    await s.click('.sign-out-all'); await s.waitForSelector('.auth-card h1');
+    ok((await login('ploy-new-pass-1')).status === 200, 'sign out everywhere, then back in');
 
     // ── canAct (the per-role check /api/action can call) ──
     process.env.DATA_DIR = fs.mkdtempSync(SH + 'unit-');

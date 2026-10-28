@@ -7,7 +7,7 @@ const STATUS = { done: 'Handed in', 'done-late': 'Handed in late', late: 'Overdu
 const days = (d) => Math.round((new Date(d) - new Date(TODAY)) / 86400000);
 
 // K3: EE, TOK and IA milestones from the LMS, per Diploma student, with late flags and supervisors.
-export default function DpCore({ toast, go, version }) {
+export default function DpCore({ toast, go, version, persona }) {
   const rows = getDpCore();
   const [part, setPart] = useState('all');
   const [sel, setSel] = useState(null);
@@ -66,7 +66,7 @@ export default function DpCore({ toast, go, version }) {
           <div className="xl-top"><b>{pick.r.student.name}: {PART[pick.part][0]}, {pick.name.toLowerCase()}</b><span className={`app-st dc-st-${pick.status}`}>{STATUS[pick.status]}</span></div>
           <small>Due {fmtDate(pick.due)}{pick.done ? ` · handed in ${fmtDate(pick.done)}` : ''} · supervisor {pick.r.supervisor?.name}</small>
           <div className="q-actions">
-            {pick.status === 'late' && <button className="primary" disabled={!!pick.nudged} onClick={() => { nudgeMilestone(pick.r.student.id, pick); toast(`Reminded ${pick.r.student.name.split(' ')[0]}`); }}>{pick.nudged ? 'Reminder sent' : 'Send a kind reminder'}</button>}
+            {pick.status === 'late' && <button className="primary" disabled={!!pick.nudged} onClick={() => { nudgeMilestone(pick.r.student.id, pick, persona?.teacherId); toast(`Reminded ${pick.r.student.name.split(' ')[0]}`); }}>{pick.nudged ? 'Reminder sent' : 'Send a kind reminder'}</button>}
             {!pick.done && <button className="ghost" onClick={() => { markMilestone(pick.r.student.id, pick.id); toast('Marked as handed in'); }}>Mark handed in</button>}
             {pick.eventId && <button className="ghost" onClick={() => go('whitfield', 'student', pick.r.student.id)}>See it on the map</button>}
           </div>

@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { applyLens, getAlumMap, getPresentations, getStudentMap, getStudents, subscribe, getDrafts, setStudentDrafts, hasPublicCopy, getNotifications, markNotificationsRead, resetDemo, restore, logLink, addStation, getLang, setLang, getIntensity, setIntensity, INTENSITY, INTENSITY_NAV, INTENSITY_LABEL } from './api.js';
+import { applyLens, getAlumMap, getPresentations, getStudent, getStudentMap, getStudents, subscribe, getDrafts, setStudentDrafts, hasPublicCopy, getNotifications, markNotificationsRead, notifyKeys, resetDemo, restore, markOf, changeCount, logLink, addStation, getLang, setLang, getIntensity, setIntensity, INTENSITY, INTENSITY_NAV, INTENSITY_LABEL } from './api.js';
 import SimpleHome, { ShowFamily } from './screens/SimpleHome.jsx';
 import IntensityControl from './components/IntensityControl.jsx';
 import { ensureEndorsed } from './tourStory.js';
 import { PERSONAS, KIND_LABEL, NAV, personaById, home, navOf, pilotPersona } from './personas.js';
-import { signOut } from './auth.js';
 import Accounts from './screens/Accounts.jsx';
-import { PasswordDialog } from './screens/SignIn.jsx';
+import Usage from './screens/Usage.jsx';
+import { AccountMenu, PasswordDialog } from './screens/SignIn.jsx';
 import { ago, appUrl, inkOn } from './format.js';
 import Studio from './components/Studio.jsx';
 import SharedView from './components/SharedView.jsx';
@@ -55,7 +55,7 @@ import ShareDialog from './components/ShareDialog.jsx';
 import ShareGaps from './components/ShareGaps.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import SyncStatus from './components/SyncStatus.jsx';
-import { serverMode } from './sync.js';
+import { serverMode, undoSince } from './sync.js';
 import { VerifyProvider } from './components/VerifyModal.jsx';
 import { TOURS, tourMinutes, stopCount } from './tour.js';
 import { QADrawer, TourCard, TourRoute } from './components/TourCards.jsx';
@@ -150,13 +150,20 @@ export default function App() {
   useEffect(() => { if (!auto || !tourState) return undefined; const t = setTimeout(() => tourRef.current?.advance(), 12000); return () => clearTimeout(t); }, [auto, tourState]);
 
   const go = (persona, screen, param) => {
-    const p = personaById(persona || route.persona);
+    // A notification's target may be a pilot key (st:…, t:…): in the demo that stays on the current persona.
+    const p = personaById(persona && (pilotPersona() || PERSONAS.some((x) => x.id === persona)) ? persona : route.persona);
     const h = `#/${p.id}/${screen || home(p)}${param ? `/${param}` : ''}`;
     if (location.hash !== h) history.pushState(null, '', h);
     setRoute(parse()); setMenu(null);
   };
-  // F9: a toast can carry a snapshot taken before the action; Undo restores it.
-  const toast = (m, undo) => { setToastMsg({ m, undo }); clearTimeout(window.__toast); window.__toast = setTimeout(() => setToastMsg(null), undo ? 6000 : 3400); };
+  // F9: a toast can carry a snapshot taken before the action; Undo restores it. With the server, Undo
+  // asks it to take back just this page's changes since that snapshot, keeping everyone else's.
+  const toast = (m, undo) => { setToastMsg({ m, undo, mark: undo && markOf(undo), upto: changeCount() }); clearTimeout(window.__toast); window.__toast = setTimeout(() => setToastMsg(null), undo ? 6000 : 3400); };
+  const undoToast = (t) => {
+    if (!serverMode()) { restore(t.undo); setToastMsg(null); return; }
+    setToastMsg({ m: 'Undoing…' });
+    undoSince(t.mark, t.upto).then((r) => toast(r.error || (r.skipped ? `Undone, but ${r.skipped} later change${r.skipped === 1 ? '' : 's'} could not be kept.` : 'Undone')));
+  };
 
   // Share links and verify codes: with the pilot server, only what was shared is fetched (see publicRoute.js).
   if (route.publicKind === 's') return <PublicShare key={route.param} token={route.param} version={version} />;
@@ -172,7 +179,8 @@ export default function App() {
   const level = persona.kind === 'student' ? getIntensity(persona.studentId) : null;
   const changeLevel = (v) => { setIntensity(persona.studentId, v); if (INTENSITY_NAV[v] && !INTENSITY_NAV[v].includes(route.screen)) go(persona.id, 'map'); toast(`Interface set to ${v}. Your map and everything on it stay the same.`); };
   const nav = navOf(persona).filter(([id]) => !level || !INTENSITY_NAV[level] || INTENSITY_NAV[level].includes(id)).map(([id, l]) => [id, T(INTENSITY_LABEL[level]?.[id] || l)]);
-  const notes = getNotifications(persona.id);
+  const keys = notifyKeys(persona);
+  const notes = getNotifications(keys);
   const unread = notes.filter((n) => !n.read).length;
   const ctx = { go, toast, version, persona, drafts, setDrafts, audience, setAudience, tier, setTier, startTour: (t) => { setTourState({ tour: t, step: 0 }); TOURS[t].steps[0].run(ctx); } };
   const tour = tourState && TOURS[tourState.tour];
@@ -203,11 +211,7 @@ export default function App() {
                 <span className="pb-text"><small>{T(pilot ? 'Signed in' : 'Viewing as')}</small><b>{persona.name}</b></span><span aria-hidden="true">▾</span>
               </button>
               {menu === 'persona' && pilot && (
-                <div className="menu persona-menu acct-menu" role="menu">
-                  <div className="acct-who"><b>{persona.name}</b><small>{persona.role}</small><small>{persona.account?.email}</small></div>
-                  <button role="menuitem" onClick={() => { setMenu(null); setPwOpen(true); }}><span><b>Change password</b></span></button>
-                  <button role="menuitem" className="sign-out" onClick={() => signOut()}><span><b>Sign out</b></span></button>
-                </div>
+                <AccountMenu persona={persona} onPassword={() => { setMenu(null); setPwOpen(true); }} />
               )}
               {menu === 'persona' && !pilot && (
                 <div className="menu persona-menu" role="menu">
@@ -225,7 +229,7 @@ export default function App() {
               )}
             </div>
             <div className="menu-wrap">
-              <button className="icon-btn bell" onClick={() => { setMenu(menu === 'bell' ? null : 'bell'); if (unread) setTimeout(() => markNotificationsRead(persona.id), 1500); }} aria-label={`Notifications${unread ? `, ${unread} unread` : ''}`}>
+              <button className="icon-btn bell" onClick={() => { setMenu(menu === 'bell' ? null : 'bell'); if (unread) setTimeout(() => markNotificationsRead(keys), 1500); }} aria-label={`Notifications${unread ? `, ${unread} unread` : ''}`}>
                 <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 17V11a6 6 0 1 1 12 0v6l2 2H4z M10 21h4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" /></svg>
                 {unread > 0 && <span className="badge">{unread}</span>}
               </button>
@@ -289,10 +293,10 @@ export default function App() {
           <ErrorBoundary resetKey={`${persona.id}-${route.screen}-${route.param}`}>
           {persona.kind === 'student' && <StudentScreens {...ctx} screen={route.screen} param={route.param} studentId={studentId} />}
           {persona.kind === 'advisor' && route.screen === 'advisory' && <AdvisorGrid advisorId={persona.teacherId} version={version} toast={toast} onOpen={(id) => go(persona.id, 'student', id)} />}
-          {persona.kind === 'advisor' && route.screen === 'student' && <AdvisorStudent studentId={route.param || 'st-01'} {...ctx} />}
+          {persona.kind === 'advisor' && route.screen === 'student' && (getStudent(route.param || 'st-01') ? <AdvisorStudent studentId={route.param || 'st-01'} {...ctx} /> : <NotInRecord onBack={() => go(persona.id, 'advisory')} />)}
           {persona.kind === 'teacher' && route.screen === 'queue' && <TeacherQueue teacherId={persona.teacherId} focus={route.param} {...ctx} />}
           {persona.kind === 'coordinator' && route.screen === 'cas' && <CasDashboard {...ctx} />}
-          {persona.kind === 'counsellor' && route.screen === 'letter' && <ReferenceLetter {...ctx} studentId={route.param || 'st-01'} />}
+          {persona.kind === 'counsellor' && route.screen === 'letter' && (getStudent(route.param || 'st-01') ? <ReferenceLetter {...ctx} studentId={route.param || 'st-01'} /> : <NotInRecord onBack={() => go(persona.id, 'applications')} />)}
           {persona.kind === 'leadership' && route.screen === 'dashboard' && <SchoolDashboard {...ctx} />}
           {persona.kind === 'leadership' && route.screen === 'scan' && <ScanIn {...ctx} />}
           {persona.kind === 'leadership' && route.screen === 'pdpa' && <Pdpa {...ctx} />}
@@ -316,7 +320,8 @@ export default function App() {
           {persona.kind === 'alum' && route.screen === 'poster' && <AlumPoster {...ctx} />}
           {persona.kind === 'external' && <ShareLanding token={persona.token} drafts={drafts} version={version} embedded />}
           {persona.admin && route.screen === 'accounts' && <Accounts {...ctx} />}
-          {route.screen !== 'accounts' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} />}
+          {pilot && route.screen === 'usage' && (persona.admin || persona.kind === 'leadership') && <Usage {...ctx} />}
+          {route.screen !== 'accounts' && route.screen !== 'usage' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} />}
           </ErrorBoundary>
         </main>
 
@@ -338,10 +343,15 @@ export default function App() {
         )}
         {launch && <Launcher onGo={go} onClose={() => setLaunch(false)} only={pilot} />}
         {pwOpen && <PasswordDialog onClose={() => setPwOpen(false)} toast={toast} />}
-        <div className={`toast${toastMsg ? ' show' : ''}`} role="status" aria-live="polite">{toastMsg?.m}{toastMsg?.undo && <button className="toast-undo" onClick={() => { restore(toastMsg.undo); setToastMsg(null); }}>Undo</button>}</div>
+        <div className={`toast${toastMsg ? ' show' : ''}`} role="status" aria-live="polite">{toastMsg?.m}{toastMsg?.undo && <button className="toast-undo" onClick={() => undoToast(toastMsg)}>Undo</button>}</div>
       </div>
     </VerifyProvider>
   );
+}
+
+// Pilot: each person holds only the students they work with, so an address can name someone not here.
+function NotInRecord({ onBack }) {
+  return <div className="empty"><p>This student is not in your part of the record.</p><button className="ghost" onClick={onBack}>Back</button></div>;
 }
 
 function StudentScreens({ screen, param, studentId, drafts, setDrafts, audience, setAudience, tier, setTier, toast, version, go, persona }) {

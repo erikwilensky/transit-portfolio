@@ -20,13 +20,14 @@ src/sync.js             browser side of the shared record
 
 Run: `npm run build && npm run server` (port 8787, or PORT). In dev: `npm run server` plus
 `npm run dev` (Vite proxies /api). Data lives in DATA_DIR (default `.data/`): `state.json`,
-`uploads/`, `accounts.json`.
+`uploads/`, `accounts.json`, `sessions.json`, `usage.json`, `audit.log`.
 
 ## Contracts between features
 
-- **Routes**: `/api/state`, `/api/action`, `/api/stream`, `/api/reset` (shared record);
+- **Routes**: `/api/state`, `/api/action`, `/api/undo`, `/api/stream`, `/api/reset` (shared record);
   `/api/upload`, `/api/files/:name` (files); `/api/public/*` (share links and verify, no sign-in);
-  `/api/auth/*`, `/api/admin/*` (sign-in and accounts); `/api/health`.
+  `/api/auth/*`, `/api/admin/*` (sign-in and accounts); `/api/me/export`, `/api/admin/students/:id/*`
+  (PDPA copy and erasure); `/api/admin/usage` (pilot usage); `/api/health`.
 - **Sign-in guard**: the auth module pushes a function onto `middleware` that sets `req.user`
   (or null) on every /api request and refuses unsigned requests in pilot mode, except
   `/api/health`, `/api/public/*`, `/api/auth/*` and `GET /api/files/*`.
@@ -55,8 +56,33 @@ Run: `npm run build && npm run server` (port 8787, or PORT). In dev: `npm run se
   hears it on the stream and fetches the new state.
 - Browser: `main.jsx` calls `startSync()` after `loadAuth()` (demo, or signed in for pilot), never on
   `#/s` and `#/v` (`isPublicRoute()`). Changes queue and retry while the server is away (header: "Offline,
-  saving here"). Undo (`restore`) sends a whole snapshot, so it overwrites changes other devices made
-  since the snapshot was taken.
+  saving here"). Undo takes back one change on the server (see "Undo" below); only with no server does
+  it put a whole snapshot back (`restore`).
+
+## Undo (`server/history.mjs`, `POST /api/undo`)
+
+Undo takes back one change (or the few a click made together) and keeps every change made since,
+by anyone. The server keeps each change as the steps that made it (`{ fn, args, rec }`, who, when),
+in segments that each start from a saved copy (a checkpoint every 20 changes), about the last 200
+changes and at most 2 hours (`UNDO_MAX`, `UNDO_WINDOW_MS`). On disk: `DATA_DIR/history/cp-<rev>.json`
+and `log.jsonl`; if they do not end at the record's revision on start, history starts again.
+
+- `POST /api/undo { rev }` or `{ revs: [..] }` → `{ rev, prev, undone: [revs], skipped: [{ rev, fn, error }] }`.
+  The server goes back to the checkpoint before the change and replays every later change except the
+  undone ones, with their recorded ids and times (`api.runAction`, nothing re-recorded). A later change
+  that now fails (it needed what was undone) is left out and listed in `skipped`. Then `changed()`, so
+  every device fetches the result. The undo is itself an entry in the history.
+- Refusals (plain words in `error`): 403 not your change (pilot; admins may undo anyone's, demo: anyone),
+  409 already undone or already left out, 410 too old or no longer in the history, 400 an undo itself.
+- A change the history cannot replay starts it again, so nothing before it can be undone: a reset, a
+  whole-record `restore`, an action that failed, or server code that changed the record without an
+  api.js change (`api.notify` from a public page). Server code calling api.js changes directly (adding
+  a student, a public page view) is caught by the server's action hook and stays replayable.
+- Browser: `api.markOf(snapshot)` is the change count when a snapshot was taken; the toast keeps it and
+  `undoSince(mark, upto)` in `src/sync.js` waits for those changes' server revs (queued changes go first),
+  then queues the undo. The screens keep calling `toast(msg, snapshot())` as before. With no server,
+  Undo restores the snapshot as before. Tests: `server/test/undo.test.mjs`, `scripts/checks/sync.cjs`
+  (two devices), `auth.cjs` (pilot rules), `undo.cjs` (no server).
 
 ## What the server does for every request
 
@@ -124,11 +150,16 @@ the old static site back.
 **Settings** are in `.env` (not committed; every line also reaches the server):
 
 - `TP_MODE=demo` (persona switcher, tours, reset) or `TP_MODE=pilot` (sign-in).
+- `TP_START=empty` (default for `transit-pilot`; pilot mode only): a data folder with no `state.json`
+  yet begins with the school's lines and no fictional people. Anything else starts from the demo's
+  seeded record. It never touches a record that already exists. See "Class lists and a clean start".
 - `COMPOSE_PROFILES=pilot` also runs a real pilot, `transit-pilot`, on port 8081 with
   `TP_MODE=pilot` and its own data folder, next to the demo on 8080. Its own settings can go in
   `.env.pilot`. To publish it, add a second hostname in the Cloudflare tunnel pointing to
   `http://localhost:8081`.
 - `TP_BIND=0.0.0.0` opens the ports to the local network (default: this Mac only).
+- `SMTP_URL` and `MAIL_FROM` (optional) email setup and forgot-password links; `AUTH_IP_LIMIT` (default
+  300) is how many failed sign-ins one address may make in 15 minutes. See "Sign-in help" below.
 
 Handy commands, from the repo folder: `docker compose ps` (status), `docker compose logs -f`
 (live log), `docker compose restart`, `docker compose down` (stop; the data stays).
@@ -224,41 +255,72 @@ server makes an empty folder and begins again from the seed.
 - **First run**: with no accounts, the server prints a one-time admin setup link (`/#/setup/<token>`,
   valid until restart). There is no default password. Set `PUBLIC_URL` to print the real address.
 - **Routes**: `GET /api/auth/me` → `{ mode, user }` (user carries its linked `record`);
-  `POST /api/auth/login { email, password }` (slowed after 3 failures per email or address, refused for
-  15 minutes after 10 per email or 30 per address); `POST /api/auth/logout`;
+  `POST /api/auth/login { email, password }` (see "Sign-in help" below for the limits); `POST /api/auth/logout`;
   `POST /api/auth/password { current, password }` (signs out other devices);
-  `GET /api/auth/setup/:token`, `POST /api/auth/setup { token, password, name?, email? }`.
+  `GET /api/auth/setup/:token`, `POST /api/auth/setup { token, password, name?, email? }` (ends every
+  other session of that account).
   Admin only: `GET /api/admin/accounts` (accounts, students, teachers), `POST /api/admin/accounts`
   (create; link with `studentId`/`teacherId`/`children`, or `newStudent: { name, year, programme }` /
-  `newTeacher: { name, role }`; returns a one-time `setupUrl`, valid 7 days), `POST /api/admin/accounts/:id`
-  (edit role or link), `POST /api/admin/accounts/:id/reset` (new setup link; ends the old password and
-  sessions), `DELETE /api/admin/accounts/:id` (the record stays).
+  `newTeacher: { name, role }`; returns a one-time `setupUrl`, valid 7 days, and `emailed`), `POST /api/admin/accounts/:id`
+  (edit role or link), `POST /api/admin/accounts/:id/reset` (new setup link, `{ setupUrl, emailed }`; ends the
+  old password and sessions), `POST /api/admin/accounts/:id/dismiss` (clears a forgot-password request),
+  `DELETE /api/admin/accounts/:id` (the record stays).
 - **Guard**: sets `req.user` (the account, or null) on every /api request. In pilot mode it answers 401
   for unsigned requests outside the open routes, and 403 for `/api/reset` unless the user is an admin.
 - **New records**: `api.addStudent({ name, year, programme })` (British Year 7–13; `grade = year - 1`,
   `onboarding: true`, empty map) and `api.addTeacher({ name, role })`. Teachers now live in the record
   (`store.teachers`). Both are idempotent when given an existing `id`.
 - **`canAct(user, fn, args)`** (exported from `server/auth.mjs`, re-exported by `10-auth.mjs`): call it in
-  `/api/action` before running a mutator and answer 403 when false. Admins: anything. Staff kinds: any
-  mutator except `resetDemo`, `restore`, `addStudent`, `addTeacher`. Students: only the student mutators
-  listed in `STUDENT_OWNS`, and only when every student the call touches (looked up from the station,
-  inbox item, request or evidence request) is their own `studentId`. Parents: `answerConsent` for their own
-  children, and `setFamily`. Everyone signed in: `recordView`, `markNotificationsRead`, `setLang`.
+  `/api/action` before running a mutator and answer 403 when false. Admins: anything but `restore`.
+  Whole-school staff (leadership, coordinator, counsellor): any mutator except `resetDemo`, `restore`,
+  `addStudent`, `addTeacher`, `importRoster`, `eraseStudent`. Advisors and teachers: see "Who sees which students" below. Students: only
+  the mutators in `STUDENT_FNS`, and only when every student the call touches (`touchedBy`, looked up from
+  the station, inbox item, request or evidence request) is their own `studentId`, never as a teacher.
+  Parents: `answerConsent` for their own children, and `setFamily`. Everyone signed in: `recordView`,
+  `setLang`, and `markNotificationsRead` for their own keys only (see Notifications).
 - **Browser** (`src/auth.js`): reads the mode from `/api/auth/me` (no server, or demo → demo). In pilot it
   builds the signed-in person's persona in the PERSONAS shape (`personaFor`) and installs it with
   `setPilotPersona`, so `personaById` always returns it. `navOf(p)` gives a persona's navigation
   (an admin gets Accounts). `src/main.jsx` shows `screens/SignIn.jsx` when signed out, except on the
   public `#/s`, `#/v`, `#/p` routes and `#/setup/<token>`.
 
+### Sign-in help: limits, forgot password, sessions, email
+
+- **Failed sign-ins** are counted per email and per visitor address, where the address is lib's
+  `clientIp(req)` (`CF-Connecting-IP` behind cloudflared), never the Docker gateway. Per email: slowed
+  after 3, refused for 15 minutes after 10. Per address: a whole school shares one public address on
+  its Wi-Fi, so the limit is loose: refused after `AUTH_IP_LIMIT` (default 300) in 15 minutes, slowed
+  only after 150. The refusal says "Too many tries. Wait 15 minutes or ask your teacher." Any new
+  setup link for that account lifts the per-email block.
+- **Forgot password**: `POST /api/auth/forgot { email }` → always `200 { ok: true, emailed }`, whatever
+  the email (`emailed` says only whether this server has mail set up). The work happens after the
+  reply. At most 3 per email (the rest are ignored, same answer) and 100 per address (429) per
+  15 minutes. Without mail it sets `account.resetRequest = { at, n }`; the admin sees these at the top
+  of Accounts ("Make a new sign-in link" calls `/reset`, which clears it; "Dismiss" calls `/dismiss`).
+  A new password from any setup link also clears it.
+- **Advisors** (any staff account whose `teacherId` is the student's `advisorId`, and admins):
+  `GET /api/advisor/students/:studentId/account` → `{ account: { id, name, email, hasPassword,
+  resetRequest } | null }`, `POST /api/advisor/students/:studentId/reset` → `{ account, setupUrl, emailed }`.
+  Student accounts only, so an advisor can never reset staff, family or admin accounts. Shown as
+  "Sign-in help" on the advisor's student page (pilot only).
+- **Sessions**: `GET /api/auth/sessions` → `{ devices }`; `POST /api/auth/logout-everywhere` ends every
+  session of the signed-in account, this one too. The account menu shows "Signed in on N devices" and,
+  with more than one, "Sign out everywhere". Changing the password ends the other sessions.
+- **Email (optional)**: set `SMTP_URL` (`smtp://user:pass@host:587`, STARTTLS, required before sending
+  the password except to localhost; or `smtps://…:465`; URL-encode `@` in the user as `%40`) and
+  `MAIL_FROM` (`Transit Portfolio <noreply@school>`). Then new accounts and new links are also emailed
+  (the admin still sees the link, in case the email does not arrive), and "forgot password" emails a
+  link straight away; that link leaves the old password working until it is used, so nobody can lock
+  someone out by asking. If the email fails, the request goes to the admin as above. `server/mail.mjs`
+  is a minimal SMTP client (AUTH PLAIN or LOGIN); it never logs the password, the message or the link.
+  Without these settings nothing is emailed: admins and advisors hand out links themselves.
+
 ### Not enforced yet
 
-- `/api/state` (and the stream) still give any signed-in person the whole record; screens hide what a
-  role should not see, the server does not.
-- `canAct` is only a check: it does nothing until `/api/action` calls it. It checks who owns the target,
-  not every field of the arguments (a staff member can still act as any teacher, `addGoal(.., by)` etc.).
-  `restore` (Undo) is admin-only in it, so student and staff Undo needs a scoped replacement.
-- Notifications are addressed by persona id: accounts linked to a seeded persona's record keep that id;
-  everyone else is `me`, and `notify` skips students without a seeded persona.
+- `canAct` checks who owns the target and, for advisors and teachers, which teacher a call acts as; not
+  every field of the arguments (a whole-school role can still act as any teacher, `addGoal(.., by)` etc.).
+  `restore` (a whole earlier copy) is refused for everyone in a pilot, since each browser holds only part
+  of the record; Undo goes through `/api/undo`, which rebuilds on the server's whole record.
 - `setLang` changes the one shared family language setting for everybody.
 - In the browser the record is still also saved in localStorage; signing out clears it.
 - **Public pages** (`server/routes/40-public.mjs`, `src/publicRoute.js`, `src/screens/PublicPage.jsx`):
@@ -270,3 +332,173 @@ server makes an empty folder and begins again from the seed.
   station's verification record. Share URLs are absolute; set `VITE_PUBLIC_URL` at build time when the
   app is built or opened somewhere other than its public address. Tests: `npm run test:server`,
   `BASE=http://localhost:8787 node scripts/checks/public.cjs`.
+
+## Notifications (`src/api.js`)
+
+- **Recipient keys**: `toStudent(sid)`, `toTeacher(tid)`, `toFamily(sid)` give the demo persona id when the record
+  has one (`maya`, `nair`, `parent`…) and otherwise `st:<studentId>`, `t:<teacherId>`, `fam:<studentId>` (that
+  child's family). `toRole(kind)` is `role:<kind>`, for whoever holds a role (a new sub-line goes to
+  `role:coordinator`). Every `notify(to, text, go)` uses them, and `go.persona` is the same key.
+- **A person's bell**: `notifyKeys(personaOrAccount)` lists every key a person reads: their persona id (not `me`),
+  `st:` and `toStudent` for a student, `t:`, `toTeacher` and `role:<kind>` for staff, `fam:` and `toFamily` for
+  each child of a parent. `getNotifications(keys)` and `markNotificationsRead(keys)` take one key or a list. A
+  seeded record answers to both its demo id and its `st:`/`t:` key. In pilot mode `canAct` lets a person mark
+  read only their own keys.
+- **Who acted**: texts name the person who acted. `decideBranch(id, ok, mergeInto, by)` and
+  `nudgeMilestone(studentId, milestone, by)` take the coordinator's teacher id (left out: the demo's Ms Brandt);
+  `CommentDialog` passes the counsellor's. `shortName('Ms Clara Brandt')` is `Ms Brandt`. Demo texts are unchanged.
+- A family's answer to a consent request goes to the student's advisor (`toTeacher(advisorId)`); in the demo
+  Mr Whitfield still hears about every seeded student.
+- A pilot parent linked to a seeded child that has a demo family (`st-06`, `st-09`) also reads the demo parent's bell.
+- Tests: `server/test/notifications.test.mjs`, `node scripts/checks/notifications.cjs` (its own pilot server: a new
+  student asks a new teacher, the teacher endorses, both bells update live).
+## Who sees which students (`server/scope.mjs`, pilot only)
+
+Each signed-in person downloads only their own part of the record, and advisors and teachers change
+only the students they work with. Demo mode still sends the whole record to everyone.
+
+- **`reachOf(user)`** → `null` (the whole school: admin, leadership, coordinator, counsellor) or a `Set` of
+  studentIds. A student: themselves. A parent: their children. An advisor or teacher (`teacherReach`):
+  students they advise (`advisorId`), students enrolled in classes they teach (`classes[].teacherIds`,
+  `enrolments[]`, from the roster import; missing is `[]`), students who sent them an endorsement or
+  evidence request, whose goals they sponsor, whose stations they endorsed, whom they sent a prompt,
+  whose comments they wrote or were asked about (`by`, `to`, `teacherId`, `asked[]`), who are on their
+  class tasks or carry their class endorsement in an inbox, and whose DP work they supervise.
+- **`scopedSnapshot(user)`** → `{ store, seq }` in the shape `api.snapshot()` uses; `GET /api/state` sends it
+  in pilot mode. Students outside reach are gone entirely (records, stations, reflections, endorsements,
+  tags, drafts, inbox, requests, prompts, comments, activity, consent, CAS, DP, link views…). For the
+  students in reach it keeps what that person may read, by `VISIBLE_TO` (now exported from api.js), as
+  `getStudentMap(viewer)` applies it: a student's own record in full; a child as the family view shows it
+  (`familyViewer`), with consent requests and only view and consent activity; staff at most the
+  advisor level, so **private stations and reflections never reach any staff role, admin included**.
+  One exception: a station a student sent to a teacher (an endorsement request or a sponsor invitation)
+  reaches that teacher even when private, without its private reflections. Activity lines naming a
+  station the person does not receive are dropped. Advisor notes go only to the student's advisor;
+  reference letters, the roster and other students' drafts only to whole-school roles; undecided inbox
+  and pending items only to the student and whole-school roles. School lines and integrations stay; the
+  staff directory keeps `id`, `name`, `role` only (no emails). Notifications: only those whose `to` is one
+  of `recipientKeys(user)`: the keys `api.notifyKeys` gives that person (see Notifications), plus `u:<accountId>`.
+  A store key another feature adds follows reach when it is an array of `{ studentId }` or an object keyed
+  by studentId, and stays otherwise. `store.scope = { school, privateStations }` carries the count of
+  private stations to whole-school roles (Privacy & PDPA shows it); other dashboards count only what they
+  receive, so a line's use or learner-profile coverage leaves private stations out.
+- **`canAct` for advisors and teachers**: `touchedBy(fn, args)` (the `TOUCHES` map, one entry per api.js
+  mutator) gives the students a call touches and the teacher it acts as (`endorse`'s teacher and each
+  request's teacher, `sendPrompt`'s sender, default `t-07`, `addComment`'s author, default `t-09`, `addGoal`'s
+  `by`, `addCheckIn`'s `by`, the sponsor in `answerSponsor`, a class task's teacher, an import's
+  `by.teacherId`). Allowed only when every touched student is in reach and every acted-as teacher is
+  their own `teacherId`. `addSchoolLine`, `renameLine`, `decideBranch`, `setRollout` and `matchRoster` are
+  whole-school only. A mutator not in `TOUCHES`: any student or station id found in its arguments counts
+  as touched; one that names none is allowed. An id that does not resolve counts as outside reach.
+- **Browser**: a change still runs first on the browser's part of the record. In pilot mode `/api/action`
+  answers `scoped: true` and `src/sync.js` always fetches its new part afterwards (refused changes too),
+  so what the server computed on the whole record wins. Every change anywhere still bumps the stream, and
+  each browser then refetches its own part. An address naming a student not in the person's part shows
+  "This student is not in your part of the record" (advisor student page, reference letter).
+- **Files**: `GET /api/files/:name` stays public by an unguessable name (no sign-in, no reach check), so a
+  file's link works for anyone who has it, as a share link does.
+- Tests: `npm run test:server` (`server/test/scope.test.mjs`), `node scripts/checks/scope.cjs` (every role
+  through a real pilot server and every screen it can reach), and the scoping part of `auth.cjs`.
+## A student's data: a copy and erasure (`server/routes/50-pdpa.mjs`, `server/zip.mjs`)
+
+Thailand's PDPA gives a student (and their parent) the right to a copy of their data and to have it removed.
+
+- **What counts as theirs** is decided in `src/api.js` by `studentData(id, alsoTo)` (read) and the mutator
+  `eraseStudent(id, alsoTo)`, which share one rule, generic so new collections are covered: a list item is
+  theirs when one of its own values (or one inside a plain object on it) is their id, one of their stations,
+  presentations, share links or other items, or it is addressed `to` their persona or account ids (`alsoTo`);
+  a keyed entry is theirs by its key (`drafts[id]`, `tags[stationId]`, `linkViews[token]`, `answered['st-01:…']`).
+  A notification to someone else that names them or quotes one of their station titles is theirs too.
+  Other people's items that list their id (a class task's `submitted`) keep the item and lose only the id.
+- **Copy**: `GET /api/admin/students/:id/export` (admin) and `GET /api/me/export[?student=id]` (a student:
+  their own, whatever is asked; a parent: one of their `children`, the first by default; an admin: anyone;
+  staff: 403). Answers a ZIP (stored, no compression; `zlib.crc32`, with a fallback for older Node):
+  `README.txt` explaining each file, `student.json`, `activity.json` (the full log `getActivity` shows),
+  one `<collection>.json` per collection with something of theirs (`events.json`, `reflections.json` at every
+  visibility, `drafts.json` with share links, `comments.json`, `notifications.json`, …), `accounts.json`
+  (their account and linked family accounts, never a hash; a family account lists only this child),
+  `mentions.json`, `files/<id>.<ext>` for every `/api/files/…` their data references, and `manifest.json`
+  (with each file's original name).
+- **Erasure**: `POST /api/admin/students/:id/erase { confirm: <their name> }` (admin; the name compared
+  case- and space-insensitively) → `{ removed: { collection: n }, files, accounts, familyUnlinked }`. It runs
+  `api.eraseStudent` on the server and `changed({ fn: 'eraseStudent', by, erased: { studentId, accounts } })`,
+  deletes their uploaded files (and `.json` beside each) unless the record still references one, removes
+  their account(s), unlinks them from family accounts (removing a family account that had only this child).
+  Their share links stop working because their presentations are gone (404). `eraseStudent` is in
+  `ADMIN_ONLY` (server/auth.mjs) and left out of `/api/action`'s allowlist, so the files and accounts can
+  never be left behind by a record-only erase.
+- **Audit**: each copy and erasure appends `{"at","action":"copy"|"erase","by":<account id>,"studentId"}` to
+  `DATA_DIR/audit.log`. No names or content.
+- **Screens** (pilot only): Accounts has "A student's data" (download, and "Remove this student…" with
+  "Type the student's name to confirm" and the reminder that backups hold the data for 30 days);
+  the student's Privacy page and the parent's Consent page download their own copy; the PDPA page points
+  to both.
+- **Backups**: an erased student stays in the nightly backups until they roll over (30 by default).
+
+## Pilot usage (`server/routes/60-usage.mjs`, `src/screens/Usage.jsx`)
+
+- **Counting**: a middleware notes, per account per day (Bangkok time, `TP_TZ`), when they were last seen and
+  how many requests they made (background `/api/state` and `/api/stream` do not count); an `onChange`
+  listener counts each change by mutator name. `/api/action` passes `by` (the account id) and `args` to
+  `changed()` for this; a change made by the server itself (`by: 'admin'`) or a failed one is not counted.
+  Endorsements count each one in a batch (`endorse`, `endorseClassTask`). Public share-link opens are counted
+  per student per day. `DATA_DIR/usage.json`: `{ days: { 'YYYY-MM-DD': { u: { accountId: { seen, req, fn:
+  { addStation: 2 } } }, opens: { studentId: n } } } }`, saved at most every 5 s (`USAGE_SAVE_MS`) and on
+  shutdown. Ids and counts only, never content. Erasing a student drops their counts.
+- **`GET /api/admin/usage`** (admin or leadership): `{ today, tz, people: [{ id, name, kind, group, lastSeen,
+  lastChange, daysActive, status: today|week|earlier|never, stations, reflections, endorsements, changes }],
+  weeks: [{ start (Monday), active, changed, stations, reflections, endorsements, shareOpens, changes }],
+  byRole, byYear, totals }`. Stations = `addStation`, `addBranch`, `acceptCandidate`, `addAlumStation`;
+  reflections = `addReflection`. A student's Year group is their own Year; families and staff are their own
+  groups; share opens count on the student's Year group.
+- **Screen**: "Pilot usage" (`#/<persona>/usage`) is added to the navigation of leadership and admin accounts
+  in pilot mode only (`personaFor` in src/auth.js): tiles, a weekly bar chart, tables per week, Year group,
+  role and person, "Download as CSV" (one row per person) and "Weeks as CSV". Pilot options links to it.
+- Tests: `node --test server/test/pdpa.test.mjs server/test/usage.test.mjs`; browser: `node scripts/checks/pdpa.cjs`
+  (starts its own pilot and demo servers).
+## Class lists and a clean start (`src/imports/roster.js`, `server/routes/15-roster.mjs`)
+
+- **Clean start**: with `TP_MODE=pilot` and `TP_START=empty`, `server/store.mjs` calls `api.emptyStart()` when
+  there is no `state.json`, and saves at once. Every store key stays, emptied; kept are the nine school
+  lines, the integration cards (counts zeroed), family and rollout settings. `store.cleanStart = true`
+  also stops onboarding adding the made-up "already verified" starter stations (`hasStarters()`). Demo
+  mode ignores `TP_START`.
+- **Roster file**: `docs/roster-format.md` ("transit-roster/1" JSON, or teachers/students/classes/enrolments
+  CSVs). `parseRoster(input)` → `{ roster, errors, warnings, missing }` (pure, runs in the browser and, via the
+  api.js re-export, on the server); `planRoster(roster, current)` → the writes and the summary. Any error,
+  including a referenced id that is not in the file, stops the whole import.
+- **Record** (contracts other features use):
+  - `store.classes = [{ id, name, subject, year, level, teacherIds, lineId }]` (`year` British; `lineId` a school
+    line or null), `store.enrolments = [{ studentId, classId, from, to }]` (`to` set when a later file no
+    longer has that place; never deleted). Read with `getClasses()`, `getEnrolments()`. Old saves without
+    them load with empty lists.
+  - Students and teachers use the school's SIS ids as record ids. Teachers: `roles` (any of teacher, advisor,
+    counsellor, coordinator, leadership), `department`, `email`, and `role` (the display line, e.g.
+    "Biology · Advisor, 12B"). Students: `grade = year - 1`, `programme`, `homeroom`, `advisorId`, `email`,
+    `house`, `joinedYear`; a new one also gets `startGrade` (the Year they joined, else this Year),
+    `g9StartYear`, an empty map and `onboarding: true`; six empty starter presentations are made when they
+    finish onboarding (not at import, which keeps the record small).
+  - `store.rosterImport = { school, at, summary }` after each import.
+- **`api.importRoster(roster)`** (admin-only mutator, in `act()`): upserts teachers, students, classes and
+  enrolments; fields the roster does not own (a student's map, lines, drafts) are never touched. Returns
+  `{ added, updated, ended, unmatchedClasses, missingFromFile }` (counts per teachers/students/classes/
+  enrolments; classes with no line; records not in the file, which are listed, never removed).
+  `api.previewRoster(roster)` returns the same summary without changing anything.
+- **`POST /api/admin/roster { roster, dryRun? }`** (pilot, admin only): `roster` is the parsed JSON or
+  `{ teachers, students, classes, enrolments }` CSV texts. 400 `{ errors, missing }` on problems. `dryRun` →
+  `{ summary, newAccounts: { toCreate, skipped } }`. Otherwise it imports, then makes an account for every
+  teacher and student with an email and no account yet (by email, or already linked to that record):
+  students link `studentId`, staff `teacherId` with the kind from their roles (leadership > coordinator >
+  counsellor > advisor > teacher; the one place to change it is `kindOfRoles` in `src/imports/roster.js`). → `{ summary, newAccounts: { created: [{ name, email, role, setupUrl }],
+  skipped }, accounts, students, teachers }`. The setup links are shown once.
+- **Accounts screen**: "Import class lists" (`src/screens/RosterImport.jsx`): pick the JSON or the four CSVs,
+  see counts and problems, confirm, then "Download sign-in links (CSV)" (name, email, role, setup link).
+- **Empty records**: Studio, reference letter, activities list and scan-in show an empty state instead of
+  crashing when there are no presentations, Year 13 students or share links.
+- Tests: `node --test src/imports/roster.test.mjs`, `server/test/roster.test.mjs`, and
+  `node scripts/checks/roster.cjs` (starts a clean pilot, imports from the Accounts screen, opens every
+  role's screens on the near-empty record).
+- Size (the school's real export: 133 staff, 960 students, 727 classes, 9,586 class places): parse 47 ms,
+  import 49 ms, re-import 126 ms, import plus 1,093 accounts over HTTP about 0.2 s; `state.json` 1.2 MB, a save
+  after any change about 33 ms. 220 classes have no line (Mathematics, I&S, EE, TOK, Business, ...).
+- Not done: removing people who left (they are only listed), and editing classes in the app.

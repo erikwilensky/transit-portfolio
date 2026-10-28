@@ -1,0 +1,4 @@
+id,name,year,programme,homeroom,advisorId,joinedYear,email,house
+S2001,Fern Gale,12,IB Diploma,12B,T100,2021,fern.gale@example.org,Teak
+S2002,Gus Hale,12,DP,12B,T100,,gus.hale@example.org,
+S2003,Hana Ito,8,MYP,8A,T104,2025,,

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { completeOnboarding, getSchoolLines, STARTERS } from '../api.js';
+import { completeOnboarding, getSchoolLines, STARTERS, hasStarters } from '../api.js';
 
 const TEMPLATES = [['postcard', 'Postcard', 'One photo and a sentence per line. Good for family.'], ['scrapbook', 'Scrapbook', 'Photos first, a few words under each.'], ['poster', 'Poster', 'Big title, your lines as colourful bands.']];
 const INTEREST = { science: 'Experiments', computing: 'Coding and games', environment: 'Nature and animals', sport: 'Sport', service: 'Helping people', music: 'Music', design: 'Making things', languages: 'Languages', art: 'Art and drawing' };
@@ -47,7 +47,7 @@ export default function Onboarding({ map, studentId, onDone }) {
                 <g key={l.id}><path d={`M90 ${y} H150`} stroke={l.colour} strokeWidth="9" strokeLinecap="round" className="ob-line" style={{ animationDelay: `${i * 0.2}s` }} /><path d={`M150 ${y} H610`} stroke={l.colour} strokeWidth="5" strokeDasharray="2 10" strokeLinecap="round" opacity=".55" /><text x={8} y={y + 4} className="ob-l">{l.name}</text></g>
               ); })}
             </svg>
-            <div className="ob-foot"><button className="ghost" onClick={() => setStep(0)}>Back</button><span className="spacer" /><button className="primary" onClick={() => setStep(2)}>Next</button></div>
+            <div className="ob-foot"><button className="ghost" onClick={() => setStep(0)}>Back</button><span className="spacer" /><button className="primary" onClick={() => setStep(hasStarters() ? 2 : 3)}>Next</button></div>
           </>
         )}
         {step === 2 && (
@@ -71,7 +71,7 @@ export default function Onboarding({ map, studentId, onDone }) {
                 <span className="ob-thumb">{chosen.map((c) => <i key={c.id} style={{ background: c.colour }} />)}</span><b>{l}</b><small>{d}</small>
               </button>
             ))}</div>
-            <div className="ob-foot"><button className="ghost" onClick={() => setStep(2)}>Back</button><span className="spacer" /><button className="primary" onClick={() => { completeOnboarding(studentId, picked, tpl); onDone(); }}>Go to my map</button></div>
+            <div className="ob-foot"><button className="ghost" onClick={() => setStep(hasStarters() ? 2 : 1)}>Back</button><span className="spacer" /><button className="primary" onClick={() => { completeOnboarding(studentId, picked, tpl); onDone(); }}>Go to my map</button></div>
           </>
         )}
       </div>

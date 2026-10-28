@@ -1,6 +1,7 @@
 // Pilot sign-in routes, the sign-in guard and the admin accounts screen's API.
 // The account and session logic is in server/auth.mjs (canAct is exported from there and re-exported here).
-import { send, readJson, cookies, middleware, PORT } from '../lib.mjs';
+import { send, readJson, cookies, middleware, PORT, clientIp, isHttps } from '../lib.mjs';
+import { mailReady, mailLink } from '../mail.mjs';
 import { api, changed } from '../store.mjs';
 import * as A from '../auth.mjs';
 
@@ -9,8 +10,8 @@ export { canAct } from '../auth.mjs';
 const OPEN = [/^\/api\/health$/, /^\/api\/public\//, /^\/api\/auth\//];
 const bad = (status, message) => Object.assign(new Error(message), { status });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const originOf = (req) => process.env.PUBLIC_URL?.replace(/\/$/, '') || `${req.socket.encrypted || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http'}://${req.headers.host}`;
-const setupUrl = (base, t) => `${base}/#/setup/${t}`;
+export const originOf = (req) => process.env.PUBLIC_URL?.replace(/\/$/, '') || `${isHttps(req) ? 'https' : 'http'}://${req.headers.host}`;
+export const setupUrl = (base, t) => `${base}/#/setup/${t}`;
 // A state-changing request must come from this site's own pages (on top of SameSite=Lax).
 const sameOrigin = (req) => { const o = req.headers.origin; if (!o) return true; try { return new URL(o).host === req.headers.host; } catch { return false; } };
 
@@ -28,7 +29,13 @@ const signIn = (req, res, a, body = {}) => {
   const s = A.startSession(a.id);
   send(res, 200, { mode: A.MODE, user: me(a), ...body }, { 'set-cookie': A.cookieHeader(req, s.token, s.maxAge) });
 };
-const requireAdmin = (req) => { if (!req.user) throw bad(401, 'Sign in first.'); if (!A.isAdmin(req.user)) throw bad(403, 'Only an admin can do that.'); };
+// A new setup link for an account, emailed when mail is set up. Never logged.
+async function makeLink(req, a, kind) {
+  const url = setupUrl(originOf(req), A.newSetup(a, { keepPassword: kind === 'forgot' }));
+  return { setupUrl: url, emailed: await mailLink({ to: a.email, name: a.name, url, kind }) };
+}
+const FORGOT_IP = 100, FORGOT_EMAIL = 3; // per 15 minutes
+export const requireAdmin = (req) => { if (!req.user) throw bad(401, 'Sign in first.'); if (!A.isAdmin(req.user)) throw bad(403, 'Only an admin can do that.'); };
 
 // Builds and checks the record link for a new or edited account; creates a new student or teacher when asked.
 function resolveLink(b) {
@@ -53,7 +60,7 @@ function resolveLink(b) {
   if (problem) throw bad(400, problem);
   return A.linkOf({ kind, ...link });
 }
-const listBody = () => ({
+export const listBody = () => ({
   accounts: A.allAccounts().map(A.publicUser).map((u) => ({ ...u, setupPending: !u.hasPassword })),
   students: api.getStudents({ includeCohort: true }).map((s) => ({ id: s.id, name: s.name, grade: s.grade, programme: s.programme })),
   teachers: api.getTeachers().map((t) => ({ id: t.id, name: t.name, role: t.role })),
@@ -80,9 +87,9 @@ export default (app) => {
 
   app.post('/api/auth/login', async (req, res) => {
     const { email, password } = await readJson(req);
-    const e = A.normEmail(email); const ip = A.clientIp(req);
+    const e = A.normEmail(email); const ip = clientIp(req);
     const t = A.throttle(e, ip);
-    if (t.blocked) return send(res, 429, { error: 'Too many tries. Wait 15 minutes, or ask an admin for a new setup link.' }, { 'retry-after': '900' });
+    if (t.blocked) return send(res, 429, { error: A.BLOCKED }, { 'retry-after': '900' });
     if (t.delay) await sleep(t.delay);
     const a = A.accountByEmail(e);
     if (!(await A.checkPassword(a, password))) { A.noteFailure(e, ip); return send(res, 401, { error: 'That email and password do not match.' }); }
@@ -98,15 +105,37 @@ export default (app) => {
   app.post('/api/auth/password', async (req, res) => {
     if (!req.user) throw bad(401, 'Sign in first.');
     const { current, password } = await readJson(req);
-    const ip = A.clientIp(req); const e = req.user.email;
+    const ip = clientIp(req); const e = req.user.email;
     const t = A.throttle(e, ip);
-    if (t.blocked) throw bad(429, 'Too many tries. Wait 15 minutes.');
+    if (t.blocked) throw bad(429, A.BLOCKED);
     if (t.delay) await sleep(t.delay);
     if (!(await A.checkPassword(req.user, current))) { A.noteFailure(e, ip); throw bad(400, 'Your current password is not right.'); }
     const p = A.passwordProblem(password); if (p) throw bad(400, p);
     await A.setPassword(req.user, password);
     A.endSessionsOf(req.user.id, cookies(req)[A.COOKIE]);
     send(res, 200, { ok: true });
+  });
+
+  // ── Your own sessions: how many devices, and sign out everywhere (this one too) ──
+  app.get('/api/auth/sessions', (req, res) => { if (!req.user) throw bad(401, 'Sign in first.'); send(res, 200, { devices: A.sessionCount(req.user.id) }); });
+  app.post('/api/auth/logout-everywhere', (req, res) => {
+    if (!req.user) throw bad(401, 'Sign in first.');
+    A.endSessionsOf(req.user.id);
+    send(res, 200, { ok: true }, { 'set-cookie': A.cookieHeader(req, '', 0) });
+  });
+
+  // ── Forgot your password? Always the same answer, so it never says whether an account exists. ──
+  // With mail set up: emails a new link (the old password works until it is used). Without, or if the
+  // email fails: notes the request on the account, for an admin (Accounts) or their advisor to answer.
+  app.post('/api/auth/forgot', async (req, res) => {
+    const { email } = await readJson(req);
+    if (A.bump(`f:${clientIp(req)}`) > FORGOT_IP) return send(res, 429, { error: A.BLOCKED }, { 'retry-after': '900' });
+    const e = A.normEmail(email);
+    send(res, 200, { ok: true, emailed: mailReady() });
+    // After the reply, so its timing says nothing either.
+    if (!e || e.length > 254 || A.bump(`fe:${e}`) > FORGOT_EMAIL) return;
+    const a = A.accountByEmail(e); if (!a) return;
+    if (!(mailReady() && (await makeLink(req, a, 'forgot')).emailed)) A.noteResetRequest(a);
   });
 
   // One-time setup links: the first admin, and every account an admin creates or resets.
@@ -130,6 +159,7 @@ export default (app) => {
     const a = A.accountBySetup(token);
     if (!a) throw bad(404, 'This setup link has expired or was already used. Ask an admin for a new one.');
     await A.setPassword(a, password);
+    A.endSessionsOf(a.id); A.noteSuccess(a.email);
     signIn(req, res, a);
   });
 
@@ -146,8 +176,8 @@ export default (app) => {
     if (!name) throw bad(400, 'Add a name.');
     const link = resolveLink(b);
     const a = A.createAccount({ email, name, kind: b.kind, admin: !!b.admin, ...link });
-    const t = A.newSetup(a);
-    send(res, 201, { account: A.publicUser(a), setupUrl: setupUrl(originOf(req), t), ...listBody() });
+    const l = await makeLink(req, a, 'new');
+    send(res, 201, { account: A.publicUser(a), ...l, ...listBody() });
   });
   app.post('/api/admin/accounts/:id', async (req, res, { id }) => {
     requireAdmin(req);
@@ -162,12 +192,19 @@ export default (app) => {
     A.updateAccount(a, { kind, name: String(b.name || a.name).trim(), admin: !!admin, ...link });
     send(res, 200, { account: A.publicUser(a), ...listBody() });
   });
-  app.post('/api/admin/accounts/:id/reset', (req, res, { id }) => {
+  app.post('/api/admin/accounts/:id/reset', async (req, res, { id }) => {
     requireAdmin(req);
     const a = A.accountById(id); if (!a) throw bad(404, 'No such account.');
     if (a.id === req.user.id) throw bad(400, 'Change your own password from your account menu instead.');
-    const t = A.newSetup(a);
-    send(res, 200, { account: A.publicUser(a), setupUrl: setupUrl(originOf(req), t), ...listBody() });
+    const l = await makeLink(req, a, 'reset');
+    send(res, 200, { account: A.publicUser(a), ...l, ...listBody() });
+  });
+  // Clears a "forgot password" request without making a link.
+  app.post('/api/admin/accounts/:id/dismiss', (req, res, { id }) => {
+    requireAdmin(req);
+    const a = A.accountById(id); if (!a) throw bad(404, 'No such account.');
+    A.dismissResetRequest(a);
+    send(res, 200, listBody());
   });
   app.delete('/api/admin/accounts/:id', (req, res, { id }) => {
     requireAdmin(req);
@@ -175,5 +212,23 @@ export default (app) => {
     if (a.id === req.user.id) throw bad(400, 'You cannot remove your own account.');
     A.removeAccount(id);
     send(res, 200, listBody());
+  });
+
+  // ── Advisor: a new sign-in link for a student in their own advisory (advisorId = their teacherId) ──
+  // Only student accounts, so an advisor can never reset a staff, family or admin account.
+  const advisee = (req, studentId) => {
+    if (!req.user) throw bad(401, 'Sign in first.');
+    const s = api.getStudent(studentId);
+    const mine = A.isAdmin(req.user) || (A.STAFF.includes(req.user.kind) && !!req.user.teacherId && s?.advisorId === req.user.teacherId);
+    if (!s || !mine) throw bad(403, 'Only their advisor or the pilot admin can do that.');
+    return A.allAccounts().find((a) => a.kind === 'student' && a.studentId === studentId) || null;
+  };
+  const brief = (a) => a && { id: a.id, name: a.name, email: a.email, hasPassword: !!a.password, resetRequest: a.resetRequest || null };
+  app.get('/api/advisor/students/:studentId/account', (req, res, { studentId }) => send(res, 200, { account: brief(advisee(req, studentId)) }));
+  app.post('/api/advisor/students/:studentId/reset', async (req, res, { studentId }) => {
+    const a = advisee(req, studentId);
+    if (!a) throw bad(404, 'This student has no account yet. Ask the pilot admin.');
+    const l = await makeLink(req, a, 'reset');
+    send(res, 200, { account: brief(a), ...l });
   });
 };

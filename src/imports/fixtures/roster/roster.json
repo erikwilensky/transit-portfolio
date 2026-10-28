@@ -1,0 +1,33 @@
+{
+  "format": "transit-roster/1",
+  "school": { "name": "NIST International School", "academicYear": "2026-27", "exportedAt": "2026-10-20T08:00:00Z", "source": "SIS test export (names altered)" },
+  "teachers": [
+    { "id": "T100", "name": "Ms Ada Brook", "email": "ada.brook@example.org", "roles": ["teacher", "advisor"], "department": "Biology" },
+    { "id": "T101", "name": "Mr Ben Carter", "email": "ben.carter@example.org", "roles": ["teacher"], "department": "Computer Science" },
+    { "id": "T102", "name": "Ms Chloe Dumas", "email": "chloe.dumas@example.org", "roles": ["counsellor"] },
+    { "id": "T103", "name": "Dr Dan Ellis", "email": "dan.ellis@example.org", "roles": ["leadership", "teacher"], "department": "Mathematics" },
+    { "id": "T104", "name": "Ms Eve Fong", "roles": ["coordinator", "advisor"], "department": "Visual Arts" },
+    { "id": "T105", "name": "Mr Finn Gray", "email": "finn.gray@example.org", "roles": ["advisor"] }
+  ],
+  "students": [
+    { "id": "S2001", "name": "Fern Gale", "year": 12, "programme": "IB Diploma", "homeroom": "12B", "advisorId": "T100", "joinedYear": 2021, "email": "fern.gale@example.org", "house": "Teak" },
+    { "id": "S2002", "name": "Gus Hale", "year": 12, "programme": "DP", "homeroom": "12B", "advisorId": "T100", "email": "gus.hale@example.org" },
+    { "id": "S2003", "name": "Hana Ito", "year": 8, "programme": "MYP", "homeroom": "8A", "advisorId": "T104", "joinedYear": 2025 }
+  ],
+  "classes": [
+    { "id": "C-BIO12", "name": "12 Biology HL", "subject": "Biology", "year": 12, "level": "HL", "teacherIds": ["T100"] },
+    { "id": "C-CS12", "name": "12 Computer Science SL", "subject": "Computer Science", "year": 12, "level": "SL", "teacherIds": ["T101"] },
+    { "id": "C-MAT12", "name": "12 Maths AA HL", "subject": "Mathematics: analysis and approaches", "year": 12, "level": "HL", "teacherIds": ["T103"] },
+    { "id": "C-ART8", "name": "8 Visual Arts", "subject": "Visual Arts", "year": 8, "teacherIds": ["T104"] },
+    { "id": "C-ROB8", "name": "8 Robotics", "subject": "Robotics", "year": 8, "teacherIds": ["T101"], "line": "computing" }
+  ],
+  "enrolments": [
+    { "studentId": "S2001", "classId": "C-BIO12", "from": "2026-08-12" },
+    { "studentId": "S2001", "classId": "C-CS12" },
+    { "studentId": "S2001", "classId": "C-MAT12" },
+    { "studentId": "S2002", "classId": "C-BIO12" },
+    { "studentId": "S2002", "classId": "C-MAT12" },
+    { "studentId": "S2003", "classId": "C-ART8" },
+    { "studentId": "S2003", "classId": "C-ROB8" }
+  ]
+}

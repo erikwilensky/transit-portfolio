@@ -56,7 +56,7 @@ export default function Applications({ go, persona, drafts, version, toast }) {
           </section>
         );
       })}
-      {commenting && <CommentDialog pres={commenting} toast={toast} onClose={() => setCommenting(null)} />}
+      {commenting && <CommentDialog pres={commenting} by={persona.teacherId} toast={toast} onClose={() => setCommenting(null)} />}
     </div>
   );
 }

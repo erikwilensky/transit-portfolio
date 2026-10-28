@@ -4,8 +4,9 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import { DATA_DIR, writeAtomic } from './lib.mjs';
+import { DATA_DIR, writeAtomic, isHttps } from './lib.mjs';
 import { api } from './store.mjs';
+import { reachOf, touchedBy } from './scope.mjs';
 
 export const MODE = process.env.TP_MODE === 'pilot' ? 'pilot' : 'demo';
 export const KINDS = ['student', 'advisor', 'teacher', 'counsellor', 'coordinator', 'leadership', 'parent', 'admin'];
@@ -20,8 +21,11 @@ const SESSIONS = path.join(DATA_DIR, 'sessions.json');
 const readFile = (f, empty) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return empty; } };
 let accounts = readFile(ACCOUNTS, []);
 let sessions = readFile(SESSIONS, {});
-const saveAccounts = () => writeAtomic(ACCOUNTS, JSON.stringify(accounts, null, 2));
-const saveSessions = () => writeAtomic(SESSIONS, JSON.stringify(sessions));
+let hold = false; // inside batchAccounts: save once at the end
+const saveAccounts = () => hold || writeAtomic(ACCOUNTS, JSON.stringify(accounts, null, 2));
+const saveSessions = () => hold || writeAtomic(SESSIONS, JSON.stringify(sessions));
+// Many account changes at once (the roster import makes hundreds): one save at the end.
+export function batchAccounts(fn) { hold = true; try { return fn(); } finally { hold = false; saveAccounts(); saveSessions(); } }
 
 // ── Hashing ──
 const scrypt = promisify(crypto.scrypt);
@@ -79,7 +83,7 @@ export function updateAccount(a, patch) {
   Object.assign(a, patch); saveAccounts();
 }
 export function removeAccount(id) { accounts = accounts.filter((a) => a.id !== id); endSessionsOf(id); saveAccounts(); }
-export async function setPassword(a, password) { a.password = await hashPassword(password); delete a.setup; saveAccounts(); }
+export async function setPassword(a, password) { a.password = await hashPassword(password); delete a.setup; delete a.resetRequest; saveAccounts(); }
 
 // ── One-time setup links ──
 // First run (no accounts yet): a setup token held in memory only, printed to the log.
@@ -91,13 +95,19 @@ export function firstRunToken() {
 }
 export const isFirstRunToken = (t) => !accounts.length && !!firstRun && typeof t === 'string' && t.length === firstRun.length && crypto.timingSafeEqual(Buffer.from(t), Buffer.from(firstRun));
 export const clearFirstRun = () => { firstRun = null; };
-// An account's setup link: shown once to the admin, stored only as a hash. It also ends the old password and sessions.
-export function newSetup(a) {
+// An account's setup link: shown once to the admin, stored only as a hash. It also ends the old password and
+// sessions, answers any "forgot password" request and lifts a sign-in block on that email.
+// keepPassword (an emailed "forgot" link): the old password works until the link is used.
+export function newSetup(a, { keepPassword = false } = {}) {
   const t = token();
   a.setup = { hash: sha(t), expiresAt: new Date(Date.now() + SETUP_DAYS * 864e5).toISOString() };
-  delete a.password; endSessionsOf(a.id); saveAccounts();
+  if (!keepPassword) { delete a.password; endSessionsOf(a.id); }
+  delete a.resetRequest; fails.delete(`e:${a.email}`); saveAccounts();
   return t;
 }
+// "Forgot your password?": noted on the account for an admin (or the student's advisor) to answer.
+export function noteResetRequest(a) { a.resetRequest = { at: new Date().toISOString(), n: (a.resetRequest?.n || 0) + 1 }; saveAccounts(); }
+export function dismissResetRequest(a) { delete a.resetRequest; saveAccounts(); }
 export function accountBySetup(t) {
   if (typeof t !== 'string' || !t) return null;
   const h = sha(t);
@@ -119,68 +129,76 @@ export function sessionUser(t) {
   if (!s || s.expiresAt < Date.now()) return null;
   return accountById(s.userId) || null;
 }
+export const sessionCount = (userId) => Object.values(sessions).filter((s) => s.userId === userId && s.expiresAt >= Date.now()).length;
 export function endSession(t) { if (t && sessions[sha(t)]) { delete sessions[sha(t)]; saveSessions(); } }
 export function endSessionsOf(userId, keep) {
   for (const [k, s] of Object.entries(sessions)) if (s.userId === userId && k !== (keep && sha(keep))) delete sessions[k];
   saveSessions();
 }
 export const cookieHeader = (req, value, maxAge) => {
-  const secure = req.socket.encrypted || req.headers['x-forwarded-proto'] === 'https' || process.env.COOKIE_SECURE === '1';
+  const secure = isHttps(req) || process.env.COOKIE_SECURE === '1';
   return `${COOKIE}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure ? '; Secure' : ''}`;
 };
 
 // ── Slowing down repeated failed sign-ins, per email and per address ──
+// The address is lib's clientIp(req) (the visitor behind cloudflared). A whole school can share one
+// public address (school Wi-Fi), so the per-address limit is loose (AUTH_IP_LIMIT, default 300 failures
+// in 15 minutes) and the strict one is per email (10). Failures per address only slow things down after
+// many (every 50 counts as one per-email failure).
 const fails = new Map(); // key → { n, first }
 const WINDOW = 15 * 60 * 1000;
-const failCount = (k) => { const f = fails.get(k); if (!f || Date.now() - f.first > WINDOW) { fails.delete(k); return 0; } return f.n; };
-export const clientIp = (req) => (process.env.TRUST_PROXY === '1' && String(req.headers['x-forwarded-for'] || '').split(',')[0].trim()) || req.socket.remoteAddress || '?';
+export const EMAIL_LIMIT = 10;
+export const IP_LIMIT = Number(process.env.AUTH_IP_LIMIT) || 300;
+export const BLOCKED = 'Too many tries. Wait 15 minutes or ask your teacher.';
+export const failCount = (k) => { const f = fails.get(k); if (!f || Date.now() - f.first > WINDOW) { fails.delete(k); return 0; } return f.n; };
+export const bump = (k) => { if (fails.size > 50000) for (const key of [...fails.keys()]) failCount(key); const n = failCount(k); fails.set(k, { n: n + 1, first: n ? fails.get(k).first : Date.now() }); return n + 1; };
 export function throttle(email, ip) {
-  const n = Math.max(failCount(`e:${email}`), Math.floor(failCount(`i:${ip}`) / 3));
-  if (failCount(`e:${email}`) >= 10 || failCount(`i:${ip}`) >= 30) return { blocked: true };
+  if (failCount(`e:${email}`) >= EMAIL_LIMIT || failCount(`i:${ip}`) >= IP_LIMIT) return { blocked: true };
+  const n = Math.max(failCount(`e:${email}`), Math.floor(failCount(`i:${ip}`) / 50));
   return { delay: n >= 3 ? Math.min(250 * 2 ** (n - 3), 8000) : 0 };
 }
-export function noteFailure(email, ip) {
-  for (const k of [`e:${email}`, `i:${ip}`]) { const n = failCount(k); fails.set(k, { n: n + 1, first: n ? fails.get(k).first : Date.now() }); }
-}
+export function noteFailure(email, ip) { bump(`e:${email}`); bump(`i:${ip}`); }
 export const noteSuccess = (email) => fails.delete(`e:${email}`);
 
 // ── canAct: may this signed-in person call this api.js mutator with these arguments? ──
 // Cheap, server-side, per role. Students may only change their own record; families only answer
-// consent for their own children; staff may call any mutator except the admin-only ones.
-// /api/action should call it before running a mutator: `if (!canAct(req.user, fn, args)) 403`.
-// In demo mode there are no accounts, so callers skip it (req.user is null).
-const ADMIN_ONLY = new Set(['resetDemo', 'restore', 'addStudent', 'addTeacher']);
-const ANYONE = new Set(['recordView', 'markNotificationsRead', 'setLang']);
-const ev = (id) => api.getEvent(id)?.studentId;
+// consent for their own children; whole-school staff may call any mutator except the admin-only ones;
+// advisors and teachers only on the students they work with (reachOf in server/scope.mjs), only as
+// themselves, and not the school-wide settings. Which students a call touches: touchedBy (scope.mjs).
+// /api/action calls it in pilot mode: `if (!canAct(req.user, fn, args)) 403`. Demo mode has no accounts.
+const ADMIN_ONLY = new Set(['resetDemo', 'restore', 'addStudent', 'addTeacher', 'eraseStudent', 'importRoster']);
+const ANYONE = new Set(['recordView', 'setLang']);
+// School-wide settings an advisor or subject teacher does not change.
+const WHOLE_SCHOOL_ONLY = new Set(['addSchoolLine', 'renameLine', 'decideBranch', 'setRollout', 'matchRoster']);
+// The mutators a student may call, on their own record only.
+const STUDENT_FNS = new Set(['setStudentDrafts', 'setGithub', 'disconnectGithub', 'simulateWeek', 'addStation', 'addBranch', 'endLine', 'restartLine',
+  'completeOnboarding', 'capturePhone', 'setPrivacy', 'logLink', 'addGoal', 'setIntensity', 'remindParent', 'sync', 'importCandidates', 'addReflection',
+  'setVisibility', 'editStation', 'deleteStation', 'completeGoal', 'setTags', 'requestEndorsement', 'addCheckIn', 'acceptCandidate', 'dismissCandidate',
+  'restoreCandidate', 'mergeCandidate', 'resubmit', 'answerEvidence', 'acceptInterchange', 'ignoreInterchange']);
+// A student's own file import only, never as a school source.
+const STUDENT_EXTRA = { importCandidates: (a) => a[1]?.sourceId === 'mine' && Array.isArray(a[0]) && a[0].length > 0 };
 const st = () => api.getStore();
-const inboxItem = (id) => (st().inbox.find((e) => e.id === id) || st().dismissed.find((e) => e.id === id))?.studentId;
-// For each mutator a student may call: the studentId it acts on (or every one it touches).
-const STUDENT_OWNS = {
-  setStudentDrafts: (a) => [a[0]], setGithub: (a) => [a[0]], disconnectGithub: (a) => [a[0]], simulateWeek: (a) => [a[0]],
-  addStation: (a) => [a[0]], addBranch: (a) => [a[0]], endLine: (a) => [a[0]], restartLine: (a) => [a[0]],
-  completeOnboarding: (a) => [a[0]], capturePhone: (a) => [a[0]], setPrivacy: (a) => [a[0]], logLink: (a) => [a[0]],
-  addGoal: (a) => [a[0], ...(a[2] ? ['(as staff)'] : [])], setIntensity: (a) => [a[0]], remindParent: (a) => [a[0]],
-  sync: (a) => [a[1]], importCandidates: (a) => (a[1]?.sourceId !== 'mine' ? ['(as staff)'] : Array.isArray(a[0]) && a[0].length ? a[0].map((r) => r?.studentId) : [null]),
-  addReflection: (a) => [a[0]?.studentId, ev(a[0]?.eventId)],
-  setVisibility: (a) => [ev(a[0])], editStation: (a) => [ev(a[0])], deleteStation: (a) => [ev(a[0])], completeGoal: (a) => [ev(a[0])],
-  setTags: (a) => [ev(a[0])], requestEndorsement: (a) => [ev(a[0])], addCheckIn: (a) => [ev(a[0]), ...(a[2] !== 'student' ? ['(as staff)'] : [])],
-  acceptCandidate: (a) => [inboxItem(a[0])], dismissCandidate: (a) => [inboxItem(a[0])], restoreCandidate: (a) => [inboxItem(a[0])],
-  mergeCandidate: (a) => [inboxItem(a[0]), ev(a[1])],
-  resubmit: (a) => [st().requests.find((r) => r.id === a[0])?.studentId],
-  answerEvidence: (a) => [st().evidenceRequests.find((r) => r.id === a[0])?.studentId],
-  acceptInterchange: (a) => [ev(a[0]?.b?.id)],
-  ignoreInterchange: () => [],
-};
 export function canAct(user, fn, args = []) {
   if (!user || typeof fn !== 'string') return false;
+  // Undo sends a whole copy of the record, and in a pilot every browser holds only its own part of it.
+  if (fn === 'restore') return false;
   if (isAdmin(user)) return true;
   if (ADMIN_ONLY.has(fn)) return false;
   if (ANYONE.has(fn)) return true;
-  if (STAFF.includes(user.kind)) return true;
+  // Only your own bell: every key must be one of yours (st:…, t:…, fam:…, role:…, or your record's demo persona id).
+  if (fn === 'markNotificationsRead') { const mine = new Set(api.notifyKeys({ kind: user.kind, studentId: user.studentId, teacherId: user.teacherId, children: user.children })); return [].concat(args[0] ?? []).every((k) => mine.has(k)); }
   try {
+    if (STAFF.includes(user.kind)) {
+      const reach = reachOf(user);
+      if (reach === null) return true;
+      if (WHOLE_SCHOOL_ONLY.has(fn)) return false;
+      const t = touchedBy(fn, args);
+      return t.students.every((sid) => reach.has(sid)) && t.as.every((id) => id === user.teacherId);
+    }
     if (user.kind === 'student') {
-      const owns = STUDENT_OWNS[fn];
-      return !!owns && owns(args).every((sid) => sid === user.studentId);
+      if (!STUDENT_FNS.has(fn) || (STUDENT_EXTRA[fn] && !STUDENT_EXTRA[fn](args))) return false;
+      const t = touchedBy(fn, args);
+      return !t.as.length && t.students.every((sid) => sid === user.studentId);
     }
     if (user.kind === 'parent') {
       if (fn === 'setFamily') return true;

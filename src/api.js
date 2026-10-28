@@ -11,6 +11,9 @@ import integrationsData from '../data/integrations.json';
 import schoolData from '../data/school.json';
 // Re-exported so the server bundle carries it (public verify codes); the server never loads src/.
 export { verifyCode } from './format.js';
+import { planRoster, parseRoster } from './imports/roster.js';
+// The server reads roster files with the same code (POST /api/admin/roster).
+export { parseRoster, kindOfRoles } from './imports/roster.js';
 
 export const TODAY = '2026-10-26';
 
@@ -24,7 +27,9 @@ const store = {
   reflections: reflectionsData.map((r) => ({ ...r })),
   endorsements: endorsementsData.map((n) => ({ ...n })),
   students: structuredClone(studentsData),
-  teachers: structuredClone(teachersData), // staff records; the pilot adds real ones with addTeacher
+  teachers: structuredClone(teachersData), // staff records; the pilot adds real ones with addTeacher or importRoster
+  classes: [],        // from the school's roster: { id, name, subject, year, level, teacherIds, lineId }
+  enrolments: [],     // { studentId, classId, from, to }
   lines: structuredClone(linesData),
   requests: structuredClone(schoolData.requests),
   prompts: structuredClone(schoolData.prompts),
@@ -59,6 +64,12 @@ export const getTeachers = () => teacherList();
 const AVATAR_COLOURS = ['#4F529B', '#008A60', '#E73C3E', '#FF8F1C', '#002855', '#FFB81C', '#78D5E1'];
 const initialsOf = (name) => name.replace(/^(Mr|Mrs|Ms|Miss|Dr|Kru|Khun)\.?\s+/i, '').split(/\s+/).filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase() || '?';
 const nextId = (prefix, list) => `${prefix}-${String(Math.max(0, ...list.map((x) => Number(x.id.slice(prefix.length + 1)) || 0)) + 1).padStart(2, '0')}`;
+// A new student's presentations, one per audience, empty until they fill them in. Ids come from the
+// student id, so a replay on the server makes the same ones.
+const STARTER_PRES = [['general', 'metro', 'profile', 'my journey'], ['university', 'nist', 'narrative', 'portfolio'], ['specific', 'nist', 'letter', 'why this course'], ['employer', 'nist', 'cv', 'projects and experience'], ['scholarship', 'nist', 'impact', 'contribution and impact'], ['custom', 'metro', 'custom', 'my page']];
+const starterDrafts = (s) => STARTER_PRES.map(([audience, theme, layout, t]) => ({ id: `pr-${s.id}-${audience}`, studentId: s.id, audience, targetName: null, tier: audience === 'custom' ? 'builder' : 'template', title: `${s.name}: ${t}`, filters: { hiddenLines: [] }, order: null, theme, layout, showMap: audience === 'general', narratives: {}, shareLinks: [],
+  ...(audience === 'specific' ? { institution: '', focusLines: [], whyCourse: '' } : audience === 'employer' ? { intro: '', skills: [] } : audience === 'scholarship' ? { intro: '' } : audience === 'custom' ? { design: null } : {}) }));
+const seedDrafts = (s) => { store.drafts ||= {}; if (!store.drafts[s.id]?.length) store.drafts[s.id] = starterDrafts(s); };
 export function addStudent(f) {
   const { id, name, year, programme, homeroom = '', advisorId = null } = f;
   if (id && getStudent(id)) return getStudent(id);
@@ -81,6 +92,34 @@ export function addTeacher({ id, name, role = 'Teacher' }) {
   emit();
   return t;
 }
+// ── Pilot: the school's class lists (src/imports/roster.js, docs/roster-format.md) ──
+// Ids are the school's own (SIS) ids, so a new export updates the same records. Nobody is ever removed:
+// people missing from the file are listed in the summary for an admin to deal with.
+const rosterCurrent = () => ({ students: store.students, teachers: teacherList(), classes: store.classes || [], enrolments: store.enrolments || [] });
+const rosterOpts = () => ({ lineIds: getSchoolLines().map((l) => l.id), today: TODAY });
+const checked = (r) => { const p = parseRoster(r); if (p.errors.length) throw Object.assign(new Error(`The roster has problems: ${p.errors.slice(0, 3).join(' ')}`), { status: 400, errors: p.errors }); return p.roster; };
+export const previewRoster = (roster) => planRoster(checked(roster), rosterCurrent(), rosterOpts()).summary;
+export function importRoster(parsed) {
+  const roster = checked(parsed);
+  const { writes, summary } = planRoster(roster, rosterCurrent(), rosterOpts());
+  store.teachers ||= structuredClone(teachersData); store.classes ||= []; store.enrolments ||= []; store.drafts ||= {};
+  // Indexed, so a whole school (about 1,000 students and 10,000 class places) imports in well under a second.
+  const upsert = (list, ws, key = (x) => x.id, wkey = (w) => w.id) => {
+    const at = new Map(list.map((x) => [key(x), x]));
+    for (const w of ws) { const old = at.get(wkey(w)); if (old) Object.assign(old, w.rec); else { list.push(w.rec); at.set(wkey(w), w.rec); } }
+  };
+  upsert(store.teachers, writes.teachers); upsert(store.students, writes.students); upsert(store.classes, writes.classes);
+  for (const w of writes.students) store.drafts[w.id] ||= []; // presentations come at onboarding (completeOnboarding)
+  const pair = (e) => `${e.studentId}|${e.classId}`;
+  upsert(store.enrolments, writes.enrolments, pair, (w) => pair(w.rec));
+  const ends = new Map(writes.endEnrolments.map((x) => [pair(x), x.to]));
+  if (ends.size) for (const e of store.enrolments) if (ends.has(pair(e))) e.to = ends.get(pair(e));
+  store.rosterImport = { school: roster.school, at: nowIso(), summary };
+  emit();
+  return summary;
+}
+export const getClasses = () => store.classes || [];
+export const getEnrolments = () => store.enrolments || [];
 export const getLine = (id) => lineById(id);
 export const getSchoolLines = () => store.lines.filter((l) => !l.studentId);
 export const getAllLines = () => store.lines;
@@ -88,7 +127,7 @@ export const getEvent = (id) => store.events.find((e) => e.id === id);
 export const getStore = () => store;
 
 // The visibility levels each viewer may read. Enforced here, not in the UI.
-const VISIBLE_TO = {
+export const VISIBLE_TO = {
   student: ['private', 'advisor', 'school', 'publishable'],
   advisor: ['advisor', 'school', 'publishable'],
   school: ['school', 'publishable'],
@@ -277,7 +316,7 @@ export function importCandidates(rows, { sourceId, by, file } = {}) {
     if (sourceId === 'mine') log(sid, actor, 'sync', `Imported ${items} from ${file || 'a file'} into the inbox`);
     else {
       log(sid, actor, 'sync', `Imported ${items} from ${system}${file ? ` (${file})` : ''} into the inbox`);
-      notify(PERSONA_OF_STUDENT[sid], `${items} from ${system} ${n === 1 ? 'is' : 'are'} in your inbox. You choose where ${n === 1 ? 'it goes' : 'they go'}.`, { persona: PERSONA_OF_STUDENT[sid], screen: 'inbox' });
+      notify(toStudent(sid), `${items} from ${system} ${n === 1 ? 'is' : 'are'} in your inbox. You choose where ${n === 1 ? 'it goes' : 'they go'}.`, { persona: toStudent(sid), screen: 'inbox' });
     }
   }
   if (sourceId && sourceId !== 'mine') {
@@ -386,13 +425,13 @@ export function setCasProject(sid, status, title, by) {
   const was = getCasProject(sid).status;
   store.casProjects[sid] = { status, title, updated: TODAY };
   log(sid, by, 'goal', `CAS project${title ? ` “${title}”` : ''}: ${was} → ${status}`);
-  if (was !== status) notify(PERSONA_OF_STUDENT[sid], `${by} marked your CAS project as ${status.toLowerCase()}`, { persona: PERSONA_OF_STUDENT[sid], screen: 'map' });
+  if (was !== status) notify(toStudent(sid), `${by} marked your CAS project as ${status.toLowerCase()}`, { persona: toStudent(sid), screen: 'map' });
   emit();
 }
 export const getCasNudges = (sid) => store.casNudges.filter((n) => n.studentId === sid);
 export function casNudge(sid, about, text, by) {
   store.casNudges.push({ id: uid('cn-'), studentId: sid, about, text, by, date: TODAY });
-  notify(PERSONA_OF_STUDENT[sid], `${by}: ${text}`, { persona: PERSONA_OF_STUDENT[sid], screen: 'map' });
+  notify(toStudent(sid), `${by}: ${text}`, { persona: toStudent(sid), screen: 'map' });
   log(sid, by, 'prompt', `CAS nudge about ${about}: “${text}”`);
   emit();
 }
@@ -514,6 +553,29 @@ export function getSignals(studentId, lines = getStudentMap(studentId).lines) {
 // ── Personas: who receives notifications ──────────────────────────────
 export const PERSONA_OF_STUDENT = { 'st-01': 'maya', 'st-02': 'arun', 'st-03': 'lena', 'st-09': 'pim' };
 export const PERSONA_OF_TEACHER = { 't-07': 'whitfield', 't-01': 'nair', 't-09': 'adeyemi', 't-08': 'brandt', 't-10': 'principal' };
+export const PERSONA_OF_FAMILY = { 'st-06': 'parent', 'st-09': 'parent' };
+// Recipient keys. A record with a demo persona keeps that persona's id; everyone else (the pilot) is
+// `st:<studentId>`, `t:<teacherId>`, `fam:<studentId>` (that child's family) or `role:<kind>` (whoever holds the role).
+export const toStudent = (sid) => (sid ? PERSONA_OF_STUDENT[sid] || `st:${sid}` : null);
+export const toTeacher = (tid) => (tid ? PERSONA_OF_TEACHER[tid] || `t:${tid}` : null);
+export const toFamily = (sid) => (sid ? PERSONA_OF_FAMILY[sid] || `fam:${sid}` : null);
+export const toRole = (kind) => `role:${kind}`;
+const STAFF_KINDS = ['advisor', 'teacher', 'counsellor', 'coordinator', 'leadership'];
+// Every key a person's bell reads: their persona id, their record's keys and their role's. Takes a persona or an account.
+export function notifyKeys(p) {
+  if (!p) return [];
+  const k = [p.id && p.id !== 'me' ? p.id : null];
+  if (p.kind === 'student' && p.studentId) k.push(`st:${p.studentId}`, toStudent(p.studentId));
+  if (STAFF_KINDS.includes(p.kind)) { k.push(toRole(p.kind)); if (p.teacherId) k.push(`t:${p.teacherId}`, toTeacher(p.teacherId)); }
+  if (p.kind === 'parent') for (const c of p.children || []) k.push(`fam:${c}`, toFamily(c));
+  return [...new Set(k.filter(Boolean))];
+}
+// "Ms Clara Brandt" → "Ms Brandt" (Kru and Khun go with the first name); a name without a title stays whole.
+export function shortName(n = '') {
+  const m = /^(Mr|Mrs|Ms|Miss|Dr|Kru|Khun)\.?\s+(.+)$/.exec(n.trim()); if (!m) return n;
+  const w = m[2].split(/\s+/); return `${m[1]} ${/^(Kru|Khun)$/.test(m[1]) ? w[0] : w.at(-1)}`;
+}
+const teacherName = (tid, fallback) => teacherById[tid]?.name || teacherById[fallback]?.name || '';
 // Ids and the clock. Every value a change cannot repeat on its own comes from here, so the server
 // can replay a browser's change and end with the same ids and times (see "Shared record" below).
 // Ids carry a tag drawn once per page load, so two devices never both make `nt-5`.
@@ -530,8 +592,10 @@ export function log(studentId, actor, kind, text) { store.activity.unshift({ id:
 // The same two, as changes a screen can make on its own.
 export function addLog(studentId, actor, kind, text) { log(studentId, actor, kind, text); emit(); }
 export function addNotification(to, text, go) { notify(to, text, go); emit(); }
-export const getNotifications = (persona) => store.notifications.filter((n) => n.to === persona);
-export function markNotificationsRead(persona) { store.notifications.forEach((n) => { if (n.to === persona) n.read = true; }); emit(); }
+// `keys`: one recipient key or a list of them (notifyKeys(persona)).
+const keySet = (keys) => new Set([].concat(keys || []));
+export const getNotifications = (keys) => { const k = keySet(keys); return store.notifications.filter((n) => k.has(n.to)); };
+export function markNotificationsRead(keys) { const k = keySet(keys); store.notifications.forEach((n) => { if (k.has(n.to)) n.read = true; }); emit(); }
 
 // ── Student actions ───────────────────────────────────────────────────
 export function addReflection({ studentId, eventId, prompt, text, visibility = 'advisor', signal, files }) {
@@ -541,7 +605,7 @@ export function addReflection({ studentId, eventId, prompt, text, visibility = '
     store.answered[signal.key] = r.id;
     if (signal.promptId) {
       const p = store.prompts.find((x) => x.id === signal.promptId);
-      if (p) { p.answered = true; notify(PERSONA_OF_TEACHER[p.from], `${getStudent(studentId).name.split(' ')[0]} answered your reflection prompt`, { persona: PERSONA_OF_TEACHER[p.from], screen: 'student', param: studentId }); }
+      if (p) { p.answered = true; notify(toTeacher(p.from), `${getStudent(studentId).name.split(' ')[0]} answered your reflection prompt`, { persona: toTeacher(p.from), screen: 'student', param: studentId }); }
     }
   }
   log(studentId, getStudent(studentId).name, 'reflection', `Added a reflection on “${getEvent(eventId)?.title}” (${visibility})`);
@@ -569,7 +633,7 @@ export function requestEndorsement(eventId, teacherId, note) {
   const rq = { id: uid('rq-x'), eventId, studentId: e.studentId, teacherId, date: TODAY, source: 'student', note: note || null, status: 'pending', fresh: true };
   store.requests.unshift(rq);
   const name = getStudent(e.studentId).name;
-  notify(PERSONA_OF_TEACHER[teacherId], `${name.split(' ')[0]} asked you to endorse “${e.title}”`, { persona: PERSONA_OF_TEACHER[teacherId], screen: 'queue' });
+  notify(toTeacher(teacherId), `${name.split(' ')[0]} asked you to endorse “${e.title}”`, { persona: toTeacher(teacherId), screen: 'queue' });
   log(e.studentId, name, 'request', `Asked ${teacherById[teacherId].name} to endorse “${e.title}”`);
   emit();
   return rq;
@@ -589,7 +653,7 @@ export function endorse(requestIds, teacherId, note) {
     e.verification = 'teacher-endorsed';
     const t = teacherById[teacherId];
     log(e.studentId, t.name, 'endorsement', `Endorsed “${e.title}”`);
-    notify(PERSONA_OF_STUDENT[e.studentId], `${t.name} endorsed “${e.title}”`, { persona: PERSONA_OF_STUDENT[e.studentId], screen: 'map', param: e.id });
+    notify(toStudent(e.studentId), `${t.name} endorsed “${e.title}”`, { persona: toStudent(e.studentId), screen: 'map', param: e.id });
   }
   emit();
 }
@@ -597,7 +661,7 @@ export function declineRequest(id, reason) {
   const r = store.requests.find((x) => x.id === id);
   if (!r) return;
   r.status = 'returned'; r.reason = reason;
-  notify(PERSONA_OF_STUDENT[r.studentId], `${teacherById[r.teacherId].name} asked for more evidence on “${getEvent(r.eventId).title}”`, { persona: PERSONA_OF_STUDENT[r.studentId], screen: 'map', param: r.eventId });
+  notify(toStudent(r.studentId), `${teacherById[r.teacherId].name} asked for more evidence on “${getEvent(r.eventId).title}”`, { persona: toStudent(r.studentId), screen: 'map', param: r.eventId });
   emit();
 }
 
@@ -608,7 +672,7 @@ export const getPrompts = (studentId) => store.prompts.filter((p) => p.studentId
 export function sendPrompt(studentId, eventId, text, from = 't-07') {
   const p = { id: uid('pm-x'), studentId, eventId, from, date: TODAY, text, answered: false };
   store.prompts.push(p);
-  notify(PERSONA_OF_STUDENT[studentId], `${teacherById[from].name} sent you a reflection prompt`, { persona: PERSONA_OF_STUDENT[studentId], screen: 'map', param: eventId });
+  notify(toStudent(studentId), `${teacherById[from].name} sent you a reflection prompt`, { persona: toStudent(studentId), screen: 'map', param: eventId });
   log(studentId, teacherById[from].name, 'prompt', `Sent a reflection prompt on “${getEvent(eventId)?.title}”`);
   emit();
   return p;
@@ -638,7 +702,7 @@ export function addBranch(studentId, parentLineId, name, first) {
   if (!s.laneOrder.includes(id)) s.laneOrder.splice(at < 0 ? s.laneOrder.length : at + 1, 0, id);
   const e = addStation(studentId, { ...first, lineIds: [parentLineId, id], visibility: first.visibility || 'advisor' });
   log(studentId, s.name, 'line', `Branched “${name}” from ${lineById(parentLineId)?.name}`);
-  notify('brandt', `${s.name} asked for a new sub-line: “${name}” under ${lineById(parentLineId)?.name}`, { persona: 'brandt', screen: 'governance' });
+  notify(toRole('coordinator'), `${s.name} asked for a new sub-line: “${name}” under ${lineById(parentLineId)?.name}`, { persona: toRole('coordinator'), screen: 'governance' });
   emit();
   return { line: lineById(id), event: e };
 }
@@ -649,7 +713,7 @@ export function endLine(studentId, lineId, keepVisible = false) {
   if (!keepVisible) store.events.forEach((e) => { if (e.studentId === studentId && e.lineIds.length === 1 && e.lineIds[0] === lineId && e.visibility === 'publishable') e.visibility = 'advisor'; });
   log(studentId, s.name, 'line', `Ended the ${lineById(lineId)?.name} line${keepVisible ? '' : ' (its stations are now advisor-only)'}`);
   const adv = store.students.find((x) => x.id === studentId)?.advisorId;
-  if (PERSONA_OF_TEACHER[adv]) notify(PERSONA_OF_TEACHER[adv], `${s.name.split(' ')[0]} ended the ${lineById(lineId)?.name} line`, { persona: PERSONA_OF_TEACHER[adv], screen: 'student', param: studentId });
+  if (adv) notify(toTeacher(adv), `${s.name.split(' ')[0]} ended the ${lineById(lineId)?.name} line`, { persona: toTeacher(adv), screen: 'student', param: studentId });
   emit();
 }
 export function restartLine(studentId, lineId) {
@@ -672,13 +736,16 @@ export const STARTERS = {
   design: { title: 'Design cycle: pencil holder', type: 'project', source: { system: 'ManageBac', ref: 'g6-des-01' }, summary: 'First MYP design cycle project.', ev: [['file', 'Design cycle worksheet']], img: 'phone-stands' },
 };
 const STARTER_IMG = { cert: null, pool: null, code: null, sketchbook: 'sketchbook', 'piano-stage': 'piano-stage', 'compost-bin': 'compost-bin', 'stem-club': 'stem-club', 'welcome-pack': 'welcome-pack', 'phone-stands': 'phone-stands' };
+// A clean pilot start has no made-up "already verified" starter stations.
+export const hasStarters = () => !store.cleanStart;
 export function completeOnboarding(studentId, lineIds, template) {
   const s = getStudent(studentId);
   s.laneOrder = [...lineIds];
   s.onboarding = false;
+  seedDrafts(s); // a new pilot student's empty presentations
   s.template = template;
   lineIds.forEach((l, i) => {
-    const st = STARTERS[l]; if (!st) return;
+    const st = hasStarters() && STARTERS[l]; if (!st) return;
     const img = STARTER_IMG[st.img];
     store.events.push({ id: uid('ev-'), studentId, title: st.title, date: `2026-08-${String(14 + i * 3).padStart(2, '0')}`, lineIds: [l], type: st.type, summary: st.summary,
       evidence: [...(img ? [{ kind: 'image', url: `evidence/${img}.svg`, caption: st.title }] : []), ...(st.ev || []).map(([kind, caption, url]) => ({ kind, caption, url: url || (kind === 'grade' ? null : '#') }))], verification: 'school-verified', visibility: 'advisor', source: st.source });
@@ -755,6 +822,74 @@ export function exportRecord(studentId) {
   };
 }
 
+// ── PDPA: everything the record holds about one student (a copy), and removing it (erasure) ─
+// Generic, so collections added later are covered too. An item in a list is theirs when one of its own
+// values (or one inside a plain object on it, like a notification's go) is their id, one of their
+// stations, presentations, share links or other items, or their persona (to). An entry in a keyed
+// collection is theirs by its key: their id, an id of theirs, or a key made of them ('st-01:line:end').
+// Id lists inside other people's items (a class task's submitted list) only lose their id. A notification
+// to someone else that names them or one of their stations ("Maya asked you to endorse …") is theirs too.
+const isObj = (x) => x && typeof x === 'object' && !Array.isArray(x);
+function pdpaRefs(sid, alsoTo = []) {
+  const ids = new Set([sid]);
+  const titles = [];
+  for (const e of store.events) if (e.studentId === sid) { ids.add(e.id); titles.push(`“${e.title}”`); }
+  for (const p of store.drafts?.[sid] || []) { ids.add(p.id); for (const l of p.shareLinks || []) ids.add(l.token); }
+  const name = getStudent(sid)?.name || sid, first = new RegExp(`(^|\\s)${name.split(' ')[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s|’s|'s)`);
+  return { sid, ids, to: new Set([PERSONA_OF_STUDENT[sid], `st:${sid}`, `fam:${sid}`, ...alsoTo, ...alsoTo.map((a) => `u:${a}`)].filter(Boolean)), names: (t) => t.includes(name) || titles.some((x) => t.includes(x)) || first.test(t) };
+}
+const ownsItem = (x, r, k) => isObj(x) && (r.to.has(x.to) || (k === 'notifications' && typeof x.text === 'string' && r.names(x.text)) || Object.entries(x).some(([k, v]) => k !== 'to' && (typeof v === 'string' ? r.ids.has(v) : isObj(v) && Object.values(v).some((w) => typeof w === 'string' && r.ids.has(w)))));
+const ownsKey = (k, r) => r.ids.has(k) || String(k).split(/[:|]/).some((p) => r.ids.has(p));
+// Another person's item that lists this student's id (or other students' ids): a copy with only theirs.
+const otherIds = (sid) => new Set(store.students.map((s) => s.id).filter((id) => id !== sid));
+const mentions = (x, sid) => isObj(x) && Object.values(x).some((v) => Array.isArray(v) && v.includes(sid));
+const onlyMine = (x, sid, others) => Object.fromEntries(Object.entries(x).map(([k, v]) => [k, Array.isArray(v) && v.every((s) => typeof s === 'string') ? v.filter((s) => !others.has(s)) : v]));
+// The pass both share: each collection's own items, and the ids those items add (prompts → answered keys).
+function pdpaWalk(sid, alsoTo) {
+  const r = pdpaRefs(sid, alsoTo);
+  const lists = Object.entries(store).filter(([, v]) => Array.isArray(v));
+  for (let pass = 0; pass < 2; pass++) for (const [k, v] of lists) for (const x of v) if (ownsItem(x, r, k) && typeof x.id === 'string') r.ids.add(x.id);
+  return { r, lists, keyed: Object.entries(store).filter(([, v]) => isObj(v)) };
+}
+export function studentData(sid, alsoTo = []) {
+  const student = getStudent(sid); if (!student) return null;
+  const { r, lists, keyed } = pdpaWalk(sid, alsoTo);
+  const others = otherIds(sid);
+  const own = {}, mentioned = {};
+  for (const [k, v] of lists) {
+    const mine = v.filter((x) => ownsItem(x, r, k));
+    if (mine.length) own[k] = structuredClone(mine);
+    const m = v.filter((x) => !ownsItem(x, r, k) && mentions(x, sid)).map((x) => onlyMine(x, sid, others));
+    if (m.length) mentioned[k] = m;
+  }
+  for (const [k, v] of keyed) {
+    const mine = Object.fromEntries(Object.entries(v).filter(([key]) => ownsKey(key, r)));
+    if (Object.keys(mine).length) own[k] = structuredClone(mine);
+    const m = Object.entries(v).filter(([key, x]) => !ownsKey(key, r) && mentions(x, sid)).map(([key, x]) => [key, onlyMine(x, sid, others)]);
+    if (m.length) mentioned[k] = Object.fromEntries(m);
+  }
+  return { format: 'nist-transit-portfolio/pdpa-copy/v1', studentId: sid, recordDate: TODAY, student: structuredClone(student), own, mentioned, activity: getActivity(sid) };
+}
+// Removes the student and everything above from the record. Admin only (server/auth.mjs ADMIN_ONLY); the
+// server runs it from POST /api/admin/students/:id/erase, which also removes their files and accounts.
+export function eraseStudent(sid, alsoTo = []) {
+  if (!getStudent(sid)) return null;
+  const { r, lists, keyed } = pdpaWalk(sid, alsoTo);
+  const removed = {};
+  for (const [k, v] of lists) {
+    for (let i = v.length - 1; i >= 0; i--) {
+      if (ownsItem(v[i], r, k)) { v.splice(i, 1); removed[k] = (removed[k] || 0) + 1; }
+      else if (mentions(v[i], sid)) for (const [f, a] of Object.entries(v[i])) if (Array.isArray(a)) v[i][f] = a.filter((s) => s !== sid);
+    }
+  }
+  for (const [k, v] of keyed) for (const key of Object.keys(v)) {
+    if (ownsKey(key, r)) { delete v[key]; removed[k] = (removed[k] || 0) + 1; }
+    else if (isObj(v[key]) && mentions(v[key], sid)) for (const [f, a] of Object.entries(v[key])) if (Array.isArray(a)) v[key][f] = a.filter((s) => s !== sid);
+  }
+  emit();
+  return removed;
+}
+
 // ── Whole-school reads (school viewer: school and publishable items only) ─
 export const schoolEvents = () => store.events.filter((e) => VISIBLE_TO.school.includes(e.visibility) && e.type !== 'goal' && e.date <= TODAY);
 export function linePairs() {
@@ -768,15 +903,16 @@ export function linePairs() {
 // School line of a station's line (sub-lines roll up to their parent).
 export const rootLine = (id) => lineById(id)?.parentLineId || id;
 export function renameLine(id, patch) { const l = lineById(id); Object.assign(l, patch); emit(); }
-export function decideBranch(id, ok, mergeInto) {
+// `by`: the coordinator's teacher id (the demo's Ms Brandt when left out).
+export function decideBranch(id, ok, mergeInto, by) {
   const l = lineById(id); if (!l) return;
-  if (ok) { l.approval = 'approved'; notify(PERSONA_OF_STUDENT[l.studentId], `Ms Brandt approved your new line “${l.name}”`, { persona: PERSONA_OF_STUDENT[l.studentId], screen: 'map' }); }
+  if (ok) { l.approval = 'approved'; notify(toStudent(l.studentId), `${shortName(teacherName(by, 't-08'))} approved your new line “${l.name}”`, { persona: toStudent(l.studentId), screen: 'map' }); }
   else if (mergeInto) {
     const target = lineById(mergeInto);
     store.events.forEach((e) => { if (e.lineIds.includes(id)) e.lineIds = [...new Set(e.lineIds.map((x) => (x === id ? mergeInto : x)))]; });
     const s = getStudent(l.studentId); s.laneOrder = s.laneOrder.filter((x) => x !== id); if (!s.laneOrder.includes(mergeInto)) s.laneOrder.push(mergeInto);
     store.lines = store.lines.filter((x) => x.id !== id);
-    notify(PERSONA_OF_STUDENT[l.studentId], `Your line “${l.name}” was merged into “${target.name}”`, { persona: PERSONA_OF_STUDENT[l.studentId], screen: 'map' });
+    notify(toStudent(l.studentId), `Your line “${l.name}” was merged into “${target.name}”`, { persona: toStudent(l.studentId), screen: 'map' });
   }
   emit();
 }
@@ -856,11 +992,11 @@ export function getDpCore() {
     }),
   })).sort((a, b) => b.student.grade - a.student.grade || a.student.name.localeCompare(b.student.name));
 }
-export function nudgeMilestone(studentId, milestone) {
+export function nudgeMilestone(studentId, milestone, by) {
   (store.dpNudges ||= {})[`${studentId}:${milestone.id}`] = TODAY;
-  const s = getStudent(studentId);
-  notify(PERSONA_OF_STUDENT[studentId], `Ms Brandt: your ${milestone.part} ${milestone.name.toLowerCase()} was due ${milestone.due}. Can you upload it this week?`, { persona: PERSONA_OF_STUDENT[studentId], screen: 'map' });
-  log(studentId, 'Ms Clara Brandt', 'prompt', `Reminded ${s.name.split(' ')[0]} about the ${milestone.part} ${milestone.name.toLowerCase()}`);
+  const s = getStudent(studentId); const who = teacherName(by, 't-08');
+  notify(toStudent(studentId), `${shortName(who)}: your ${milestone.part} ${milestone.name.toLowerCase()} was due ${milestone.due}. Can you upload it this week?`, { persona: toStudent(studentId), screen: 'map' });
+  log(studentId, who, 'prompt', `Reminded ${s.name.split(' ')[0]} about the ${milestone.part} ${milestone.name.toLowerCase()}`);
   emit();
 }
 export function markMilestone(studentId, id) { ((store.dpDone ||= {})[studentId] ||= {})[id] = TODAY; emit(); }
@@ -876,9 +1012,9 @@ export function addGoal(studentId, f, by) {
   store.events.push(e);
   const s = getStudent(studentId);
   log(studentId, by ? teacherById[by]?.name : s.name, 'goal', `Planned “${e.title}” for ${e.date}${f.checkIn ? ', with an advisor check-in' : ''}`);
-  if (by && PERSONA_OF_STUDENT[studentId]) notify(PERSONA_OF_STUDENT[studentId], `${teacherById[by].name} added a goal you agreed together: “${e.title}”`, { persona: PERSONA_OF_STUDENT[studentId], screen: 'map', param: e.id });
-  if (f.sponsor) notify(PERSONA_OF_TEACHER[f.sponsor], `${s.name.split(' ')[0]} invited you to sponsor a planned project: “${e.title}”`, { persona: PERSONA_OF_TEACHER[f.sponsor], screen: 'queue' });
-  if (!by && f.checkIn && PERSONA_OF_TEACHER[s.advisorId]) notify(PERSONA_OF_TEACHER[s.advisorId], `${s.name.split(' ')[0]} set a goal and asked for a check-in: “${e.title}”`, { persona: PERSONA_OF_TEACHER[s.advisorId], screen: 'student', param: studentId });
+  if (by) notify(toStudent(studentId), `${teacherName(by)} added a goal you agreed together: “${e.title}”`, { persona: toStudent(studentId), screen: 'map', param: e.id });
+  if (f.sponsor) notify(toTeacher(f.sponsor), `${s.name.split(' ')[0]} invited you to sponsor a planned project: “${e.title}”`, { persona: toTeacher(f.sponsor), screen: 'queue' });
+  if (!by && f.checkIn && s.advisorId) notify(toTeacher(s.advisorId), `${s.name.split(' ')[0]} set a goal and asked for a check-in: “${e.title}”`, { persona: toTeacher(s.advisorId), screen: 'student', param: studentId });
   emit();
   return e;
 }
@@ -954,7 +1090,7 @@ export const getComments = (presentationId) => store.comments.filter((c) => c.pr
 export function addComment(presentationId, studentId, text, eventId, by = 't-09') {
   const c = { id: uid('cm-'), presentationId, studentId, eventId: eventId || null, text, by, date: TODAY, resolved: false };
   store.comments.push(c);
-  notify(PERSONA_OF_STUDENT[studentId], `${teacherById[by].name} commented on your draft`, { persona: PERSONA_OF_STUDENT[studentId], screen: 'studio' });
+  notify(toStudent(studentId), `${teacherName(by, 't-09')} commented on your draft`, { persona: toStudent(studentId), screen: 'studio' });
   emit();
   return c;
 }
@@ -969,7 +1105,7 @@ export function askEvidence(eventId, from, text) {
   const e = getEvent(eventId);
   const r = { id: uid('er-'), eventId, studentId: e.studentId, from, text, date: TODAY, status: 'open' };
   store.evidenceRequests.unshift(r);
-  notify(PERSONA_OF_STUDENT[e.studentId], `${from} asked to see more on “${e.title}”`, { persona: PERSONA_OF_STUDENT[e.studentId], screen: 'inbox' });
+  notify(toStudent(e.studentId), `${from} asked to see more on “${e.title}”`, { persona: toStudent(e.studentId), screen: 'inbox' });
   log(e.studentId, from, 'request', `Asked for more evidence on “${e.title}”`);
   emit();
   return r;
@@ -1008,7 +1144,7 @@ export function answerSponsor(eventId, ok, expectations) {
   const e = getEvent(eventId); const t = teacherById[e.sponsor.teacherId];
   e.sponsor = { ...e.sponsor, status: ok ? 'accepted' : 'declined', expectations: expectations || '', answeredOn: TODAY };
   if (ok) e.visibility = e.visibility === 'private' ? 'advisor' : e.visibility;
-  notify(PERSONA_OF_STUDENT[e.studentId], ok ? `${t.name} will sponsor “${e.title}”` : `${t.name} can't sponsor “${e.title}”`, { persona: PERSONA_OF_STUDENT[e.studentId], screen: 'map', param: e.id });
+  notify(toStudent(e.studentId), ok ? `${t.name} will sponsor “${e.title}”` : `${t.name} can't sponsor “${e.title}”`, { persona: toStudent(e.studentId), screen: 'map', param: e.id });
   log(e.studentId, t.name, 'endorse', ok ? `Agreed to sponsor “${e.title}”` : `Declined to sponsor “${e.title}”`);
   emit();
 }
@@ -1016,8 +1152,8 @@ export function addCheckIn(eventId, text, by) {
   const e = getEvent(eventId);
   e.sponsor.checkIns = [...e.sponsor.checkIns, { date: TODAY, text, by }];
   const who = by === 'student' ? getStudent(e.studentId).name : teacherById[by]?.name;
-  if (by === 'student') notify(PERSONA_OF_TEACHER[e.sponsor.teacherId], `${who.split(' ')[0]} posted an update on “${e.title}”`, { persona: PERSONA_OF_TEACHER[e.sponsor.teacherId], screen: 'queue' });
-  else notify(PERSONA_OF_STUDENT[e.studentId], `${who} checked in on “${e.title}”`, { persona: PERSONA_OF_STUDENT[e.studentId], screen: 'map', param: e.id });
+  if (by === 'student') notify(toTeacher(e.sponsor.teacherId), `${who.split(' ')[0]} posted an update on “${e.title}”`, { persona: toTeacher(e.sponsor.teacherId), screen: 'queue' });
+  else notify(toStudent(e.studentId), `${who} checked in on “${e.title}”`, { persona: toStudent(e.studentId), screen: 'map', param: e.id });
   log(e.studentId, who, 'prompt', `Check-in on “${e.title}”: ${text}`);
   emit();
 }
@@ -1045,6 +1181,8 @@ function apply(saved) {
   applying = true;
   for (const k of Object.keys(store)) delete store[k];
   Object.assign(store, saved.store);
+  // Saves from before the roster import have no class lists.
+  store.classes ||= []; store.enrolments ||= [];
   seq = Math.max(seq, saved.seq || 0);
   listeners.forEach((fn) => fn());
   applying = false;
@@ -1062,8 +1200,23 @@ export function resetDemo() {
   try { localStorage.setItem(STORE_KEY, JSON.stringify({ store, seq, at: Date.now() })); } catch { /* ignore */ }
 }
 
+// Pilot clean start (TP_START=empty, server/store.mjs): the school's lines and settings, and none of the
+// fictional people, stations, reflections, drafts, requests, notes or applications. Every key stays, empty.
+export function emptyStart() {
+  const seed = JSON.parse(SEED);
+  const keep = { lines: seed.lines.filter((l) => !l.studentId), integrations: seed.integrations.map((i) => ({ ...i, lastSynced: null, itemCount: 0 })), family: seed.family, rollout: seed.rollout };
+  const out = {};
+  for (const [k, v] of Object.entries(seed)) out[k] = k in keep ? keep[k] : Array.isArray(v) ? [] : v && typeof v === 'object' ? {} : v;
+  out.cleanStart = true; // no made-up starter stations at onboarding either
+  apply({ store: out, seq: 1 });
+}
+
 // ── F9: undo. A copy of the record before a quick action; Undo puts it back. ─
-export const snapshot = () => JSON.stringify({ store, seq });
+// With the server, Undo instead takes back the changes made since the snapshot (src/sync.js undoSince):
+// markOf(snap) is the change count when it was taken (the last few snapshots are remembered).
+const marks = new Map();
+export const snapshot = () => { const s = JSON.stringify({ store, seq }); marks.set(s, changeNo); if (marks.size > 8) marks.delete(marks.keys().next().value); return s; };
+export const markOf = (snap) => marks.get(snap);
 export function restore(snap) { apply(JSON.parse(snap)); persist(); }
 // The server's copy of the record arrived (src/sync.js). Not a change of its own, so never sent back,
 // and not saved here either: only changes made in this browser are kept here (for when the server is away).
@@ -1095,7 +1248,7 @@ export function resubmit(requestId, evidence, note) {
   if (evidence) e.evidence = [...e.evidence, evidence];
   Object.assign(r, { status: 'pending', resubmitted: true, date: TODAY, note: note || r.note, fresh: true });
   const s = getStudent(r.studentId);
-  notify(PERSONA_OF_TEACHER[r.teacherId], `${s.name.split(' ')[0]} added evidence to “${e.title}” and resubmitted it`, { persona: PERSONA_OF_TEACHER[r.teacherId], screen: 'queue' });
+  notify(toTeacher(r.teacherId), `${s.name.split(' ')[0]} added evidence to “${e.title}” and resubmitted it`, { persona: toTeacher(r.teacherId), screen: 'queue' });
   log(r.studentId, s.name, 'request', `Added evidence to “${e.title}” and resubmitted it to ${teacherById[r.teacherId].name}`);
   emit();
 }
@@ -1113,13 +1266,14 @@ export function answerConsent(id, status, by) {
   r.status = status; r.answered = TODAY;
   const s = getStudent(r.studentId);
   log(r.studentId, by, 'consent', `${status === 'approved' ? 'Gave' : status === 'declined' ? 'Declined' : 'Withdrew'} consent: ${r.title}`);
-  notify(PERSONA_OF_STUDENT[r.studentId], status === 'approved' ? `Your parent said yes: ${r.title}` : `Your parent said no for now: ${r.title}`, { persona: PERSONA_OF_STUDENT[r.studentId], screen: 'privacy' });
-  notify('whitfield', `${s.name.split(' ')[0]}’s family answered a consent request`);
+  notify(toStudent(r.studentId), status === 'approved' ? `Your parent said yes: ${r.title}` : `Your parent said no for now: ${r.title}`, { persona: toStudent(r.studentId), screen: 'privacy' });
+  // The student's advisor hears; the demo's advisor persona also hears about every seeded student, as before.
+  for (const to of new Set([toTeacher(s.advisorId), s.pilot ? null : 'whitfield'])) notify(to, `${s.name.split(' ')[0]}’s family answered a consent request`);
   emit();
 }
 export function remindParent(studentId) {
   const s = getStudent(studentId);
-  notify('parent', `${s.name.split(' ')[0]} asked you to look at a consent request`, { persona: 'parent', screen: 'consent', param: studentId });
+  notify(toFamily(studentId), `${s.name.split(' ')[0]} asked you to look at a consent request`, { persona: toFamily(studentId), screen: 'consent', param: studentId });
   log(studentId, s.name, 'consent', 'Sent a reminder to a parent about consent');
   emit();
 }
@@ -1231,7 +1385,7 @@ export function endorseClassTask(taskId, studentIds, note) {
     store.inbox.push({ id: uid('ev-'), studentId: sid, title: t.title, date: t.due, lineIds: [line], suggestedLineIds: [line], type: t.type, summary: t.summary, evidence: [],
       verification: 'teacher-endorsed', visibility: 'advisor', source: { system: 'ManageBac', ref: t.ref }, sourceId: 'lms', classEndorsement: { teacherId: t.teacherId, note, date: TODAY } });
     log(sid, teacher.name, 'endorsement', `Endorsed “${t.title}” for the whole class`);
-    notify(PERSONA_OF_STUDENT[sid], `${teacher.name} endorsed “${t.title}”. It is in your inbox.`, { persona: PERSONA_OF_STUDENT[sid], screen: 'inbox' });
+    notify(toStudent(sid), `${teacher.name} endorsed “${t.title}”. It is in your inbox.`, { persona: toStudent(sid), screen: 'inbox' });
   }
   t.done = { count: studentIds.length, at: TODAY, note };
   emit();
@@ -1261,8 +1415,9 @@ export const INTENSITY_LABEL = { simple: { map: 'My journey' } };
 // times it made. The hook (src/sync.js) posts { fn, args, rec } to /api/action, and the server runs
 // the same function with the same values (runAction), so both copies end identical, ids and all.
 // Only the outermost call is sent: changes that call other changes (addBranch → addStation) replay whole.
-let hook = null, depth = 0;
+let hook = null, depth = 0, changeNo = 0;
 export const setActionHook = (fn) => { hook = fn; };
+export const changeCount = () => changeNo; // outermost changes made in this page so far
 const ACTIONS = {};
 const act = (name, fn) => {
   ACTIONS[name] = fn;
@@ -1271,7 +1426,7 @@ const act = (name, fn) => {
     const rec = tape = []; depth++;
     let out;
     try { out = fn(...args); } finally { depth--; tape = null; }
-    hook?.(name, args, rec);
+    changeNo++; hook?.(name, args, rec);
     return out;
   };
 };
@@ -1302,7 +1457,7 @@ answerSponsor = act('answerSponsor', answerSponsor); addCheckIn = act('addCheckI
 editStation = act('editStation', editStation); deleteStation = act('deleteStation', deleteStation); resubmit = act('resubmit', resubmit);
 answerConsent = act('answerConsent', answerConsent); remindParent = act('remindParent', remindParent); setLang = act('setLang', setLang); setFamily = act('setFamily', setFamily);
 endorseClassTask = act('endorseClassTask', endorseClassTask);
-importCandidates = act('importCandidates', importCandidates); addStudent = act('addStudent', addStudent); addTeacher = act('addTeacher', addTeacher);
+importCandidates = act('importCandidates', importCandidates); eraseStudent = act('eraseStudent', eraseStudent); importRoster = act('importRoster', importRoster); addStudent = act('addStudent', addStudent); addTeacher = act('addTeacher', addTeacher);
 // Undo puts a whole earlier copy back, and reset goes back to the seed (sync.js sends it to /api/reset).
 restore = act('restore', restore); resetDemo = act('resetDemo', resetDemo);
 export const MUTATORS = Object.keys(ACTIONS);
