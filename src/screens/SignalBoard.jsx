@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { getCohort, getEvent, getPrompts, sendPrompt, snapshot } from '../api.js';
+import { getCohort, getEvent, getPrompts, sendPrompt, snapshot, advisoryOf } from '../api.js';
 import { fmtDate, inkOn } from '../format.js';
 
 const TEMPLATES = {
@@ -23,7 +23,7 @@ export default function SignalBoard({ persona, toast, go, version }) {
     <div className="page signals">
       <header className="page-head">
         <div>
-          <div className="kicker">Signals · Advisory 4B</div>
+          <div className="kicker">Signals · {advisoryOf(persona.teacherId).name}</div>
           <h1>Where a question would help</h1>
           <p>A signal appears when a line starts or ends without a reflection, or when a map has gone quiet. Send one kind question; it appears as a signal on the student's own map.</p>
         </div>

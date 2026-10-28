@@ -85,7 +85,7 @@ export default function Pdpa({ drafts, version, go, persona }) {
         <p className="fineprint">Students can download everything (JSON and a static copy of each presentation) at any time and on graduation. Data subject requests go to the school's data protection officer.</p>
         {isPilot() && <p className="fineprint">In the pilot: students download their own copy from their Privacy page and parents from Consent. {persona?.admin ? <>The pilot admin downloads or removes any student's data on <button className="linkish" onClick={() => go(persona.id, 'accounts')}>Accounts</button>.</> : 'The pilot admin downloads or removes any student\'s data on the Accounts screen.'} <button className="linkish" onClick={() => go(persona.id, 'usage')}>See pilot usage</button></p>}
       </section>
-      <div className="dash-foot"><span>Ask a student to show you their own view of this.</span><button className="ghost" onClick={() => go('maya', 'activity')}>Open Maya’s activity log</button></div>
+      <div className="dash-foot"><span>Ask a student to show you their own view of this.</span>{!isPilot() && <button className="ghost" onClick={() => go('maya', 'activity')}>Open Maya’s activity log</button>}</div>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { CAS_STATUSES, casNudge, getCasNudges, getCasProject, getStore, getStudentMap, getStudents, setCasProject, TODAY } from '../api.js';
+import { CAS_STATUSES, casNudge, getCasNudges, getCasProject, getStore, getStudentMap, getStudents, setCasProject, TODAY, daysBefore } from '../api.js';
 import { fmtDate, inkOn } from '../format.js';
 import { OUTCOMES } from '../components/AddStation.jsx';
 import StationPanel from '../components/StationPanel.jsx';
@@ -23,7 +23,7 @@ export default function CasDashboard({ version, persona, toast }) {
     const r = rows.find((x) => x.s.id === cell.studentId);
     return cell.lo ? r.by(cell.lo) : cell.strand ? r.strands[cell.strand] : r.cas;
   })();
-  const fresh = (e) => e.date >= '2026-10-24' && e.date <= TODAY;
+  const fresh = (e) => e.date >= daysBefore(2) && e.date <= TODAY;
 
   return (
     <div className="page cas">

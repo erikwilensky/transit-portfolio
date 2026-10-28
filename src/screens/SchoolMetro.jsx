@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { getSchoolLines, linePairs, rootLine, schoolEvents } from '../api.js';
+import { getSchoolLines, linePairs, rootLine, schoolEvents, TODAY } from '../api.js';
 
 const TERMS = []; for (let y = 2023; y <= 2026; y++) for (const [t, m] of [[1, '08'], [2, '12'], [3, '04']]) TERMS.push({ y, t, start: t === 3 ? `${y + 1}-${m}-01` : `${y}-${m}-01` });
 const peakTerm = (p) => { const c = {}; p.events.forEach((e) => { const i = termIdx(e.date); c[i] = (c[i] || 0) + 1; }); return +Object.entries(c).sort((a, b) => b[1] - a[1])[0][0]; };
@@ -11,7 +11,7 @@ export default function SchoolMetro({ version }) {
   const evs = schoolEvents();
   const pairs = linePairs().slice(0, 6);
   const [focus, setFocus] = useState(null);
-  const n = TERMS.findIndex((t) => t.start > '2026-10-26');
+  const n = TERMS.findIndex((t) => t.start > TODAY);
   const terms = TERMS.slice(0, n < 0 ? TERMS.length : n);
   const counts = Object.fromEntries(lines.map((l) => [l.id, terms.map((_, i) => evs.filter((e) => termIdx(e.date) === i && e.lineIds.some((id) => rootLine(id) === l.id)).length)]));
   const max = Math.max(1, ...Object.values(counts).flat());

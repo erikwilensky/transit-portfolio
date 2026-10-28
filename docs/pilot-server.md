@@ -456,6 +456,21 @@ Thailand's PDPA gives a student (and their parent) the right to a copy of their 
   role and person, "Download as CSV" (one row per person) and "Weeks as CSV". Pilot options links to it.
 - Tests: `node --test server/test/pdpa.test.mjs server/test/usage.test.mjs`; browser: `node scripts/checks/pdpa.cjs`
   (starts its own pilot and demo servers).
+## Pilot screens on real data (`src/api.js`)
+
+- **Real calendar**: the demo's story is set on 2026-10-26 (`TODAY`). In a pilot, `useLiveDate()` makes `TODAY`
+  today's date in Bangkok (`TP_TZ`) and keeps it current: the server calls it at start in pilot mode, the
+  browser once it knows the mode. `daysBefore(n)` replaces the demo's fixed "this week" dates.
+- **From the class lists**: `teachersOf(studentId)` (their classes' teachers with each class's line, then their
+  advisor), `endorserChoices(studentId, fallbackIds, lineIds)` (whom a student can ask to endorse or sponsor;
+  the demo keeps its own lists), `advisoryOf(advisorId)` ("Advisory 8C", the advisees' Years),
+  `subjectLineOf(teacherId)` (the cross-subject screen's line).
+- **More than one hat**: a pilot persona gets `also` from the teacher record's `roles`: an advisor or
+  coordinator who teaches also gets Endorsements, anyone who advises gets "My advisory". `acts(persona, kind)`
+  in App.jsx opens those screens. The class depot (the demo's past classes) is not in a pilot.
+- An advisee with nothing on their map yet is not flagged for few reflections.
+- Tests: `server/test/pilot-helpers.test.mjs`.
+
 ## Class lists and a clean start (`src/imports/roster.js`, `server/routes/15-roster.mjs`)
 
 - **Clean start**: with `TP_MODE=pilot` and `TP_START=empty`, `server/store.mjs` calls `api.emptyStart()` when

@@ -82,7 +82,7 @@ function Tracks({ map, onOpen }) {
           <div key={l.id} className="sh-track" style={{ '--c': l.colour }}>
             <span className="sh-name">{l.name}</span>
             <div className="sh-rail">
-              <span className="sh-bar" style={{ left: `${on.length ? x(on[0].date) : 4}%`, right: `${100 - x(TODAY)}%` }} />
+              <span className={`sh-bar${on.length ? '' : ' empty'}`} style={{ left: `${on.length ? x(on[0].date) : 4}%`, right: `${100 - x(TODAY)}%` }} />
               {on.map((e) => <button key={e.id} className={`sh-stop v-${e.verification}`} style={{ left: `${x(e.date)}%` }} onClick={() => onOpen(e.id)} aria-label={`${e.title}, ${fmtDate(e.date)}`} title={e.title} />)}
               {!on.length && <span className="sh-wait">Add your first {l.name.toLowerCase()} moment</span>}
             </div>

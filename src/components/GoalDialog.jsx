@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { addGoal, getTeachers, TODAY } from '../api.js';
+import { addGoal, getTeachers, TODAY, endorserChoices } from '../api.js';
 
 const addDays = (d, n) => new Date(new Date(d).getTime() + n * 86400000).toISOString().slice(0, 10);
 
@@ -7,7 +7,7 @@ const addDays = (d, n) => new Date(new Date(d).getTime() + n * 86400000).toISOSt
 // so work outside any school system can still end up endorsed.
 export default function GoalDialog({ map, studentId, by, onClose, onDone }) {
   const lines = map.lines.filter((l) => l.status !== 'ended');
-  const teachers = getTeachers().filter((t) => ['t-01', 't-02', 't-03', 't-04', 't-05', 't-06', 't-07', 't-08'].includes(t.id));
+  const teachers = endorserChoices(studentId, ['t-01', 't-02', 't-03', 't-04', 't-05', 't-06', 't-07', 't-08']);
   const [title, setTitle] = useState('');
   const [date, setDate] = useState(addDays(TODAY, 90));
   const [lineId, setLineId] = useState(lines[0]?.id || '');

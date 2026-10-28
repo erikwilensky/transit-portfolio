@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { applyLens, getIntensity, getStore, getStudentMap, LEARNER_PROFILE, suggestInterchanges } from '../api.js';
+import { applyLens, getIntensity, getStore, getStudentMap, LEARNER_PROFILE, suggestInterchanges, TODAY } from '../api.js';
 import LineDialog from '../components/LineDialog.jsx';
 import PhoneCapture from '../components/PhoneCapture.jsx';
 import MetroMap from '../components/MetroMap.jsx';
@@ -13,7 +13,6 @@ import { fmtDate, fmtTerm, TYPE_LABEL, VERIFY_LABEL, inkOn } from '../format.js'
 import { TOUR_REFLECTION, TOUR_STATION, tourEvent } from '../tourStory.js';
 
 
-const TODAY_STR = '2026-10-26';
 const dayDiff = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
 const addDays = (d, n) => new Date(new Date(d).getTime() + n * 86400000).toISOString().slice(0, 10);
 const countRefl = (m) => m.events.filter((e) => e.type === 'reflection').length + m.events.reduce((n, e) => n + e.reflections.length, 0);
@@ -41,9 +40,9 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
   // X2: the same record as another viewer is allowed to read it (filtered in api.js, not here).
   const seen = useMemo(() => (seeAs === 'student' ? map : getStudentMap(studentId, seeAs)), [map, seeAs, studentId]);
   // X3: time travel. Days from the first station to today.
-  const first = map.events[0]?.date || TODAY_STR;
-  const span = Math.max(1, dayDiff(first, TODAY_STR));
-  const at = scrub === null ? TODAY_STR : addDays(first, scrub);
+  const first = map.events[0]?.date || TODAY;
+  const span = Math.max(1, dayDiff(first, TODAY));
+  const at = scrub === null ? TODAY : addDays(first, scrub);
   const shown = useMemo(() => {
     if (scrub === null) return seen;
     const events = seen.events.filter((e) => e.date <= at);

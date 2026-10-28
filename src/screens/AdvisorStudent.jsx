@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { addNote, applyLens, getNotes, getPrompts, getStudentMap, growth, addLog, sendPrompt, snapshot, TODAY } from '../api.js';
+import { addNote, applyLens, getNotes, getPrompts, getStudentMap, growth, addLog, sendPrompt, snapshot, TODAY, advisoryOf } from '../api.js';
 import { appUrl, fmtDate, inkOn } from '../format.js';
 import MeetingMode from '../components/MeetingMode.jsx';
 import Qr from '../components/Qr.jsx';
@@ -40,7 +40,7 @@ export default function AdvisorStudent({ studentId, version, toast, go, persona 
   return (
     <div className="adv-student">
       <div className="as-head">
-        <button className="cb-back" onClick={() => go(persona.id, 'advisory')}>‹ Advisory 4B</button>
+        <button className="cb-back" onClick={() => go(persona.id, 'advisory')}>‹ {advisoryOf(persona.teacherId).name}</button>
         <span className="pres-avatar" style={{ background: s.avatar.colour, color: inkOn(s.avatar.colour) }}>{s.avatar.initials}</span>
         <div><h1>{s.name}</h1><p>Year {s.grade + 1} · {s.programme} · advisor view (advisor, school and publishable items)</p></div>
         <span className="spacer" />
