@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { applyLens, consentOnFile, exportRecord, getPrivacy, remindParent, getStudentMap, setPrivacy, setVisibility, TODAY } from '../api.js';
 import { VIS_LABEL } from '../format.js';
+import { exportUrl, isPilot } from '../auth.js';
 
 const VIEWERS = [['advisor', 'My advisor'], ['school', 'School staff'], ['public', 'Anyone with a link']];
 const count = (m) => ({ st: m.events.length, rf: m.events.reduce((n, e) => n + e.reflections.length, 0) + m.events.filter((e) => e.type === 'reflection').length });
@@ -75,19 +76,21 @@ export default function Privacy({ studentId, drafts, toast, go, persona, version
           <h3>Consent</h3>
           {consent === 'pending'
             ? <><p><span className="status s-warn"><i>!</i>Waiting for a parent</span></p><p className="fineprint">Students in Years 7 to 9 need a parent's consent before anything can be made publishable. Until then, everything stays inside the school.</p><button className="ghost" onClick={() => { remindParent(s.id); toast('Reminder sent to your parent.'); }}>Send a reminder to my parent</button></>
-            : <><p><span className="status s-ok"><i>✓</i>Parent consent on file</span></p><p className="fineprint">Recorded in the SIS when you joined. Under Thailand's PDPA you can ask the school to correct or delete your data at any time.</p></>}
+            : <><p><span className="status s-ok"><i>✓</i>Parent consent on file</span></p><p className="fineprint">Recorded in the SIS when you joined. Under Thailand's PDPA you can ask the school to correct or delete your data at any time{isPilot() ? ': ask the pilot admin, who can remove your record' : ''}.</p></>}
         </div>
 
         <div className="card-sec pv-export">
           <h3>Take your map with you</h3>
           <p>When you graduate, or whenever you like, download your whole record. It is yours.</p>
           <div className="pv-btns">
-            <button className="primary" onClick={exportJson}>Download my record (JSON)</button>
+            {isPilot() && <button className="primary" onClick={() => { location.href = exportUrl(); setDone('zip'); }}>Download everything the school holds about me (ZIP)</button>}
+            <button className={isPilot() ? 'ghost' : 'primary'} onClick={exportJson}>Download my record (JSON)</button>
             <button className="ghost" onClick={exportHtml}>Download my presentations (HTML)</button>
             <button className="ghost" onClick={() => go(persona.id, 'poster')}>Make a map poster</button>
           </div>
+          {isPilot() && <p className="fineprint">Under Thailand's PDPA you have the right to a copy of your data and to have it removed. For removal, ask the pilot admin or the school's data protection officer.</p>}
           {studentId === 'st-01' && <p className="fineprint">After you graduate the map keeps going. <button className="linkish" onClick={() => go('maya-alum', 'journey')}>Preview Maya in 2029, two years after NIST</button></p>}
-          {done && <p className="fineprint">{done === 'json' ? 'Saved: every station, line, reflection and endorsement, plus your activity log.' : 'Saved: a static copy of each presentation that works offline.'}</p>}
+          {done && <p className="fineprint">{done === 'zip' ? 'Saved: your record, every station and reflection, endorsements, presentations and share links, inbox, activity, requests, comments, notifications and your uploaded files, with a README explaining each file.' : done === 'json' ? 'Saved: every station, line, reflection and endorsement, plus your activity log.' : 'Saved: a static copy of each presentation that works offline.'}</p>}
         </div>
       </section>
     </div>

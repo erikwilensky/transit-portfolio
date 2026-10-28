@@ -75,3 +75,31 @@
   .acc-table td { border: 0; padding: 4px 12px; }
   .acc-actions { justify-content: flex-start; }
 }
+
+/* Pilot usage (screens/Usage.jsx) */
+.usage .tiles { margin: 0; }
+.usage .card-sec h2 { font-size: 16px; margin-bottom: 10px; }
+.us-two { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.us-scroll { overflow-x: auto; min-width: 0; }
+.us-table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.us-table th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--rule); vertical-align: bottom; }
+.us-table td { padding: 8px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.us-table tr:last-child td { border-bottom: 0; }
+.us-table td small { display: block; color: var(--muted); font-size: 12.5px; }
+.us-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.us-filter { font-size: 13.5px; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+.us-filter select { border: 1.5px solid var(--rule); background: var(--surface); color: var(--ink); border-radius: 8px; padding: 6px 8px; font: inherit; }
+.us-chart svg { width: 100%; height: auto; display: block; }
+.us-chart g:focus { outline: none; }
+.us-bar { fill: #002855; } .us-bar.on { fill: #4F529B; }
+:root[data-theme="dark"] .us-bar { fill: #78D5E1; } :root[data-theme="dark"] .us-bar.on { fill: #fff; }
+.us-grid { stroke: var(--rule); stroke-width: 1; } .us-base { stroke: var(--muted); stroke-width: 1; }
+.us-axis { fill: var(--muted); font-size: 11px; }
+.us-tip { margin: 6px 0 0; color: var(--muted); font-size: 13px; min-height: 2.6em; } .us-tip b { color: var(--ink); font-weight: 600; }
+@media (max-width: 900px) { .us-two { grid-template-columns: 1fr; } }
+
+/* Students' data (Accounts): a copy and erasure */
+.acc-data h2 { font-size: 18px; margin-bottom: 4px; }
+.acc-erase { border: 1.5px solid #E73C3E; border-left-width: 6px; background: var(--surface); border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.acc-erase h3 { font-size: 16px; } .acc-erase p, .acc-erase ul { margin: 0; color: var(--muted); font-size: 14px; }
+.acc-erase .auth-field { max-width: 360px; }

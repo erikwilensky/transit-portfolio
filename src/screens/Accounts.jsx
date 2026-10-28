@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { admin } from '../auth.js';
+import { admin, exportUrl } from '../auth.js';
 import '../auth.css';
 
 const ROLES = [['student', 'Student'], ['parent', 'Parent or carer'], ['advisor', 'Advisor'], ['teacher', 'Subject teacher'], ['counsellor', 'University counsellor'], ['coordinator', 'Coordinator'], ['leadership', 'Leadership'], ['admin', 'Pilot admin (no record)']];
@@ -78,7 +78,52 @@ export default function Accounts({ toast, persona }) {
         </tbody>
       </table>
       <p className="fineprint">Removing an account stops that person signing in. Their record and map stay. A new setup link signs them out everywhere and ends their old password.</p>
+      <StudentData data={data} toast={toast} reload={() => admin.list().then(setData, (x) => setErr(x.message))} />
     </div>
+  );
+}
+
+// PDPA: a copy of everything about a student, and removing it (Thailand's PDPA: the rights to a copy and to erasure).
+function StudentData({ data, toast, reload }) {
+  const [sid, setSid] = useState('');
+  const [step, setStep] = useState(0); // 0 nothing, 1 confirm open
+  const [typed, setTyped] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  const s = data.students.find((x) => x.id === sid);
+  const norm = (t) => t.trim().replace(/\s+/g, ' ').toLowerCase();
+  const pick = (id) => { setSid(id); setStep(0); setTyped(''); setErr(null); };
+  const erase = async () => {
+    setBusy(true); setErr(null);
+    try { const r = await admin.erase(s.id, typed); toast(`Removed ${s.name}: ${Object.values(r.removed || {}).reduce((n, v) => n + v, 0)} items, ${r.files} files, ${r.accounts} account${r.accounts === 1 ? '' : 's'}.`); pick(''); reload(); }
+    catch (x) { setErr(x.message); } finally { setBusy(false); }
+  };
+  return (
+    <section className="acc-data card-sec" aria-labelledby="accd-h">
+      <h2 id="accd-h">A student's data</h2>
+      <p className="auth-lede">Under Thailand's PDPA a student, or their parent, may ask for a copy of everything the school holds about them, or for it to be removed.</p>
+      <div className="auth-row">
+        <label className="auth-field"><span>Student</span><select value={sid} onChange={(e) => pick(e.target.value)}><option value="">Choose a student</option>{data.students.map((x) => <option key={x.id} value={x.id}>{x.name} · Year {x.grade + 1}</option>)}</select></label>
+      </div>
+      {s && <div className="auth-row">
+        <a className="auth-btn as-link" href={exportUrl(s.id, true)} download>Download their data (ZIP)</a>
+        {step === 0 && <button className="ghost danger" onClick={() => setStep(1)}>Remove this student…</button>}
+      </div>}
+      {s && <p className="fineprint">The ZIP holds their record, stations, reflections (private ones too), endorsements, presentations and share links, inbox, activity log, requests, comments, consent requests, notifications, accounts and uploaded files, with a README.txt explaining each file.</p>}
+      {s && step === 1 && (
+        <div className="acc-erase" role="group" aria-labelledby="acce-h">
+          <h3 id="acce-h">Remove {s.name} and everything about them</h3>
+          <p>This deletes from the record their stations, reflections, endorsements, presentations and share links (which stop working at once), inbox, activity log, requests, comments, consent requests and notifications; the files they uploaded that no other record uses; their account; and the link to their family's account (a family account linked only to them is removed too). It cannot be undone here. Download their data first if they asked for a copy.</p>
+          <p><b>Backups still hold their data until they roll over, after 30 days.</b></p>
+          <label className="auth-field"><span>Type the student's name to confirm</span><input value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={s.name} autoComplete="off" /></label>
+          {err && <p className="auth-err" role="alert">{err}</p>}
+          <div className="auth-row">
+            <button className="ghost danger" disabled={busy || norm(typed) !== norm(s.name)} onClick={erase}>{busy ? 'Removing…' : `Remove ${s.name} for good`}</button>
+            <button className="ghost" onClick={() => { setStep(0); setTyped(''); }}>Cancel</button>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 

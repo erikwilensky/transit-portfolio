@@ -149,7 +149,7 @@ export const noteSuccess = (email) => fails.delete(`e:${email}`);
 // consent for their own children; staff may call any mutator except the admin-only ones.
 // /api/action should call it before running a mutator: `if (!canAct(req.user, fn, args)) 403`.
 // In demo mode there are no accounts, so callers skip it (req.user is null).
-const ADMIN_ONLY = new Set(['resetDemo', 'restore', 'addStudent', 'addTeacher']);
+const ADMIN_ONLY = new Set(['resetDemo', 'restore', 'addStudent', 'addTeacher', 'eraseStudent']);
 const ANYONE = new Set(['recordView', 'markNotificationsRead', 'setLang']);
 const ev = (id) => api.getEvent(id)?.studentId;
 const st = () => api.getStore();

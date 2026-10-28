@@ -1,5 +1,6 @@
 import { CONSENT, extraViews, getActivity, getStore, getStudents, TODAY, SHARED_LABEL } from '../api.js';
 import { ago, fmtDate } from '../format.js';
+import { isPilot } from '../auth.js';
 
 const DATA_MAP = [
   ['Student record (stations, lines)', 'School data core, Bangkok', 'Student; advisor and staff by visibility', 'Until graduation + 1 year, then exported and deleted'],
@@ -12,7 +13,7 @@ const DATA_MAP = [
 const days = (d) => Math.round((new Date(d) - new Date(TODAY)) / 86400000);
 
 // L2: what is stored, where, who can read it, for how long, and proof that it is enforced.
-export default function Pdpa({ drafts, version, go }) {
+export default function Pdpa({ drafts, version, go, persona }) {
   const events = getStore().events;
   const vis = ['private', 'advisor', 'school', 'publishable'].map((k) => [k, events.filter((e) => e.visibility === k).length]);
   const maxVis = Math.max(...vis.map((v) => v[1]));
@@ -80,6 +81,7 @@ export default function Pdpa({ drafts, version, go }) {
           <tbody>{DATA_MAP.map((r) => <tr key={r[0]}>{r.map((c, i) => <td key={i}>{i === 0 ? <b>{c}</b> : c}</td>)}</tr>)}</tbody>
         </table>
         <p className="fineprint">Students can download everything (JSON and a static copy of each presentation) at any time and on graduation. Data subject requests go to the school's data protection officer.</p>
+        {isPilot() && <p className="fineprint">In the pilot: students download their own copy from their Privacy page and parents from Consent. {persona?.admin ? <>The pilot admin downloads or removes any student's data on <button className="linkish" onClick={() => go(persona.id, 'accounts')}>Accounts</button>.</> : 'The pilot admin downloads or removes any student\'s data on the Accounts screen.'} <button className="linkish" onClick={() => go(persona.id, 'usage')}>See pilot usage</button></p>}
       </section>
       <div className="dash-foot"><span>Ask a student to show you their own view of this.</span><button className="ghost" onClick={() => go('maya', 'activity')}>Open Maya’s activity log</button></div>
     </div>

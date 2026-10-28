@@ -755,6 +755,74 @@ export function exportRecord(studentId) {
   };
 }
 
+// ── PDPA: everything the record holds about one student (a copy), and removing it (erasure) ─
+// Generic, so collections added later are covered too. An item in a list is theirs when one of its own
+// values (or one inside a plain object on it, like a notification's go) is their id, one of their
+// stations, presentations, share links or other items, or their persona (to). An entry in a keyed
+// collection is theirs by its key: their id, an id of theirs, or a key made of them ('st-01:line:end').
+// Id lists inside other people's items (a class task's submitted list) only lose their id. A notification
+// to someone else that names them or one of their stations ("Maya asked you to endorse …") is theirs too.
+const isObj = (x) => x && typeof x === 'object' && !Array.isArray(x);
+function pdpaRefs(sid, alsoTo = []) {
+  const ids = new Set([sid]);
+  const titles = [];
+  for (const e of store.events) if (e.studentId === sid) { ids.add(e.id); titles.push(`“${e.title}”`); }
+  for (const p of store.drafts?.[sid] || []) { ids.add(p.id); for (const l of p.shareLinks || []) ids.add(l.token); }
+  const name = getStudent(sid)?.name || sid, first = new RegExp(`(^|\\s)${name.split(' ')[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s|’s|'s)`);
+  return { sid, ids, to: new Set([PERSONA_OF_STUDENT[sid], ...alsoTo].filter(Boolean)), names: (t) => t.includes(name) || titles.some((x) => t.includes(x)) || first.test(t) };
+}
+const ownsItem = (x, r, k) => isObj(x) && (r.to.has(x.to) || (k === 'notifications' && typeof x.text === 'string' && r.names(x.text)) || Object.entries(x).some(([k, v]) => k !== 'to' && (typeof v === 'string' ? r.ids.has(v) : isObj(v) && Object.values(v).some((w) => typeof w === 'string' && r.ids.has(w)))));
+const ownsKey = (k, r) => r.ids.has(k) || String(k).split(/[:|]/).some((p) => r.ids.has(p));
+// Another person's item that lists this student's id (or other students' ids): a copy with only theirs.
+const otherIds = (sid) => new Set(store.students.map((s) => s.id).filter((id) => id !== sid));
+const mentions = (x, sid) => isObj(x) && Object.values(x).some((v) => Array.isArray(v) && v.includes(sid));
+const onlyMine = (x, sid, others) => Object.fromEntries(Object.entries(x).map(([k, v]) => [k, Array.isArray(v) && v.every((s) => typeof s === 'string') ? v.filter((s) => !others.has(s)) : v]));
+// The pass both share: each collection's own items, and the ids those items add (prompts → answered keys).
+function pdpaWalk(sid, alsoTo) {
+  const r = pdpaRefs(sid, alsoTo);
+  const lists = Object.entries(store).filter(([, v]) => Array.isArray(v));
+  for (let pass = 0; pass < 2; pass++) for (const [k, v] of lists) for (const x of v) if (ownsItem(x, r, k) && typeof x.id === 'string') r.ids.add(x.id);
+  return { r, lists, keyed: Object.entries(store).filter(([, v]) => isObj(v)) };
+}
+export function studentData(sid, alsoTo = []) {
+  const student = getStudent(sid); if (!student) return null;
+  const { r, lists, keyed } = pdpaWalk(sid, alsoTo);
+  const others = otherIds(sid);
+  const own = {}, mentioned = {};
+  for (const [k, v] of lists) {
+    const mine = v.filter((x) => ownsItem(x, r, k));
+    if (mine.length) own[k] = structuredClone(mine);
+    const m = v.filter((x) => !ownsItem(x, r, k) && mentions(x, sid)).map((x) => onlyMine(x, sid, others));
+    if (m.length) mentioned[k] = m;
+  }
+  for (const [k, v] of keyed) {
+    const mine = Object.fromEntries(Object.entries(v).filter(([key]) => ownsKey(key, r)));
+    if (Object.keys(mine).length) own[k] = structuredClone(mine);
+    const m = Object.entries(v).filter(([key, x]) => !ownsKey(key, r) && mentions(x, sid)).map(([key, x]) => [key, onlyMine(x, sid, others)]);
+    if (m.length) mentioned[k] = Object.fromEntries(m);
+  }
+  return { format: 'nist-transit-portfolio/pdpa-copy/v1', studentId: sid, recordDate: TODAY, student: structuredClone(student), own, mentioned, activity: getActivity(sid) };
+}
+// Removes the student and everything above from the record. Admin only (server/auth.mjs ADMIN_ONLY); the
+// server runs it from POST /api/admin/students/:id/erase, which also removes their files and accounts.
+export function eraseStudent(sid, alsoTo = []) {
+  if (!getStudent(sid)) return null;
+  const { r, lists, keyed } = pdpaWalk(sid, alsoTo);
+  const removed = {};
+  for (const [k, v] of lists) {
+    for (let i = v.length - 1; i >= 0; i--) {
+      if (ownsItem(v[i], r, k)) { v.splice(i, 1); removed[k] = (removed[k] || 0) + 1; }
+      else if (mentions(v[i], sid)) for (const [f, a] of Object.entries(v[i])) if (Array.isArray(a)) v[i][f] = a.filter((s) => s !== sid);
+    }
+  }
+  for (const [k, v] of keyed) for (const key of Object.keys(v)) {
+    if (ownsKey(key, r)) { delete v[key]; removed[k] = (removed[k] || 0) + 1; }
+    else if (isObj(v[key]) && mentions(v[key], sid)) for (const [f, a] of Object.entries(v[key])) if (Array.isArray(a)) v[key][f] = a.filter((s) => s !== sid);
+  }
+  emit();
+  return removed;
+}
+
 // ── Whole-school reads (school viewer: school and publishable items only) ─
 export const schoolEvents = () => store.events.filter((e) => VISIBLE_TO.school.includes(e.visibility) && e.type !== 'goal' && e.date <= TODAY);
 export function linePairs() {
@@ -1302,7 +1370,7 @@ answerSponsor = act('answerSponsor', answerSponsor); addCheckIn = act('addCheckI
 editStation = act('editStation', editStation); deleteStation = act('deleteStation', deleteStation); resubmit = act('resubmit', resubmit);
 answerConsent = act('answerConsent', answerConsent); remindParent = act('remindParent', remindParent); setLang = act('setLang', setLang); setFamily = act('setFamily', setFamily);
 endorseClassTask = act('endorseClassTask', endorseClassTask);
-importCandidates = act('importCandidates', importCandidates); addStudent = act('addStudent', addStudent); addTeacher = act('addTeacher', addTeacher);
+importCandidates = act('importCandidates', importCandidates); eraseStudent = act('eraseStudent', eraseStudent); addStudent = act('addStudent', addStudent); addTeacher = act('addTeacher', addTeacher);
 // Undo puts a whole earlier copy back, and reset goes back to the seed (sync.js sends it to /api/reset).
 restore = act('restore', restore); resetDemo = act('resetDemo', resetDemo);
 export const MUTATORS = Object.keys(ACTIONS);
