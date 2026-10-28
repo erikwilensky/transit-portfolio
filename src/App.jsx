@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { applyLens, getAlumMap, getPresentations, getStudent, getStudentMap, getStudents, subscribe, getDrafts, setStudentDrafts, hasPublicCopy, getNotifications, markNotificationsRead, notifyKeys, resetDemo, restore, markOf, changeCount, logLink, addStation, getLang, setLang, getIntensity, setIntensity, INTENSITY, INTENSITY_NAV, INTENSITY_LABEL } from './api.js';
-import SimpleHome, { ShowFamily } from './screens/SimpleHome.jsx';
+import SimpleHome, { ShowFamily, QuickAdd } from './screens/SimpleHome.jsx';
+import { InstallHint } from './components/PhoneApp.jsx';
 import IntensityControl from './components/IntensityControl.jsx';
 import { ensureEndorsed } from './tourStory.js';
 import { PERSONAS, KIND_LABEL, NAV, personaById, home, navOf, pilotPersona } from './personas.js';
@@ -68,7 +69,7 @@ const parse = () => {
   const [a, b, c] = location.hash.replace(/^#\/?/, '').split('/');
   if (a === 's' || a === 'v' || a === 'p') return { publicKind: a, param: b, lang: c };
   const p = personaById(a);
-  const screens = navOf(p).map(([id]) => id).concat(p.kind === 'advisor' ? ['student'] : p.kind === 'student' ? ['poster'] : []);
+  const screens = navOf(p).map(([id]) => id).concat(p.kind === 'advisor' ? ['student'] : p.kind === 'student' ? ['poster', 'add', 'snap'] : []);
   return { persona: p.id, screen: screens.includes(b) ? b : home(p), param: c || null };
 };
 
@@ -295,6 +296,7 @@ export default function App() {
         <main className={`screen screen-${route.screen}`} key={`${persona.id}-${route.screen}`}>
           <ErrorBoundary resetKey={`${persona.id}-${route.screen}-${route.param}`}>
           {persona.kind === 'student' && <StudentScreens {...ctx} screen={route.screen} param={route.param} studentId={studentId} />}
+          {persona.kind === 'student' && route.screen === 'map' && !tour && !getStudent(studentId)?.onboarding && <InstallHint />}
           {acts(persona, 'advisor') && route.screen === 'advisory' && <AdvisorGrid advisorId={persona.teacherId} version={version} toast={toast} onOpen={(id) => go(persona.id, 'student', id)} />}
           {acts(persona, 'advisor') && route.screen === 'student' && (getStudent(route.param || 'st-01') ? <AdvisorStudent studentId={route.param || 'st-01'} {...ctx} /> : <NotInRecord onBack={() => go(persona.id, 'advisory')} />)}
           {acts(persona, 'teacher') && route.screen === 'queue' && <TeacherQueue teacherId={persona.teacherId} focus={route.param} {...ctx} />}
@@ -383,6 +385,12 @@ function StudentScreens({ screen, param, studentId, drafts, setDrafts, audience,
     logLink(studentId, `${site ? 'Published a hand-built site' : 'Created share link'} /s/${link.token} for “${pres.title}”`);
     setNewLink({ link, title: site ? `${pres.title} (your own site)` : pres.title });
   };
+  // The phone app's shortcuts, #/me/add and #/me/snap: the add flow over the student's home, at any level.
+  if (screen === 'add' || screen === 'snap') {
+    const home = () => { history.replaceState(null, '', `#/${persona.id}/map`); go(persona.id, 'map'); };
+    return <><StudentScreens {...{ drafts, setDrafts, audience, setAudience, tier, setTier, toast, version, go, persona, studentId }} screen="map" />
+      {!map.student.onboarding && <QuickAdd map={map} studentId={studentId} toast={toast} camera={screen === 'snap'} onClose={home} />}</>;
+  }
   if (map.student.onboarding) return <Onboarding map={map} studentId={studentId} onDone={() => { toast('Your map is ready.'); go(persona.id, 'map'); }} />;
   const level = getIntensity(studentId);
   if (level === 'simple' && screen === 'map') return <SimpleHome map={map} studentId={studentId} toast={toast} version={version} />;

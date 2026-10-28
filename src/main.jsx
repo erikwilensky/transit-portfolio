@@ -9,6 +9,8 @@ import { startSync } from './sync.js';
 import { useLiveDate } from './api.js';
 import './styles.css';
 import './print.css';
+import { registerServiceWorker } from './pwa.js';
+import { UpdateBar } from './components/PhoneApp.jsx';
 
 // Pilot mode: sign in first (public share, verify and family links stay open). Demo mode: straight into the app.
 const isPublic = () => /^#\/?(s|v|p)(\/|$)/.test(location.hash);
@@ -35,7 +37,8 @@ function Root() {
 // or once signed in. Never on public share and verify pages (they read /api/public/*); if a reader
 // moves on from one into the app, start then.
 const mayShare = () => { const a = getAuth(); return a.server && (a.mode !== 'pilot' || !!a.user); };
-const render = () => createRoot(document.getElementById('root')).render(<Root />);
+const render = () => createRoot(document.getElementById('root')).render(<><Root /><UpdateBar /></>);
+registerServiceWorker(); // the phone app (src/pwa.js)
 loadAuth().then(() => {
   if (getAuth().mode === 'pilot') useLiveDate(); // a pilot runs on the real calendar, like its server
   if (!mayShare()) return render();
