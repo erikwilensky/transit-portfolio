@@ -130,6 +130,13 @@ export function scopedSnapshot(user) {
   store.roster = all ? full.roster : [];
   store.classTasks = (full.classTasks || []).filter((t) => all || (!!tid && t.teacherId === tid));
   store.enrolments = (full.enrolments || []).filter((n) => inReach(n.studentId));
+  // Class prompts: the class's teachers (and whole-school roles) see the prompt and every answer; a student sees
+  // the prompts asked of them (without the classmates' ids) and their own answers. Nobody else.
+  const teaches = new Set(tid ? (full.classes || []).filter((c) => (c.teacherIds || []).includes(tid)).map((c) => c.id) : []);
+  const askedMine = (p) => all || (!!tid && (p.teacherId === tid || teaches.has(p.classId)));
+  store.classPrompts = (full.classPrompts || []).flatMap((p) => (askedMine(p) ? [p] : self && p.studentIds.includes(self) ? [{ ...p, studentIds: [self] }] : []));
+  const keptAsked = new Set(store.classPrompts.filter(askedMine).map((p) => p.id));
+  store.classAnswers = (full.classAnswers || []).filter((a) => keptAsked.has(a.promptId) || (!!self && a.studentId === self));
   const keys = recipientKeys(user);
   store.notifications = full.notifications.filter((n) => keys.has(n.to));
   // The activity log, without lines that name a station this person does not receive. Families: views and consent only.
@@ -184,6 +191,12 @@ export const TOUCHES = {
   addNotification: (a) => T(Object.entries(api.PERSONA_OF_STUDENT).filter(([, p]) => p === a[0]).map(([sid]) => sid)),
   renameLine: (a) => T(lineOwner(a[0]) ? [lineOwner(a[0])] : []),
   decideBranch: (a) => T([lineOwner(a[0])]),
+  // Class prompts: askClass and remindClass touch the class's students, as the asking teacher (auth.mjs also checks
+  // that a subject teacher teaches the class); answerPrompt and skipPrompt touch only a student the prompt was asked of.
+  askClass: (a) => T((st().enrolments || []).filter((n) => n.classId === a[0] && !(n.to && n.to < api.TODAY) && api.getStudent(n.studentId)).map((n) => n.studentId), [a[1] ?? '?']),
+  remindClass: (a) => { const p = api.getClassPrompt(a[0]); return T(p ? p.studentIds.filter((sid) => api.getStudent(sid)) : ['?'], [a[1] ?? '?']); },
+  answerPrompt: (a) => T([api.getClassPrompt(a[0])?.studentIds.includes(a[1]) ? a[1] : '?']),
+  skipPrompt: (a) => T([api.getClassPrompt(a[0])?.studentIds.includes(a[1]) ? a[1] : '?']),
   addSchoolLine: () => T([]), setSubjectLine: () => T([]), setRollout: () => T([]), setFamily: () => T([]), setLang: () => T([]), markNotificationsRead: () => T([]), recordView: () => T([]),
 };
 // A mutator not listed: any student or station id found in its arguments counts as touched.

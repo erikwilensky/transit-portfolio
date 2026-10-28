@@ -52,6 +52,7 @@ const ABOUT = {
   letters: 'Your reference letter.', applications: 'Your university applications.',
   alumEvents: 'Stations added after you left NIST.', answered: 'Which prompts and map moments you answered with a reflection.',
   roster: 'Rows from imported files that were matched to you.',
+  classAnswers: 'Your answers to questions a teacher asked your class (or that you said were not for you).', classPrompts: 'Questions teachers asked your classes.',
 };
 const README = (s, files, accounts, when) => [
   `Everything NIST Transit Portfolio holds about ${s.name} (student id ${s.id})`,

@@ -1521,6 +1521,96 @@ export function classRoster(classId, teacherId) {
   return { ...c, line: (c.lineId && lineById(c.lineId)) || null, students };
 }
 
+// ── Class prompts: a teacher asks a whole class one question (after the science fair, a trip) ──
+// store.classPrompts: { id, classId, teacherId, question, context, asMoment, lineId, due, date, at, studentIds, reminded }
+// (studentIds: the class's students when it was asked). store.classAnswers: { id, promptId, studentId, date, at,
+// skipped } or { …, text, eventId }. An answer is a reflection station on the class's line, or with asMoment a moment
+// there waiting for the asking teacher's endorsement. Both lists are made on first use, so older saves need nothing.
+const cPrompts = () => (store.classPrompts ||= []);
+const cAnswers = () => (store.classAnswers ||= []);
+const classById = (id) => getClasses().find((c) => c.id === id);
+const nowIn = (classId) => currentPlaces(new Set([classId])).out.get(classId);
+export const getClassPrompt = (id) => cPrompts().find((p) => p.id === id);
+const answerOf = (promptId, studentId) => cAnswers().find((a) => a.promptId === promptId && a.studentId === studentId);
+// A class's prompts, newest first, each with its answers (skips counted apart) and who has not answered yet.
+export function classPrompts(classId) {
+  return cPrompts().filter((p) => p.classId === classId).map((p) => {
+    const all = cAnswers().filter((a) => a.promptId === p.id);
+    const answers = all.filter((a) => !a.skipped);
+    const done = new Set(all.map((a) => a.studentId));
+    return { ...p, answers, skipped: all.length - answers.length, waiting: p.studentIds.filter((sid) => !done.has(sid)) };
+  }).sort((a, b) => b.at.localeCompare(a.at) || b.id.localeCompare(a.id));
+}
+// The prompts a student has not answered or skipped yet, oldest first.
+export const openPromptsFor = (studentId) => cPrompts().filter((p) => p.studentIds.includes(studentId) && !answerOf(p.id, studentId))
+  .sort((a, b) => a.at.localeCompare(b.at)).map((p) => ({ ...p, teacher: teacherById[p.teacherId] || null, className: classById(p.classId)?.name || '', line: (p.lineId && lineById(p.lineId)) || null }));
+export function askClass(classId, teacherId, { question, context = '', asMoment = false, due = null } = {}) {
+  const c = classById(classId);
+  if (!c) throw Object.assign(new Error('No such class'), { status: 404 });
+  if (!teacherById[teacherId]) throw Object.assign(new Error('No such teacher'), { status: 400 });
+  const q = String(question || '').trim().slice(0, 300);
+  if (q.length < 5) throw Object.assign(new Error('Write the question first'), { status: 400 });
+  const studentIds = nowIn(classId);
+  const p = { id: uid('cq-'), classId, teacherId, question: q, context: String(context || '').trim().slice(0, 200), asMoment: !!asMoment && !!c.lineId, lineId: c.lineId || null,
+    due: /^\d{4}-\d{2}-\d{2}$/.test(due || '') ? due : null, date: TODAY, at: nowIso(), studentIds, reminded: null };
+  cPrompts().push(p);
+  const t = teacherById[teacherId];
+  for (const sid of studentIds) notify(toStudent(sid), `${t.name} asked ${c.name} a question: “${q}”`, { persona: toStudent(sid), screen: 'map' });
+  emit();
+  return p;
+}
+// Once a day at most: a reminder to everyone who has neither answered nor skipped and is still in the class.
+export function remindClass(promptId, teacherId) {
+  const p = getClassPrompt(promptId);
+  if (!p) throw Object.assign(new Error('No such question'), { status: 404 });
+  if (p.reminded === TODAY) return 0;
+  const still = new Set(nowIn(p.classId));
+  const rest = p.studentIds.filter((sid) => still.has(sid) && !answerOf(p.id, sid));
+  const t = teacherById[teacherId] || teacherById[p.teacherId];
+  for (const sid of rest) notify(toStudent(sid), `Reminder from ${t?.name || 'your teacher'}: “${p.question}”`, { persona: toStudent(sid), screen: 'map' });
+  p.reminded = TODAY;
+  emit();
+  return rest.length;
+}
+// The student's lane for a school line: the line itself or one of their sub-lines of it; added to their map if missing.
+const laneFor = (s, lineId) => {
+  const lane = s.laneOrder.find((l) => l === lineId || lineById(l)?.parentLineId === lineId);
+  if (lane) return lane;
+  if (!lineById(lineId)) return s.laneOrder[0] || null;
+  s.laneOrder.push(lineId); return lineId;
+};
+export function answerPrompt(promptId, studentId, { text, image = null, imageCaption = 'Photo', title } = {}) {
+  const p = getClassPrompt(promptId), s = getStudent(studentId);
+  if (!p || !s || !p.studentIds.includes(studentId)) throw Object.assign(new Error('This question is not for you'), { status: 404 });
+  if (answerOf(promptId, studentId)) throw Object.assign(new Error('You already answered this'), { status: 409 });
+  const answer = String(text || '').trim().slice(0, 4000);
+  if (!answer) throw Object.assign(new Error('Write an answer first'), { status: 400 });
+  const lane = p.lineId ? laneFor(s, p.lineId) : s.laneOrder[0] || null;
+  let e = null;
+  if (lane) {
+    const name = String(title || '').trim().slice(0, 120) || p.context || p.question;
+    e = addStation(studentId, p.asMoment
+      ? { title: name, lineIds: [lane], type: 'project', image, imageCaption, visibility: 'advisor', via: 'Class question', requestFrom: teacherById[p.teacherId] ? p.teacherId : null, requestNote: `Answer to “${p.question}”` }
+      : { title: `Reflection: ${p.context || p.question}`, lineIds: [lane], type: 'reflection', image, imageCaption, visibility: 'advisor', via: 'Class question' });
+    store.reflections.push({ id: uid('rf-x'), eventId: e.id, text: answer, prompt: p.question, date: e.date, visibility: 'advisor' });
+  }
+  const a = { id: uid('ca-'), promptId, studentId, date: TODAY, at: nowIso(), text: answer, eventId: e?.id || null };
+  cAnswers().push(a);
+  log(studentId, s.name, 'reflection', `Answered “${p.question}”`);
+  emit();
+  return a;
+}
+// "Not for me": hidden from the student; the teacher sees it as skipped.
+export function skipPrompt(promptId, studentId) {
+  const p = getClassPrompt(promptId);
+  if (!p || !p.studentIds.includes(studentId)) throw Object.assign(new Error('This question is not for you'), { status: 404 });
+  if (answerOf(promptId, studentId)) return null;
+  const a = { id: uid('ca-'), promptId, studentId, date: TODAY, at: nowIso(), skipped: true };
+  cAnswers().push(a);
+  emit();
+  return a;
+}
+
 // ── Shared record: with the pilot server, every change is replayed there ──
 // A screen calls a change below; it runs here at once (instant UI) while recording the ids and
 // times it made. The hook (src/sync.js) posts { fn, args, rec } to /api/action, and the server runs
@@ -1570,6 +1660,7 @@ answerConsent = act('answerConsent', answerConsent); remindParent = act('remindP
 endorseClassTask = act('endorseClassTask', endorseClassTask);
 importCandidates = act('importCandidates', importCandidates); eraseStudent = act('eraseStudent', eraseStudent); importRoster = act('importRoster', importRoster); addStudent = act('addStudent', addStudent); addTeacher = act('addTeacher', addTeacher);
 setSubjectLine = act('setSubjectLine', setSubjectLine);
+askClass = act('askClass', askClass); remindClass = act('remindClass', remindClass); answerPrompt = act('answerPrompt', answerPrompt); skipPrompt = act('skipPrompt', skipPrompt);
 // Undo puts a whole earlier copy back, and reset goes back to the seed (sync.js sends it to /api/reset).
 restore = act('restore', restore); resetDemo = act('resetDemo', resetDemo);
 export const MUTATORS = Object.keys(ACTIONS);

@@ -3,15 +3,16 @@ import { applyLens, classesOf, classRoster, getRequests, getStudent, getStudentM
 import { fmtDate, inkOn } from '../format.js';
 import MetroMap from '../components/MetroMap.jsx';
 import StationPanel from '../components/StationPanel.jsx';
+import { AskClassDialog, ClassQuestions } from '../components/ClassPrompts.jsx';
 import './classes.css';
 
 // Pilot: a teacher's classes from the class lists. #/<persona>/classes, /classes/<classId>,
 // /classes/<classId>~<studentId> (that student's map, read only).
-export default function MyClasses({ teacherId, param, go, persona, version }) {
+export default function MyClasses({ teacherId, param, go, persona, version, toast }) {
   const [classId, studentId] = String(param || '').split('~');
   if (classId && studentId) return <StudentRead classId={classId} studentId={studentId} teacherId={teacherId} go={go} persona={persona} version={version} />;
-  if (classId) return <ClassPage classId={classId} teacherId={teacherId} go={go} persona={persona} version={version} />;
-  return <ClassList teacherId={teacherId} go={go} persona={persona} version={version} />;
+  if (classId) return <ClassPage classId={classId} teacherId={teacherId} go={go} persona={persona} version={version} toast={toast} />;
+  return <ClassList teacherId={teacherId} go={go} persona={persona} version={version} toast={toast} />;
 }
 
 const Line = ({ line }) => (line
@@ -28,8 +29,9 @@ function Waiting({ teacherId, go, persona }) {
   );
 }
 
-function ClassList({ teacherId, go, persona, version }) {
+function ClassList({ teacherId, go, persona, version, toast }) {
   const classes = useMemo(() => classesOf(teacherId), [teacherId, version]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [asking, setAsking] = useState(null);
   const students = new Set(classes.flatMap((c) => c.studentIds)).size;
   return (
     <div className="page mc">
@@ -52,16 +54,19 @@ function ClassList({ teacherId, go, persona, version }) {
                 <span className="mc-num"><b>{c.studentIds.length}</b><small>{c.studentIds.length === 1 ? 'student' : 'students'}</small></span>
                 <span className="mc-num"><b>{c.line ? c.recent : '–'}</b><small>{c.recent === 1 ? 'moment' : 'moments'}, 30 days</small></span>
               </a>
+              <button className="ghost cp-askbtn" disabled={!c.studentIds.length} onClick={() => setAsking(c)}>Ask the class</button>
             </li>
           ))}
         </ul>
       )}
+      {asking && <AskClassDialog c={asking} teacherId={teacherId} toast={toast} onClose={() => setAsking(null)} />}
     </div>
   );
 }
 
-function ClassPage({ classId, teacherId, go, persona, version }) {
+function ClassPage({ classId, teacherId, go, persona, version, toast }) {
   const c = useMemo(() => classRoster(classId, teacherId), [classId, teacherId, version]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [asking, setAsking] = useState(false);
   const back = <button className="cb-back" onClick={() => go(persona.id, 'classes')}>‹ My classes</button>;
   if (!c || !c.teacherIds?.includes(teacherId)) return <div className="page mc">{back}<div className="empty-state"><b>This class is not one of yours.</b></div></div>;
   return (
@@ -73,8 +78,13 @@ function ClassPage({ classId, teacherId, go, persona, version }) {
           <h1>{c.name}</h1>
           <p><Line line={c.line} /> {plural(c.students.length, 'student')}{!c.line && ' · moments show here once a coordinator puts this subject on a line'}</p>
         </div>
-        <Waiting teacherId={teacherId} go={go} persona={persona} />
+        <div className="cp-head-acts">
+          <button className="primary" disabled={!c.students.length} onClick={() => setAsking(true)}>Ask the class</button>
+          <Waiting teacherId={teacherId} go={go} persona={persona} />
+        </div>
       </header>
+      {asking && <AskClassDialog c={c} teacherId={teacherId} toast={toast} onClose={() => setAsking(false)} />}
+      <ClassQuestions c={c} teacherId={teacherId} go={go} persona={persona} version={version} toast={toast} />
       {!c.students.length && <div className="empty-state"><b>No students in this class right now.</b></div>}
       {c.students.length > 0 && (
         <table className="mc-table">

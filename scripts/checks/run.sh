@@ -11,4 +11,5 @@ echo "== roster (starts its own clean pilot server)"; node roster.cjs || fail=1
 echo "== my-classes (starts its own clean pilot server on the real roster)"; node my-classes.cjs || fail=1
 echo "== simple-flow"; node simple-flow.cjs || fail=1
 echo "== signin-cards"; node signin-cards.cjs || fail=1
+echo "== class-prompts"; node class-prompts.cjs || fail=1
 echo "== tours"; node tours.cjs | grep -E "end url|ERRS|soon|boom|empty|hs" ; exit $fail

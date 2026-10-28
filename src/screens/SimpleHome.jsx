@@ -5,6 +5,7 @@ import { isPilot } from '../auth.js';
 import { evidenceFor } from '../upload.js';
 import { UploadStatus, useUpload } from '../components/FileAttach.jsx';
 import { SUGGEST } from '../components/AddStation.jsx';
+import { OpenPrompts } from '../components/ClassPrompts.jsx';
 
 // Simple: the student interface for Years 7 and 8 (and anyone who picks it). Not the full app with parts hidden,
 // but its own calmer design: one question per screen, big buttons, plain words, and a map drawn as a few
@@ -38,7 +39,7 @@ function checkers(studentId, lineId) {
   return (s ? [s, ...all.filter((t) => t !== s)] : all).map((t) => ({ t, why: t.role }));
 }
 
-export default function SimpleHome({ map, studentId, toast }) {
+export default function SimpleHome({ map, studentId, toast, version }) {
   const [adding, setAdding] = useState(false);
   const [asking, setAsking] = useState(null); // { event, prompt, signal }
   const [open, setOpen] = useState(null);
@@ -57,6 +58,8 @@ export default function SimpleHome({ map, studentId, toast }) {
         <h1>Hi {first}!</h1>
         <p>{moments.length ? `Your journey has ${moments.length} moment${moments.length > 1 ? 's' : ''} so far.` : 'Your journey starts here.'} What have you been up to?</p>
       </section>
+
+      <OpenPrompts studentId={studentId} simple toast={toast} version={version} />
 
       <div className="sh-actions">
         <button className="sh-card add" onClick={() => setAdding(true)}><span className="sh-ic" aria-hidden="true">＋</span><b>Add something I did</b><small>A club, a project, a match, anything</small></button>
