@@ -114,7 +114,7 @@ const status = async (url, opts) => (await fetch(url, opts)).status;
     const u1 = await post('undo', { rev: mine.rev }, H), u1j = await u1.json();
     ok(u1.status === 200 && Array.isArray(u1j.skipped) && u1j.undone[0] === mine.rev, 'pilot: a student undoes their own change → { rev, undone, skipped }');
     ok((await post('undo', { rev: mine.rev }, H)).status === 409, 'pilot: the same change cannot be undone twice');
-    const st1 = (await (await fetch(`${U}/api/state`, { headers: H })).json()).snapshot.store;
+    const st1 = (await (await fetch(`${U}/api/state`, { headers: AH })).json()).snapshot.store; // advisor notes are not in the student's own part
     ok(st1.notes[me1.user.studentId]?.some((n) => n.text === 'Admin note'), 'pilot: the admin’s later change is kept');
     ok((await post('action', { fn: 'restore', args: ['{}'], rec: [] }, H)).status === 403, 'pilot: whole-record restore stays admin-only');
 
@@ -125,8 +125,8 @@ const status = async (url, opts) => (await fetch(url, opts)).status;
     ok(stS.students.length === 1 && stS.students[0].id === sid, `student's /api/state holds only their own student record (${stS.students.length})`);
     ok([...evOf(stS)].every((x) => x === sid) && stS.reflections.length === 0 && Object.keys(stS.drafts).every((x) => x === sid), 'no other student’s stations, reflections or drafts');
     ok(!JSON.stringify(stS).includes('Maya Chen') && stS.teachers.length > 5 && stS.teachers.every((t) => !t.email), 'no seeded students; the staff directory without emails');
-    const AH = { cookie: `tp_session=${adminCookie.value}`, 'content-type': 'application/json' };
-    const made = await (await fetch(`${U}/api/admin/accounts`, { method: 'POST', headers: AH, body: JSON.stringify({ email: 'sato@nist.ac.th', name: 'Ms Hana Sato', kind: 'teacher', teacherId: 't-06' }) })).json();
+    const AJ = { cookie: `tp_session=${adminCookie.value}`, 'content-type': 'application/json' };
+    const made = await (await fetch(`${U}/api/admin/accounts`, { method: 'POST', headers: AJ, body: JSON.stringify({ email: 'sato@nist.ac.th', name: 'Ms Hana Sato', kind: 'teacher', teacherId: 't-06' }) })).json();
     const tok = decodeURIComponent(made.setupUrl.split('/setup/')[1]);
     const su = await fetch(`${U}/api/auth/setup`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: tok, password: 'sato-pass-123' }) });
     const TH = { cookie: su.headers.get('set-cookie').split(';')[0], 'content-type': 'application/json' };
