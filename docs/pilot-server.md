@@ -243,7 +243,8 @@ server makes an empty folder and begins again from the seed.
   mutator except `resetDemo`, `restore`, `addStudent`, `addTeacher`. Students: only the student mutators
   listed in `STUDENT_OWNS`, and only when every student the call touches (looked up from the station,
   inbox item, request or evidence request) is their own `studentId`. Parents: `answerConsent` for their own
-  children, and `setFamily`. Everyone signed in: `recordView`, `markNotificationsRead`, `setLang`.
+  children, and `setFamily`. Everyone signed in: `recordView`, `setLang`, and `markNotificationsRead` for their
+  own keys only (see Notifications).
 - **Browser** (`src/auth.js`): reads the mode from `/api/auth/me` (no server, or demo → demo). In pilot it
   builds the signed-in person's persona in the PERSONAS shape (`personaFor`) and installs it with
   `setPilotPersona`, so `personaById` always returns it. `navOf(p)` gives a persona's navigation
@@ -257,8 +258,6 @@ server makes an empty folder and begins again from the seed.
 - `canAct` is only a check: it does nothing until `/api/action` calls it. It checks who owns the target,
   not every field of the arguments (a staff member can still act as any teacher, `addGoal(.., by)` etc.).
   `restore` (Undo) is admin-only in it, so student and staff Undo needs a scoped replacement.
-- Notifications are addressed by persona id: accounts linked to a seeded persona's record keep that id;
-  everyone else is `me`, and `notify` skips students without a seeded persona.
 - `setLang` changes the one shared family language setting for everybody.
 - In the browser the record is still also saved in localStorage; signing out clears it.
 - **Public pages** (`server/routes/40-public.mjs`, `src/publicRoute.js`, `src/screens/PublicPage.jsx`):
@@ -270,3 +269,23 @@ server makes an empty folder and begins again from the seed.
   station's verification record. Share URLs are absolute; set `VITE_PUBLIC_URL` at build time when the
   app is built or opened somewhere other than its public address. Tests: `npm run test:server`,
   `BASE=http://localhost:8787 node scripts/checks/public.cjs`.
+
+## Notifications (`src/api.js`)
+
+- **Recipient keys**: `toStudent(sid)`, `toTeacher(tid)`, `toFamily(sid)` give the demo persona id when the record
+  has one (`maya`, `nair`, `parent`…) and otherwise `st:<studentId>`, `t:<teacherId>`, `fam:<studentId>` (that
+  child's family). `toRole(kind)` is `role:<kind>`, for whoever holds a role (a new sub-line goes to
+  `role:coordinator`). Every `notify(to, text, go)` uses them, and `go.persona` is the same key.
+- **A person's bell**: `notifyKeys(personaOrAccount)` lists every key a person reads: their persona id (not `me`),
+  `st:` and `toStudent` for a student, `t:`, `toTeacher` and `role:<kind>` for staff, `fam:` and `toFamily` for
+  each child of a parent. `getNotifications(keys)` and `markNotificationsRead(keys)` take one key or a list. A
+  seeded record answers to both its demo id and its `st:`/`t:` key. In pilot mode `canAct` lets a person mark
+  read only their own keys.
+- **Who acted**: texts name the person who acted. `decideBranch(id, ok, mergeInto, by)` and
+  `nudgeMilestone(studentId, milestone, by)` take the coordinator's teacher id (left out: the demo's Ms Brandt);
+  `CommentDialog` passes the counsellor's. `shortName('Ms Clara Brandt')` is `Ms Brandt`. Demo texts are unchanged.
+- A family's answer to a consent request goes to the student's advisor (`toTeacher(advisorId)`); in the demo
+  Mr Whitfield still hears about every seeded student.
+- A pilot parent linked to a seeded child that has a demo family (`st-06`, `st-09`) also reads the demo parent's bell.
+- Tests: `server/test/notifications.test.mjs`, `node scripts/checks/notifications.cjs` (its own pilot server: a new
+  student asks a new teacher, the teacher endorses, both bells update live).

@@ -103,7 +103,7 @@ export default (app) => {
     const { pres, link } = findLink(token);
     const body = await readJson(req);
     const who = reader(link, body) || link.sharedWith || api.SHARED_LABEL[token] || 'A viewer';
-    const persona = api.PERSONA_OF_STUDENT[pres.studentId];
+    const persona = api.toStudent(pres.studentId);
     api.notify(persona, `${who} asked to extend link /s/${token}`, { persona, screen: 'links' });
     changed({ kind: 'notify' });
     send(res, 200, { ok: true });

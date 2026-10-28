@@ -277,7 +277,7 @@ export function importCandidates(rows, { sourceId, by, file } = {}) {
     if (sourceId === 'mine') log(sid, actor, 'sync', `Imported ${items} from ${file || 'a file'} into the inbox`);
     else {
       log(sid, actor, 'sync', `Imported ${items} from ${system}${file ? ` (${file})` : ''} into the inbox`);
-      notify(PERSONA_OF_STUDENT[sid], `${items} from ${system} ${n === 1 ? 'is' : 'are'} in your inbox. You choose where ${n === 1 ? 'it goes' : 'they go'}.`, { persona: PERSONA_OF_STUDENT[sid], screen: 'inbox' });
+      notify(toStudent(sid), `${items} from ${system} ${n === 1 ? 'is' : 'are'} in your inbox. You choose where ${n === 1 ? 'it goes' : 'they go'}.`, { persona: toStudent(sid), screen: 'inbox' });
     }
   }
   if (sourceId && sourceId !== 'mine') {
@@ -386,13 +386,13 @@ export function setCasProject(sid, status, title, by) {
   const was = getCasProject(sid).status;
   store.casProjects[sid] = { status, title, updated: TODAY };
   log(sid, by, 'goal', `CAS project${title ? ` “${title}”` : ''}: ${was} → ${status}`);
-  if (was !== status) notify(PERSONA_OF_STUDENT[sid], `${by} marked your CAS project as ${status.toLowerCase()}`, { persona: PERSONA_OF_STUDENT[sid], screen: 'map' });
+  if (was !== status) notify(toStudent(sid), `${by} marked your CAS project as ${status.toLowerCase()}`, { persona: toStudent(sid), screen: 'map' });
   emit();
 }
 export const getCasNudges = (sid) => store.casNudges.filter((n) => n.studentId === sid);
 export function casNudge(sid, about, text, by) {
   store.casNudges.push({ id: uid('cn-'), studentId: sid, about, text, by, date: TODAY });
-  notify(PERSONA_OF_STUDENT[sid], `${by}: ${text}`, { persona: PERSONA_OF_STUDENT[sid], screen: 'map' });
+  notify(toStudent(sid), `${by}: ${text}`, { persona: toStudent(sid), screen: 'map' });
   log(sid, by, 'prompt', `CAS nudge about ${about}: “${text}”`);
   emit();
 }
@@ -514,6 +514,29 @@ export function getSignals(studentId, lines = getStudentMap(studentId).lines) {
 // ── Personas: who receives notifications ──────────────────────────────
 export const PERSONA_OF_STUDENT = { 'st-01': 'maya', 'st-02': 'arun', 'st-03': 'lena', 'st-09': 'pim' };
 export const PERSONA_OF_TEACHER = { 't-07': 'whitfield', 't-01': 'nair', 't-09': 'adeyemi', 't-08': 'brandt', 't-10': 'principal' };
+export const PERSONA_OF_FAMILY = { 'st-06': 'parent', 'st-09': 'parent' };
+// Recipient keys. A record with a demo persona keeps that persona's id; everyone else (the pilot) is
+// `st:<studentId>`, `t:<teacherId>`, `fam:<studentId>` (that child's family) or `role:<kind>` (whoever holds the role).
+export const toStudent = (sid) => (sid ? PERSONA_OF_STUDENT[sid] || `st:${sid}` : null);
+export const toTeacher = (tid) => (tid ? PERSONA_OF_TEACHER[tid] || `t:${tid}` : null);
+export const toFamily = (sid) => (sid ? PERSONA_OF_FAMILY[sid] || `fam:${sid}` : null);
+export const toRole = (kind) => `role:${kind}`;
+const STAFF_KINDS = ['advisor', 'teacher', 'counsellor', 'coordinator', 'leadership'];
+// Every key a person's bell reads: their persona id, their record's keys and their role's. Takes a persona or an account.
+export function notifyKeys(p) {
+  if (!p) return [];
+  const k = [p.id && p.id !== 'me' ? p.id : null];
+  if (p.kind === 'student' && p.studentId) k.push(`st:${p.studentId}`, toStudent(p.studentId));
+  if (STAFF_KINDS.includes(p.kind)) { k.push(toRole(p.kind)); if (p.teacherId) k.push(`t:${p.teacherId}`, toTeacher(p.teacherId)); }
+  if (p.kind === 'parent') for (const c of p.children || []) k.push(`fam:${c}`, toFamily(c));
+  return [...new Set(k.filter(Boolean))];
+}
+// "Ms Clara Brandt" → "Ms Brandt" (Kru and Khun go with the first name); a name without a title stays whole.
+export function shortName(n = '') {
+  const m = /^(Mr|Mrs|Ms|Miss|Dr|Kru|Khun)\.?\s+(.+)$/.exec(n.trim()); if (!m) return n;
+  const w = m[2].split(/\s+/); return `${m[1]} ${/^(Kru|Khun)$/.test(m[1]) ? w[0] : w.at(-1)}`;
+}
+const teacherName = (tid, fallback) => teacherById[tid]?.name || teacherById[fallback]?.name || '';
 // Ids and the clock. Every value a change cannot repeat on its own comes from here, so the server
 // can replay a browser's change and end with the same ids and times (see "Shared record" below).
 // Ids carry a tag drawn once per page load, so two devices never both make `nt-5`.
@@ -530,8 +553,10 @@ export function log(studentId, actor, kind, text) { store.activity.unshift({ id:
 // The same two, as changes a screen can make on its own.
 export function addLog(studentId, actor, kind, text) { log(studentId, actor, kind, text); emit(); }
 export function addNotification(to, text, go) { notify(to, text, go); emit(); }
-export const getNotifications = (persona) => store.notifications.filter((n) => n.to === persona);
-export function markNotificationsRead(persona) { store.notifications.forEach((n) => { if (n.to === persona) n.read = true; }); emit(); }
+// `keys`: one recipient key or a list of them (notifyKeys(persona)).
+const keySet = (keys) => new Set([].concat(keys || []));
+export const getNotifications = (keys) => { const k = keySet(keys); return store.notifications.filter((n) => k.has(n.to)); };
+export function markNotificationsRead(keys) { const k = keySet(keys); store.notifications.forEach((n) => { if (k.has(n.to)) n.read = true; }); emit(); }
 
 // ── Student actions ───────────────────────────────────────────────────
 export function addReflection({ studentId, eventId, prompt, text, visibility = 'advisor', signal, files }) {
@@ -541,7 +566,7 @@ export function addReflection({ studentId, eventId, prompt, text, visibility = '
     store.answered[signal.key] = r.id;
     if (signal.promptId) {
       const p = store.prompts.find((x) => x.id === signal.promptId);
-      if (p) { p.answered = true; notify(PERSONA_OF_TEACHER[p.from], `${getStudent(studentId).name.split(' ')[0]} answered your reflection prompt`, { persona: PERSONA_OF_TEACHER[p.from], screen: 'student', param: studentId }); }
+      if (p) { p.answered = true; notify(toTeacher(p.from), `${getStudent(studentId).name.split(' ')[0]} answered your reflection prompt`, { persona: toTeacher(p.from), screen: 'student', param: studentId }); }
     }
   }
   log(studentId, getStudent(studentId).name, 'reflection', `Added a reflection on “${getEvent(eventId)?.title}” (${visibility})`);
@@ -569,7 +594,7 @@ export function requestEndorsement(eventId, teacherId, note) {
   const rq = { id: uid('rq-x'), eventId, studentId: e.studentId, teacherId, date: TODAY, source: 'student', note: note || null, status: 'pending', fresh: true };
   store.requests.unshift(rq);
   const name = getStudent(e.studentId).name;
-  notify(PERSONA_OF_TEACHER[teacherId], `${name.split(' ')[0]} asked you to endorse “${e.title}”`, { persona: PERSONA_OF_TEACHER[teacherId], screen: 'queue' });
+  notify(toTeacher(teacherId), `${name.split(' ')[0]} asked you to endorse “${e.title}”`, { persona: toTeacher(teacherId), screen: 'queue' });
   log(e.studentId, name, 'request', `Asked ${teacherById[teacherId].name} to endorse “${e.title}”`);
   emit();
   return rq;
@@ -589,7 +614,7 @@ export function endorse(requestIds, teacherId, note) {
     e.verification = 'teacher-endorsed';
     const t = teacherById[teacherId];
     log(e.studentId, t.name, 'endorsement', `Endorsed “${e.title}”`);
-    notify(PERSONA_OF_STUDENT[e.studentId], `${t.name} endorsed “${e.title}”`, { persona: PERSONA_OF_STUDENT[e.studentId], screen: 'map', param: e.id });
+    notify(toStudent(e.studentId), `${t.name} endorsed “${e.title}”`, { persona: toStudent(e.studentId), screen: 'map', param: e.id });
   }
   emit();
 }
@@ -597,7 +622,7 @@ export function declineRequest(id, reason) {
   const r = store.requests.find((x) => x.id === id);
   if (!r) return;
   r.status = 'returned'; r.reason = reason;
-  notify(PERSONA_OF_STUDENT[r.studentId], `${teacherById[r.teacherId].name} asked for more evidence on “${getEvent(r.eventId).title}”`, { persona: PERSONA_OF_STUDENT[r.studentId], screen: 'map', param: r.eventId });
+  notify(toStudent(r.studentId), `${teacherById[r.teacherId].name} asked for more evidence on “${getEvent(r.eventId).title}”`, { persona: toStudent(r.studentId), screen: 'map', param: r.eventId });
   emit();
 }
 
@@ -608,7 +633,7 @@ export const getPrompts = (studentId) => store.prompts.filter((p) => p.studentId
 export function sendPrompt(studentId, eventId, text, from = 't-07') {
   const p = { id: uid('pm-x'), studentId, eventId, from, date: TODAY, text, answered: false };
   store.prompts.push(p);
-  notify(PERSONA_OF_STUDENT[studentId], `${teacherById[from].name} sent you a reflection prompt`, { persona: PERSONA_OF_STUDENT[studentId], screen: 'map', param: eventId });
+  notify(toStudent(studentId), `${teacherById[from].name} sent you a reflection prompt`, { persona: toStudent(studentId), screen: 'map', param: eventId });
   log(studentId, teacherById[from].name, 'prompt', `Sent a reflection prompt on “${getEvent(eventId)?.title}”`);
   emit();
   return p;
@@ -638,7 +663,7 @@ export function addBranch(studentId, parentLineId, name, first) {
   if (!s.laneOrder.includes(id)) s.laneOrder.splice(at < 0 ? s.laneOrder.length : at + 1, 0, id);
   const e = addStation(studentId, { ...first, lineIds: [parentLineId, id], visibility: first.visibility || 'advisor' });
   log(studentId, s.name, 'line', `Branched “${name}” from ${lineById(parentLineId)?.name}`);
-  notify('brandt', `${s.name} asked for a new sub-line: “${name}” under ${lineById(parentLineId)?.name}`, { persona: 'brandt', screen: 'governance' });
+  notify(toRole('coordinator'), `${s.name} asked for a new sub-line: “${name}” under ${lineById(parentLineId)?.name}`, { persona: toRole('coordinator'), screen: 'governance' });
   emit();
   return { line: lineById(id), event: e };
 }
@@ -649,7 +674,7 @@ export function endLine(studentId, lineId, keepVisible = false) {
   if (!keepVisible) store.events.forEach((e) => { if (e.studentId === studentId && e.lineIds.length === 1 && e.lineIds[0] === lineId && e.visibility === 'publishable') e.visibility = 'advisor'; });
   log(studentId, s.name, 'line', `Ended the ${lineById(lineId)?.name} line${keepVisible ? '' : ' (its stations are now advisor-only)'}`);
   const adv = store.students.find((x) => x.id === studentId)?.advisorId;
-  if (PERSONA_OF_TEACHER[adv]) notify(PERSONA_OF_TEACHER[adv], `${s.name.split(' ')[0]} ended the ${lineById(lineId)?.name} line`, { persona: PERSONA_OF_TEACHER[adv], screen: 'student', param: studentId });
+  if (adv) notify(toTeacher(adv), `${s.name.split(' ')[0]} ended the ${lineById(lineId)?.name} line`, { persona: toTeacher(adv), screen: 'student', param: studentId });
   emit();
 }
 export function restartLine(studentId, lineId) {
@@ -768,15 +793,16 @@ export function linePairs() {
 // School line of a station's line (sub-lines roll up to their parent).
 export const rootLine = (id) => lineById(id)?.parentLineId || id;
 export function renameLine(id, patch) { const l = lineById(id); Object.assign(l, patch); emit(); }
-export function decideBranch(id, ok, mergeInto) {
+// `by`: the coordinator's teacher id (the demo's Ms Brandt when left out).
+export function decideBranch(id, ok, mergeInto, by) {
   const l = lineById(id); if (!l) return;
-  if (ok) { l.approval = 'approved'; notify(PERSONA_OF_STUDENT[l.studentId], `Ms Brandt approved your new line “${l.name}”`, { persona: PERSONA_OF_STUDENT[l.studentId], screen: 'map' }); }
+  if (ok) { l.approval = 'approved'; notify(toStudent(l.studentId), `${shortName(teacherName(by, 't-08'))} approved your new line “${l.name}”`, { persona: toStudent(l.studentId), screen: 'map' }); }
   else if (mergeInto) {
     const target = lineById(mergeInto);
     store.events.forEach((e) => { if (e.lineIds.includes(id)) e.lineIds = [...new Set(e.lineIds.map((x) => (x === id ? mergeInto : x)))]; });
     const s = getStudent(l.studentId); s.laneOrder = s.laneOrder.filter((x) => x !== id); if (!s.laneOrder.includes(mergeInto)) s.laneOrder.push(mergeInto);
     store.lines = store.lines.filter((x) => x.id !== id);
-    notify(PERSONA_OF_STUDENT[l.studentId], `Your line “${l.name}” was merged into “${target.name}”`, { persona: PERSONA_OF_STUDENT[l.studentId], screen: 'map' });
+    notify(toStudent(l.studentId), `Your line “${l.name}” was merged into “${target.name}”`, { persona: toStudent(l.studentId), screen: 'map' });
   }
   emit();
 }
@@ -856,11 +882,11 @@ export function getDpCore() {
     }),
   })).sort((a, b) => b.student.grade - a.student.grade || a.student.name.localeCompare(b.student.name));
 }
-export function nudgeMilestone(studentId, milestone) {
+export function nudgeMilestone(studentId, milestone, by) {
   (store.dpNudges ||= {})[`${studentId}:${milestone.id}`] = TODAY;
-  const s = getStudent(studentId);
-  notify(PERSONA_OF_STUDENT[studentId], `Ms Brandt: your ${milestone.part} ${milestone.name.toLowerCase()} was due ${milestone.due}. Can you upload it this week?`, { persona: PERSONA_OF_STUDENT[studentId], screen: 'map' });
-  log(studentId, 'Ms Clara Brandt', 'prompt', `Reminded ${s.name.split(' ')[0]} about the ${milestone.part} ${milestone.name.toLowerCase()}`);
+  const s = getStudent(studentId); const who = teacherName(by, 't-08');
+  notify(toStudent(studentId), `${shortName(who)}: your ${milestone.part} ${milestone.name.toLowerCase()} was due ${milestone.due}. Can you upload it this week?`, { persona: toStudent(studentId), screen: 'map' });
+  log(studentId, who, 'prompt', `Reminded ${s.name.split(' ')[0]} about the ${milestone.part} ${milestone.name.toLowerCase()}`);
   emit();
 }
 export function markMilestone(studentId, id) { ((store.dpDone ||= {})[studentId] ||= {})[id] = TODAY; emit(); }
@@ -876,9 +902,9 @@ export function addGoal(studentId, f, by) {
   store.events.push(e);
   const s = getStudent(studentId);
   log(studentId, by ? teacherById[by]?.name : s.name, 'goal', `Planned “${e.title}” for ${e.date}${f.checkIn ? ', with an advisor check-in' : ''}`);
-  if (by && PERSONA_OF_STUDENT[studentId]) notify(PERSONA_OF_STUDENT[studentId], `${teacherById[by].name} added a goal you agreed together: “${e.title}”`, { persona: PERSONA_OF_STUDENT[studentId], screen: 'map', param: e.id });
-  if (f.sponsor) notify(PERSONA_OF_TEACHER[f.sponsor], `${s.name.split(' ')[0]} invited you to sponsor a planned project: “${e.title}”`, { persona: PERSONA_OF_TEACHER[f.sponsor], screen: 'queue' });
-  if (!by && f.checkIn && PERSONA_OF_TEACHER[s.advisorId]) notify(PERSONA_OF_TEACHER[s.advisorId], `${s.name.split(' ')[0]} set a goal and asked for a check-in: “${e.title}”`, { persona: PERSONA_OF_TEACHER[s.advisorId], screen: 'student', param: studentId });
+  if (by) notify(toStudent(studentId), `${teacherName(by)} added a goal you agreed together: “${e.title}”`, { persona: toStudent(studentId), screen: 'map', param: e.id });
+  if (f.sponsor) notify(toTeacher(f.sponsor), `${s.name.split(' ')[0]} invited you to sponsor a planned project: “${e.title}”`, { persona: toTeacher(f.sponsor), screen: 'queue' });
+  if (!by && f.checkIn && s.advisorId) notify(toTeacher(s.advisorId), `${s.name.split(' ')[0]} set a goal and asked for a check-in: “${e.title}”`, { persona: toTeacher(s.advisorId), screen: 'student', param: studentId });
   emit();
   return e;
 }
@@ -954,7 +980,7 @@ export const getComments = (presentationId) => store.comments.filter((c) => c.pr
 export function addComment(presentationId, studentId, text, eventId, by = 't-09') {
   const c = { id: uid('cm-'), presentationId, studentId, eventId: eventId || null, text, by, date: TODAY, resolved: false };
   store.comments.push(c);
-  notify(PERSONA_OF_STUDENT[studentId], `${teacherById[by].name} commented on your draft`, { persona: PERSONA_OF_STUDENT[studentId], screen: 'studio' });
+  notify(toStudent(studentId), `${teacherName(by, 't-09')} commented on your draft`, { persona: toStudent(studentId), screen: 'studio' });
   emit();
   return c;
 }
@@ -969,7 +995,7 @@ export function askEvidence(eventId, from, text) {
   const e = getEvent(eventId);
   const r = { id: uid('er-'), eventId, studentId: e.studentId, from, text, date: TODAY, status: 'open' };
   store.evidenceRequests.unshift(r);
-  notify(PERSONA_OF_STUDENT[e.studentId], `${from} asked to see more on “${e.title}”`, { persona: PERSONA_OF_STUDENT[e.studentId], screen: 'inbox' });
+  notify(toStudent(e.studentId), `${from} asked to see more on “${e.title}”`, { persona: toStudent(e.studentId), screen: 'inbox' });
   log(e.studentId, from, 'request', `Asked for more evidence on “${e.title}”`);
   emit();
   return r;
@@ -1008,7 +1034,7 @@ export function answerSponsor(eventId, ok, expectations) {
   const e = getEvent(eventId); const t = teacherById[e.sponsor.teacherId];
   e.sponsor = { ...e.sponsor, status: ok ? 'accepted' : 'declined', expectations: expectations || '', answeredOn: TODAY };
   if (ok) e.visibility = e.visibility === 'private' ? 'advisor' : e.visibility;
-  notify(PERSONA_OF_STUDENT[e.studentId], ok ? `${t.name} will sponsor “${e.title}”` : `${t.name} can't sponsor “${e.title}”`, { persona: PERSONA_OF_STUDENT[e.studentId], screen: 'map', param: e.id });
+  notify(toStudent(e.studentId), ok ? `${t.name} will sponsor “${e.title}”` : `${t.name} can't sponsor “${e.title}”`, { persona: toStudent(e.studentId), screen: 'map', param: e.id });
   log(e.studentId, t.name, 'endorse', ok ? `Agreed to sponsor “${e.title}”` : `Declined to sponsor “${e.title}”`);
   emit();
 }
@@ -1016,8 +1042,8 @@ export function addCheckIn(eventId, text, by) {
   const e = getEvent(eventId);
   e.sponsor.checkIns = [...e.sponsor.checkIns, { date: TODAY, text, by }];
   const who = by === 'student' ? getStudent(e.studentId).name : teacherById[by]?.name;
-  if (by === 'student') notify(PERSONA_OF_TEACHER[e.sponsor.teacherId], `${who.split(' ')[0]} posted an update on “${e.title}”`, { persona: PERSONA_OF_TEACHER[e.sponsor.teacherId], screen: 'queue' });
-  else notify(PERSONA_OF_STUDENT[e.studentId], `${who} checked in on “${e.title}”`, { persona: PERSONA_OF_STUDENT[e.studentId], screen: 'map', param: e.id });
+  if (by === 'student') notify(toTeacher(e.sponsor.teacherId), `${who.split(' ')[0]} posted an update on “${e.title}”`, { persona: toTeacher(e.sponsor.teacherId), screen: 'queue' });
+  else notify(toStudent(e.studentId), `${who} checked in on “${e.title}”`, { persona: toStudent(e.studentId), screen: 'map', param: e.id });
   log(e.studentId, who, 'prompt', `Check-in on “${e.title}”: ${text}`);
   emit();
 }
@@ -1095,7 +1121,7 @@ export function resubmit(requestId, evidence, note) {
   if (evidence) e.evidence = [...e.evidence, evidence];
   Object.assign(r, { status: 'pending', resubmitted: true, date: TODAY, note: note || r.note, fresh: true });
   const s = getStudent(r.studentId);
-  notify(PERSONA_OF_TEACHER[r.teacherId], `${s.name.split(' ')[0]} added evidence to “${e.title}” and resubmitted it`, { persona: PERSONA_OF_TEACHER[r.teacherId], screen: 'queue' });
+  notify(toTeacher(r.teacherId), `${s.name.split(' ')[0]} added evidence to “${e.title}” and resubmitted it`, { persona: toTeacher(r.teacherId), screen: 'queue' });
   log(r.studentId, s.name, 'request', `Added evidence to “${e.title}” and resubmitted it to ${teacherById[r.teacherId].name}`);
   emit();
 }
@@ -1113,13 +1139,14 @@ export function answerConsent(id, status, by) {
   r.status = status; r.answered = TODAY;
   const s = getStudent(r.studentId);
   log(r.studentId, by, 'consent', `${status === 'approved' ? 'Gave' : status === 'declined' ? 'Declined' : 'Withdrew'} consent: ${r.title}`);
-  notify(PERSONA_OF_STUDENT[r.studentId], status === 'approved' ? `Your parent said yes: ${r.title}` : `Your parent said no for now: ${r.title}`, { persona: PERSONA_OF_STUDENT[r.studentId], screen: 'privacy' });
-  notify('whitfield', `${s.name.split(' ')[0]}’s family answered a consent request`);
+  notify(toStudent(r.studentId), status === 'approved' ? `Your parent said yes: ${r.title}` : `Your parent said no for now: ${r.title}`, { persona: toStudent(r.studentId), screen: 'privacy' });
+  // The student's advisor hears; the demo's advisor persona also hears about every seeded student, as before.
+  for (const to of new Set([toTeacher(s.advisorId), s.pilot ? null : 'whitfield'])) notify(to, `${s.name.split(' ')[0]}’s family answered a consent request`);
   emit();
 }
 export function remindParent(studentId) {
   const s = getStudent(studentId);
-  notify('parent', `${s.name.split(' ')[0]} asked you to look at a consent request`, { persona: 'parent', screen: 'consent', param: studentId });
+  notify(toFamily(studentId), `${s.name.split(' ')[0]} asked you to look at a consent request`, { persona: toFamily(studentId), screen: 'consent', param: studentId });
   log(studentId, s.name, 'consent', 'Sent a reminder to a parent about consent');
   emit();
 }
@@ -1231,7 +1258,7 @@ export function endorseClassTask(taskId, studentIds, note) {
     store.inbox.push({ id: uid('ev-'), studentId: sid, title: t.title, date: t.due, lineIds: [line], suggestedLineIds: [line], type: t.type, summary: t.summary, evidence: [],
       verification: 'teacher-endorsed', visibility: 'advisor', source: { system: 'ManageBac', ref: t.ref }, sourceId: 'lms', classEndorsement: { teacherId: t.teacherId, note, date: TODAY } });
     log(sid, teacher.name, 'endorsement', `Endorsed “${t.title}” for the whole class`);
-    notify(PERSONA_OF_STUDENT[sid], `${teacher.name} endorsed “${t.title}”. It is in your inbox.`, { persona: PERSONA_OF_STUDENT[sid], screen: 'inbox' });
+    notify(toStudent(sid), `${teacher.name} endorsed “${t.title}”. It is in your inbox.`, { persona: toStudent(sid), screen: 'inbox' });
   }
   t.done = { count: studentIds.length, at: TODAY, note };
   emit();

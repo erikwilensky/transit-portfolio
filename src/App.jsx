@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { applyLens, getAlumMap, getPresentations, getStudentMap, getStudents, subscribe, getDrafts, setStudentDrafts, hasPublicCopy, getNotifications, markNotificationsRead, resetDemo, restore, logLink, addStation, getLang, setLang, getIntensity, setIntensity, INTENSITY, INTENSITY_NAV, INTENSITY_LABEL } from './api.js';
+import { applyLens, getAlumMap, getPresentations, getStudentMap, getStudents, subscribe, getDrafts, setStudentDrafts, hasPublicCopy, getNotifications, markNotificationsRead, notifyKeys, resetDemo, restore, logLink, addStation, getLang, setLang, getIntensity, setIntensity, INTENSITY, INTENSITY_NAV, INTENSITY_LABEL } from './api.js';
 import SimpleHome, { ShowFamily } from './screens/SimpleHome.jsx';
 import IntensityControl from './components/IntensityControl.jsx';
 import { ensureEndorsed } from './tourStory.js';
@@ -150,7 +150,8 @@ export default function App() {
   useEffect(() => { if (!auto || !tourState) return undefined; const t = setTimeout(() => tourRef.current?.advance(), 12000); return () => clearTimeout(t); }, [auto, tourState]);
 
   const go = (persona, screen, param) => {
-    const p = personaById(persona || route.persona);
+    // A notification's target may be a pilot key (st:…, t:…): in the demo that stays on the current persona.
+    const p = personaById(persona && (pilotPersona() || PERSONAS.some((x) => x.id === persona)) ? persona : route.persona);
     const h = `#/${p.id}/${screen || home(p)}${param ? `/${param}` : ''}`;
     if (location.hash !== h) history.pushState(null, '', h);
     setRoute(parse()); setMenu(null);
@@ -172,7 +173,8 @@ export default function App() {
   const level = persona.kind === 'student' ? getIntensity(persona.studentId) : null;
   const changeLevel = (v) => { setIntensity(persona.studentId, v); if (INTENSITY_NAV[v] && !INTENSITY_NAV[v].includes(route.screen)) go(persona.id, 'map'); toast(`Interface set to ${v}. Your map and everything on it stay the same.`); };
   const nav = navOf(persona).filter(([id]) => !level || !INTENSITY_NAV[level] || INTENSITY_NAV[level].includes(id)).map(([id, l]) => [id, T(INTENSITY_LABEL[level]?.[id] || l)]);
-  const notes = getNotifications(persona.id);
+  const keys = notifyKeys(persona);
+  const notes = getNotifications(keys);
   const unread = notes.filter((n) => !n.read).length;
   const ctx = { go, toast, version, persona, drafts, setDrafts, audience, setAudience, tier, setTier, startTour: (t) => { setTourState({ tour: t, step: 0 }); TOURS[t].steps[0].run(ctx); } };
   const tour = tourState && TOURS[tourState.tour];
@@ -225,7 +227,7 @@ export default function App() {
               )}
             </div>
             <div className="menu-wrap">
-              <button className="icon-btn bell" onClick={() => { setMenu(menu === 'bell' ? null : 'bell'); if (unread) setTimeout(() => markNotificationsRead(persona.id), 1500); }} aria-label={`Notifications${unread ? `, ${unread} unread` : ''}`}>
+              <button className="icon-btn bell" onClick={() => { setMenu(menu === 'bell' ? null : 'bell'); if (unread) setTimeout(() => markNotificationsRead(keys), 1500); }} aria-label={`Notifications${unread ? `, ${unread} unread` : ''}`}>
                 <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 17V11a6 6 0 1 1 12 0v6l2 2H4z M10 21h4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" /></svg>
                 {unread > 0 && <span className="badge">{unread}</span>}
               </button>

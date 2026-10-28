@@ -150,7 +150,7 @@ export const noteSuccess = (email) => fails.delete(`e:${email}`);
 // /api/action should call it before running a mutator: `if (!canAct(req.user, fn, args)) 403`.
 // In demo mode there are no accounts, so callers skip it (req.user is null).
 const ADMIN_ONLY = new Set(['resetDemo', 'restore', 'addStudent', 'addTeacher']);
-const ANYONE = new Set(['recordView', 'markNotificationsRead', 'setLang']);
+const ANYONE = new Set(['recordView', 'setLang']);
 const ev = (id) => api.getEvent(id)?.studentId;
 const st = () => api.getStore();
 const inboxItem = (id) => (st().inbox.find((e) => e.id === id) || st().dismissed.find((e) => e.id === id))?.studentId;
@@ -176,6 +176,8 @@ export function canAct(user, fn, args = []) {
   if (isAdmin(user)) return true;
   if (ADMIN_ONLY.has(fn)) return false;
   if (ANYONE.has(fn)) return true;
+  // Only your own bell: every key must be one of yours (st:…, t:…, fam:…, role:…, or your record's demo persona id).
+  if (fn === 'markNotificationsRead') { const mine = new Set(api.notifyKeys({ kind: user.kind, studentId: user.studentId, teacherId: user.teacherId, children: user.children })); return [].concat(args[0] ?? []).every((k) => mine.has(k)); }
   if (STAFF.includes(user.kind)) return true;
   try {
     if (user.kind === 'student') {

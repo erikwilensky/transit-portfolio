@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { applyLens, askEvidence, exportPresentation, extraViews, getStudentMap, isGated, addNotification, recordView, TODAY, PERSONA_OF_STUDENT, SHARED_LABEL } from '../api.js';
+import { applyLens, askEvidence, exportPresentation, extraViews, getStudentMap, isGated, addNotification, recordView, TODAY, toStudent, SHARED_LABEL } from '../api.js';
 import { appUrl, fmtDate, TYPE_LABEL, verifyCode, inkOn } from '../format.js';
 import Qr from '../components/Qr.jsx';
 import { VerifyBadge } from '../components/Badge.jsx';
@@ -81,7 +81,7 @@ export default function ShareLanding({ token, drafts, embedded = false, remote =
             <span className="spacer" />
             {!link.site && <div className="seg small" role="group" aria-label="Reading mode"><button className={view === 'full' ? 'on' : ''} aria-pressed={view === 'full'} onClick={() => setView('full')}>Full portfolio</button><button className={view === 'skim' ? 'on' : ''} aria-pressed={view === 'skim'} onClick={() => setView('skim')}>60-second view</button></div>}
             {!link.site && <PrintButton title={view === 'skim' ? docName(map.student.name, 'Portfolio summary') : presentationName(map.student.name, pres)} />}
-            <button className="ghost" disabled={asked} onClick={() => { setAsked(true); if (remote) { remote.extend(reader); return; } addNotification(PERSONA_OF_STUDENT[pres.studentId], `${link.sharedWith || SHARED_WITH[token] || 'A viewer'} asked to extend link /s/${token}`, { persona: PERSONA_OF_STUDENT[pres.studentId], screen: 'links' }); }}>{asked ? 'Extension requested' : 'Request more time'}</button>
+            <button className="ghost" disabled={asked} onClick={() => { setAsked(true); if (remote) { remote.extend(reader); return; } addNotification(toStudent(pres.studentId), `${link.sharedWith || SHARED_WITH[token] || 'A viewer'} asked to extend link /s/${token}`, { persona: toStudent(pres.studentId), screen: 'links' }); }}>{asked ? 'Extension requested' : 'Request more time'}</button>
           </div>
           {link.site ? (
             <div className="landing-site">
