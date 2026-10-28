@@ -8,7 +8,7 @@ const MAX = 10;
 const tidy = (s) => s.trim().replace(/\s+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
 // K4: the coordinator keeps the school line list short and approves the sub-lines students name.
-export default function Governance({ toast, version }) {
+export default function Governance({ toast, version, persona }) {
   const lines = getSchoolLines();
   const pending = getAllLines().filter((l) => l.studentId && l.approval === 'pending');
   const approved = getAllLines().filter((l) => l.studentId && l.approval !== 'pending');
@@ -49,13 +49,13 @@ export default function Governance({ toast, version }) {
                 <small>{s.name}, Year {s.grade + 1} · under {parent.name} · asked {fmtDate(l.requestedOn || '2026-10-26')}{first ? ` · first station “${first.title}”` : ''}</small>
               </div>
               <div className="gov-act">
-                <button className="primary" onClick={() => { if (name !== l.name) renameLine(l.id, { name: name.trim() }); decideBranch(l.id, true); toast(`Approved “${name.trim()}” for ${s.name.split(' ')[0]}`); }}>Approve</button>
+                <button className="primary" onClick={() => { if (name !== l.name) renameLine(l.id, { name: name.trim() }); decideBranch(l.id, true, undefined, persona?.teacherId); toast(`Approved “${name.trim()}” for ${s.name.split(' ')[0]}`); }}>Approve</button>
                 <div className="gov-merge">
                   <select aria-label="Fold into" value={target} onChange={(e) => setMergeTo({ ...mergeTo, [l.id]: e.target.value })}>
                     <option value={l.parentLineId}>{parent.name} (no sub-line)</option>
                     {siblings.map((x) => <option key={x.id} value={x.id} disabled={x.studentId !== l.studentId}>{x.name}{x.studentId !== l.studentId ? ` (${getStudent(x.studentId).name.split(' ')[0]}’s)` : ''}</option>)}
                   </select>
-                  <button className="ghost" onClick={() => { decideBranch(l.id, false, target); toast(`Folded “${l.name}” into ${getLine(target).name}`); }}>Fold in</button>
+                  <button className="ghost" onClick={() => { decideBranch(l.id, false, target, persona?.teacherId); toast(`Folded “${l.name}” into ${getLine(target).name}`); }}>Fold in</button>
                 </div>
               </div>
             </div>

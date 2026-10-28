@@ -4,7 +4,7 @@ import { fmtDate } from '../format.js';
 import PresentationView from './PresentationView.jsx';
 
 // C5 (counsellor side): pin comments on a student's draft. Guidance only; the counsellor never edits the student's work.
-export function CommentDialog({ pres, onClose, toast }) {
+export function CommentDialog({ pres, by, onClose, toast }) {
   const map = useMemo(() => getStudentMap(pres.studentId, 'school'), [pres.studentId]);
   const lens = useMemo(() => applyLens(map, pres, { hiddenLines: pres.filters.hiddenLines }), [map, pres]);
   const [on, setOn] = useState(null);
@@ -23,7 +23,7 @@ export function CommentDialog({ pres, onClose, toast }) {
             <p className="fineprint">Click a station in the draft to pin a comment to it, or leave it general. {first} sees your comments in the Presentation studio.</p>
             <div className="cm-pin">{on ? <>Pinned to <b>{getEvent(on)?.title}</b> <button className="linkish" onClick={() => setOn(null)}>unpin</button></> : 'General comment'}</div>
             <textarea rows={3} value={text} onChange={(e) => setText(e.target.value)} placeholder="e.g. Lead with the sensor network" />
-            <button className="primary" disabled={text.trim().length < 4} onClick={() => { addComment(pres.id, pres.studentId, text.trim(), on); setText(''); toast(`Comment sent to ${first}`); }}>Add comment</button>
+            <button className="primary" disabled={text.trim().length < 4} onClick={() => { addComment(pres.id, pres.studentId, text.trim(), on, by || undefined); setText(''); toast(`Comment sent to ${first}`); }}>Add comment</button>
             <ul className="cm-list">{list.map((c) => <li key={c.id} className={c.resolved ? 'done' : ''}><small>{fmtDate(c.date)}{c.eventId ? ` · on “${getEvent(c.eventId)?.title}”` : ''}{c.resolved ? ' · done' : ''}</small>{c.text}</li>)}</ul>
           </aside>
         </div>
