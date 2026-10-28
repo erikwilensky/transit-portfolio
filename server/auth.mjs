@@ -202,6 +202,8 @@ export function canAct(user, fn, args = []) {
   // Only your own bell: every key must be one of yours (st:…, t:…, fam:…, role:…, or your record's demo persona id).
   if (fn === 'markNotificationsRead') { const mine = new Set(api.notifyKeys({ kind: user.kind, studentId: user.studentId, teacherId: user.teacherId, children: user.children })); return [].concat(args[0] ?? []).every((k) => mine.has(k)); }
   try {
+    // A nudge: the student's own advisor, or whole-school staff, as themselves.
+    if (fn === 'nudgeStudent') return STAFF.includes(user.kind) && !!user.teacherId && args[1] === user.teacherId && (reachOf(user) === null || api.getStudent(args[0])?.advisorId === user.teacherId);
     if (STAFF.includes(user.kind)) {
       const reach = reachOf(user);
       if (reach === null) return true;

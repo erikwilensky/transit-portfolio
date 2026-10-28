@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { addReflection, addStation, endorserChoices, getStudent, getTeacher, getTeachers, requestFor, setVisibility, snapshot, teachersOf, TODAY } from '../api.js';
 import { fmtDate } from '../format.js';
 import { isPilot } from '../auth.js';
@@ -39,8 +39,9 @@ function checkers(studentId, lineId) {
   return (s ? [s, ...all.filter((t) => t !== s)] : all).map((t) => ({ t, why: t.role }));
 }
 
-export default function SimpleHome({ map, studentId, toast, version }) {
+export default function SimpleHome({ map, studentId, toast, version, addRequest }) {
   const [adding, setAdding] = useState(false);
+  useEffect(() => { if (addRequest) setAdding(true); }, [addRequest]); // a nudge's "Add something"
   const [asking, setAsking] = useState(null); // { event, prompt, signal }
   const [open, setOpen] = useState(null);
   const first = map.student.name.split(' ')[0];
