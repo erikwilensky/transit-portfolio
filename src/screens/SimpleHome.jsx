@@ -84,7 +84,7 @@ export default function SimpleHome({ map, studentId, toast }) {
         </section>
       )}
 
-      {adding && <AddFlow map={map} studentId={studentId} onClose={() => setAdding(false)} onDone={(e, t) => { setAdding(false); toast(`${WARM[e.title.length % WARM.length]} “${e.title}” is on your journey.${t ? ` You asked ${t.name} to check it.` : ''}`); }} />}
+      {adding && <QuickAdd map={map} studentId={studentId} toast={toast} onClose={() => setAdding(false)} />}
       {asking && <AskFlow q={asking} studentId={studentId} onClose={() => setAsking(null)} onDone={() => { setAsking(null); toast('Saved. Your advisor can read it.'); }} />}
       {openEvent && <Moment e={openEvent} map={map} onClose={() => setOpen(null)} onReflect={() => { setOpen(null); setAsking({ event: openEvent, prompt: `What did “${openEvent.title}” teach you?` }); }} />}
     </div>
@@ -123,9 +123,13 @@ function Steps({ n, at }) {
   return <div className="sh-steps" aria-label={`Step ${at + 1} of ${n}`}>{Array.from({ length: n }, (_, i) => <i key={i} className={i <= at ? 'on' : ''} />)}</div>;
 }
 
-// Adding a moment, one question at a time.
-function AddFlow({ map, studentId, onClose, onDone }) {
-  const [step, setStep] = useState(0);
+// Adding a moment, one question at a time. Also the phone app's "Add a moment" and "Take a photo" (#/me/add,
+// #/me/snap), for any student at any level: camera starts on the photo, then asks the same questions.
+export function QuickAdd({ map, studentId, toast, onClose, camera = false }) {
+  return <AddFlow map={map} studentId={studentId} camera={camera} onClose={onClose} onDone={(e, t) => { onClose(); toast(`${WARM[e.title.length % WARM.length]} “${e.title}” is on your journey.${t ? ` You asked ${t.name} to check it.` : ''}`); }} />;
+}
+function AddFlow({ map, studentId, onClose, onDone, camera }) {
+  const [step, setStep] = useState(camera ? -1 : 0);
   const [f, setF] = useState({ title: '', image: null, imageCaption: 'Photo', line: null, reflection: '' });
   const [more, setMore] = useState(false);
   const lines = map.lines.filter((l) => l.status !== 'ended');
@@ -144,7 +148,16 @@ function AddFlow({ map, studentId, onClose, onDone }) {
     <div className="modal-back" onClick={onClose}>
       <div className="modal sh-flow" role="dialog" aria-label="Add something I did" onClick={(e) => e.stopPropagation()}>
         <button className="panel-close" onClick={onClose} aria-label="Close">×</button>
-        <Steps n={who.length ? 4 : 3} at={step} />
+        <Steps n={(who.length ? 4 : 3) + (camera ? 1 : 0)} at={step + (camera ? 1 : 0)} />
+        {step === -1 && <>
+          <h2>Take a photo</h2>
+          <p className="sh-sub">Of something you did, made or took part in. Then say what it was.</p>
+          <div className="sh-shoot snap">
+            <label className="sh-photo-btn"><span aria-hidden="true">▣</span>Open the camera<input type="file" accept="image/*" capture="environment" onChange={(e) => { pickPhoto(e); setStep(0); }} /></label>
+            <label className="sh-photo-btn cam">Choose a photo<input type="file" accept="image/*" onChange={(e) => { pickPhoto(e); setStep(0); }} /></label>
+          </div>
+          <div className="sh-next"><button className="ghost" onClick={() => setStep(0)}>No photo, just write it</button></div>
+        </>}
         {step === 0 && <>
           <h2>What did you do?</h2>
           <input className="sh-input" autoFocus value={f.title} onChange={(e) => set({ title: e.target.value })} placeholder="e.g. Joined the robotics club" onKeyDown={(e) => e.key === 'Enter' && f.title.trim() && !photo.busy && setStep(1)} />

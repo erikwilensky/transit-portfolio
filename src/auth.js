@@ -3,6 +3,7 @@
 // Pilot mode: each person signs in and sees only their own role's screens, built as a persona.
 import { addStudent, addTeacher, getStudent, getTeacher } from './api.js';
 import { PERSONAS, NAV, setPilotPersona } from './personas.js';
+import { clearCaches } from './pwa.js';
 
 let state = { mode: 'demo', user: null, server: false };
 const listeners = new Set();
@@ -43,6 +44,7 @@ export const sessionCount = () => call('GET', '/api/auth/sessions').then((j) => 
 export async function signOut(everywhere = false) {
   try { await call('POST', everywhere ? '/api/auth/logout-everywhere' : '/api/auth/logout'); } catch { /* already signed out */ }
   try { Object.keys(localStorage).filter((k) => k.startsWith('tp-')).forEach((k) => localStorage.removeItem(k)); } catch { /* blocked */ }
+  await clearCaches();
   location.hash = '#/';
   location.reload();
 }

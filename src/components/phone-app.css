@@ -1,0 +1,13 @@
+/* Phone app: the install hint and "a new version is ready" (src/components/PhoneApp.jsx). */
+.pa-hint { position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); z-index: 60; display: flex; align-items: flex-start; gap: 12px; padding: 14px 44px 14px 14px; background: var(--surface); color: var(--ink); border: 1.5px solid var(--navy); border-radius: 14px; max-width: 520px; margin: 0 auto; }
+:root[data-theme="dark"] .pa-hint { border-color: var(--rule); }
+.pa-hint img { border-radius: 10px; flex: none; }
+.pa-hint b { font-weight: 600; }
+.pa-hint p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+.pa-hint p b { color: var(--ink); }
+.pa-hint .primary { margin-top: 10px; min-height: 40px; padding: 8px 18px; }
+.pa-x { position: absolute; top: 6px; right: 6px; width: 36px; height: 36px; border: 0; background: none; color: var(--muted); font-size: 22px; line-height: 1; border-radius: 8px; }
+.pa-update { position: fixed; top: calc(8px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 120; display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 16px; background: var(--navy); color: #fff; border: 2px solid var(--b-gold); border-radius: 12px; font-size: 14px; font-weight: 500; max-width: calc(100vw - 24px); white-space: nowrap; }
+.pa-update button { border: 1.5px solid #fff; background: none; color: #fff; border-radius: 8px; padding: 5px 12px; font-weight: 600; }
+.app:has(.modal-back) .pa-hint { display: none; }
+.pa-share { vertical-align: -2px; color: var(--ink); }

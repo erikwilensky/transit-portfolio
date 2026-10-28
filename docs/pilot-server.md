@@ -598,3 +598,36 @@ No email is sent, so people get in through one-time setup links. Cards put those
   listed); `{ pauseLeavers: true }` pauses them. Every import unpauses `returning`. The reply carries `paused` and `unpaused`.
 - Tests: `server/test/cards.test.mjs`; `node scripts/checks/signin-cards.cjs` (the real roster from `ROSTER`, default the
   project-files copy, skipped when missing; writes its roster copy, screenshots and a PDF to `SCRATCH` or the temp folder).
+
+## Phone app (`public/manifest.webmanifest`, `public/sw.js`, `src/pwa.js`, `src/components/PhoneApp.jsx`)
+
+The site installs on a phone's home screen, in demo and pilot alike.
+- **Manifest**: "NIST Transit Portfolio" / "Transit", standalone, navy theme and background, `start_url: "./#/"`
+  and `scope: "./"` (relative, so the hash router and any URL path work). Icons in `public/icons/`: 192/512
+  rounded (`any`) and full-bleed (`maskable`), plus `apple-touch-icon.png` (180). They are PNGs drawn from
+  `public/icons/icon.svg` by `node scripts/icons.cjs` (Playwright); rerun it and commit the PNGs after changing the SVG.
+  `index.html` links the manifest, the touch icon, `theme-color` and the iOS `apple-mobile-web-app-*` tags.
+  Shortcuts: "Add a moment" (`#/me/add`) and "Take a photo" (`#/me/snap`).
+- **Service worker** (`public/sw.js`, registered by `registerServiceWorker()` in production builds only): caches the
+  app shell only: the build's entry script and stylesheet (listed at build time), `/assets/*` as they load (hashed
+  names, cache first), the icons, the manifest and `offline.html`. It never touches `/api/*` (any path containing
+  `/api/`, uploaded files `/api/files/*` included): those go straight to the network and are never cached, so
+  nothing personal stays on a shared device. Page loads always go to the server; with no network (or a 502/503/504/530
+  from the tunnel) the worker shows `offline.html`: "You're offline. Your moments will be here when you're back."
+- **Updates**: `vite.config.js` writes this build's `VERSION` and `SHELL` into `dist/sw.js`, so every deploy is a new
+  worker. It calls `skipWaiting()` and `clients.claim()`, drops older caches, and the open app shows
+  "A new version is ready · Reload" (`UpdateBar`). The app checks for a new worker whenever it comes back to the front.
+- **Server** (`serveStatic` in `server/lib.mjs`): `.webmanifest` is `application/manifest+json`; `sw.js`, the manifest
+  and `icons/*` are `Cache-Control: no-cache` (they keep their address across deploys); hashed assets stay immutable.
+- **Sign-out** (`signOut` in `src/auth.js`) deletes every Cache Storage cache (`clearCaches()`) as well as the `tp-*` keys.
+- **Install hint** (`InstallHint`): students on a phone (`pointer: coarse`, small screen), not already in the
+  installed app, on their home screen. Android/Chrome: an Install button (`beforeinstallprompt`); iOS: "tap Share,
+  then Add to Home Screen"; others: the browser menu. "×" hides it for good on that device
+  (`localStorage['pwa-install-dismissed']`, not a `tp-` key, so it outlasts sign-out).
+- **Quick camera** (`#/<student>/snap`, `#/me/snap`; `#/me/add` without the camera step): any student at any level gets
+  Simple's add flow (`QuickAdd`, exported from `SimpleHome.jsx`) over their home screen. `snap` starts on a "Take a
+  photo" step (an `<input capture="environment">`, "Choose a photo", or "No photo, just write it"), then the usual
+  steps: what it was, which colour, what they learned, ask a teacher. Closing or finishing goes to `#/<student>/map`.
+  `me` is the signed-in student in a pilot (Maya in the demo); staff get their own home. A student still onboarding
+  sees onboarding first.
+- Check: `node scripts/checks/phone-app.cjs` (needs `npm run build`; runs demo and pilot servers on a copy of `dist/`).

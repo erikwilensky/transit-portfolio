@@ -62,12 +62,12 @@ export const writeAtomic = (file, data) => { const tmp = `${file}.${process.pid}
 export const middleware = [];
 
 // ── Static files from dist/ ──
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif', '.json': 'application/json; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.woff2': 'font/woff2', '.ico': 'image/x-icon', '.pdf': 'application/pdf', '.mp3': 'audio/mpeg', '.mp4': 'video/mp4' };
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif', '.json': 'application/json; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.woff2': 'font/woff2', '.ico': 'image/x-icon', '.pdf': 'application/pdf', '.mp3': 'audio/mpeg', '.mp4': 'video/mp4', '.webmanifest': 'application/manifest+json; charset=utf-8' };
 export const contentType = (f) => TYPES[path.extname(f).toLowerCase()] || 'application/octet-stream';
 
 // Text files worth compressing. Each compressed copy is made once per file version and kept in memory
 // (dist/ is small and only changes on a deploy, which restarts the server anyway).
-const COMPRESSIBLE = new Set(['.html', '.js', '.mjs', '.css', '.json', '.svg', '.txt']);
+const COMPRESSIBLE = new Set(['.html', '.js', '.mjs', '.css', '.json', '.svg', '.txt', '.webmanifest']);
 const packed = new Map(); // `${file}:${mtime}:${enc}` → Promise<Buffer>
 const compressed = (file, stat, enc) => {
   const key = `${file}:${stat.mtimeMs}:${enc}`;
@@ -97,7 +97,9 @@ export async function serveStatic(req, res, urlPath) {
   if (!stat) return send(res, 404, 'Build the app first: npm run build');
   const ext = path.extname(f).toLowerCase();
   const etag = `W/"${stat.size.toString(36)}-${Math.floor(stat.mtimeMs).toString(36)}"`;
-  const headers = { 'content-type': contentType(f), 'cache-control': ext === '.html' ? 'no-cache' : 'public, max-age=31536000, immutable', etag };
+  // The phone app's service worker, manifest and icons keep their address across deploys: always revalidate.
+  const fresh = ext === '.html' || ext === '.webmanifest' || f === path.join(DIST, 'sw.js') || f.startsWith(path.join(DIST, 'icons') + path.sep);
+  const headers = { 'content-type': contentType(f), 'cache-control': fresh ? 'no-cache' : 'public, max-age=31536000, immutable', etag };
   if (COMPRESSIBLE.has(ext)) headers.vary = 'Accept-Encoding';
   if (req.headers['if-none-match'] === etag) { res.writeHead(304, headers); return res.end(); }
   const enc = COMPRESSIBLE.has(ext) && stat.size >= 1024 ? pickEncoding(req) : null;
