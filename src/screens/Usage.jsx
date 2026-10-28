@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { admin } from '../auth.js';
 import '../auth.css';
+import { FeedbackList } from '../components/Feedback.jsx';
 
 const ROLE = { student: 'Students', parent: 'Families', advisor: 'Advisors', teacher: 'Subject teachers', counsellor: 'Counsellors', coordinator: 'Coordinators', leadership: 'Leadership', admin: 'Pilot admin' };
 const STATUS = { today: 'Today', week: 'This week', earlier: 'Earlier', never: 'Never' };
@@ -37,7 +38,7 @@ export default function Usage() {
     <div className="acc usage">
       <div className="acc-head">
         <div><div className="kicker">Pilot</div><h1>Who is using the pilot</h1>
-          <p className="auth-lede">Counted on the server for each account and day: when they were last here and how many changes they made. Nothing anyone wrote is kept here. Days follow Bangkok time.</p></div>
+          <p className="auth-lede">Counted on the server for each account and day: when they were last here and how many changes they made. Apart from the feedback people send, nothing anyone wrote is kept here. Days follow Bangkok time.</p></div>
         <div className="auth-row"><button className="auth-btn" onClick={csvPeople}>Download as CSV</button><button className="ghost" onClick={csvWeeks}>Weeks as CSV</button></div>
       </div>
       <div className="tiles">
@@ -46,6 +47,7 @@ export default function Usage() {
         <div className="tile"><b>{t.never}</b><span>never signed in</span></div>
         <div className="tile"><b>{t.changes || 0}</b><span>changes since the pilot began</span></div>
       </div>
+      <FeedbackList />
       <section className="card-sec">
         <h2>People active each week</h2>
         <WeekChart weeks={data.weeks} />

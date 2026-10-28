@@ -1521,6 +1521,51 @@ export function classRoster(classId, teacherId) {
   return { ...c, line: (c.lineId && lineById(c.lineId)) || null, students };
 }
 
+// ── Advisor nudges: a friendly note to an advisee who has gone quiet ──
+// store.nudges = [{ id, studentId, from (teacher id), text, date, ts }], made on first use. At most one per student per 7 days.
+export const NUDGE_TEXT = "Your advisor would love to see what you've been up to. Add one thing from this week.";
+export const QUIET_DAYS = 21, NUDGE_GAP = 7;
+const dayDiff = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5);
+// The last day the student added something themselves: a moment, a reflection on one of theirs, or the log saying so.
+export function lastOwnMoment(studentId) {
+  const s = getStudent(studentId); if (!s) return null;
+  let last = null; const see = (d) => { if (d && d <= TODAY && (!last || d > last)) last = d; };
+  const mine = new Set();
+  for (const e of store.events) if (e.studentId === studentId) { mine.add(e.id); if (e.verification === 'student-added' && e.type !== 'goal' && !e.alum) see(e.date); }
+  for (const r of store.reflections) if (mine.has(r.eventId)) see(r.date);
+  for (const a of store.activity) if (a.studentId === studentId && a.actor === s.name && (a.kind === 'station' || a.kind === 'reflection')) see(a.ts?.slice(0, 10));
+  return last;
+}
+export const nudgesOf = (studentId) => (store.nudges || []).filter((n) => n.studentId === studentId).sort((a, b) => b.date.localeCompare(a.date) || String(b.ts).localeCompare(String(a.ts)));
+export const lastNudge = (studentId) => nudgesOf(studentId)[0] || null;
+export const nudgeAge = (n) => (n ? dayDiff(n.date, TODAY) : null);
+export const canNudge = (studentId) => { const n = lastNudge(studentId); return !n || nudgeAge(n) >= NUDGE_GAP; };
+// An advisor's advisees with nothing of their own for 3 weeks (or ever), alphabetically.
+export function quietAdvisees(advisorId) {
+  const since = daysBefore(QUIET_DAYS);
+  return store.students.filter((s) => s.advisorId === advisorId && !s.cohortOnly).map((s) => ({ student: s, last: lastOwnMoment(s.id), nudge: lastNudge(s.id) }))
+    .filter((q) => !q.last || q.last < since).sort((a, b) => a.student.name.localeCompare(b.student.name));
+}
+export function nudgeStudent(studentId, advisorId, text) {
+  const s = getStudent(studentId), t = teacherById[advisorId];
+  if (!s || !t) throw Object.assign(new Error('No such student or advisor.'), { status: 400 });
+  if (!canNudge(studentId)) throw Object.assign(new Error(`${s.name.split(' ')[0]} was nudged in the last ${NUDGE_GAP} days.`), { status: 409 });
+  const msg = String(text ?? '').trim().slice(0, 500) || NUDGE_TEXT;
+  const n = { id: uid('nu-'), studentId, from: advisorId, text: msg, date: TODAY, ts: nowIso() };
+  (store.nudges ||= []).push(n);
+  notify(toStudent(studentId), `${shortName(t.name)}: ${msg}`, { persona: toStudent(studentId), screen: 'map', param: 'add' });
+  log(studentId, t.name, 'nudge', 'Sent a nudge to add something');
+  emit();
+  return n;
+}
+// The student's side: the latest nudge from the last 14 days, until they add something after it.
+export function openNudge(studentId) {
+  const n = lastNudge(studentId), s = getStudent(studentId);
+  if (!n || !s || nudgeAge(n) > 14) return null;
+  const since = store.activity.some((a) => a.studentId === studentId && a.actor === s.name && (a.kind === 'station' || a.kind === 'reflection') && a.ts >= n.ts);
+  return since ? null : { ...n, fromName: teacherById[n.from]?.name || '' };
+}
+
 // ── Shared record: with the pilot server, every change is replayed there ──
 // A screen calls a change below; it runs here at once (instant UI) while recording the ids and
 // times it made. The hook (src/sync.js) posts { fn, args, rec } to /api/action, and the server runs
@@ -1570,6 +1615,7 @@ answerConsent = act('answerConsent', answerConsent); remindParent = act('remindP
 endorseClassTask = act('endorseClassTask', endorseClassTask);
 importCandidates = act('importCandidates', importCandidates); eraseStudent = act('eraseStudent', eraseStudent); importRoster = act('importRoster', importRoster); addStudent = act('addStudent', addStudent); addTeacher = act('addTeacher', addTeacher);
 setSubjectLine = act('setSubjectLine', setSubjectLine);
+nudgeStudent = act('nudgeStudent', nudgeStudent);
 // Undo puts a whole earlier copy back, and reset goes back to the seed (sync.js sends it to /api/reset).
 restore = act('restore', restore); resetDemo = act('resetDemo', resetDemo);
 export const MUTATORS = Object.keys(ACTIONS);

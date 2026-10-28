@@ -20,14 +20,14 @@ src/sync.js             browser side of the shared record
 
 Run: `npm run build && npm run server` (port 8787, or PORT). In dev: `npm run server` plus
 `npm run dev` (Vite proxies /api). Data lives in DATA_DIR (default `.data/`): `state.json`,
-`uploads/`, `accounts.json`, `sessions.json`, `usage.json`, `audit.log`.
+`uploads/`, `accounts.json`, `sessions.json`, `usage.json`, `feedback.json`, `audit.log`.
 
 ## Contracts between features
 
 - **Routes**: `/api/state`, `/api/action`, `/api/undo`, `/api/stream`, `/api/reset` (shared record);
   `/api/upload`, `/api/files/:name` (files); `/api/public/*` (share links and verify, no sign-in);
   `/api/auth/*`, `/api/admin/*` (sign-in and accounts); `/api/me/export`, `/api/admin/students/:id/*`
-  (PDPA copy and erasure); `/api/admin/usage` (pilot usage); `/api/health`.
+  (PDPA copy and erasure); `/api/admin/usage` (pilot usage); `/api/feedback`, `/api/admin/feedback` (feedback); `/api/health`.
 - **Sign-in guard**: the auth module pushes a function onto `middleware` that sets `req.user`
   (or null) on every /api request and refuses unsigned requests in pilot mode, except
   `/api/health`, `/api/public/*`, `/api/auth/*` and `GET /api/files/*`.
@@ -598,3 +598,45 @@ No email is sent, so people get in through one-time setup links. Cards put those
   listed); `{ pauseLeavers: true }` pauses them. Every import unpauses `returning`. The reply carries `paused` and `unpaused`.
 - Tests: `server/test/cards.test.mjs`; `node scripts/checks/signin-cards.cjs` (the real roster from `ROSTER`, default the
   project-files copy, skipped when missing; writes its roster copy, screenshots and a PDF to `SCRATCH` or the temp folder).
+
+## Feedback and advisor nudges (`server/routes/65-feedback.mjs`, `src/components/Feedback.jsx`, `src/components/Nudges.jsx`)
+
+- **Feedback** (pilot only): everyone signed in has "Feedback" in their account menu; Simple-level students also get a
+  big "Something not working? Tell us" button at the foot of their screens. The dialog asks what kind
+  (Something's broken / An idea / Something's confusing), a message, and optionally a picture (uploaded through
+  `POST /api/upload` as usual); the current `#/...` route goes with it.
+  - `POST /api/feedback { kind: broken|idea|confusing, message, route, screenshot? }` (anyone signed in) → 201 `{ id }`.
+    Message 3–4,000 characters; `screenshot` must be an `/api/files/` image this account uploaded. At most 10 per
+    account per hour (`FEEDBACK_LIMIT`), else 429.
+  - Kept outside the shared record in `DATA_DIR/feedback.json` (`server/feedback.mjs`): `[{ id, at, by (account id),
+    name, role (account kind), studentId?, year? (British Year), route, ua, kind, message, screenshot: { url, name,
+    size } | null, done: { at, by, name } | null }]`.
+  - `GET /api/admin/feedback` (admin or leadership) → `{ items }` newest first, each with the account's current
+    name (`gone: true` once the account was removed). `POST /api/admin/feedback/:id { done }` → `{ item }`.
+  - **Pilot usage** shows a "Feedback" section under the tiles: kind filter, "Done too", the sender's name, role and
+    Year, the screen, the browser, the picture, and "Mark as done" / "Reopen".
+  - **PDPA**: a student's copy has `feedback.json` (what their own accounts sent, plus pictures under `files/`);
+    erasure removes it and its pictures (`eraseStudent` returns `feedback`: how many went).
+- **Nudges** (`src/api.js`, demo and pilot): `store.nudges = [{ id, studentId, from (teacher id), text, date, ts }]`
+  (made on first use, so old saves load as they are).
+  - `lastOwnMoment(sid)`: the latest of their own (`student-added`, not a goal) moments' dates, reflections on their
+    moments, and the log's "added" lines by them (a back-dated moment added today counts as today), up to `TODAY`.
+    It reads what the viewer holds, so a student who only adds private things can look quiet to their advisor.
+  - `quietAdvisees(advisorId)` → `[{ student, last (date|null), nudge }]` for advisees with nothing of their own for
+    21 days (`QUIET_DAYS`) or ever, alphabetically. `canNudge(sid)`: no nudge in the last 7 days (`NUDGE_GAP`);
+    `lastNudge`, `nudgeAge`, `nudgesOf`.
+  - `nudgeStudent(studentId, advisorId, text?)` (mutator): text trimmed to 500 characters, empty → `NUDGE_TEXT`
+    ("Your advisor would love to see what you've been up to. Add one thing from this week."). Notifies
+    `toStudent(sid)` with "Ms Surname: <text>" (`go: map/add`), logs it, throws 409 inside the 7 days and 400 for an
+    unknown student or teacher. `canAct`: only staff acting as themselves (`args[1] === teacherId`) who are the
+    student's advisor or whole-school (`reachOf` null), and admins; not subject teachers, students or families.
+  - Advisory page: "Quiet for 3 weeks" above the grid (hidden when nobody is quiet): each student with "last added
+    <date>" or "Not started yet", "Send a nudge" (opens the editable default text) or "Nudged 3 days ago", and
+    "Nudge all N" for everyone not nudged this week. Long lists show 8, then "Show all".
+  - Student side (Simple and Standard): `openNudge(sid)` (the latest nudge from the last 14 days, until they add a
+    moment or reflection after it) shows a banner on their home with "Add something" (opens the add flow; so does
+    the notification, via `#/<persona>/map/add`) and "Not now" (hidden on this device).
+- Tests: `server/test/feedback-nudges.test.mjs` (HTTP: permissions, the 7 days, scoped copies, feedback limits,
+  reading, done, PDPA copy and erasure), `server/test/nudges.test.mjs` (quiet rules); browser:
+  `node scripts/checks/feedback-nudges.cjs` (the real roster from `TP_ROSTER`, skipped without it; screenshots to
+  `SCRATCH` or the temp folder).

@@ -19,13 +19,14 @@ const countRefl = (m) => m.events.filter((e) => e.type === 'reflection').length 
 const yearOf = (e, s) => fmtTerm(e.date, s.g9StartYear, s.startGrade).split(',')[0];
 const SEE = [['student', 'Me'], ['advisor', 'Advisor'], ['school', 'School'], ['public', 'Public']];
 
-export default function StudentMap({ map, studentId, toast, focusId, go, persona }) {
+export default function StudentMap({ map, studentId, toast, focusId, go, persona, addRequest }) {
   const level = getIntensity(studentId); // simple | standard | full
   const simple = level === 'simple', full = level === 'full';
   const [hidden, setHidden] = useState([]);
   const [selected, setSelected] = useState(focusId && focusId.startsWith('ev-') ? focusId : null);
   const [signal, setSignal] = useState(null);
   const [adding, setAdding] = useState(null); // null | {} prefill
+  useEffect(() => { if (addRequest) setAdding({}); }, [addRequest]); // a nudge's "Add something"
   const [newIds, setNewIds] = useState(() => new Set(focusId && focusId.startsWith('ev-') && getStore().events.find((e) => e.id === focusId)?.verification === 'student-added' ? [focusId] : []));
   const [tourStage, setTourStage] = useState(focusId === 'tour' ? 'signal' : null);
   const [seeAs, setSeeAs] = useState('student');

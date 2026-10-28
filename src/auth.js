@@ -73,6 +73,12 @@ export const signinCards = {
   forAdmin: (body) => call('POST', '/api/admin/cards', body),
   unpause: (id) => call('POST', `/api/admin/accounts/${encodeURIComponent(id)}/unpause`),
 };
+// Pilot feedback (server/routes/65-feedback.mjs): anyone signed in sends; leadership and the pilot admin read.
+export const feedback = {
+  send: (body) => call('POST', '/api/feedback', body),
+  list: () => call('GET', '/api/admin/feedback').then((j) => j.items),
+  done: (id, done) => call('POST', `/api/admin/feedback/${encodeURIComponent(id)}`, { done }).then((j) => j.item),
+};
 
 // ── An account becomes a persona in the PERSONAS shape, so every existing screen works unchanged ──
 const COLOURS = { student: '#4F529B', advisor: '#008A60', teacher: '#002855', counsellor: '#E73C3E', coordinator: '#FF8F1C', leadership: '#002855', parent: '#FFB81C', admin: '#002855' };
