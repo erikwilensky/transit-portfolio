@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { admin, exportUrl } from '../auth.js';
 import RosterImport from './RosterImport.jsx';
+import SubjectLines from './SubjectLines.jsx';
 import '../auth.css';
 
 const ago = (iso) => { const m = Math.round((Date.now() - new Date(iso)) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`; };
@@ -99,6 +100,7 @@ export default function Accounts({ toast, persona }) {
       </table>
       <p className="fineprint">Removing an account stops that person signing in. Their record and map stay. A new setup link signs them out everywhere and ends their old password.</p>
       <StudentData data={data} toast={toast} reload={() => admin.list().then(setData, (x) => setErr(x.message))} />
+      <SubjectLines toast={toast} />
     </div>
   );
 }

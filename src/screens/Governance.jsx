@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { addSchoolLine, decideBranch, getAllLines, getLine, getSchoolLines, getStore, getStudent, lineUse, renameLine, TODAY } from '../api.js';
 import { fmtDate } from '../format.js';
+import SubjectLines from './SubjectLines.jsx';
 
 // Colours a school line may use: the brand palette plus a few harmonised extras.
 const SWATCHES = ['#002855', '#4F529B', '#78D5E1', '#008A60', '#E73C3E', '#FF8F1C', '#FFB81C'];
@@ -93,6 +94,7 @@ export default function Governance({ toast, version, persona }) {
           <div className="chips">{approved.map((l) => <span key={l.id} className="line-chip static" style={{ '--c': l.colour }}><i className={l.pattern === 'cased' ? 'cased' : undefined} />{l.name} <small>{getStudent(l.studentId).name.split(' ')[0]} · {getLine(l.parentLineId).name}</small></span>)}</div>
         </section>
       )}
+      <SubjectLines toast={toast} />
     </div>
   );
 }

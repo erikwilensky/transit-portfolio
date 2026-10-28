@@ -169,7 +169,7 @@ export const noteSuccess = (email) => fails.delete(`e:${email}`);
 const ADMIN_ONLY = new Set(['resetDemo', 'restore', 'addStudent', 'addTeacher', 'eraseStudent', 'importRoster']);
 const ANYONE = new Set(['recordView', 'setLang']);
 // School-wide settings an advisor or subject teacher does not change.
-const WHOLE_SCHOOL_ONLY = new Set(['addSchoolLine', 'renameLine', 'decideBranch', 'setRollout', 'matchRoster']);
+const WHOLE_SCHOOL_ONLY = new Set(['addSchoolLine', 'renameLine', 'decideBranch', 'setRollout', 'matchRoster', 'setSubjectLine']);
 // The mutators a student may call, on their own record only.
 const STUDENT_FNS = new Set(['setStudentDrafts', 'setGithub', 'disconnectGithub', 'simulateWeek', 'addStation', 'addBranch', 'endLine', 'restartLine',
   'completeOnboarding', 'capturePhone', 'setPrivacy', 'logLink', 'addGoal', 'setIntensity', 'remindParent', 'sync', 'importCandidates', 'addReflection',

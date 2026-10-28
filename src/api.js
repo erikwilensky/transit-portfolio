@@ -40,6 +40,7 @@ const store = {
   teachers: structuredClone(teachersData), // staff records; the pilot adds real ones with addTeacher or importRoster
   classes: [],        // from the school's roster: { id, name, subject, year, level, teacherIds, lineId }
   enrolments: [],     // { studentId, classId, from, to }
+  subjectLines: {},   // subject → the school line its classes go on (null: left off the map), api.setSubjectLine
   lines: structuredClone(linesData),
   requests: structuredClone(schoolData.requests),
   prompts: structuredClone(schoolData.prompts),
@@ -106,7 +107,7 @@ export function addTeacher({ id, name, role = 'Teacher' }) {
 // Ids are the school's own (SIS) ids, so a new export updates the same records. Nobody is ever removed:
 // people missing from the file are listed in the summary for an admin to deal with.
 const rosterCurrent = () => ({ students: store.students, teachers: teacherList(), classes: store.classes || [], enrolments: store.enrolments || [] });
-const rosterOpts = () => ({ lineIds: getSchoolLines().map((l) => l.id), today: TODAY });
+const rosterOpts = () => ({ lineIds: getSchoolLines().map((l) => l.id), today: TODAY, subjectLines: getSubjectLines() });
 const checked = (r) => { const p = parseRoster(r); if (p.errors.length) throw Object.assign(new Error(`The roster has problems: ${p.errors.slice(0, 3).join(' ')}`), { status: 400, errors: p.errors }); return p.roster; };
 export const previewRoster = (roster) => planRoster(checked(roster), rosterCurrent(), rosterOpts()).summary;
 export function importRoster(parsed) {
@@ -1455,6 +1456,71 @@ export function setIntensity(studentId, level) {
 export const INTENSITY_NAV = { simple: ['map', 'family'], standard: ['map', 'studio', 'inbox', 'links', 'privacy'], full: ['map', 'studio', 'shared', 'inbox', 'links', 'activity', 'privacy'] };
 export const INTENSITY_LABEL = { simple: { map: 'My journey' } };
 
+// ── Pilot: subjects on lines, and a teacher's classes (screens/SubjectLines.jsx, screens/MyClasses.jsx) ──
+// A coordinator or admin puts a subject the class lists left off every line (Mathematics, TOK…) on a school
+// line, or leaves it off the map (null). Every class of that subject changes, and later imports remember it.
+export const getSubjectLines = () => store.subjectLines || {};
+export function setSubjectLine(subject, lineId = null) {
+  const s = String(subject ?? '').trim();
+  if (!s) throw Object.assign(new Error('Say which subject'), { status: 400 });
+  const id = lineId || null;
+  if (id && !getSchoolLines().some((l) => l.id === id)) throw Object.assign(new Error(`Not a school line: ${id}`), { status: 400 });
+  store.subjectLines = { ...getSubjectLines(), [s]: id };
+  let n = 0;
+  for (const c of getClasses()) if (c.subject === s && (c.lineId ?? null) !== id) { c.lineId = id; n++; }
+  emit();
+  return n;
+}
+// Subjects with a class on no line, and subjects already decided: [{ subject, classes, unlinked, decided, lineId }].
+export function subjectsOffLines() {
+  const by = new Map(), chosen = getSubjectLines();
+  for (const c of getClasses()) {
+    if (!c.subject) continue;
+    const x = by.get(c.subject) || by.set(c.subject, { subject: c.subject, classes: 0, unlinked: 0 }).get(c.subject);
+    x.classes++; if (!c.lineId) x.unlinked++;
+  }
+  return [...by.values()].filter((x) => x.unlinked || Object.hasOwn(chosen, x.subject))
+    .map((x) => ({ ...x, decided: Object.hasOwn(chosen, x.subject), lineId: chosen[x.subject] ?? null }))
+    .sort((a, b) => b.classes - a.classes || a.subject.localeCompare(b.subject));
+}
+// rootLine, indexed: a student's sub-line counts for its school line.
+const rootIndex = () => { const m = new Map(store.lines.map((l) => [l.id, l.parentLineId || l.id])); return (id) => m.get(id) || id; };
+const currentPlaces = (classIds) => {
+  const out = new Map([...classIds].map((id) => [id, []])), known = new Set(store.students.map((s) => s.id)), had = new Set();
+  for (const e of getEnrolments()) if (out.has(e.classId)) { had.add(e.classId); if (!(e.to && e.to < TODAY) && known.has(e.studentId)) out.get(e.classId).push(e.studentId); }
+  return { out, had };
+};
+// A teacher's current classes: [{ ...class, line, studentIds, recent }], recent = moments its students added
+// on the class's line in the last 30 days. A class whose places have all ended is left out.
+export function classesOf(teacherId) {
+  const mine = getClasses().filter((c) => c.teacherIds?.includes(teacherId));
+  if (!mine.length) return [];
+  const { out, had } = currentPlaces(new Set(mine.map((c) => c.id)));
+  const since = daysBefore(30), root = rootIndex(), recent = new Map();
+  for (const e of store.events) {
+    if (e.type === 'goal' || e.date < since || e.date > TODAY) continue;
+    for (const l of new Set(e.lineIds.map(root))) { const k = `${e.studentId}|${l}`; recent.set(k, (recent.get(k) || 0) + 1); }
+  }
+  return mine.filter((c) => out.get(c.id).length || !had.has(c.id))
+    .map((c) => ({ ...c, line: (c.lineId && lineById(c.lineId)) || null, studentIds: out.get(c.id), recent: c.lineId ? out.get(c.id).reduce((n, sid) => n + (recent.get(`${sid}|${c.lineId}`) || 0), 0) : 0 }))
+    .sort((a, b) => (a.year || 0) - (b.year || 0) || a.name.localeCompare(b.name));
+}
+// One class: its students, each with their last moment on the class's line and requests waiting for this teacher.
+export function classRoster(classId, teacherId) {
+  const c = getClasses().find((x) => x.id === classId);
+  if (!c) return null;
+  const sids = currentPlaces(new Set([c.id])).out.get(c.id), inClass = new Set(sids), root = rootIndex();
+  const last = new Map(), pending = new Map();
+  if (c.lineId) for (const e of store.events) {
+    if (!inClass.has(e.studentId) || e.type === 'goal' || e.date > TODAY || !e.lineIds.some((l) => root(l) === c.lineId)) continue;
+    const p = last.get(e.studentId);
+    if (!p || e.date > p.date || (e.date === p.date && e.id > p.id)) last.set(e.studentId, e);
+  }
+  for (const r of store.requests) if (r.teacherId === teacherId && r.status === 'pending' && inClass.has(r.studentId)) pending.set(r.studentId, (pending.get(r.studentId) || 0) + 1);
+  const students = sids.map(getStudent).map((s) => ({ student: s, last: last.get(s.id) || null, pending: pending.get(s.id) || 0 })).sort((a, b) => a.student.name.localeCompare(b.student.name));
+  return { ...c, line: (c.lineId && lineById(c.lineId)) || null, students };
+}
+
 // ── Shared record: with the pilot server, every change is replayed there ──
 // A screen calls a change below; it runs here at once (instant UI) while recording the ids and
 // times it made. The hook (src/sync.js) posts { fn, args, rec } to /api/action, and the server runs
@@ -1503,6 +1569,7 @@ editStation = act('editStation', editStation); deleteStation = act('deleteStatio
 answerConsent = act('answerConsent', answerConsent); remindParent = act('remindParent', remindParent); setLang = act('setLang', setLang); setFamily = act('setFamily', setFamily);
 endorseClassTask = act('endorseClassTask', endorseClassTask);
 importCandidates = act('importCandidates', importCandidates); eraseStudent = act('eraseStudent', eraseStudent); importRoster = act('importRoster', importRoster); addStudent = act('addStudent', addStudent); addTeacher = act('addTeacher', addTeacher);
+setSubjectLine = act('setSubjectLine', setSubjectLine);
 // Undo puts a whole earlier copy back, and reset goes back to the seed (sync.js sends it to /api/reset).
 restore = act('restore', restore); resetDemo = act('resetDemo', resetDemo);
 export const MUTATORS = Object.keys(ACTIONS);
