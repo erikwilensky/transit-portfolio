@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { getSchoolLines, getStudent, getLine, rootLine, schoolEvents } from '../api.js';
+import { getSchoolLines, getStudent, getLine, rootLine, schoolEvents, TODAY } from '../api.js';
 import { fmtDate } from '../format.js';
 
 const T0 = new Date('2023-08-01').getTime(), T1 = new Date('2026-11-15').getTime();
@@ -46,8 +46,8 @@ export default function SchoolLine({ version }) {
                 </g>
               );
             })}
-            <line x1={x('2026-10-26')} x2={x('2026-10-26')} y1={top - 18} y2={H - 20} className="sl-today" />
-            <text x={x('2026-10-26')} y={H - 6} textAnchor="middle" className="sl-axis">TODAY</text>
+            <line x1={x(TODAY)} x2={x(TODAY)} y1={top - 18} y2={H - 20} className="sl-today" />
+            <text x={x(TODAY)} y={H - 6} textAnchor="middle" className="sl-axis">TODAY</text>
           </svg>
         )}
         {hover && <div className="tip sl-tip" style={{ left: `${(hover.cx / W) * 100}%`, top: `${(hover.y / H) * 100}%` }}><b>{hover.e.title}</b><small>{hover.s.name} · {fmtDate(hover.e.date)}{others(hover.e).length ? ` · meets ${others(hover.e).map((id) => getLine(id)?.name).join(', ')}` : ''}</small></div>}

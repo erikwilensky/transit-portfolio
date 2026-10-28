@@ -1,5 +1,6 @@
+import { isPilot } from '../auth.js';
 import { useState } from 'react';
-import { getLine, getStudent, getTeacher, addLog, rootLine, schoolEvents, shortName } from '../api.js';
+import { getLine, getStudent, getTeacher, addLog, rootLine, schoolEvents, shortName, subjectLineOf, teachersOf } from '../api.js';
 import { fmtDate, TYPE_LABEL } from '../format.js';
 import { VerifyBadge } from '../components/Badge.jsx';
 
@@ -10,7 +11,10 @@ const short = (n) => { const p = n.split(' '); return `${p[0]} ${p.at(-1)}`; };
 
 // T2: the teacher's subject line where it meets other subjects, across every student who made it visible to the school.
 export default function Crosslinks({ persona, toast, version }) {
-  const subject = 'computing';
+  const subject = subjectLineOf(persona.teacherId) || 'computing'; // the demo's Ms Nair teaches Computing
+  const subjectName = getLine(subject)?.name || 'Computing';
+  // Whom to tell: a teacher of this student's class on that line (the class lists), else the demo's colleague.
+  const colleague = (sid, lid) => teachersOf(sid).find((m) => m.lineId === lid && m.teacher.id !== persona.teacherId)?.teacher || getTeacher(COLLEAGUE[lid]);
   const [other, setOther] = useState('all');
   const [shared, setShared] = useState({});
   const hits = schoolEvents()
@@ -21,18 +25,21 @@ export default function Crosslinks({ persona, toast, version }) {
   const shown = hits.filter((h) => other === 'all' || h.roots.includes(other));
   const students = new Set(hits.map((h) => h.e.studentId));
   const share = (e, lid) => {
-    const t = getTeacher(COLLEAGUE[lid]);
+    const t = colleague(e.studentId, lid);
     setShared({ ...shared, [`${e.id}:${lid}`]: true });
     addLog(e.studentId, persona.name, 'share', `${shortName(persona.name)} pointed ${t.name} to “${e.title}”`);
     toast(`Sent “${e.title}” to ${t.name}`);
   };
+  if (isPilot() && !subjectLineOf(persona.teacherId)) return (
+    <div className="page xlinks"><h1>Cross-subject</h1><p className="fineprint">None of your classes is on a portfolio line yet, so there is nothing to cross here. Your coordinator can place a class on a line.</p></div>
+  );
   return (
     <div className="page xlinks">
       <header className="page-head">
         <div>
           <div className="kicker">Cross-subject links · {getLine(subject).name}</div>
-          <h1>Where your students’ computing meets other subjects</h1>
-          <p>Every interchange on a student map where the Computing line joins another line. Only stations a student made visible to the school appear here.</p>
+          <h1>Where your students’ {subjectName.toLowerCase()} meets other subjects</h1>
+          <p>Every interchange on a student map where the {subjectName} line joins another line. Only stations a student made visible to the school appear here.</p>
         </div>
         <div className="meter">
           <div><b>{hits.length}</b><span>interchanges</span></div>
@@ -62,7 +69,7 @@ export default function Crosslinks({ persona, toast, version }) {
                 <div className="chips small">{roots.map((r) => <span key={r} className="line-chip static" style={{ '--c': getLine(r).colour }}><i className={getLine(r).pattern === 'cased' ? 'cased' : undefined} />{getLine(r).name}</span>)}</div>
               </div>
               <div className="xl-act">
-                {meets.filter((r) => COLLEAGUE[r]).map((r) => { const t = getTeacher(COLLEAGUE[r]); const done = shared[`${e.id}:${r}`]; return (
+                {meets.filter((r) => colleague(e.studentId, r)).map((r) => { const t = colleague(e.studentId, r); const done = shared[`${e.id}:${r}`]; return (
                   <button key={r} className="ghost" disabled={done} onClick={() => share(e, r)}>{done ? `Sent to ${short(t.name)}` : `Tell ${short(t.name)}`}</button>
                 ); })}
               </div>

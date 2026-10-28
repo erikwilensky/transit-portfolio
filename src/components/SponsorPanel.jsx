@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { addCheckIn, answerSponsor, getLine, getSponsored } from '../api.js';
+import { addCheckIn, answerSponsor, getLine, getSponsored, TODAY } from '../api.js';
 import { fmtDate } from '../format.js';
 
-const days = (d) => Math.round((new Date(d) - new Date('2026-10-26')) / 86400000);
+const days = (d) => Math.round((new Date(d) - new Date(TODAY)) / 86400000);
 
 // Planned work a student invited this teacher to sponsor, before it happens and outside any school system.
 export default function SponsorPanel({ teacherId, toast }) {

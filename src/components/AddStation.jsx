@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { addStation, getIntensity, getTeachers, TODAY } from '../api.js';
+import { addStation, endorserChoices, getIntensity, getTeachers, teachersOf, TODAY } from '../api.js';
 import { TYPE_LABEL, VIS_LABEL } from '../format.js';
 import { AttachButton, PendingFiles, UploadStatus, useUpload } from './FileAttach.jsx';
 import { evidenceFor } from '../upload.js';
@@ -13,13 +13,14 @@ export default function AddStation({ map, studentId, onClose, onAdded, prefill =
   const lines = map.lines.filter((l) => l.status !== 'ended');
   const [f, setF] = useState({ title: '', date: TODAY, type: 'project', lineIds: [], summary: '', reflection: '', visibility: 'advisor', image: null, imageCaption: '', files: [], requestFrom: '', requestNote: '', cas: null, ...prefill });
   const set = (patch) => setF((x) => ({ ...x, ...patch }));
-  const teachers = getTeachers().filter((t) => !['t-07', 't-09', 't-10'].includes(t.id));
+  const mine = teachersOf(studentId); // from the class lists; the demo has none and keeps its own list
+  const teachers = mine.length ? endorserChoices(studentId) : getTeachers().filter((t) => !['t-07', 't-09', 't-10'].includes(t.id));
   const dp = map.student.grade >= 11;
   // At the Simple level: what, which line, a photo and a sentence. Date, kind and who can see it keep their defaults.
   const simple = getIntensity(studentId) === 'simple';
   const toggleLine = (id) => {
     const lineIds = f.lineIds.includes(id) ? f.lineIds.filter((x) => x !== id) : [...f.lineIds, id];
-    set({ lineIds, requestFrom: f.requestFrom || SUGGEST[lineIds[0]] || '' });
+    set({ lineIds, requestFrom: f.requestFrom || (mine.length ? mine.find((m) => m.lineId === lineIds[0])?.teacher.id : SUGGEST[lineIds[0]]) || '' });
   };
   const photo = useUpload();
   const ok = f.title.trim() && f.lineIds.length && !photo.busy;

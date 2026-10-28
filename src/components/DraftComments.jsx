@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { addComment, applyLens, getComments, getEvent, getStudentMap, resolveComment } from '../api.js';
+import { addComment, applyLens, getComments, getEvent, getStudentMap, resolveComment, getTeacher, shortName } from '../api.js';
 import { fmtDate } from '../format.js';
 import PresentationView from './PresentationView.jsx';
 
@@ -40,7 +40,7 @@ export function CommentStrip({ presId, onPick }) {
   const left = list.filter((c) => !c.resolved).length;
   return (
     <div className="cm-strip">
-      <button className="cm-toggle" aria-expanded={open} onClick={() => setOpen(!open)}><b>{left ? `${left} comment${left === 1 ? '' : 's'} from Ms Adeyemi` : 'All comments done'}</b> {open ? '▴' : '▾'}</button>
+      <button className="cm-toggle" aria-expanded={open} onClick={() => setOpen(!open)}><b>{left ? `${left} comment${left === 1 ? '' : 's'} from ${[...new Set(list.filter((c) => !c.resolved).map((c) => shortName(getTeacher(c.by || 't-09')?.name || 'your counsellor')))].join(' and ')}` : 'All comments done'}</b> {open ? '▴' : '▾'}</button>
       {open && <ul>{list.map((c) => (
         <li key={c.id} className={c.resolved ? 'done' : ''}>
           <span>{c.text}{c.eventId && <> <button className="linkish" onClick={() => onPick(c.eventId)}>on “{getEvent(c.eventId)?.title}”</button></>}</span>

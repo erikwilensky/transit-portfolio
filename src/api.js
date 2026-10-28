@@ -15,7 +15,17 @@ import { planRoster, parseRoster } from './imports/roster.js';
 // The server reads roster files with the same code (POST /api/admin/roster).
 export { parseRoster, kindOfRoles } from './imports/roster.js';
 
-export const TODAY = '2026-10-26';
+// The demo's story is set on one day. A pilot runs on the real calendar (Bangkok): useLiveDate() switches
+// TODAY to today's date and keeps it current (the server at start in pilot mode, the browser once signed in).
+export let TODAY = '2026-10-26';
+export const liveDate = () => !!clock;
+// The date n days before TODAY.
+export const daysBefore = (n) => new Date(Date.parse(TODAY) - n * 864e5).toISOString().slice(0, 10);
+let clock = null;
+export function useLiveDate(tz = 'Asia/Bangkok') {
+  const tick = () => { TODAY = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()); };
+  tick(); clearInterval(clock); clock = setInterval(tick, 60000); clock.unref?.();
+}
 
 // In-memory store so the demo can "sync" new items. A reload resets it.
 const store = {
@@ -120,6 +130,41 @@ export function importRoster(parsed) {
 }
 export const getClasses = () => store.classes || [];
 export const getEnrolments = () => store.enrolments || [];
+// The teachers a student works with this year: their classes' teachers (with each class's line), then their
+// advisor. Empty for a student with no class list (the demo), so screens keep their own suggestions.
+export function teachersOf(studentId) {
+  const classes = new Map(getClasses().map((c) => [c.id, c]));
+  const out = new Map();
+  for (const e of getEnrolments()) {
+    if (e.studentId !== studentId || (e.to && e.to < TODAY)) continue;
+    const c = classes.get(e.classId);
+    for (const tid of c?.teacherIds || []) if (getTeacher(tid) && !out.has(tid)) out.set(tid, { teacher: getTeacher(tid), lineId: c.lineId, className: c.name });
+  }
+  const adv = getStudent(studentId)?.advisorId;
+  if (out.size && adv && getTeacher(adv) && !out.has(adv)) out.set(adv, { teacher: getTeacher(adv), lineId: null, className: 'Advisor' });
+  return [...out.values()];
+}
+// Whom a student can ask (to endorse, to sponsor): the teachers they work with, else the screen's own
+// list (the demo's), else every teacher. The first of them who teaches on one of lineIds comes first.
+export function endorserChoices(studentId, fallbackIds = [], lineIds = []) {
+  const mine = teachersOf(studentId);
+  if (mine.length) return [...mine.filter((m) => lineIds.includes(m.lineId)), ...mine.filter((m) => !lineIds.includes(m.lineId))].map((m) => m.teacher).filter((t, i, a) => a.indexOf(t) === i);
+  const fall = getTeachers().filter((t) => fallbackIds.includes(t.id));
+  return fall.length ? fall : getTeachers();
+}
+// The school line a teacher mostly teaches on (from their classes), or null.
+export function subjectLineOf(teacherId) {
+  const n = new Map(); for (const c of getClasses()) if (c.lineId && c.teacherIds?.includes(teacherId)) n.set(c.lineId, (n.get(c.lineId) || 0) + 1);
+  return [...n].sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+}
+// An advisor's group, named after the homeroom most of their advisees share ("Advisory 12B").
+export function advisoryOf(advisorId) {
+  const kids = store.students.filter((s) => s.advisorId === advisorId);
+  const count = new Map(); for (const s of kids) if (s.homeroom) count.set(s.homeroom, (count.get(s.homeroom) || 0) + 1);
+  const homeroom = [...count].sort((a, b) => b[1] - a[1])[0]?.[0];
+  const years = kids.map((s) => s.grade + 1);
+  return { name: homeroom ? `Advisory ${homeroom}` : 'My advisory', minYear: Math.min(...years), maxYear: Math.max(...years), size: kids.length };
+}
 export const getLine = (id) => lineById(id);
 export const getSchoolLines = () => store.lines.filter((l) => !l.studentId);
 export const getAllLines = () => store.lines;
@@ -526,7 +571,7 @@ export function getCohort(advisorId) {
     const reflectionCount = map.events.filter((e) => e.type === 'reflection').length + map.events.reduce((n, e) => n + e.reflections.length, 0);
     const last = map.events.filter((e) => e.date <= TODAY).at(-1);
     const openSignals = map.signals.filter((g) => g.open).length;
-    return { ...map, reflectionCount, openSignals, lastActivity: last?.date, flagFewReflections: reflectionCount < 4 };
+    return { ...map, reflectionCount, openSignals, lastActivity: last?.date, flagFewReflections: reflectionCount < 4 && map.events.some((e) => e.type !== 'goal' && e.date <= TODAY) }; // nothing to reflect on yet: no flag
   }).sort((a, b) => a.student.name.localeCompare(b.student.name));
 }
 

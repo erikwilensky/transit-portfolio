@@ -5,6 +5,7 @@ import path from 'node:path';
 import { DATA_DIR, writeAtomic } from './lib.mjs';
 
 export const api = await import('./build/api.js');
+if (process.env.TP_MODE === 'pilot') api.useLiveDate(process.env.TP_TZ || 'Asia/Bangkok'); // real dates in a pilot
 const FILE = path.join(DATA_DIR, 'state.json');
 export let rev = 0;
 // A pilot with TP_START=empty and no saved record yet begins with the school's lines and nobody fictional.

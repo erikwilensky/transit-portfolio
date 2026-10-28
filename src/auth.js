@@ -91,7 +91,17 @@ export function personaFor(user) {
     ...(user.studentId ? { studentId: user.studentId } : {}), ...(user.teacherId ? { teacherId: user.teacherId } : {}), ...(user.children ? { children: user.children } : {}),
     account: user, admin: !!user.admin,
   };
-  if (user.admin && kind !== 'admin') p.nav = [...NAV[kind], ['accounts', 'Accounts']];
+  // Staff wear more than one hat (roles from the class lists): a coordinator who also teaches gets the
+  // endorsement queue, an advisor who teaches too gets it, anyone who advises gets their advisory.
+  const roles = user.record?.teacher?.roles || [];
+  const also = [roles.includes('teacher') && kind !== 'teacher' && 'teacher', roles.includes('advisor') && kind !== 'advisor' && 'advisor'].filter(Boolean);
+  // The class depot shows the demo's past classes only: not in a pilot.
+  const nav = NAV[kind].filter(([id]) => id !== 'depot').map(([id, label]) => (id === 'advisory' ? [id, 'My advisory'] : [id, label]));
+  if (also.includes('advisor')) nav.push(['advisory', 'My advisory']);
+  if (also.includes('teacher')) nav.push(['queue', 'Endorsements']);
+  if (also.length) p.also = also;
+  if (also.length || kind === 'advisor' || kind === 'teacher') p.nav = nav;
+  if (user.admin && kind !== 'admin') p.nav = [...(p.nav || NAV[kind]), ['accounts', 'Accounts']];
   // Pilot usage, for leadership and the pilot admin.
   if (kind === 'leadership' || user.admin) p.nav = [...(p.nav || NAV[kind]), ['usage', 'Pilot usage']];
   return p;

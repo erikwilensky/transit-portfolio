@@ -61,6 +61,8 @@ import { TOURS, tourMinutes, stopCount } from './tour.js';
 import { QADrawer, TourCard, TourRoute } from './components/TourCards.jsx';
 
 // Routes: #/<persona>/<screen>/<param>, plus public #/s/<token>, #/v/<code> and #/p/<student>[/th] (parent link).
+// A screen set this persona uses: their own kind, or another hat they wear in the pilot (persona.also).
+const acts = (p, kind) => p.kind === kind || !!p.also?.includes(kind);
 const parse = () => {
   const [a, b, c] = location.hash.replace(/^#\/?/, '').split('/');
   if (a === 's' || a === 'v' || a === 'p') return { publicKind: a, param: b, lang: c };
@@ -292,16 +294,16 @@ export default function App() {
         <main className={`screen screen-${route.screen}`} key={`${persona.id}-${route.screen}`}>
           <ErrorBoundary resetKey={`${persona.id}-${route.screen}-${route.param}`}>
           {persona.kind === 'student' && <StudentScreens {...ctx} screen={route.screen} param={route.param} studentId={studentId} />}
-          {persona.kind === 'advisor' && route.screen === 'advisory' && <AdvisorGrid advisorId={persona.teacherId} version={version} toast={toast} onOpen={(id) => go(persona.id, 'student', id)} />}
-          {persona.kind === 'advisor' && route.screen === 'student' && (getStudent(route.param || 'st-01') ? <AdvisorStudent studentId={route.param || 'st-01'} {...ctx} /> : <NotInRecord onBack={() => go(persona.id, 'advisory')} />)}
-          {persona.kind === 'teacher' && route.screen === 'queue' && <TeacherQueue teacherId={persona.teacherId} focus={route.param} {...ctx} />}
+          {acts(persona, 'advisor') && route.screen === 'advisory' && <AdvisorGrid advisorId={persona.teacherId} version={version} toast={toast} onOpen={(id) => go(persona.id, 'student', id)} />}
+          {acts(persona, 'advisor') && route.screen === 'student' && (getStudent(route.param || 'st-01') ? <AdvisorStudent studentId={route.param || 'st-01'} {...ctx} /> : <NotInRecord onBack={() => go(persona.id, 'advisory')} />)}
+          {acts(persona, 'teacher') && route.screen === 'queue' && <TeacherQueue teacherId={persona.teacherId} focus={route.param} {...ctx} />}
           {persona.kind === 'coordinator' && route.screen === 'cas' && <CasDashboard {...ctx} />}
           {persona.kind === 'counsellor' && route.screen === 'letter' && (getStudent(route.param || 'st-01') ? <ReferenceLetter {...ctx} studentId={route.param || 'st-01'} /> : <NotInRecord onBack={() => go(persona.id, 'applications')} />)}
           {persona.kind === 'leadership' && route.screen === 'dashboard' && <SchoolDashboard {...ctx} />}
           {persona.kind === 'leadership' && route.screen === 'scan' && <ScanIn {...ctx} />}
           {persona.kind === 'leadership' && route.screen === 'pdpa' && <Pdpa {...ctx} />}
           {persona.kind === 'counsellor' && route.screen === 'applications' && <Applications {...ctx} />}
-          {persona.kind === 'advisor' && route.screen === 'signals' && <SignalBoard {...ctx} />}
+          {acts(persona, 'advisor') && route.screen === 'signals' && <SignalBoard {...ctx} />}
           {persona.kind === 'coordinator' && route.screen === 'schoolline' && <SchoolLine {...ctx} />}
           {persona.kind === 'leadership' && route.screen === 'schoolmetro' && <SchoolMetro {...ctx} />}
           {persona.kind === 'teacher' && route.screen === 'crosslinks' && <Crosslinks {...ctx} />}
@@ -321,7 +323,7 @@ export default function App() {
           {persona.kind === 'external' && <ShareLanding token={persona.token} drafts={drafts} version={version} embedded />}
           {persona.admin && route.screen === 'accounts' && <Accounts {...ctx} />}
           {pilot && route.screen === 'usage' && (persona.admin || persona.kind === 'leadership') && <Usage {...ctx} />}
-          {route.screen !== 'accounts' && route.screen !== 'usage' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} />}
+          {route.screen !== 'accounts' && route.screen !== 'usage' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} persona={persona} />}
           </ErrorBoundary>
         </main>
 

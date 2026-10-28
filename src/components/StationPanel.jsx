@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { VerifyBadge } from './Badge.jsx';
 import RecordInspector from './RecordInspector.jsx';
-import { ATL, LEARNER_PROFILE, setTags, addCheckIn, addReflection, completeGoal, deleteStation, editStation, getTeacher, getTeachers, requestEndorsement, getEvent, requestFor, resubmit, setVisibility, snapshot, TODAY } from '../api.js';
+import { ATL, LEARNER_PROFILE, setTags, addCheckIn, addReflection, completeGoal, deleteStation, editStation, getTeacher, getTeachers, requestEndorsement, getEvent, requestFor, resubmit, setVisibility, snapshot, TODAY, endorserChoices } from '../api.js';
 import { createPortal } from 'react-dom';
 import EvidenceDoc, { docLabel } from './EvidenceDoc.jsx';
 import { AttachButton, FileView, FILE_ICON, PendingFiles, VoiceNote, evKind, fileLabel, isUploaded } from './FileAttach.jsx';
@@ -220,7 +220,8 @@ function StudentActions({ event, onClose, toast = () => {} }) {
   const [mode, setMode] = useState(null); // 'reflect' | 'request' | 'edit'
   const [text, setText] = useState('');
   const [vis, setVis] = useState('advisor');
-  const [teacher, setTeacher] = useState('t-01');
+  const choices = endorserChoices(event.studentId, STAFF, event.lineIds || []);
+  const [teacher, setTeacher] = useState(choices[0]?.id || '');
   const [title, setTitle] = useState(event.title);
   const [summary, setSummary] = useState(event.summary);
   const [link, setLink] = useState('');
@@ -259,7 +260,7 @@ function StudentActions({ event, onClose, toast = () => {} }) {
       )}
       {mode === 'request' && (
         <div className="st-form">
-          <div className="st-row"><select value={teacher} onChange={(e) => setTeacher(e.target.value)} aria-label="Teacher">{getTeachers().filter((x) => STAFF.includes(x.id)).map((x) => <option key={x.id} value={x.id}>{x.name} · {x.role}</option>)}</select></div>
+          <div className="st-row"><select value={teacher} onChange={(e) => setTeacher(e.target.value)} aria-label="Teacher">{choices.map((x) => <option key={x.id} value={x.id}>{x.name} · {x.role}</option>)}</select></div>
           <input value={text} onChange={(e) => setText(e.target.value)} placeholder="A note for the teacher (optional)" aria-label="Note for the teacher" />
           <button className="primary small-btn" onClick={() => { const snap = snapshot(); requestEndorsement(event.id, teacher, text.trim() || null); done(`Asked ${getTeacher(teacher).name} to endorse it`, snap); }}>Send request</button>
         </div>

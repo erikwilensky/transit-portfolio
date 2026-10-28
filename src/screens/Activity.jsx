@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { getActivity } from '../api.js';
+import { getActivity, TODAY } from '../api.js';
 import { ago, fmtDate } from '../format.js';
 
 const KINDS = [['all', 'Everything'], ['view', 'Link views'], ['endorse', 'Endorsements'], ['sync', 'Imports'], ['change', 'My changes']];
@@ -32,7 +32,7 @@ export default function Activity({ studentId, version }) {
       <ol className="act-days">
         {byDay.map(({ d, items }) => (
           <li key={d}>
-            <h3>{d === '2026-10-26' ? 'Today' : fmtDate(d)}</h3>
+            <h3>{d === TODAY ? 'Today' : fmtDate(d)}</h3>
             <ul>{items.map((a, i) => (
               <li key={i} className={`act k-${group(a.kind)}${a.live ? ' live' : ''}`}>
                 <span className="act-ic" aria-hidden="true">{ICON[a.kind] || '•'}</span>

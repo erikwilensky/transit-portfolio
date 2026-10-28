@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { isPilot } from '../auth.js';
 import { addBranch, endLine, restartLine, getSchoolLines, TODAY } from '../api.js';
 
 // Start a branch under a school line (S3), or end a line well (S4).
@@ -34,7 +35,7 @@ export default function LineDialog({ mode, map, studentId, onClose, onDone }) {
               <span>{parentLine?.name} → <b>{name || 'your branch'}</b></span>
             </div>
             <div className="composer-foot">
-              <span className="fineprint">Ms Brandt approves new branch names so the school's list stays tidy.</span><span className="spacer" />
+              <span className="fineprint">{isPilot() ? 'Your coordinator approves' : 'Ms Brandt approves'} new branch names so the school's list stays tidy.</span><span className="spacer" />
               <button className="ghost" onClick={onClose}>Cancel</button>
               <button className="primary" disabled={name.trim().length < 3 || first.trim().length < 3} onClick={() => { const r = addBranch(studentId, parent, name.trim(), { title: first.trim(), date, type: 'project' }); onDone(r.event, `Branched “${name.trim()}”. A signal asks why you started it.`); }}>Start branch</button>
             </div>

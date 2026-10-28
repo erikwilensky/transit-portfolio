@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { addSchoolLine, decideBranch, getAllLines, getLine, getSchoolLines, getStore, getStudent, lineUse, renameLine } from '../api.js';
+import { addSchoolLine, decideBranch, getAllLines, getLine, getSchoolLines, getStore, getStudent, lineUse, renameLine, TODAY } from '../api.js';
 import { fmtDate } from '../format.js';
 
 // Colours a school line may use: the brand palette plus a few harmonised extras.
@@ -46,7 +46,7 @@ export default function Governance({ toast, version, persona }) {
               <div className="gov-main">
                 <label className="gov-name">Sub-line name<input value={name} onChange={(e) => setNames({ ...names, [l.id]: e.target.value })} /></label>
                 {name !== tidy(name) && <button className="linkish" onClick={() => setNames({ ...names, [l.id]: tidy(name) })}>Tidy to “{tidy(name)}”</button>}
-                <small>{s.name}, Year {s.grade + 1} · under {parent.name} · asked {fmtDate(l.requestedOn || '2026-10-26')}{first ? ` · first station “${first.title}”` : ''}</small>
+                <small>{s.name}, Year {s.grade + 1} · under {parent.name} · asked {fmtDate(l.requestedOn || TODAY)}{first ? ` · first station “${first.title}”` : ''}</small>
               </div>
               <div className="gov-act">
                 <button className="primary" onClick={() => { if (name !== l.name) renameLine(l.id, { name: name.trim() }); decideBranch(l.id, true, undefined, persona?.teacherId); toast(`Approved “${name.trim()}” for ${s.name.split(' ')[0]}`); }}>Approve</button>

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { applyLens, getCohort, getTeacher, growth, sendPrompt, snapshot, TODAY } from '../api.js';
+import { advisoryOf, applyLens, getCohort, getTeacher, growth, sendPrompt, snapshot, TODAY, daysBefore } from '../api.js';
 import { fmtDate, inkOn } from '../format.js';
 import MetroMap from './MetroMap.jsx';
 
@@ -8,12 +8,14 @@ export default function AdvisorGrid({ advisorId, onOpen, toast, version }) {
   const [prompted, setPrompted] = useState({});
   const advisor = getTeacher(advisorId);
   const flagged = cohort.filter((c) => c.flagFewReflections).length;
+  const group = advisoryOf(advisorId);
+  const years = group.minYear === group.maxYear ? `Year ${group.minYear}` : `vertical tutor group, Years ${group.minYear} to ${group.maxYear}`;
   return (
     <div className="advisor">
       <div className="adv-head">
         <div>
-          <h1>Advisory 4B</h1>
-          <p>{advisor.name} · {cohort.length} students · vertical tutor group, Years 11 to 13</p>
+          <h1>{group.name}</h1>
+          <p>{advisor.name} · {cohort.length} students{cohort.length ? ` · ${years}` : ''}</p>
         </div>
         <div className="adv-summary">
           <span className={flagged ? '' : 'zero'}><b>{flagged}</b> student{flagged === 1 ? '' : 's'} with few reflections</span>
@@ -24,7 +26,7 @@ export default function AdvisorGrid({ advisorId, onOpen, toast, version }) {
       <div className="adv-grid">
         {cohort.map((c) => {
           const lens = applyLens(c, null);
-          const fresh = c.events.filter((e) => e.date >= '2026-10-20' && e.date <= TODAY);
+          const fresh = c.events.filter((e) => e.date >= daysBefore(6) && e.date <= TODAY);
           return (
             <article key={c.student.id} className={`adv-card${c.flagFewReflections ? ' flagged' : ''}`}>
               <header>
@@ -39,7 +41,7 @@ export default function AdvisorGrid({ advisorId, onOpen, toast, version }) {
                 <span><b>{c.lines.length}</b> lines</span>
                 <span title="Reflections the student has shared with their advisor. Private reflections are not counted."><b>{c.reflectionCount}</b> shared with advisor</span>
               </div>
-              {(() => { const g = growth(c.student.id); const d = g.now.reflections - g.before.reflections; const ds = g.now.stations - g.before.stations; return (
+              {(() => { const g = growth(c.student.id); const d = g.now.reflections - g.before.reflections; const ds = g.now.stations - g.before.stations; if (!(g.now.stations || g.now.reflections || g.before.stations || g.before.reflections)) return <div className="adv-growth">Nothing on the map yet</div>; return (
                 <div className="adv-growth">Against last term: {ds > 0 ? <b>{ds} more station{ds > 1 ? 's' : ''}</b> : ds < 0 ? `${-ds} fewer station${ds < -1 ? 's' : ''}` : 'same stations'}, {d > 0 ? <b>{d} more reflection{d > 1 ? 's' : ''}</b> : d < 0 ? `${-d} fewer reflection${d < -1 ? 's' : ''}` : 'same reflections'}</div>
               ); })()}
               {(fresh.length > 0 || c.openSignals > 0) && (
@@ -56,7 +58,7 @@ export default function AdvisorGrid({ advisorId, onOpen, toast, version }) {
                       {prompted[c.student.id] ? 'Prompt sent' : 'Send reflection prompt'}
                     </button>
                   </>
-                ) : <span className="ok">Last activity {c.lastActivity ? fmtDate(c.lastActivity) : '—'}</span>}
+                ) : <span className="ok">{c.lastActivity ? `Last activity ${fmtDate(c.lastActivity)}` : 'Not started yet'}</span>}
               </div>
             </article>
           );

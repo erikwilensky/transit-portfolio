@@ -5,6 +5,7 @@ import SignIn from './screens/SignIn.jsx';
 import { getAuth, loadAuth, onAuth } from './auth.js';
 import { isPublicRoute } from './publicRoute.js';
 import { startSync } from './sync.js';
+import { useLiveDate } from './api.js';
 import './styles.css';
 import './print.css';
 
@@ -30,6 +31,7 @@ function Root() {
 const mayShare = () => { const a = getAuth(); return a.server && (a.mode !== 'pilot' || !!a.user); };
 const render = () => createRoot(document.getElementById('root')).render(<Root />);
 loadAuth().then(() => {
+  if (getAuth().mode === 'pilot') useLiveDate(); // a pilot runs on the real calendar, like its server
   if (!mayShare()) return render();
   if (!isPublicRoute()) return startSync().finally(render);
   render();
