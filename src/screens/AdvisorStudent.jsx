@@ -5,6 +5,8 @@ import MeetingMode from '../components/MeetingMode.jsx';
 import Qr from '../components/Qr.jsx';
 import MetroMap from '../components/MetroMap.jsx';
 import StationPanel from '../components/StationPanel.jsx';
+import { SignInHelp } from './SignIn.jsx';
+import { isPilot } from '../auth.js';
 
 const daysBetween = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
 
@@ -87,6 +89,7 @@ export default function AdvisorStudent({ studentId, version, toast, go, persona 
             <textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Add a note from today’s meeting" />
             <button className="ghost" disabled={!note.trim()} onClick={() => { addNote(studentId, note.trim()); setNote(''); }}>Save note</button>
           </details>
+          {isPilot() && <SignInHelp studentId={studentId} first={first} />}
         </aside>
       </div>
       {meeting && <MeetingMode studentId={studentId} agenda={agenda} advisorId={persona.teacherId} version={version} toast={toast} onClose={() => setMeeting(false)} />}

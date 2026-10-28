@@ -30,7 +30,7 @@
 .auth-modal { box-shadow: none; border: 1px solid var(--rule); display: flex; flex-direction: column; gap: 12px; width: min(440px, 100%); }
 .auth-modal h2 { margin-bottom: 4px; }
 .acct-menu .acct-who { padding: 8px; border-bottom: 1px solid var(--rule); margin-bottom: 6px; }
-.acct-menu .acct-who b { display: block; } .acct-menu .acct-who small { color: var(--muted); }
+.acct-menu .acct-who b, .acct-menu .acct-who small { display: block; } .acct-menu .acct-who small { color: var(--muted); }
 
 /* Accounts screen */
 .acc { max-width: 1040px; margin: 0 auto; padding: 28px 16px 60px; display: flex; flex-direction: column; gap: 18px; }
@@ -38,6 +38,14 @@
 .acc-head h1 { font-size: 26px; margin-bottom: 6px; }
 .acc-link { border: 1.5px solid #008A60; border-left-width: 6px; background: var(--surface); border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
 .acc-link h2 { font-size: 16px; } .acc-link p { margin: 0; color: var(--muted); font-size: 14px; }
+.acc-asked { border: 1.5px solid #FF8F1C; border-left-width: 6px; background: var(--surface); border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.acc-asked h2 { font-size: 16px; } .acc-asked > p { margin: 0; color: var(--muted); font-size: 14px; }
+.acc-asked ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.acc-asked li { display: flex; gap: 10px 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 8px 0; border-top: 1px solid var(--rule); }
+.acc-asked li small { display: block; color: var(--muted); font-size: 12.5px; }
+.acc-asked .auth-btn { padding: 7px 12px; font-size: 13.5px; }
+.auth-forgot { align-self: flex-start; padding: 0; font-size: 14px; }
+.acct-menu .acct-devices { padding: 4px 8px 6px; color: var(--muted); font-size: 12.5px; }
 .acc-copy { display: flex; gap: 8px; width: 100%; }
 .acc-copy input { flex: 1; min-width: 0; border: 1.5px solid var(--rule); background: var(--bg); color: var(--ink); border-radius: 8px; padding: 10px 12px; font: inherit; font-size: 14px; }
 .acc-form { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }

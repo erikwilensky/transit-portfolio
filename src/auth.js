@@ -35,9 +35,13 @@ export const signIn = async (email, password) => { const j = await call('POST', 
 export const getSetup = (token) => call('GET', `/api/auth/setup/${encodeURIComponent(token)}`);
 export const finishSetup = async (body) => { const j = await call('POST', '/api/auth/setup', body); set({ ...state, user: j.user }); return j.user; };
 export const changePassword = (current, password) => call('POST', '/api/auth/password', { current, password });
+// "Forgot your password?": the same answer whether or not the email has an account. → { ok, emailed }
+export const forgotPassword = (email) => call('POST', '/api/auth/forgot', { email });
+export const sessionCount = () => call('GET', '/api/auth/sessions').then((j) => j.devices);
 // Signing out also clears this browser's saved copy of the record, so the next person on a shared device starts clean.
-export async function signOut() {
-  try { await call('POST', '/api/auth/logout'); } catch { /* already signed out */ }
+// everywhere: ends every session of this account, on every device.
+export async function signOut(everywhere = false) {
+  try { await call('POST', everywhere ? '/api/auth/logout-everywhere' : '/api/auth/logout'); } catch { /* already signed out */ }
   try { Object.keys(localStorage).filter((k) => k.startsWith('tp-')).forEach((k) => localStorage.removeItem(k)); } catch { /* blocked */ }
   location.hash = '#/';
   location.reload();
@@ -48,6 +52,12 @@ export const admin = {
   update: (id, body) => call('POST', `/api/admin/accounts/${encodeURIComponent(id)}`, body),
   reset: (id) => call('POST', `/api/admin/accounts/${encodeURIComponent(id)}/reset`),
   remove: (id) => call('DELETE', `/api/admin/accounts/${encodeURIComponent(id)}`),
+  dismiss: (id) => call('POST', `/api/admin/accounts/${encodeURIComponent(id)}/dismiss`),
+};
+// An advisor (or admin): the sign-in account of a student in their advisory, and a new link for it.
+export const advisee = {
+  account: (studentId) => call('GET', `/api/advisor/students/${encodeURIComponent(studentId)}/account`).then((j) => j.account),
+  reset: (studentId) => call('POST', `/api/advisor/students/${encodeURIComponent(studentId)}/reset`),
 };
 
 // ── An account becomes a persona in the PERSONAS shape, so every existing screen works unchanged ──
