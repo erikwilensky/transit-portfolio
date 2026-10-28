@@ -1,0 +1,6 @@
+id,name,subject,year,level,teacherIds,line
+C-BIO12,12 Biology HL,Biology,12,HL,T100,
+C-CS12,12 Computer Science SL,Computer Science,12,SL,T101,
+C-MAT12,12 Maths AA HL,Mathematics: analysis and approaches,12,HL,T103,
+C-ART8,8 Visual Arts,Visual Arts,8,,T104,
+C-ROB8,8 Robotics,Robotics,8,,T101,computing

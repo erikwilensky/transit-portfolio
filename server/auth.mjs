@@ -20,8 +20,11 @@ const SESSIONS = path.join(DATA_DIR, 'sessions.json');
 const readFile = (f, empty) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return empty; } };
 let accounts = readFile(ACCOUNTS, []);
 let sessions = readFile(SESSIONS, {});
-const saveAccounts = () => writeAtomic(ACCOUNTS, JSON.stringify(accounts, null, 2));
-const saveSessions = () => writeAtomic(SESSIONS, JSON.stringify(sessions));
+let hold = false; // inside batchAccounts: save once at the end
+const saveAccounts = () => hold || writeAtomic(ACCOUNTS, JSON.stringify(accounts, null, 2));
+const saveSessions = () => hold || writeAtomic(SESSIONS, JSON.stringify(sessions));
+// Many account changes at once (the roster import makes hundreds): one save at the end.
+export function batchAccounts(fn) { hold = true; try { return fn(); } finally { hold = false; saveAccounts(); saveSessions(); } }
 
 // ── Hashing ──
 const scrypt = promisify(crypto.scrypt);
@@ -149,7 +152,7 @@ export const noteSuccess = (email) => fails.delete(`e:${email}`);
 // consent for their own children; staff may call any mutator except the admin-only ones.
 // /api/action should call it before running a mutator: `if (!canAct(req.user, fn, args)) 403`.
 // In demo mode there are no accounts, so callers skip it (req.user is null).
-const ADMIN_ONLY = new Set(['resetDemo', 'restore', 'addStudent', 'addTeacher']);
+const ADMIN_ONLY = new Set(['resetDemo', 'restore', 'addStudent', 'addTeacher', 'importRoster']);
 const ANYONE = new Set(['recordView', 'markNotificationsRead', 'setLang']);
 const ev = (id) => api.getEvent(id)?.studentId;
 const st = () => api.getStore();

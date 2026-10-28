@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { admin } from '../auth.js';
+import RosterImport from './RosterImport.jsx';
 import '../auth.css';
 
 const ROLES = [['student', 'Student'], ['parent', 'Parent or carer'], ['advisor', 'Advisor'], ['teacher', 'Subject teacher'], ['counsellor', 'University counsellor'], ['coordinator', 'Coordinator'], ['leadership', 'Leadership'], ['admin', 'Pilot admin (no record)']];
@@ -17,6 +18,7 @@ export default function Accounts({ toast, persona }) {
   const [form, setForm] = useState(null); // { ...blank, editing?: id }
   const [link, setLink] = useState(null); // { name, url } shown once
   const [confirm, setConfirm] = useState(null);
+  const [roster, setRoster] = useState(false);
   useEffect(() => { admin.list().then(setData, (x) => setErr(x.message)); }, []);
   if (err && !data) return <div className="acc"><p className="auth-err">{err}</p></div>;
   if (!data) return <div className="acc"><p className="auth-lede">Loading accounts…</p></div>;
@@ -43,7 +45,10 @@ export default function Accounts({ toast, persona }) {
     <div className="acc">
       <div className="acc-head">
         <div><h1>Accounts</h1><p className="auth-lede">Everyone in the pilot signs in with their own account and sees only their own role’s screens. Each account is linked to a student, staff or family record.</p></div>
-        {!form && <button className="auth-btn" onClick={() => { setLink(null); setForm({ ...blank }); }}>Add an account</button>}
+        <div className="auth-row">
+          {!roster && <button className="ghost" onClick={() => { setLink(null); setForm(null); setRoster(true); }}>Import class lists</button>}
+          {!form && <button className="auth-btn" onClick={() => { setLink(null); setRoster(false); setForm({ ...blank }); }}>Add an account</button>}
+        </div>
       </div>
       {err && <p className="auth-err" role="alert">{err}</p>}
       {link && (
@@ -54,6 +59,7 @@ export default function Accounts({ toast, persona }) {
           <button className="linkish" onClick={() => setLink(null)}>Done</button>
         </section>
       )}
+      {roster && <RosterImport onClose={() => setRoster(false)} onDone={(j) => { setData(j); toast('Class lists imported'); }} />}
       {form && <AccountForm form={form} setForm={setForm} data={data} onSubmit={save} />}
       <table className="acc-table">
         <thead><tr><th>Name</th><th>Role</th><th>Linked to</th><th>Status</th><th><span className="sr-only">Actions</span></th></tr></thead>

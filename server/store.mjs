@@ -7,11 +7,13 @@ import { DATA_DIR, writeAtomic } from './lib.mjs';
 export const api = await import('./build/api.js');
 const FILE = path.join(DATA_DIR, 'state.json');
 export let rev = 0;
+// A pilot with TP_START=empty and no saved record yet begins with the school's lines and nobody fictional.
+const fresh = !fs.existsSync(FILE) && process.env.TP_START === 'empty' && process.env.TP_MODE === 'pilot';
 if (fs.existsSync(FILE)) {
   const saved = JSON.parse(fs.readFileSync(FILE, 'utf8'));
   api.restore(JSON.stringify(saved));
   rev = saved.rev || 0;
-}
+} else if (fresh) api.emptyStart();
 const listeners = new Set();
 export const onChange = (fn) => (listeners.add(fn), () => listeners.delete(fn));
 // Call after any change to the store: bumps the revision, saves to disk, tells listeners.
@@ -21,3 +23,4 @@ export function changed(info = {}) {
   for (const fn of listeners) fn({ rev, ...info });
   return rev;
 }
+if (fresh) { changed({ fn: 'emptyStart' }); console.log('TP_START=empty: a new pilot record with the school\'s lines and no fictional people.'); }

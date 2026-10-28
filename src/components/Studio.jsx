@@ -15,7 +15,12 @@ import { draftNarrative } from './drafts.js';
 import { PrintButton, PrintFooter, PrintHead } from './PrintKit.jsx';
 import { presentationName } from '../print.js';
 
-export default function Studio({ level = 'full', map, drafts, audience, setAudience, tier, setTier, updateDraft, onShare, toast }) {
+// A student made before presentations were seeded for new records may have none yet.
+export default function Studio(props) {
+  if (!props.drafts.length) return <div className="empty-state"><b>No presentations yet.</b> Ask your advisor or the pilot admin to set up your presentations.</div>;
+  return <StudioInner {...props} />;
+}
+function StudioInner({ level = 'full', map, drafts, audience, setAudience, tier, setTier, updateDraft, onShare, toast }) {
   const pres = drafts.find((p) => p.audience === audience) || drafts[0];
   const lens = useMemo(() => applyLens(map, pres, { hiddenLines: pres.filters.hiddenLines }), [map, pres]);
   const [selected, setSelected] = useState(null);

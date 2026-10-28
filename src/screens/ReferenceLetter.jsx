@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { getLetter, getStudentMap, getStudents, getTeacher, LETTER_STATUSES, saveLetter, setLetterStatus } from '../api.js';
+import { getLetter, getStudent, getStudentMap, getStudents, getTeacher, LETTER_STATUSES, saveLetter, setLetterStatus } from '../api.js';
 import { ago, fmtDate, verifyCode } from '../format.js';
 import { VerifyBadge } from '../components/Badge.jsx';
 import { useVerify } from '../components/VerifyModal.jsx';
@@ -19,7 +19,13 @@ Maya is also a natural leader under pressure. She is one of the most curious stu
 const CLAIM = /\b(built|led|founded|co-founded|designed|won|placed|organi[sz]ed|created|wrote|ran|analy[sz]ed|calibrated|taught|tutored|traced|fitted|trained|managed|launched|natural leader|leader)\b|\d/i;
 
 // The counsellor writes; every claim can cite a verified station.
-export default function ReferenceLetter({ studentId, go, persona, version, toast }) {
+// A pilot can start with no Year 13 students: say so instead of opening a letter for nobody.
+export default function ReferenceLetter(props) {
+  const sid = getStudent(props.studentId) ? props.studentId : getStudents({ includeCohort: true }).find((s) => s.grade === 12)?.id;
+  if (!sid) return <div className="empty-state"><b>No Year 13 students yet.</b> Reference letters appear here once Year 13 students are in the record.</div>;
+  return <Letter {...props} studentId={sid} />;
+}
+function Letter({ studentId, go, persona, version, toast }) {
   const seniors = getStudents({ includeCohort: true }).filter((s) => s.grade === 12);
   const map = useMemo(() => getStudentMap(studentId, 'school'), [studentId]);
   const me = getTeacher(persona.teacherId);

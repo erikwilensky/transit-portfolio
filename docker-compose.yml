@@ -46,6 +46,7 @@ services:
         required: false
     environment:
       TP_MODE: pilot
+      TP_START: ${TP_START:-empty}   # a fresh pilot data folder begins with no fictional people
     ports:
       - "${TP_BIND:-127.0.0.1}:8081:8080"
     volumes:

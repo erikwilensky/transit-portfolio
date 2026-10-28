@@ -48,6 +48,7 @@ export const admin = {
   update: (id, body) => call('POST', `/api/admin/accounts/${encodeURIComponent(id)}`, body),
   reset: (id) => call('POST', `/api/admin/accounts/${encodeURIComponent(id)}/reset`),
   remove: (id) => call('DELETE', `/api/admin/accounts/${encodeURIComponent(id)}`),
+  roster: (roster, dryRun) => call('POST', '/api/admin/roster', { roster, dryRun }),
 };
 
 // ── An account becomes a persona in the PERSONAS shape, so every existing screen works unchanged ──

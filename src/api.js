@@ -11,6 +11,9 @@ import integrationsData from '../data/integrations.json';
 import schoolData from '../data/school.json';
 // Re-exported so the server bundle carries it (public verify codes); the server never loads src/.
 export { verifyCode } from './format.js';
+import { planRoster, parseRoster } from './imports/roster.js';
+// The server reads roster files with the same code (POST /api/admin/roster).
+export { parseRoster, kindOfRoles } from './imports/roster.js';
 
 export const TODAY = '2026-10-26';
 
@@ -24,7 +27,9 @@ const store = {
   reflections: reflectionsData.map((r) => ({ ...r })),
   endorsements: endorsementsData.map((n) => ({ ...n })),
   students: structuredClone(studentsData),
-  teachers: structuredClone(teachersData), // staff records; the pilot adds real ones with addTeacher
+  teachers: structuredClone(teachersData), // staff records; the pilot adds real ones with addTeacher or importRoster
+  classes: [],        // from the school's roster: { id, name, subject, year, level, teacherIds, lineId }
+  enrolments: [],     // { studentId, classId, from, to }
   lines: structuredClone(linesData),
   requests: structuredClone(schoolData.requests),
   prompts: structuredClone(schoolData.prompts),
@@ -59,6 +64,12 @@ export const getTeachers = () => teacherList();
 const AVATAR_COLOURS = ['#4F529B', '#008A60', '#E73C3E', '#FF8F1C', '#002855', '#FFB81C', '#78D5E1'];
 const initialsOf = (name) => name.replace(/^(Mr|Mrs|Ms|Miss|Dr|Kru|Khun)\.?\s+/i, '').split(/\s+/).filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase() || '?';
 const nextId = (prefix, list) => `${prefix}-${String(Math.max(0, ...list.map((x) => Number(x.id.slice(prefix.length + 1)) || 0)) + 1).padStart(2, '0')}`;
+// A new student's presentations, one per audience, empty until they fill them in. Ids come from the
+// student id, so a replay on the server makes the same ones.
+const STARTER_PRES = [['general', 'metro', 'profile', 'my journey'], ['university', 'nist', 'narrative', 'portfolio'], ['specific', 'nist', 'letter', 'why this course'], ['employer', 'nist', 'cv', 'projects and experience'], ['scholarship', 'nist', 'impact', 'contribution and impact'], ['custom', 'metro', 'custom', 'my page']];
+const starterDrafts = (s) => STARTER_PRES.map(([audience, theme, layout, t]) => ({ id: `pr-${s.id}-${audience}`, studentId: s.id, audience, targetName: null, tier: audience === 'custom' ? 'builder' : 'template', title: `${s.name}: ${t}`, filters: { hiddenLines: [] }, order: null, theme, layout, showMap: audience === 'general', narratives: {}, shareLinks: [],
+  ...(audience === 'specific' ? { institution: '', focusLines: [], whyCourse: '' } : audience === 'employer' ? { intro: '', skills: [] } : audience === 'scholarship' ? { intro: '' } : audience === 'custom' ? { design: null } : {}) }));
+const seedDrafts = (s) => { store.drafts ||= {}; if (!store.drafts[s.id]?.length) store.drafts[s.id] = starterDrafts(s); };
 export function addStudent(f) {
   const { id, name, year, programme, homeroom = '', advisorId = null } = f;
   if (id && getStudent(id)) return getStudent(id);
@@ -81,6 +92,34 @@ export function addTeacher({ id, name, role = 'Teacher' }) {
   emit();
   return t;
 }
+// ── Pilot: the school's class lists (src/imports/roster.js, docs/roster-format.md) ──
+// Ids are the school's own (SIS) ids, so a new export updates the same records. Nobody is ever removed:
+// people missing from the file are listed in the summary for an admin to deal with.
+const rosterCurrent = () => ({ students: store.students, teachers: teacherList(), classes: store.classes || [], enrolments: store.enrolments || [] });
+const rosterOpts = () => ({ lineIds: getSchoolLines().map((l) => l.id), today: TODAY });
+const checked = (r) => { const p = parseRoster(r); if (p.errors.length) throw Object.assign(new Error(`The roster has problems: ${p.errors.slice(0, 3).join(' ')}`), { status: 400, errors: p.errors }); return p.roster; };
+export const previewRoster = (roster) => planRoster(checked(roster), rosterCurrent(), rosterOpts()).summary;
+export function importRoster(parsed) {
+  const roster = checked(parsed);
+  const { writes, summary } = planRoster(roster, rosterCurrent(), rosterOpts());
+  store.teachers ||= structuredClone(teachersData); store.classes ||= []; store.enrolments ||= []; store.drafts ||= {};
+  // Indexed, so a whole school (about 1,000 students and 10,000 class places) imports in well under a second.
+  const upsert = (list, ws, key = (x) => x.id, wkey = (w) => w.id) => {
+    const at = new Map(list.map((x) => [key(x), x]));
+    for (const w of ws) { const old = at.get(wkey(w)); if (old) Object.assign(old, w.rec); else { list.push(w.rec); at.set(wkey(w), w.rec); } }
+  };
+  upsert(store.teachers, writes.teachers); upsert(store.students, writes.students); upsert(store.classes, writes.classes);
+  for (const w of writes.students) store.drafts[w.id] ||= []; // presentations come at onboarding (completeOnboarding)
+  const pair = (e) => `${e.studentId}|${e.classId}`;
+  upsert(store.enrolments, writes.enrolments, pair, (w) => pair(w.rec));
+  const ends = new Map(writes.endEnrolments.map((x) => [pair(x), x.to]));
+  if (ends.size) for (const e of store.enrolments) if (ends.has(pair(e))) e.to = ends.get(pair(e));
+  store.rosterImport = { school: roster.school, at: nowIso(), summary };
+  emit();
+  return summary;
+}
+export const getClasses = () => store.classes || [];
+export const getEnrolments = () => store.enrolments || [];
 export const getLine = (id) => lineById(id);
 export const getSchoolLines = () => store.lines.filter((l) => !l.studentId);
 export const getAllLines = () => store.lines;
@@ -672,13 +711,16 @@ export const STARTERS = {
   design: { title: 'Design cycle: pencil holder', type: 'project', source: { system: 'ManageBac', ref: 'g6-des-01' }, summary: 'First MYP design cycle project.', ev: [['file', 'Design cycle worksheet']], img: 'phone-stands' },
 };
 const STARTER_IMG = { cert: null, pool: null, code: null, sketchbook: 'sketchbook', 'piano-stage': 'piano-stage', 'compost-bin': 'compost-bin', 'stem-club': 'stem-club', 'welcome-pack': 'welcome-pack', 'phone-stands': 'phone-stands' };
+// A clean pilot start has no made-up "already verified" starter stations.
+export const hasStarters = () => !store.cleanStart;
 export function completeOnboarding(studentId, lineIds, template) {
   const s = getStudent(studentId);
   s.laneOrder = [...lineIds];
   s.onboarding = false;
+  seedDrafts(s); // a new pilot student's empty presentations
   s.template = template;
   lineIds.forEach((l, i) => {
-    const st = STARTERS[l]; if (!st) return;
+    const st = hasStarters() && STARTERS[l]; if (!st) return;
     const img = STARTER_IMG[st.img];
     store.events.push({ id: uid('ev-'), studentId, title: st.title, date: `2026-08-${String(14 + i * 3).padStart(2, '0')}`, lineIds: [l], type: st.type, summary: st.summary,
       evidence: [...(img ? [{ kind: 'image', url: `evidence/${img}.svg`, caption: st.title }] : []), ...(st.ev || []).map(([kind, caption, url]) => ({ kind, caption, url: url || (kind === 'grade' ? null : '#') }))], verification: 'school-verified', visibility: 'advisor', source: st.source });
@@ -1045,6 +1087,8 @@ function apply(saved) {
   applying = true;
   for (const k of Object.keys(store)) delete store[k];
   Object.assign(store, saved.store);
+  // Saves from before the roster import have no class lists.
+  store.classes ||= []; store.enrolments ||= [];
   seq = Math.max(seq, saved.seq || 0);
   listeners.forEach((fn) => fn());
   applying = false;
@@ -1060,6 +1104,17 @@ export function resetDemo() {
   try { Object.keys(localStorage).filter((k) => k.startsWith('tp-')).forEach((k) => localStorage.removeItem(k)); } catch { /* ignore */ }
   apply({ store: JSON.parse(SEED), seq: 1 });
   try { localStorage.setItem(STORE_KEY, JSON.stringify({ store, seq, at: Date.now() })); } catch { /* ignore */ }
+}
+
+// Pilot clean start (TP_START=empty, server/store.mjs): the school's lines and settings, and none of the
+// fictional people, stations, reflections, drafts, requests, notes or applications. Every key stays, empty.
+export function emptyStart() {
+  const seed = JSON.parse(SEED);
+  const keep = { lines: seed.lines.filter((l) => !l.studentId), integrations: seed.integrations.map((i) => ({ ...i, lastSynced: null, itemCount: 0 })), family: seed.family, rollout: seed.rollout };
+  const out = {};
+  for (const [k, v] of Object.entries(seed)) out[k] = k in keep ? keep[k] : Array.isArray(v) ? [] : v && typeof v === 'object' ? {} : v;
+  out.cleanStart = true; // no made-up starter stations at onboarding either
+  apply({ store: out, seq: 1 });
 }
 
 // ── F9: undo. A copy of the record before a quick action; Undo puts it back. ─
@@ -1302,7 +1357,7 @@ answerSponsor = act('answerSponsor', answerSponsor); addCheckIn = act('addCheckI
 editStation = act('editStation', editStation); deleteStation = act('deleteStation', deleteStation); resubmit = act('resubmit', resubmit);
 answerConsent = act('answerConsent', answerConsent); remindParent = act('remindParent', remindParent); setLang = act('setLang', setLang); setFamily = act('setFamily', setFamily);
 endorseClassTask = act('endorseClassTask', endorseClassTask);
-importCandidates = act('importCandidates', importCandidates); addStudent = act('addStudent', addStudent); addTeacher = act('addTeacher', addTeacher);
+importCandidates = act('importCandidates', importCandidates); importRoster = act('importRoster', importRoster); addStudent = act('addStudent', addStudent); addTeacher = act('addTeacher', addTeacher);
 // Undo puts a whole earlier copy back, and reset goes back to the seed (sync.js sends it to /api/reset).
 restore = act('restore', restore); resetDemo = act('resetDemo', resetDemo);
 export const MUTATORS = Object.keys(ACTIONS);

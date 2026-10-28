@@ -34,9 +34,14 @@ function build(map) {
 const asText = (list) => list.filter((a) => a.include).map((a, i) => `${i + 1}. ${a.type}\n${a.position}\n${a.org}\n${a.desc}\nYears ${a.years.join(', ')} · ${a.hours} hr/wk · ${a.weeks} wk/yr`).join('\n\n');
 
 // C3: a Common App style list of 10 activities, drafted from the map, with the character limits enforced as you type.
-export default function ActivitiesList({ toast, version }) {
-  const seniors = getStudents({ includeCohort: true }).filter((s) => s.grade === 12).sort((a, b) => a.name.localeCompare(b.name));
-  const [sid, setSid] = useState('st-01');
+const seniorsOf = () => getStudents({ includeCohort: true }).filter((s) => s.grade === 12).sort((a, b) => a.name.localeCompare(b.name));
+export default function ActivitiesList(props) {
+  if (!seniorsOf().length) return <div className="empty-state"><b>No Year 13 students yet.</b> Activities lists appear here once Year 13 students are in the record.</div>;
+  return <List {...props} />;
+}
+function List({ toast, version }) {
+  const seniors = seniorsOf();
+  const [sid, setSid] = useState(() => (seniors.some((s) => s.id === 'st-01') ? 'st-01' : seniors[0].id));
   const [open, setOpen] = useState(null);
   const map = getStudentMap(sid, 'school');
   const list = getActivityList(sid) || build(map);
