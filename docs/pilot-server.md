@@ -567,3 +567,34 @@ Thailand's PDPA gives a student (and their parent) the right to a copy of their 
 - Tests: `server/test/my-classes.test.mjs`; browser: `node scripts/checks/my-classes.cjs` (a clean pilot on the
   real roster from the project files, skipped when it is not there: the teacher with the most classes, a
   class, a student's map, the queue; a coordinator puts Mathematics on Science; a re-import keeps it).
+
+- Not done: editing classes in the app. People who left can be paused at import (see "Sign-in cards and paused leavers").
+
+## Sign-in cards and paused leavers (`server/routes/16-cards.mjs`, `src/components/SignInCards.jsx`)
+
+No email is sent, so people get in through one-time setup links. Cards put those links on paper, one per person.
+- **Cards**: each card is a normal setup link (`A.newSetup`: 7 days, stored only as a hash, never logged), so it
+  replaces any earlier link for that person. Without `includeSignedUp` only accounts with no password get one;
+  with it everyone chosen does, which ends their password and sessions (the screens say so and ask first).
+  Paused accounts never get a card, nor does the person asking. → `{ school, cards: [{ name, homeroom, year,
+  email, setupUrl, expiresAt }] }` (sorted by homeroom, then name). At most 30 batches per account per 15 minutes (429).
+  - `GET /api/advisor/cards` → `{ students: [{ id, name, homeroom, year, hasAccount, hasPassword }] }`;
+    `POST /api/advisor/cards { studentIds?, includeSignedUp? }`: staff whose `teacherId` is the students'
+    `advisorId`, student accounts only (403 for anyone else's student, and for anyone with no advisees).
+  - `GET /api/admin/cards` → `{ homerooms: [{ name, year, students, waiting }], staff: { total, waiting } }`;
+    `POST /api/admin/cards { homerooms?, staff?, accountIds?, includeSignedUp? }` (admin only).
+- **Screens** (pilot only): "Print sign-in cards" on the advisor's advisory page and on Accounts (pick homerooms
+  and/or staff). The sheet opens over the app; printing shows only the sheet: A4 portrait, 2 × 5 cards a page with
+  dashed cut lines, each with the school name, name, homeroom and Year, a QR code of the link, the link as text,
+  "Scan, choose a password, done." and the last day it works.
+- **Paused accounts**: `account.paused = { at }` (`A.pauseAccount`, ends every session; `A.unpauseAccount`). A paused
+  account cannot sign in (`POST /api/auth/login` → 403 "Your account is paused. Ask your teacher."), use a setup link,
+  or use an old session (`sessionUser` returns null). The record and map are never touched.
+  `POST /api/admin/accounts/:id/pause` and `/unpause` (admin) → the accounts list. Accounts lists paused accounts first,
+  with "Unpause".
+- **Leavers at import**: `POST /api/admin/roster` with `dryRun` also returns `leavers` (accounts linked to a record in
+  `missingFromFile`, not paused, never an admin) and `returning` (paused accounts whose record is in the file again).
+  The confirm step offers "Pause the accounts of N people who are no longer in the class lists" (off by default, names
+  listed); `{ pauseLeavers: true }` pauses them. Every import unpauses `returning`. The reply carries `paused` and `unpaused`.
+- Tests: `server/test/cards.test.mjs`; `node scripts/checks/signin-cards.cjs` (the real roster from `ROSTER`, default the
+  project-files copy, skipped when missing; writes its roster copy, screenshots and a PDF to `SCRATCH` or the temp folder).
