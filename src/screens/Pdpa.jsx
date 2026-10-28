@@ -14,7 +14,9 @@ const days = (d) => Math.round((new Date(d) - new Date(TODAY)) / 86400000);
 // L2: what is stored, where, who can read it, for how long, and proof that it is enforced.
 export default function Pdpa({ drafts, version, go }) {
   const events = getStore().events;
-  const vis = ['private', 'advisor', 'school', 'publishable'].map((k) => [k, events.filter((e) => e.visibility === k).length]);
+  // Pilot: private stations never reach staff; the server sends only how many there are (store.scope).
+  const hiddenPrivate = getStore().scope?.privateStations || 0;
+  const vis = ['private', 'advisor', 'school', 'publishable'].map((k) => [k, events.filter((e) => e.visibility === k).length + (k === 'private' ? hiddenPrivate : 0)]);
   const maxVis = Math.max(...vis.map((v) => v[1]));
   const links = Object.values(drafts).flat().flatMap((p) => p.shareLinks.map((l) => ({ ...l, title: p.title, studentId: p.studentId })));
   const working = links.filter((l) => !l.revoked && l.expiresAt >= TODAY);
@@ -34,7 +36,7 @@ export default function Pdpa({ drafts, version, go }) {
       <div className="tiles">
         <div className="tile"><b>{working.length}</b><span>share links working; every one expires</span></div>
         <div className="tile"><b>{links.reduce((n, l) => n + l.views + extraViews(l.token), 0)}</b><span>link views logged, with who and when</span></div>
-        <div className="tile"><b>{Math.round((100 * vis[3][1]) / events.length)}%</b><span>of stations publishable, each one by the student's own choice</span></div>
+        <div className="tile"><b>{Math.round((100 * vis[3][1]) / Math.max(1, events.length + hiddenPrivate))}%</b><span>of stations publishable, each one by the student's own choice</span></div>
         <div className="tile"><b>0</b><span>open data requests (2 handled this year)</span></div>
       </div>
 

@@ -4,6 +4,7 @@
 import { send, readJson } from '../lib.mjs';
 import { api, changed, onChange, rev } from '../store.mjs';
 import { MODE, canAct } from '../auth.mjs';
+import { scopedSnapshot } from '../scope.mjs';
 
 // The changes a browser may ask for: every api.js mutator, except reset (POST /api/reset).
 const ALLOW = new Set(api.MUTATORS.filter((n) => n !== 'resetDemo'));
@@ -14,7 +15,8 @@ const decode = (args) => args.map((x) => (x && typeof x === 'object' && x.$undef
 const json = (v) => (v === undefined ? null : JSON.parse(JSON.stringify(v)));
 
 export default (app) => {
-  app.get('/api/state', (req, res) => send(res, 200, { snapshot: JSON.parse(api.snapshot()), rev }));
+  // Pilot: each person downloads only their own part of the record (server/scope.mjs). Demo: all of it.
+  app.get('/api/state', (req, res) => send(res, 200, { snapshot: MODE === 'pilot' ? scopedSnapshot(req.user) : JSON.parse(api.snapshot()), rev }));
 
   app.post('/api/action', async (req, res) => {
     const { fn, args = [], rec = [] } = await readJson(req);
@@ -26,7 +28,8 @@ export default (app) => {
       const prev = rev;
       try {
         const result = json(api.runAction(fn, decode(args), rec));
-        return { status: 200, body: { result, rev: changed({ fn }), prev } };
+        // scoped: the browser ran it on its part of the record only, so it fetches its new part.
+        return { status: 200, body: { result, rev: changed({ fn }), prev, ...(MODE === 'pilot' ? { scoped: true } : {}) } };
       } catch (e) {
         // The change may have half-run: save and announce anyway, so every device resyncs.
         console.error(`Action ${fn} failed:`, e.message);

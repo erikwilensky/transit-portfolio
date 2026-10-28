@@ -239,11 +239,13 @@ server makes an empty folder and begins again from the seed.
   `onboarding: true`, empty map) and `api.addTeacher({ name, role })`. Teachers now live in the record
   (`store.teachers`). Both are idempotent when given an existing `id`.
 - **`canAct(user, fn, args)`** (exported from `server/auth.mjs`, re-exported by `10-auth.mjs`): call it in
-  `/api/action` before running a mutator and answer 403 when false. Admins: anything. Staff kinds: any
-  mutator except `resetDemo`, `restore`, `addStudent`, `addTeacher`. Students: only the student mutators
-  listed in `STUDENT_OWNS`, and only when every student the call touches (looked up from the station,
-  inbox item, request or evidence request) is their own `studentId`. Parents: `answerConsent` for their own
-  children, and `setFamily`. Everyone signed in: `recordView`, `markNotificationsRead`, `setLang`.
+  `/api/action` before running a mutator and answer 403 when false. Admins: anything but `restore`.
+  Whole-school staff (leadership, coordinator, counsellor): any mutator except `resetDemo`, `restore`,
+  `addStudent`, `addTeacher`. Advisors and teachers: see "Who sees which students" below. Students: only
+  the mutators in `STUDENT_FNS`, and only when every student the call touches (`touchedBy`, looked up from
+  the station, inbox item, request or evidence request) is their own `studentId`, never as a teacher.
+  Parents: `answerConsent` for their own children, and `setFamily`. Everyone signed in: `recordView`,
+  `markNotificationsRead`, `setLang`.
 - **Browser** (`src/auth.js`): reads the mode from `/api/auth/me` (no server, or demo → demo). In pilot it
   builds the signed-in person's persona in the PERSONAS shape (`personaFor`) and installs it with
   `setPilotPersona`, so `personaById` always returns it. `navOf(p)` gives a persona's navigation
@@ -252,11 +254,10 @@ server makes an empty folder and begins again from the seed.
 
 ### Not enforced yet
 
-- `/api/state` (and the stream) still give any signed-in person the whole record; screens hide what a
-  role should not see, the server does not.
-- `canAct` is only a check: it does nothing until `/api/action` calls it. It checks who owns the target,
-  not every field of the arguments (a staff member can still act as any teacher, `addGoal(.., by)` etc.).
-  `restore` (Undo) is admin-only in it, so student and staff Undo needs a scoped replacement.
+- `canAct` checks who owns the target and, for advisors and teachers, which teacher a call acts as; not
+  every field of the arguments (a whole-school role can still act as any teacher, `addGoal(.., by)` etc.).
+  `restore` (Undo) is refused for everyone in a pilot, since each browser holds only part of the record:
+  Undo needs a scoped replacement.
 - Notifications are addressed by persona id: accounts linked to a seeded persona's record keep that id;
   everyone else is `me`, and `notify` skips students without a seeded persona.
 - `setLang` changes the one shared family language setting for everybody.
@@ -270,3 +271,51 @@ server makes an empty folder and begins again from the seed.
   station's verification record. Share URLs are absolute; set `VITE_PUBLIC_URL` at build time when the
   app is built or opened somewhere other than its public address. Tests: `npm run test:server`,
   `BASE=http://localhost:8787 node scripts/checks/public.cjs`.
+
+## Who sees which students (`server/scope.mjs`, pilot only)
+
+Each signed-in person downloads only their own part of the record, and advisors and teachers change
+only the students they work with. Demo mode still sends the whole record to everyone.
+
+- **`reachOf(user)`** → `null` (the whole school: admin, leadership, coordinator, counsellor) or a `Set` of
+  studentIds. A student: themselves. A parent: their children. An advisor or teacher (`teacherReach`):
+  students they advise (`advisorId`), students enrolled in classes they teach (`classes[].teacherIds`,
+  `enrolments[]`, from the roster import; missing is `[]`), students who sent them an endorsement or
+  evidence request, whose goals they sponsor, whose stations they endorsed, whom they sent a prompt,
+  whose comments they wrote or were asked about (`by`, `to`, `teacherId`, `asked[]`), who are on their
+  class tasks or carry their class endorsement in an inbox, and whose DP work they supervise.
+- **`scopedSnapshot(user)`** → `{ store, seq }` in the shape `api.snapshot()` uses; `GET /api/state` sends it
+  in pilot mode. Students outside reach are gone entirely (records, stations, reflections, endorsements,
+  tags, drafts, inbox, requests, prompts, comments, activity, consent, CAS, DP, link views…). For the
+  students in reach it keeps what that person may read, by `VISIBLE_TO` (now exported from api.js), as
+  `getStudentMap(viewer)` applies it: a student's own record in full; a child as the family view shows it
+  (`familyViewer`), with consent requests and only view and consent activity; staff at most the
+  advisor level, so **private stations and reflections never reach any staff role, admin included**.
+  One exception: a station a student sent to a teacher (an endorsement request or a sponsor invitation)
+  reaches that teacher even when private, without its private reflections. Activity lines naming a
+  station the person does not receive are dropped. Advisor notes go only to the student's advisor;
+  reference letters, the roster and other students' drafts only to whole-school roles; undecided inbox
+  and pending items only to the student and whole-school roles. School lines and integrations stay; the
+  staff directory keeps `id`, `name`, `role` only (no emails). Notifications: only those whose `to` is one
+  of `recipientKeys(user)`: the seeded persona id and `st:<studentId>`, `t:<teacherId>`, `u:<accountId>`.
+  A store key another feature adds follows reach when it is an array of `{ studentId }` or an object keyed
+  by studentId, and stays otherwise. `store.scope = { school, privateStations }` carries the count of
+  private stations to whole-school roles (Privacy & PDPA shows it); other dashboards count only what they
+  receive, so a line's use or learner-profile coverage leaves private stations out.
+- **`canAct` for advisors and teachers**: `touchedBy(fn, args)` (the `TOUCHES` map, one entry per api.js
+  mutator) gives the students a call touches and the teacher it acts as (`endorse`'s teacher and each
+  request's teacher, `sendPrompt`'s sender, default `t-07`, `addComment`'s author, default `t-09`, `addGoal`'s
+  `by`, `addCheckIn`'s `by`, the sponsor in `answerSponsor`, a class task's teacher, an import's
+  `by.teacherId`). Allowed only when every touched student is in reach and every acted-as teacher is
+  their own `teacherId`. `addSchoolLine`, `renameLine`, `decideBranch`, `setRollout` and `matchRoster` are
+  whole-school only. A mutator not in `TOUCHES`: any student or station id found in its arguments counts
+  as touched; one that names none is allowed. An id that does not resolve counts as outside reach.
+- **Browser**: a change still runs first on the browser's part of the record. In pilot mode `/api/action`
+  answers `scoped: true` and `src/sync.js` always fetches its new part afterwards (refused changes too),
+  so what the server computed on the whole record wins. Every change anywhere still bumps the stream, and
+  each browser then refetches its own part. An address naming a student not in the person's part shows
+  "This student is not in your part of the record" (advisor student page, reference letter).
+- **Files**: `GET /api/files/:name` stays public by an unguessable name (no sign-in, no reach check), so a
+  file's link works for anyone who has it, as a share link does.
+- Tests: `npm run test:server` (`server/test/scope.test.mjs`), `node scripts/checks/scope.cjs` (every role
+  through a real pilot server and every screen it can reach), and the scoping part of `auth.cjs`.
