@@ -15,6 +15,8 @@ export function InstallHint() {
   const [s, setS] = useState({});
   const [hidden, setHidden] = useState(() => hintDismissed() || standalone() || !onPhone());
   useEffect(() => onPwa(setS), []);
+  // Room at the foot of the page, so the fixed card never covers the last buttons (Feedback, Add).
+  useEffect(() => { document.body.classList.toggle('pa-hint-on', !hidden); return () => document.body.classList.remove('pa-hint-on'); }, [hidden]);
   if (hidden) return null;
   const close = () => { dismissHint(); setHidden(true); };
   return (

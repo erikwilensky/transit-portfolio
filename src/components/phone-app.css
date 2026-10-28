@@ -11,3 +11,4 @@
 .pa-update button { border: 1.5px solid #fff; background: none; color: #fff; border-radius: 8px; padding: 5px 12px; font-weight: 600; }
 .app:has(.modal-back) .pa-hint { display: none; }
 .pa-share { vertical-align: -2px; color: var(--ink); }
+body.pa-hint-on { padding-bottom: calc(140px + env(safe-area-inset-bottom)); }
