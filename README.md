@@ -17,7 +17,8 @@ npx serve dist     # quick static server, or point Apache / nginx / Caddy at dis
 `dist/` uses relative paths (`base: './'`), so it works from any folder or URL path. On plain static
 hosting the app saves everything in the browser.
 
-With the pilot server (one shared record, files, share links, sign-in; see `docs/pilot-server.md`):
+With the pilot server (one shared record, files, share links, sign-in, and in a pilot each person
+downloads only the students they work with; see `docs/pilot-server.md`):
 
 ```sh
 npm run build && npm run server    # app and /api on http://localhost:8787, data in .data/

@@ -5,4 +5,5 @@ for f in map-find parent-link learner-profile intensity uploads public imports p
 echo "== auth (starts its own pilot and demo servers)"; node auth.cjs || fail=1
 echo "== sync (starts its own server)"; node sync.cjs || fail=1
 echo "== notifications (starts its own pilot server)"; node notifications.cjs || fail=1
+echo "== scope (starts its own pilot server)"; node scope.cjs || fail=1
 echo "== tours"; node tours.cjs | grep -E "end url|ERRS|soon|boom|empty|hs" ; exit $fail

@@ -88,7 +88,7 @@ export const getEvent = (id) => store.events.find((e) => e.id === id);
 export const getStore = () => store;
 
 // The visibility levels each viewer may read. Enforced here, not in the UI.
-const VISIBLE_TO = {
+export const VISIBLE_TO = {
   student: ['private', 'advisor', 'school', 'publishable'],
   advisor: ['advisor', 'school', 'publishable'],
   school: ['school', 'publishable'],

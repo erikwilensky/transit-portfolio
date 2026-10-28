@@ -70,8 +70,9 @@ async function flush() {
       if (r.status >= 502 && r.status <= 504) throw new Error('unreachable');
       const item = queue.shift(); wait = 1000;
       const j = await r.json().catch(() => ({}));
-      // Our change was the only one since our copy: we are at its revision. Otherwise (or after an undo) fetch.
-      if (r.ok && j.prev === rev && !item.undo) rev = j.rev; else rev = -1;
+      // Our change was the only one since our copy: we are at its revision. Otherwise (after an undo, or always in a
+      // pilot, where this browser holds only its own part of the record and ran the change on that) fetch.
+      if (r.ok && j.prev === rev && !item.undo && !j.scoped) rev = j.rev; else rev = -1;
       item.done?.(r.ok, j);
       if (!r.ok) console.warn('Change refused by the server', r.status, j.error);
     } catch {

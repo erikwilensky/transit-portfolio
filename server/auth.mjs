@@ -6,6 +6,7 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import { DATA_DIR, writeAtomic } from './lib.mjs';
 import { api } from './store.mjs';
+import { reachOf, touchedBy } from './scope.mjs';
 
 export const MODE = process.env.TP_MODE === 'pilot' ? 'pilot' : 'demo';
 export const KINDS = ['student', 'advisor', 'teacher', 'counsellor', 'coordinator', 'leadership', 'parent', 'admin'];
@@ -146,43 +147,43 @@ export const noteSuccess = (email) => fails.delete(`e:${email}`);
 
 // ── canAct: may this signed-in person call this api.js mutator with these arguments? ──
 // Cheap, server-side, per role. Students may only change their own record; families only answer
-// consent for their own children; staff may call any mutator except the admin-only ones.
-// /api/action should call it before running a mutator: `if (!canAct(req.user, fn, args)) 403`.
-// In demo mode there are no accounts, so callers skip it (req.user is null).
+// consent for their own children; whole-school staff may call any mutator except the admin-only ones;
+// advisors and teachers only on the students they work with (reachOf in server/scope.mjs), only as
+// themselves, and not the school-wide settings. Which students a call touches: touchedBy (scope.mjs).
+// /api/action calls it in pilot mode: `if (!canAct(req.user, fn, args)) 403`. Demo mode has no accounts.
 const ADMIN_ONLY = new Set(['resetDemo', 'restore', 'addStudent', 'addTeacher']);
 const ANYONE = new Set(['recordView', 'setLang']);
-const ev = (id) => api.getEvent(id)?.studentId;
+// School-wide settings an advisor or subject teacher does not change.
+const WHOLE_SCHOOL_ONLY = new Set(['addSchoolLine', 'renameLine', 'decideBranch', 'setRollout', 'matchRoster']);
+// The mutators a student may call, on their own record only.
+const STUDENT_FNS = new Set(['setStudentDrafts', 'setGithub', 'disconnectGithub', 'simulateWeek', 'addStation', 'addBranch', 'endLine', 'restartLine',
+  'completeOnboarding', 'capturePhone', 'setPrivacy', 'logLink', 'addGoal', 'setIntensity', 'remindParent', 'sync', 'importCandidates', 'addReflection',
+  'setVisibility', 'editStation', 'deleteStation', 'completeGoal', 'setTags', 'requestEndorsement', 'addCheckIn', 'acceptCandidate', 'dismissCandidate',
+  'restoreCandidate', 'mergeCandidate', 'resubmit', 'answerEvidence', 'acceptInterchange', 'ignoreInterchange']);
+// A student's own file import only, never as a school source.
+const STUDENT_EXTRA = { importCandidates: (a) => a[1]?.sourceId === 'mine' && Array.isArray(a[0]) && a[0].length > 0 };
 const st = () => api.getStore();
-const inboxItem = (id) => (st().inbox.find((e) => e.id === id) || st().dismissed.find((e) => e.id === id))?.studentId;
-// For each mutator a student may call: the studentId it acts on (or every one it touches).
-const STUDENT_OWNS = {
-  setStudentDrafts: (a) => [a[0]], setGithub: (a) => [a[0]], disconnectGithub: (a) => [a[0]], simulateWeek: (a) => [a[0]],
-  addStation: (a) => [a[0]], addBranch: (a) => [a[0]], endLine: (a) => [a[0]], restartLine: (a) => [a[0]],
-  completeOnboarding: (a) => [a[0]], capturePhone: (a) => [a[0]], setPrivacy: (a) => [a[0]], logLink: (a) => [a[0]],
-  addGoal: (a) => [a[0], ...(a[2] ? ['(as staff)'] : [])], setIntensity: (a) => [a[0]], remindParent: (a) => [a[0]],
-  sync: (a) => [a[1]], importCandidates: (a) => (a[1]?.sourceId !== 'mine' ? ['(as staff)'] : Array.isArray(a[0]) && a[0].length ? a[0].map((r) => r?.studentId) : [null]),
-  addReflection: (a) => [a[0]?.studentId, ev(a[0]?.eventId)],
-  setVisibility: (a) => [ev(a[0])], editStation: (a) => [ev(a[0])], deleteStation: (a) => [ev(a[0])], completeGoal: (a) => [ev(a[0])],
-  setTags: (a) => [ev(a[0])], requestEndorsement: (a) => [ev(a[0])], addCheckIn: (a) => [ev(a[0]), ...(a[2] !== 'student' ? ['(as staff)'] : [])],
-  acceptCandidate: (a) => [inboxItem(a[0])], dismissCandidate: (a) => [inboxItem(a[0])], restoreCandidate: (a) => [inboxItem(a[0])],
-  mergeCandidate: (a) => [inboxItem(a[0]), ev(a[1])],
-  resubmit: (a) => [st().requests.find((r) => r.id === a[0])?.studentId],
-  answerEvidence: (a) => [st().evidenceRequests.find((r) => r.id === a[0])?.studentId],
-  acceptInterchange: (a) => [ev(a[0]?.b?.id)],
-  ignoreInterchange: () => [],
-};
 export function canAct(user, fn, args = []) {
   if (!user || typeof fn !== 'string') return false;
+  // Undo sends a whole copy of the record, and in a pilot every browser holds only its own part of it.
+  if (fn === 'restore') return false;
   if (isAdmin(user)) return true;
   if (ADMIN_ONLY.has(fn)) return false;
   if (ANYONE.has(fn)) return true;
   // Only your own bell: every key must be one of yours (st:…, t:…, fam:…, role:…, or your record's demo persona id).
   if (fn === 'markNotificationsRead') { const mine = new Set(api.notifyKeys({ kind: user.kind, studentId: user.studentId, teacherId: user.teacherId, children: user.children })); return [].concat(args[0] ?? []).every((k) => mine.has(k)); }
-  if (STAFF.includes(user.kind)) return true;
   try {
+    if (STAFF.includes(user.kind)) {
+      const reach = reachOf(user);
+      if (reach === null) return true;
+      if (WHOLE_SCHOOL_ONLY.has(fn)) return false;
+      const t = touchedBy(fn, args);
+      return t.students.every((sid) => reach.has(sid)) && t.as.every((id) => id === user.teacherId);
+    }
     if (user.kind === 'student') {
-      const owns = STUDENT_OWNS[fn];
-      return !!owns && owns(args).every((sid) => sid === user.studentId);
+      if (!STUDENT_FNS.has(fn) || (STUDENT_EXTRA[fn] && !STUDENT_EXTRA[fn](args))) return false;
+      const t = touchedBy(fn, args);
+      return !t.as.length && t.students.every((sid) => sid === user.studentId);
     }
     if (user.kind === 'parent') {
       if (fn === 'setFamily') return true;

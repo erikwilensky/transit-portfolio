@@ -117,6 +117,36 @@ const status = async (url, opts) => (await fetch(url, opts)).status;
     ok(st1.notes[me1.user.studentId]?.some((n) => n.text === 'Admin note'), 'pilot: the admin’s later change is kept');
     ok((await post('action', { fn: 'restore', args: ['{}'], rec: [] }, H)).status === 403, 'pilot: whole-record restore stays admin-only');
 
+    // ── Scoping: each person downloads only their own part of the record (server/scope.mjs) ──
+    const sid = me1.user.studentId;
+    const stS = (await (await fetch(`${U}/api/state`, { headers: H })).json()).snapshot.store;
+    const evOf = (st) => new Set(st.events.map((e) => e.studentId));
+    ok(stS.students.length === 1 && stS.students[0].id === sid, `student's /api/state holds only their own student record (${stS.students.length})`);
+    ok([...evOf(stS)].every((x) => x === sid) && stS.reflections.length === 0 && Object.keys(stS.drafts).every((x) => x === sid), 'no other student’s stations, reflections or drafts');
+    ok(!JSON.stringify(stS).includes('Maya Chen') && stS.teachers.length > 5 && stS.teachers.every((t) => !t.email), 'no seeded students; the staff directory without emails');
+    const AH = { cookie: `tp_session=${adminCookie.value}`, 'content-type': 'application/json' };
+    const made = await (await fetch(`${U}/api/admin/accounts`, { method: 'POST', headers: AH, body: JSON.stringify({ email: 'sato@nist.ac.th', name: 'Ms Hana Sato', kind: 'teacher', teacherId: 't-06' }) })).json();
+    const tok = decodeURIComponent(made.setupUrl.split('/setup/')[1]);
+    const su = await fetch(`${U}/api/auth/setup`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: tok, password: 'sato-pass-123' }) });
+    const TH = { cookie: su.headers.get('set-cookie').split(';')[0], 'content-type': 'application/json' };
+    const stT = (await (await fetch(`${U}/api/state`, { headers: TH })).json()).snapshot.store;
+    const tReach = new Set(stT.students.map((x) => x.id));
+    ok(tReach.has('st-03') && !tReach.has('st-01') && !tReach.has(sid), `teacher's /api/state: only students they work with (${[...tReach].join(', ')})`);
+    ok([...evOf(stT)].every((x) => tReach.has(x)) && stT.reflections.every((r) => r.visibility !== 'private'), 'teacher: no stations outside reach, no private reflections');
+    const act = (h, fn, args) => fetch(`${U}/api/action`, { method: 'POST', headers: h, body: JSON.stringify({ fn, args, rec: [] }) });
+    ok((await act(TH, 'endorse', [['rq-01'], 't-06', 'x'])).status === 403, 'teacher cannot endorse a request sent to someone else');
+    ok((await act(TH, 'addNote', ['st-01', 'x'])).status === 403, 'teacher cannot change a student outside reach');
+    const okAct = await act(TH, 'addLog', ['st-03', 'Ms Hana Sato', 'share', 'Looked at the art line']);
+    ok(okAct.status === 200 && (await okAct.json()).scoped === true, 'teacher acts on a student in reach; the answer tells the browser to refetch');
+    ok((await act(H, 'addStation', ['st-01', { title: 'x', lineIds: ['science'] }])).status === 403, 'student cannot add to another student');
+    const ctxT = await b.newContext({ viewport: { width: 1300, height: 860 } });
+    await ctxT.addCookies([{ name: 'tp_session', value: TH.cookie.split('=')[1], url: U }]);
+    const tp = await ctxT.newPage(); tp.on('pageerror', (e) => errs.push(e.message));
+    await tp.goto(U + '/#/'); await tp.waitForSelector('main.screen');
+    ok(await tp.locator('.q-card').count() >= 1, 'teacher’s endorsement queue works on their part of the record');
+    for (const scr of ['crosslinks', 'depot', 'import']) { await tp.goto(`${U}/#/me/${scr}`); await tp.waitForTimeout(400); ok(await tp.locator('main.screen').count() === 1 && await tp.locator('text=This screen hit a problem').count() === 0, `teacher ${scr} screen renders`); }
+    await ctxT.close();
+
     // ── Sign out, sign back in, sign out ──
     await s.click('.persona-btn'); await s.click('.sign-out'); await s.waitForSelector('.auth-card h1');
     ok((await (await fetch(`${U}/api/auth/me`, { headers: H })).json()).user === null, 'signing out ends the session on the server');
