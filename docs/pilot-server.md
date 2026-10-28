@@ -630,3 +630,38 @@ The class lists hold no parents, so families join by a printed invitation, one p
   works. `#/family/<token>` (`src/main.jsx`) opens the join page, signed in or not; after joining it lands on the family view.
 - Tests: `server/test/family.test.mjs`; `node scripts/checks/family-letters.cjs` (the real roster from `ROSTER`, skipped when
   missing; screenshots and a PDF go to `SCRATCH` or the temp folder).
+## Class prompts: asking a whole class (`src/api.js`, `src/components/ClassPrompts.jsx`)
+
+A teacher asks one question of a whole class after an event ("What did you learn from the science fair?"); each student
+answers it from the top of their home.
+
+- Teacher: My classes has "Ask the class" on each class and on the class page: the question, an optional "what it is
+  about" (a few words, used as the station title), "Add it as a moment on <the class's line>" (ticked by default; not
+  offered for a class off the map) and an optional answer-by date. The class page lists its questions with "answered N
+  of M" (M: the class's students when it was asked; "said not for them" counted apart), the answers with names, "Remind
+  the rest (K)" and, for moments, a link to Endorsements.
+- Student: the oldest open question shows at the top of the home at every level (a big card above the Simple home's
+  actions; a strip at the top of the map home at Standard and Full). The flow is the Simple one: the question card
+  ("Answer it" or "Not for me"), the answer, an optional photo (uploaded as in the Simple add flow), done.
+- Mutators (replayed on the server like the rest; ids and times from `uid()`/`nowIso()`):
+  - `askClass(classId, teacherId, { question, context, asMoment, due })` → a `store.classPrompts[]` item
+    `{ id: 'cq-…', classId, teacherId, question, context, asMoment, lineId, due, date, at, studentIds, reminded }`;
+    notifies every student currently in the class (`toStudent`). `asMoment` is kept only when the class has a line.
+  - `answerPrompt(promptId, studentId, { text, image?, imageCaption?, title? })` → a `store.classAnswers[]` item
+    `{ id: 'ca-…', promptId, studentId, date, at, text, eventId }`. With `asMoment`: a station (type project, title =
+    context or question) on the class's line, the answer as its reflection, and an endorsement request to the asking
+    teacher (`requestFrom`), so it lands in their Endorsements. Without: a reflection station on that line. The class's
+    line joins the student's map if missing (a sub-line of it is used if they have one). Once per student.
+  - `skipPrompt(promptId, studentId)` ("Not for me") → `{ …, skipped: true }`; hidden from the student.
+  - `remindClass(promptId, teacherId)` → one notification to each student still in the class who has neither answered
+    nor skipped; at most once a day per prompt (`reminded` = that day; a second call returns 0).
+  - Reads: `classPrompts(classId)` (with `answers`, `skipped`, `waiting`), `openPromptsFor(studentId)`, `getClassPrompt(id)`.
+- canAct: `askClass` and `remindClass`: admins and whole-school staff, or an advisor/teacher who is in the class's
+  `teacherIds`, acting as themselves (advising every student in it is not enough). `answerPrompt` and `skipPrompt`
+  (`STUDENT_FNS`): the student the prompt was asked of, never a subject teacher or advisor for them.
+- Scope (`scopedSnapshot`): `classPrompts` go to whole-school roles, the asking teacher and the class's teachers, and to
+  each student asked (their copy's `studentIds` is just themselves, so classmates are not listed). `classAnswers` go to
+  whoever receives the prompt as a teacher, and each student gets only their own. Families and other staff get neither.
+- Tests: `server/test/class-prompts.test.mjs`; `node scripts/checks/class-prompts.cjs` (real roster, skipped when
+  missing: a teacher asks a Year 8 class, a student answers at Simple level on a phone with a photo, the teacher sees
+  1 of N, the answer and the station in Endorsements, reminds the rest; then a Standard-level skip).
