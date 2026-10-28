@@ -163,7 +163,7 @@ export const noteSuccess = (email) => fails.delete(`e:${email}`);
 // advisors and teachers only on the students they work with (reachOf in server/scope.mjs), only as
 // themselves, and not the school-wide settings. Which students a call touches: touchedBy (scope.mjs).
 // /api/action calls it in pilot mode: `if (!canAct(req.user, fn, args)) 403`. Demo mode has no accounts.
-const ADMIN_ONLY = new Set(['resetDemo', 'restore', 'addStudent', 'addTeacher']);
+const ADMIN_ONLY = new Set(['resetDemo', 'restore', 'addStudent', 'addTeacher', 'eraseStudent']);
 const ANYONE = new Set(['recordView', 'setLang']);
 // School-wide settings an advisor or subject teacher does not change.
 const WHOLE_SCHOOL_ONLY = new Set(['addSchoolLine', 'renameLine', 'decideBranch', 'setRollout', 'matchRoster']);

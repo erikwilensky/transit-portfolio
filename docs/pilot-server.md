@@ -20,13 +20,14 @@ src/sync.js             browser side of the shared record
 
 Run: `npm run build && npm run server` (port 8787, or PORT). In dev: `npm run server` plus
 `npm run dev` (Vite proxies /api). Data lives in DATA_DIR (default `.data/`): `state.json`,
-`uploads/`, `accounts.json`.
+`uploads/`, `accounts.json`, `sessions.json`, `usage.json`, `audit.log`.
 
 ## Contracts between features
 
 - **Routes**: `/api/state`, `/api/action`, `/api/undo`, `/api/stream`, `/api/reset` (shared record);
   `/api/upload`, `/api/files/:name` (files); `/api/public/*` (share links and verify, no sign-in);
-  `/api/auth/*`, `/api/admin/*` (sign-in and accounts); `/api/health`.
+  `/api/auth/*`, `/api/admin/*` (sign-in and accounts); `/api/me/export`, `/api/admin/students/:id/*`
+  (PDPA copy and erasure); `/api/admin/usage` (pilot usage); `/api/health`.
 - **Sign-in guard**: the auth module pushes a function onto `middleware` that sets `req.user`
   (or null) on every /api request and refuses unsigned requests in pilot mode, except
   `/api/health`, `/api/public/*`, `/api/auth/*` and `GET /api/files/*`.
@@ -395,3 +396,60 @@ only the students they work with. Demo mode still sends the whole record to ever
   file's link works for anyone who has it, as a share link does.
 - Tests: `npm run test:server` (`server/test/scope.test.mjs`), `node scripts/checks/scope.cjs` (every role
   through a real pilot server and every screen it can reach), and the scoping part of `auth.cjs`.
+## A student's data: a copy and erasure (`server/routes/50-pdpa.mjs`, `server/zip.mjs`)
+
+Thailand's PDPA gives a student (and their parent) the right to a copy of their data and to have it removed.
+
+- **What counts as theirs** is decided in `src/api.js` by `studentData(id, alsoTo)` (read) and the mutator
+  `eraseStudent(id, alsoTo)`, which share one rule, generic so new collections are covered: a list item is
+  theirs when one of its own values (or one inside a plain object on it) is their id, one of their stations,
+  presentations, share links or other items, or it is addressed `to` their persona or account ids (`alsoTo`);
+  a keyed entry is theirs by its key (`drafts[id]`, `tags[stationId]`, `linkViews[token]`, `answered['st-01:…']`).
+  A notification to someone else that names them or quotes one of their station titles is theirs too.
+  Other people's items that list their id (a class task's `submitted`) keep the item and lose only the id.
+- **Copy**: `GET /api/admin/students/:id/export` (admin) and `GET /api/me/export[?student=id]` (a student:
+  their own, whatever is asked; a parent: one of their `children`, the first by default; an admin: anyone;
+  staff: 403). Answers a ZIP (stored, no compression; `zlib.crc32`, with a fallback for older Node):
+  `README.txt` explaining each file, `student.json`, `activity.json` (the full log `getActivity` shows),
+  one `<collection>.json` per collection with something of theirs (`events.json`, `reflections.json` at every
+  visibility, `drafts.json` with share links, `comments.json`, `notifications.json`, …), `accounts.json`
+  (their account and linked family accounts, never a hash; a family account lists only this child),
+  `mentions.json`, `files/<id>.<ext>` for every `/api/files/…` their data references, and `manifest.json`
+  (with each file's original name).
+- **Erasure**: `POST /api/admin/students/:id/erase { confirm: <their name> }` (admin; the name compared
+  case- and space-insensitively) → `{ removed: { collection: n }, files, accounts, familyUnlinked }`. It runs
+  `api.eraseStudent` on the server and `changed({ fn: 'eraseStudent', by, erased: { studentId, accounts } })`,
+  deletes their uploaded files (and `.json` beside each) unless the record still references one, removes
+  their account(s), unlinks them from family accounts (removing a family account that had only this child).
+  Their share links stop working because their presentations are gone (404). `eraseStudent` is in
+  `ADMIN_ONLY` (server/auth.mjs) and left out of `/api/action`'s allowlist, so the files and accounts can
+  never be left behind by a record-only erase.
+- **Audit**: each copy and erasure appends `{"at","action":"copy"|"erase","by":<account id>,"studentId"}` to
+  `DATA_DIR/audit.log`. No names or content.
+- **Screens** (pilot only): Accounts has "A student's data" (download, and "Remove this student…" with
+  "Type the student's name to confirm" and the reminder that backups hold the data for 30 days);
+  the student's Privacy page and the parent's Consent page download their own copy; the PDPA page points
+  to both.
+- **Backups**: an erased student stays in the nightly backups until they roll over (30 by default).
+
+## Pilot usage (`server/routes/60-usage.mjs`, `src/screens/Usage.jsx`)
+
+- **Counting**: a middleware notes, per account per day (Bangkok time, `TP_TZ`), when they were last seen and
+  how many requests they made (background `/api/state` and `/api/stream` do not count); an `onChange`
+  listener counts each change by mutator name. `/api/action` passes `by` (the account id) and `args` to
+  `changed()` for this; a change made by the server itself (`by: 'admin'`) or a failed one is not counted.
+  Endorsements count each one in a batch (`endorse`, `endorseClassTask`). Public share-link opens are counted
+  per student per day. `DATA_DIR/usage.json`: `{ days: { 'YYYY-MM-DD': { u: { accountId: { seen, req, fn:
+  { addStation: 2 } } }, opens: { studentId: n } } } }`, saved at most every 5 s (`USAGE_SAVE_MS`) and on
+  shutdown. Ids and counts only, never content. Erasing a student drops their counts.
+- **`GET /api/admin/usage`** (admin or leadership): `{ today, tz, people: [{ id, name, kind, group, lastSeen,
+  lastChange, daysActive, status: today|week|earlier|never, stations, reflections, endorsements, changes }],
+  weeks: [{ start (Monday), active, changed, stations, reflections, endorsements, shareOpens, changes }],
+  byRole, byYear, totals }`. Stations = `addStation`, `addBranch`, `acceptCandidate`, `addAlumStation`;
+  reflections = `addReflection`. A student's Year group is their own Year; families and staff are their own
+  groups; share opens count on the student's Year group.
+- **Screen**: "Pilot usage" (`#/<persona>/usage`) is added to the navigation of leadership and admin accounts
+  in pilot mode only (`personaFor` in src/auth.js): tiles, a weekly bar chart, tables per week, Year group,
+  role and person, "Download as CSV" (one row per person) and "Weeks as CSV". Pilot options links to it.
+- Tests: `node --test server/test/pdpa.test.mjs server/test/usage.test.mjs`; browser: `node scripts/checks/pdpa.cjs`
+  (starts its own pilot and demo servers).

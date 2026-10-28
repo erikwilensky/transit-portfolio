@@ -14,7 +14,8 @@ import { api, onChange, rev } from './store.mjs';
 export const MAX_CHANGES = Number(process.env.UNDO_MAX || 200);
 export const WINDOW_MS = Number(process.env.UNDO_WINDOW_MS || 2 * 3600e3);
 const CP_EVERY = 20;
-const BARRIER = new Set(['resetDemo', 'restore']);
+// An erasure also clears the history, so no saved copy keeps the erased student.
+const BARRIER = new Set(['resetDemo', 'restore', 'eraseStudent']);
 const DIR = path.join(DATA_DIR, 'history'), LOG = path.join(DIR, 'log.jsonl');
 const cpFile = (r) => path.join(DIR, `cp-${r}.json`);
 

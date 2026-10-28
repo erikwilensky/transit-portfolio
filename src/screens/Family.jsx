@@ -4,6 +4,7 @@ import { answerConsent, applyLens, consentOnFile, familyViewer, getConsentReqs, 
 import MetroMap from '../components/MetroMap.jsx';
 import StationPanel from '../components/StationPanel.jsx';
 import { dateIn, LangContext, lineName, tr } from '../i18n.js';
+import { exportUrl, isPilot } from '../auth.js';
 
 // N1: a parent's own screens, in English or Thai. One parent, two children:
 // Ploy (Year 11) decides what her family sees; Pim (Year 7) needs her parent's consent first.
@@ -30,6 +31,7 @@ const SAY = {
     refl: (n) => `${n} new reflection${n === 1 ? '' : 's'} (you see the shared ones only)`, coming: 'Coming up', nothing: (f) => `A quiet week for ${f}.`,
     starter: 'A question for the dinner table', open: 'Open the map',
     notJoined: (f) => `${f} has not joined yet. Answer the consent request to get started.`,
+    copyT: (f) => `A copy of ${f}’s record`, copyP: 'Everything the school holds about your child in Transit Portfolio, as one ZIP file with a README. To have the record removed, ask the school’s pilot admin.', copyBtn: 'Download the copy (ZIP)',
   },
   th: {
     kicker: 'ครอบครัว',
@@ -53,6 +55,7 @@ const SAY = {
     refl: (n) => `บทสะท้อนคิดใหม่ ${n} รายการ (คุณเห็นเฉพาะที่แบ่งปัน)`, coming: 'สิ่งที่กำลังจะมาถึง', nothing: (f) => `สัปดาห์นี้ ${f} ยังไม่มีอะไรใหม่`,
     starter: 'คำถามชวนคุยบนโต๊ะอาหาร', open: 'เปิดแผนที่',
     notJoined: (f) => `${f} ยังไม่ได้เริ่มใช้ ตอบคำขอความยินยอมเพื่อเริ่มต้น`,
+    copyT: (f) => `สำเนาบันทึกของ ${f}`, copyP: 'ข้อมูลทั้งหมดที่โรงเรียนเก็บเกี่ยวกับบุตรหลานของคุณใน Transit Portfolio เป็นไฟล์ ZIP ไฟล์เดียวพร้อมคำอธิบาย หากต้องการให้ลบบันทึก โปรดติดต่อผู้ดูแลโครงการนำร่องของโรงเรียน', copyBtn: 'ดาวน์โหลดสำเนา (ZIP)',
   },
 };
 const QUESTIONS = ['Which line are you most proud of?', 'Is there a line you want to start, or stop?', 'What would you like help with next term?'];
@@ -165,6 +168,7 @@ function Consent({ persona, childId, go, toast, lang }) {
           })}
         </ul>
       )}
+      {isPilot() && <div className="card-sec fam-older"><h3>{say.copyT(f)}</h3><p>{say.copyP}</p><button className="ghost" onClick={() => { location.href = exportUrl(childId); }}>{say.copyBtn}</button></div>}
     </>
   );
 }

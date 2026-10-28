@@ -53,12 +53,17 @@ export const admin = {
   reset: (id) => call('POST', `/api/admin/accounts/${encodeURIComponent(id)}/reset`),
   remove: (id) => call('DELETE', `/api/admin/accounts/${encodeURIComponent(id)}`),
   dismiss: (id) => call('POST', `/api/admin/accounts/${encodeURIComponent(id)}/dismiss`),
+  // PDPA: remove a student and everything about them (confirm = their name, typed).
+  erase: (id, confirm) => call('POST', `/api/admin/students/${encodeURIComponent(id)}/erase`, { confirm }),
+  usage: () => call('GET', '/api/admin/usage'),
 };
 // An advisor (or admin): the sign-in account of a student in their advisory, and a new link for it.
 export const advisee = {
   account: (studentId) => call('GET', `/api/advisor/students/${encodeURIComponent(studentId)}/account`).then((j) => j.account),
   reset: (studentId) => call('POST', `/api/advisor/students/${encodeURIComponent(studentId)}/reset`),
 };
+// PDPA copy: a ZIP of everything held about a student. Admins any student; students their own; parents their children.
+export const exportUrl = (studentId, asAdmin) => (asAdmin ? `/api/admin/students/${encodeURIComponent(studentId)}/export` : `/api/me/export${studentId ? `?student=${encodeURIComponent(studentId)}` : ''}`);
 
 // ── An account becomes a persona in the PERSONAS shape, so every existing screen works unchanged ──
 const COLOURS = { student: '#4F529B', advisor: '#008A60', teacher: '#002855', counsellor: '#E73C3E', coordinator: '#FF8F1C', leadership: '#002855', parent: '#FFB81C', admin: '#002855' };
@@ -86,6 +91,8 @@ export function personaFor(user) {
     account: user, admin: !!user.admin,
   };
   if (user.admin && kind !== 'admin') p.nav = [...NAV[kind], ['accounts', 'Accounts']];
+  // Pilot usage, for leadership and the pilot admin.
+  if (kind === 'leadership' || user.admin) p.nav = [...(p.nav || NAV[kind]), ['usage', 'Pilot usage']];
   return p;
 }
 function applyPersona() { setPilotPersona(state.mode === 'pilot' && state.user ? personaFor(state.user) : null); }

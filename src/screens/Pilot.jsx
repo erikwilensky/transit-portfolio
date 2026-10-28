@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { estimate, PRESETS, SYSTEMS } from './Rollout.jsx';
+import { isPilot } from '../auth.js';
 
 const OPTIONS = [
   { id: 'dp', name: 'DP pilot', who: 'Years 12–13', ...PRESETS.dp,
@@ -47,6 +48,7 @@ export default function Pilot({ go, persona }) {
       <div className="al-bar">
         <span className="muted">{pick ? `${OPTIONS.find((o) => o.id === pick).name} is shortlisted for the board.` : 'Shortlist one to take to the board.'}</span>
         <span className="spacer" />
+        {isPilot() && <button className="ghost" onClick={() => go(persona.id, 'usage')}>See who is using the pilot</button>}
         <button className="ghost" onClick={() => go(persona.id, 'rollout')}>Adjust the scope in the planner</button>
       </div>
     </div>

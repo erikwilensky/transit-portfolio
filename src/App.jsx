@@ -5,6 +5,7 @@ import IntensityControl from './components/IntensityControl.jsx';
 import { ensureEndorsed } from './tourStory.js';
 import { PERSONAS, KIND_LABEL, NAV, personaById, home, navOf, pilotPersona } from './personas.js';
 import Accounts from './screens/Accounts.jsx';
+import Usage from './screens/Usage.jsx';
 import { AccountMenu, PasswordDialog } from './screens/SignIn.jsx';
 import { ago, appUrl, inkOn } from './format.js';
 import Studio from './components/Studio.jsx';
@@ -319,7 +320,8 @@ export default function App() {
           {persona.kind === 'alum' && route.screen === 'poster' && <AlumPoster {...ctx} />}
           {persona.kind === 'external' && <ShareLanding token={persona.token} drafts={drafts} version={version} embedded />}
           {persona.admin && route.screen === 'accounts' && <Accounts {...ctx} />}
-          {route.screen !== 'accounts' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} />}
+          {pilot && route.screen === 'usage' && (persona.admin || persona.kind === 'leadership') && <Usage {...ctx} />}
+          {route.screen !== 'accounts' && route.screen !== 'usage' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} />}
           </ErrorBoundary>
         </main>
 

@@ -18,7 +18,7 @@ npx serve dist     # quick static server, or point Apache / nginx / Caddy at dis
 hosting the app saves everything in the browser.
 
 With the pilot server (one shared record, files, share links, sign-in, and in a pilot each person
-downloads only the students they work with; see `docs/pilot-server.md`):
+downloads only the students they work with; PDPA copy and erasure, a usage page; see `docs/pilot-server.md`):
 
 ```sh
 npm run build && npm run server    # app and /api on http://localhost:8787, data in .data/

@@ -7,8 +7,9 @@ import { MODE, canAct, isAdmin } from '../auth.mjs';
 import { undoProblem, rebuild } from '../history.mjs';
 import { scopedSnapshot } from '../scope.mjs';
 
-// The changes a browser may ask for: every api.js mutator, except reset (POST /api/reset).
-const ALLOW = new Set(api.MUTATORS.filter((n) => n !== 'resetDemo'));
+// The changes a browser may ask for: every api.js mutator, except reset (POST /api/reset) and erasure
+// (POST /api/admin/students/:id/erase, which also removes the student's files and accounts).
+const ALLOW = new Set(api.MUTATORS.filter((n) => n !== 'resetDemo' && n !== 'eraseStudent'));
 // One change at a time, in the order they arrive.
 let chain = Promise.resolve();
 const serial = (fn) => { const p = chain.then(fn); chain = p.catch(() => {}); return p; };
@@ -30,8 +31,8 @@ export default (app) => {
       const prev = rev;
       try {
         const result = json(api.runAction(fn, decode(args), rec));
-        // scoped: the browser ran it on its part of the record only, so it fetches its new part.
-        return { status: 200, body: { result, rev: changed({ fn, step: { fn, args, rec }, userId: userId(req) }), prev, ...(MODE === 'pilot' ? { scoped: true } : {}) } };
+        // scoped: the browser ran it on its part of the record only, so it fetches its new part. by/args: usage counting.
+        return { status: 200, body: { result, rev: changed({ fn, step: { fn, args, rec }, userId: userId(req), by: req.user?.id, args: decode(args) }), prev, ...(MODE === 'pilot' ? { scoped: true } : {}) } };
       } catch (e) {
         // The change may have half-run: save and announce anyway, so every device resyncs.
         console.error(`Action ${fn} failed:`, e.message);
