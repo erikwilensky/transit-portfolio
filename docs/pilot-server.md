@@ -129,6 +129,8 @@ the old static site back.
   `.env.pilot`. To publish it, add a second hostname in the Cloudflare tunnel pointing to
   `http://localhost:8081`.
 - `TP_BIND=0.0.0.0` opens the ports to the local network (default: this Mac only).
+- `SMTP_URL` and `MAIL_FROM` (optional) email setup and forgot-password links; `AUTH_IP_LIMIT` (default
+  300) is how many failed sign-ins one address may make in 15 minutes. See "Sign-in help" below.
 
 Handy commands, from the repo folder: `docker compose ps` (status), `docker compose logs -f`
 (live log), `docker compose restart`, `docker compose down` (stop; the data stays).
@@ -224,15 +226,16 @@ server makes an empty folder and begins again from the seed.
 - **First run**: with no accounts, the server prints a one-time admin setup link (`/#/setup/<token>`,
   valid until restart). There is no default password. Set `PUBLIC_URL` to print the real address.
 - **Routes**: `GET /api/auth/me` → `{ mode, user }` (user carries its linked `record`);
-  `POST /api/auth/login { email, password }` (slowed after 3 failures per email or address, refused for
-  15 minutes after 10 per email or 30 per address); `POST /api/auth/logout`;
+  `POST /api/auth/login { email, password }` (see "Sign-in help" below for the limits); `POST /api/auth/logout`;
   `POST /api/auth/password { current, password }` (signs out other devices);
-  `GET /api/auth/setup/:token`, `POST /api/auth/setup { token, password, name?, email? }`.
+  `GET /api/auth/setup/:token`, `POST /api/auth/setup { token, password, name?, email? }` (ends every
+  other session of that account).
   Admin only: `GET /api/admin/accounts` (accounts, students, teachers), `POST /api/admin/accounts`
   (create; link with `studentId`/`teacherId`/`children`, or `newStudent: { name, year, programme }` /
-  `newTeacher: { name, role }`; returns a one-time `setupUrl`, valid 7 days), `POST /api/admin/accounts/:id`
-  (edit role or link), `POST /api/admin/accounts/:id/reset` (new setup link; ends the old password and
-  sessions), `DELETE /api/admin/accounts/:id` (the record stays).
+  `newTeacher: { name, role }`; returns a one-time `setupUrl`, valid 7 days, and `emailed`), `POST /api/admin/accounts/:id`
+  (edit role or link), `POST /api/admin/accounts/:id/reset` (new setup link, `{ setupUrl, emailed }`; ends the
+  old password and sessions), `POST /api/admin/accounts/:id/dismiss` (clears a forgot-password request),
+  `DELETE /api/admin/accounts/:id` (the record stays).
 - **Guard**: sets `req.user` (the account, or null) on every /api request. In pilot mode it answers 401
   for unsigned requests outside the open routes, and 403 for `/api/reset` unless the user is an admin.
 - **New records**: `api.addStudent({ name, year, programme })` (British Year 7–13; `grade = year - 1`,
@@ -249,6 +252,37 @@ server makes an empty folder and begins again from the seed.
   `setPilotPersona`, so `personaById` always returns it. `navOf(p)` gives a persona's navigation
   (an admin gets Accounts). `src/main.jsx` shows `screens/SignIn.jsx` when signed out, except on the
   public `#/s`, `#/v`, `#/p` routes and `#/setup/<token>`.
+
+### Sign-in help: limits, forgot password, sessions, email
+
+- **Failed sign-ins** are counted per email and per visitor address, where the address is lib's
+  `clientIp(req)` (`CF-Connecting-IP` behind cloudflared), never the Docker gateway. Per email: slowed
+  after 3, refused for 15 minutes after 10. Per address: a whole school shares one public address on
+  its Wi-Fi, so the limit is loose: refused after `AUTH_IP_LIMIT` (default 300) in 15 minutes, slowed
+  only after 150. The refusal says "Too many tries. Wait 15 minutes or ask your teacher." Any new
+  setup link for that account lifts the per-email block.
+- **Forgot password**: `POST /api/auth/forgot { email }` → always `200 { ok: true, emailed }`, whatever
+  the email (`emailed` says only whether this server has mail set up). The work happens after the
+  reply. At most 3 per email (the rest are ignored, same answer) and 100 per address (429) per
+  15 minutes. Without mail it sets `account.resetRequest = { at, n }`; the admin sees these at the top
+  of Accounts ("Make a new sign-in link" calls `/reset`, which clears it; "Dismiss" calls `/dismiss`).
+  A new password from any setup link also clears it.
+- **Advisors** (any staff account whose `teacherId` is the student's `advisorId`, and admins):
+  `GET /api/advisor/students/:studentId/account` → `{ account: { id, name, email, hasPassword,
+  resetRequest } | null }`, `POST /api/advisor/students/:studentId/reset` → `{ account, setupUrl, emailed }`.
+  Student accounts only, so an advisor can never reset staff, family or admin accounts. Shown as
+  "Sign-in help" on the advisor's student page (pilot only).
+- **Sessions**: `GET /api/auth/sessions` → `{ devices }`; `POST /api/auth/logout-everywhere` ends every
+  session of the signed-in account, this one too. The account menu shows "Signed in on N devices" and,
+  with more than one, "Sign out everywhere". Changing the password ends the other sessions.
+- **Email (optional)**: set `SMTP_URL` (`smtp://user:pass@host:587`, STARTTLS, required before sending
+  the password except to localhost; or `smtps://…:465`; URL-encode `@` in the user as `%40`) and
+  `MAIL_FROM` (`Transit Portfolio <noreply@school>`). Then new accounts and new links are also emailed
+  (the admin still sees the link, in case the email does not arrive), and "forgot password" emails a
+  link straight away; that link leaves the old password working until it is used, so nobody can lock
+  someone out by asking. If the email fails, the request goes to the admin as above. `server/mail.mjs`
+  is a minimal SMTP client (AUTH PLAIN or LOGIN); it never logs the password, the message or the link.
+  Without these settings nothing is emailed: admins and advisors hand out links themselves.
 
 ### Not enforced yet
 

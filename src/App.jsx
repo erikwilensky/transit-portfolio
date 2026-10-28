@@ -4,9 +4,8 @@ import SimpleHome, { ShowFamily } from './screens/SimpleHome.jsx';
 import IntensityControl from './components/IntensityControl.jsx';
 import { ensureEndorsed } from './tourStory.js';
 import { PERSONAS, KIND_LABEL, NAV, personaById, home, navOf, pilotPersona } from './personas.js';
-import { signOut } from './auth.js';
 import Accounts from './screens/Accounts.jsx';
-import { PasswordDialog } from './screens/SignIn.jsx';
+import { AccountMenu, PasswordDialog } from './screens/SignIn.jsx';
 import { ago, appUrl, inkOn } from './format.js';
 import Studio from './components/Studio.jsx';
 import SharedView from './components/SharedView.jsx';
@@ -203,11 +202,7 @@ export default function App() {
                 <span className="pb-text"><small>{T(pilot ? 'Signed in' : 'Viewing as')}</small><b>{persona.name}</b></span><span aria-hidden="true">▾</span>
               </button>
               {menu === 'persona' && pilot && (
-                <div className="menu persona-menu acct-menu" role="menu">
-                  <div className="acct-who"><b>{persona.name}</b><small>{persona.role}</small><small>{persona.account?.email}</small></div>
-                  <button role="menuitem" onClick={() => { setMenu(null); setPwOpen(true); }}><span><b>Change password</b></span></button>
-                  <button role="menuitem" className="sign-out" onClick={() => signOut()}><span><b>Sign out</b></span></button>
-                </div>
+                <AccountMenu persona={persona} onPassword={() => { setMenu(null); setPwOpen(true); }} />
               )}
               {menu === 'persona' && !pilot && (
                 <div className="menu persona-menu" role="menu">

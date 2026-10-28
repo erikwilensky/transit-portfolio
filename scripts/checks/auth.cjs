@@ -1,6 +1,7 @@
 // Pilot sign-in: starts its own pilot and demo servers (needs `npm run build` first), then checks
 // first-run admin setup, a student account linked to a new student, role-only screens, sign-out,
-// 401s for unsigned API calls, slowed failed sign-ins, canAct, and that demo mode is unchanged.
+// 401s for unsigned API calls, slowed failed sign-ins, forgot password → admin makes a new link,
+// sign out everywhere, canAct, and that demo mode is unchanged.
 const { chromium } = require('playwright');
 const { spawn } = require('child_process');
 const fs = require('fs'); const os = require('os'); const path = require('path');
@@ -118,7 +119,41 @@ const status = async (url, opts) => (await fetch(url, opts)).status;
     let t0 = Date.now(); const r4 = await login('wrong'); const slow = Date.now() - t0;
     ok(r4.status === 401 && slow >= 240, `4th wrong password is slowed (${slow} ms)`);
     for (let i = 0; i < 6; i++) await login('wrong');
-    ok((await login('ploy-pass-123')).status === 429, 'after 10 failures the email is locked for 15 minutes');
+    const locked = await login('ploy-pass-123');
+    ok(locked.status === 429 && (await locked.json()).error === 'Too many tries. Wait 15 minutes or ask your teacher.', 'after 10 failures the email is locked for 15 minutes, in plain words');
+
+    // ── Forgot password → the admin makes a new sign-in link ──
+    const forgot = (email) => fetch(`${U}/api/auth/forgot`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email }) }).then(async (r) => [r.status, await r.text()]);
+    ok(JSON.stringify(await forgot('nobody@nist.ac.th')) === JSON.stringify(await forgot('admin@nist.ac.th')), 'forgot: same answer for an unknown and a known email');
+    await s.click('text=Forgot your password?'); await s.waitForSelector('#forgot-h');
+    await s.fill('input[type=email]', 'ploy@nist.ac.th'); await s.click('text=Ask for a new link'); await s.waitForSelector('[role=status]');
+    ok(/Ask your teacher or the pilot admin for a new sign-in link/.test(await s.textContent('[role=status]')), 'student is told to ask their teacher or the pilot admin');
+    await s.screenshot({ path: SH + 'forgot.png' });
+    await a.reload(); await a.waitForSelector('.acc-asked');
+    const asked = await a.locator('.acc-asked li').allInnerTexts();
+    ok(asked.length === 2 && asked.some((t) => t.includes('Ploy Srisuk')) && asked.some((t) => t.includes('Pat Admin')), 'Accounts shows the requests at the top');
+    await a.screenshot({ path: SH + 'accounts-asked.png' });
+    await a.locator('.acc-asked li', { hasText: 'Pat Admin' }).locator('text=Dismiss').click();
+    await a.waitForFunction(() => document.querySelectorAll('.acc-asked li').length === 1);
+    ok(true, 'Dismiss clears a request');
+    await a.locator('.acc-asked li', { hasText: 'Ploy Srisuk' }).locator('text=Make a new sign-in link').click(); await a.waitForSelector('.acc-link input');
+    const relink = await a.inputValue('.acc-link input');
+    ok(/#\/setup\//.test(relink) && await a.locator('.acc-asked').count() === 0, 'admin makes a new sign-in link; the request is answered');
+    await s.goto(relink); await s.waitForSelector('#setup-h');
+    const rpw = s.locator('input[autocomplete=new-password]'); await rpw.nth(0).fill('ploy-new-pass-1'); await rpw.nth(1).fill('ploy-new-pass-1');
+    await s.click('button[type=submit]'); await s.waitForSelector('main.screen');
+    ok((await login('ploy-new-pass-1')).status === 200, 'the new link lifts the lock: signs in with the new password');
+    ok((await login('ploy-pass-123')).status === 401, 'the old password has ended');
+
+    // ── Own account menu: devices and sign out everywhere ──
+    await a.click('.persona-btn'); await a.waitForSelector('.acct-devices');
+    ok(/Signed in on this device only/.test(await a.locator('.acct-menu').innerText()), 'account menu says how many devices');
+    await a.screenshot({ path: SH + 'account-menu.png' });
+    await a.click('.persona-btn');
+    await s.click('.persona-btn'); await s.waitForSelector('.sign-out-all');
+    ok(/Signed in on \d+ devices/.test(await s.locator('.acct-menu').innerText()), 'student signed in on several devices sees the count');
+    await s.click('.sign-out-all'); await s.waitForSelector('.auth-card h1');
+    ok((await login('ploy-new-pass-1')).status === 200, 'sign out everywhere, then back in');
 
     // ── canAct (the per-role check /api/action can call) ──
     process.env.DATA_DIR = fs.mkdtempSync(SH + 'unit-');
