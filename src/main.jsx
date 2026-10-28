@@ -2,6 +2,7 @@ import { createRoot } from 'react-dom/client';
 import { useEffect, useState } from 'react';
 import App from './App.jsx';
 import SignIn from './screens/SignIn.jsx';
+import FamilyJoin from './screens/FamilyJoin.jsx';
 import { getAuth, loadAuth, onAuth } from './auth.js';
 import { isPublicRoute } from './publicRoute.js';
 import { startSync } from './sync.js';
@@ -12,6 +13,7 @@ import './print.css';
 // Pilot mode: sign in first (public share, verify and family links stay open). Demo mode: straight into the app.
 const isPublic = () => /^#\/?(s|v|p)(\/|$)/.test(location.hash);
 const setupToken = () => location.hash.match(/^#\/?setup\/([^/?]+)/)?.[1];
+const familyToken = () => location.hash.match(/^#\/?family\/([\w-]{16,64})$/)?.[1]; // a family letter's link
 // After signing in, start the page afresh so the record loads for this person.
 const done = () => { location.hash = '#/'; location.reload(); };
 function Root() {
@@ -19,6 +21,10 @@ function Root() {
   const [, setHash] = useState(location.hash);
   useEffect(() => onAuth(setAuth), []);
   useEffect(() => { const f = () => setHash(location.hash); addEventListener('hashchange', f); return () => removeEventListener('hashchange', f); }, []);
+  if (auth.mode === 'pilot' && familyToken()) {
+    document.documentElement.dataset.theme ||= window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    return <FamilyJoin token={familyToken()} onDone={done} />;
+  }
   if (auth.mode === 'pilot' && (setupToken() || (!auth.user && !isPublic()))) {
     document.documentElement.dataset.theme ||= window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     return <SignIn setupToken={setupToken()} onDone={done} />;

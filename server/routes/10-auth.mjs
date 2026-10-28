@@ -7,7 +7,7 @@ import * as A from '../auth.mjs';
 
 export { canAct } from '../auth.mjs';
 
-const OPEN = [/^\/api\/health$/, /^\/api\/public\//, /^\/api\/auth\//];
+const OPEN = [/^\/api\/health$/, /^\/api\/public\//, /^\/api\/auth\//, /^\/api\/family\/(invite\/[^/]+|join)$/];
 const bad = (status, message) => Object.assign(new Error(message), { status });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 export const originOf = (req) => process.env.PUBLIC_URL?.replace(/\/$/, '') || `${isHttps(req) ? 'https' : 'http'}://${req.headers.host}`;

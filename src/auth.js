@@ -73,6 +73,16 @@ export const signinCards = {
   forAdmin: (body) => call('POST', '/api/admin/cards', body),
   unpause: (id) => call('POST', `/api/admin/accounts/${encodeURIComponent(id)}/unpause`),
 };
+// Family sign-in letters (server/routes/17-family.mjs): printed invitations, joining as family, removing a family member.
+export const family = {
+  invite: (token) => call('GET', `/api/family/invite/${encodeURIComponent(token)}`),
+  join: async (body) => { const j = await call('POST', '/api/family/join', body); set({ ...state, user: j.user }); return j; },
+  advisees: () => call('GET', '/api/advisor/family').then((j) => j.students),
+  forAdvisees: (body) => call('POST', '/api/advisor/family/letters', body),
+  groups: (homeroom) => call('GET', `/api/admin/family${homeroom ? `?homeroom=${encodeURIComponent(homeroom)}` : ''}`),
+  forAdmin: (body) => call('POST', '/api/admin/family/letters', body),
+  unlink: (studentId, accountId) => call('POST', '/api/family/unlink', { studentId, accountId }),
+};
 
 // ── An account becomes a persona in the PERSONAS shape, so every existing screen works unchanged ──
 const COLOURS = { student: '#4F529B', advisor: '#008A60', teacher: '#002855', counsellor: '#E73C3E', coordinator: '#FF8F1C', leadership: '#002855', parent: '#FFB81C', admin: '#002855' };

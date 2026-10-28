@@ -598,3 +598,35 @@ No email is sent, so people get in through one-time setup links. Cards put those
   listed); `{ pauseLeavers: true }` pauses them. Every import unpauses `returning`. The reply carries `paused` and `unpaused`.
 - Tests: `server/test/cards.test.mjs`; `node scripts/checks/signin-cards.cjs` (the real roster from `ROSTER`, default the
   project-files copy, skipped when missing; writes its roster copy, screenshots and a PDF to `SCRATCH` or the temp folder).
+
+## Family sign-in letters (`server/routes/17-family.mjs`, `src/components/FamilyLetters.jsx`, `src/screens/FamilyJoin.jsx`)
+
+The class lists hold no parents, so families join by a printed invitation, one per student. No email is sent.
+- **Invites** in `DATA_DIR/family-invites.json`: `{ hash, studentId, by, createdAt, expiresAt, uses: [accountId] }`. The token
+  (16 random bytes) is stored only as its SHA-256 and never logged. Valid 30 days, for up to 2 family members. A new letter
+  for a student replaces their earlier invite. Paused students (their student account is paused) get no letter, and their
+  open letters are refused (403). A student without a sign-in account can still get one.
+- **Joining** (open routes, pilot only): `GET /api/family/invite/:token` → `{ firstName, homeroom, expiresAt, me? }` (nothing
+  else about the child; `me: { kind, name, has }` when signed in). `POST /api/family/join { token, name, email, password }`
+  makes a `parent` account with `children: [studentId]` and signs in. The email of an existing parent account plus its
+  password, or `{ token }` while signed in as a parent, adds the child to that account's `children` (siblings → one account).
+  A school account's email → 409; signed in as staff or a student → 403. Expired, replaced or used up → 404. Per address: 200
+  invite looks, 30 joins and 30 bad tokens per 15 minutes (429); a wrong password counts like a failed sign-in.
+- **Letters**: `GET /api/advisor/family` → `{ students: [{ id, name, homeroom, year, paused, family: [{ id, name, email }],
+  invite: { expiresAt, uses } | null }] }` and `POST /api/advisor/family/letters { studentIds?, onlyNew? }`: staff whose
+  `teacherId` is the students' `advisorId` (403 otherwise, as for sign-in cards). Admin: `GET /api/admin/family?homeroom=` →
+  `{ homerooms: [{ name, year, students, withFamily, paused, waiting }], students? }` and `POST /api/admin/family/letters
+  { homerooms, studentIds?, onlyNew? }`. Both → `{ school, letters: [{ studentId, firstName, homeroom, year, url, expiresAt }] }`,
+  `url` = `<origin>/#/family/<token>`; `onlyNew` skips students who already have a family account. 30 batches per account per
+  15 minutes.
+- **Remove a family member**: `POST /api/family/unlink { studentId, accountId }` (their advisor or the admin) takes the child
+  out of that parent's `children`; an account left with no child is removed. The admin can also delete the account
+  (`DELETE /api/admin/accounts/:id`). The family's part of the record follows `children` on its next fetch (`reachOf`).
+- **Screens** (pilot only): "Print family letters" on the advisory page (each advisee: family members joined, the open letter,
+  "Remove a family member") and on Accounts (per homeroom, plus each homeroom's families, with "Delete account"). "Only
+  students with no family account yet" is on by default. The sheet reuses the sign-in card overlay: A4 portrait, two letters a
+  page (half a page each, dashed cut line), each with the school name, "Dear family of <first name> (<homeroom>)", what the
+  Transit Portfolio is and that they see only what the child shares with family, the QR code and link, and the last day it
+  works. `#/family/<token>` (`src/main.jsx`) opens the join page, signed in or not; after joining it lands on the family view.
+- Tests: `server/test/family.test.mjs`; `node scripts/checks/family-letters.cjs` (the real roster from `ROSTER`, skipped when
+  missing; screenshots and a PDF go to `SCRATCH` or the temp folder).
