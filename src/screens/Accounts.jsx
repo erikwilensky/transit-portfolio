@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { admin, exportUrl } from '../auth.js';
+import { admin, exportUrl, signinCards } from '../auth.js';
+import { AdminCards } from '../components/SignInCards.jsx';
 import RosterImport from './RosterImport.jsx';
 import '../auth.css';
 
@@ -21,6 +22,7 @@ export default function Accounts({ toast, persona }) {
   const [link, setLink] = useState(null); // { name, url } shown once
   const [confirm, setConfirm] = useState(null);
   const [roster, setRoster] = useState(false);
+  const [cards, setCards] = useState(false);
   useEffect(() => { admin.list().then(setData, (x) => setErr(x.message)); }, []);
   if (err && !data) return <div className="acc"><p className="auth-err">{err}</p></div>;
   if (!data) return <div className="acc"><p className="auth-lede">Loading accounts…</p></div>;
@@ -51,6 +53,7 @@ export default function Accounts({ toast, persona }) {
         <div><h1>Accounts</h1><p className="auth-lede">Everyone in the pilot signs in with their own account and sees only their own role’s screens. Each account is linked to a student, staff or family record.</p></div>
         <div className="auth-row">
           {!roster && <button className="ghost" onClick={() => { setLink(null); setForm(null); setRoster(true); }}>Import class lists</button>}
+          {!cards && <button className="ghost" onClick={() => { setLink(null); setCards(true); }}>Print sign-in cards</button>}
           {!form && <button className="auth-btn" onClick={() => { setLink(null); setRoster(false); setForm({ ...blank }); }}>Add an account</button>}
         </div>
       </div>
@@ -74,18 +77,20 @@ export default function Accounts({ toast, persona }) {
         </section>
       )}
       {roster && <RosterImport onClose={() => setRoster(false)} onDone={(j) => { setData(j); toast('Class lists imported'); }} />}
+      {cards && <AdminCards toast={toast} onClose={() => setCards(false)} onMade={() => admin.list().then(setData, () => {})} />}
       {form && <AccountForm form={form} setForm={setForm} data={data} onSubmit={save} />}
       <table className="acc-table">
         <thead><tr><th>Name</th><th>Role</th><th>Linked to</th><th>Status</th><th><span className="sr-only">Actions</span></th></tr></thead>
         <tbody>
-          {data.accounts.map((a) => (
+          {[...data.accounts].sort((x, y) => !!y.paused - !!x.paused).map((a) => (
             <tr key={a.id}>
               <td><b>{a.name}</b><small>{a.email}</small></td>
               <td>{ROLE_NAME[a.kind] || a.kind}{a.admin && a.kind !== 'admin' && <small>Can manage accounts</small>}</td>
               <td>{linkText(a)}</td>
-              <td>{a.setupPending ? <span className="acc-tag wait">Waiting for setup</span> : <span className="acc-tag ok">Active</span>}</td>
+              <td>{a.paused ? <span className="acc-tag wait">Paused</span> : a.setupPending ? <span className="acc-tag wait">Waiting for setup</span> : <span className="acc-tag ok">Active</span>}</td>
               <td><div className="acc-actions">
                 {a.id !== persona.account?.id && <>
+                  {a.paused && <button className="auth-btn" onClick={() => run(signinCards.unpause(a.id), () => toast(`${a.name} can sign in again`))}>Unpause</button>}
                   <button className="ghost" onClick={() => edit(a)}>Edit</button>
                   <button className="ghost" onClick={() => newLink(a)}>New setup link</button>
                   {confirm === a.id ? <button className="ghost danger" onClick={() => run(admin.remove(a.id), () => { setConfirm(null); toast(`Removed ${a.name}. Their record stays.`); })}>Yes, remove</button>
@@ -97,7 +102,7 @@ export default function Accounts({ toast, persona }) {
           ))}
         </tbody>
       </table>
-      <p className="fineprint">Removing an account stops that person signing in. Their record and map stay. A new setup link signs them out everywhere and ends their old password.</p>
+      <p className="fineprint">Removing an account stops that person signing in. Their record and map stay. A paused account (someone no longer in the class lists) cannot sign in until you unpause it, or a later import has them again. A new setup link signs them out everywhere and ends their old password.</p>
       <StudentData data={data} toast={toast} reload={() => admin.list().then(setData, (x) => setErr(x.message))} />
     </div>
   );

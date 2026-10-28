@@ -94,6 +94,7 @@ export default (app) => {
     const a = A.accountByEmail(e);
     if (!(await A.checkPassword(a, password))) { A.noteFailure(e, ip); return send(res, 401, { error: 'That email and password do not match.' }); }
     A.noteSuccess(e);
+    if (a.paused) return send(res, 403, { error: A.PAUSED, paused: true });
     signIn(req, res, a);
   });
 
@@ -143,6 +144,7 @@ export default (app) => {
     if (A.isFirstRunToken(token)) return send(res, 200, { firstRun: true });
     const a = A.accountBySetup(token);
     if (!a) throw bad(404, 'This setup link has expired or was already used. Ask an admin for a new one.');
+    if (a.paused) throw bad(403, A.PAUSED);
     send(res, 200, { firstRun: false, email: a.email, name: a.name });
   });
   app.post('/api/auth/setup', async (req, res) => {
@@ -158,6 +160,7 @@ export default (app) => {
     }
     const a = A.accountBySetup(token);
     if (!a) throw bad(404, 'This setup link has expired or was already used. Ask an admin for a new one.');
+    if (a.paused) throw bad(403, A.PAUSED);
     await A.setPassword(a, password);
     A.endSessionsOf(a.id); A.noteSuccess(a.email);
     signIn(req, res, a);
