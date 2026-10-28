@@ -24,7 +24,7 @@ Run: `npm run build && npm run server` (port 8787, or PORT). In dev: `npm run se
 
 ## Contracts between features
 
-- **Routes**: `/api/state`, `/api/action`, `/api/stream`, `/api/reset` (shared record);
+- **Routes**: `/api/state`, `/api/action`, `/api/undo`, `/api/stream`, `/api/reset` (shared record);
   `/api/upload`, `/api/files/:name` (files); `/api/public/*` (share links and verify, no sign-in);
   `/api/auth/*`, `/api/admin/*` (sign-in and accounts); `/api/health`.
 - **Sign-in guard**: the auth module pushes a function onto `middleware` that sets `req.user`
@@ -55,8 +55,33 @@ Run: `npm run build && npm run server` (port 8787, or PORT). In dev: `npm run se
   hears it on the stream and fetches the new state.
 - Browser: `main.jsx` calls `startSync()` after `loadAuth()` (demo, or signed in for pilot), never on
   `#/s` and `#/v` (`isPublicRoute()`). Changes queue and retry while the server is away (header: "Offline,
-  saving here"). Undo (`restore`) sends a whole snapshot, so it overwrites changes other devices made
-  since the snapshot was taken.
+  saving here"). Undo takes back one change on the server (see "Undo" below); only with no server does
+  it put a whole snapshot back (`restore`).
+
+## Undo (`server/history.mjs`, `POST /api/undo`)
+
+Undo takes back one change (or the few a click made together) and keeps every change made since,
+by anyone. The server keeps each change as the steps that made it (`{ fn, args, rec }`, who, when),
+in segments that each start from a saved copy (a checkpoint every 20 changes), about the last 200
+changes and at most 2 hours (`UNDO_MAX`, `UNDO_WINDOW_MS`). On disk: `DATA_DIR/history/cp-<rev>.json`
+and `log.jsonl`; if they do not end at the record's revision on start, history starts again.
+
+- `POST /api/undo { rev }` or `{ revs: [..] }` → `{ rev, prev, undone: [revs], skipped: [{ rev, fn, error }] }`.
+  The server goes back to the checkpoint before the change and replays every later change except the
+  undone ones, with their recorded ids and times (`api.runAction`, nothing re-recorded). A later change
+  that now fails (it needed what was undone) is left out and listed in `skipped`. Then `changed()`, so
+  every device fetches the result. The undo is itself an entry in the history.
+- Refusals (plain words in `error`): 403 not your change (pilot; admins may undo anyone's, demo: anyone),
+  409 already undone or already left out, 410 too old or no longer in the history, 400 an undo itself.
+- A change the history cannot replay starts it again, so nothing before it can be undone: a reset, a
+  whole-record `restore`, an action that failed, or server code that changed the record without an
+  api.js change (`api.notify` from a public page). Server code calling api.js changes directly (adding
+  a student, a public page view) is caught by the server's action hook and stays replayable.
+- Browser: `api.markOf(snapshot)` is the change count when a snapshot was taken; the toast keeps it and
+  `undoSince(mark, upto)` in `src/sync.js` waits for those changes' server revs (queued changes go first),
+  then queues the undo. The screens keep calling `toast(msg, snapshot())` as before. With no server,
+  Undo restores the snapshot as before. Tests: `server/test/undo.test.mjs`, `scripts/checks/sync.cjs`
+  (two devices), `auth.cjs` (pilot rules), `undo.cjs` (no server).
 
 ## What the server does for every request
 
@@ -257,7 +282,7 @@ server makes an empty folder and begins again from the seed.
   role should not see, the server does not.
 - `canAct` is only a check: it does nothing until `/api/action` calls it. It checks who owns the target,
   not every field of the arguments (a staff member can still act as any teacher, `addGoal(.., by)` etc.).
-  `restore` (Undo) is admin-only in it, so student and staff Undo needs a scoped replacement.
+  `restore` (a whole earlier copy) stays admin-only in it; everyone else's Undo goes through `/api/undo`.
 - `setLang` changes the one shared family language setting for everybody.
 - In the browser the record is still also saved in localStorage; signing out clears it.
 - **Public pages** (`server/routes/40-public.mjs`, `src/publicRoute.js`, `src/screens/PublicPage.jsx`):

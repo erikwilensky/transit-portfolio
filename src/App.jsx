@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { applyLens, getAlumMap, getPresentations, getStudentMap, getStudents, subscribe, getDrafts, setStudentDrafts, hasPublicCopy, getNotifications, markNotificationsRead, notifyKeys, resetDemo, restore, logLink, addStation, getLang, setLang, getIntensity, setIntensity, INTENSITY, INTENSITY_NAV, INTENSITY_LABEL } from './api.js';
+import { applyLens, getAlumMap, getPresentations, getStudentMap, getStudents, subscribe, getDrafts, setStudentDrafts, hasPublicCopy, getNotifications, markNotificationsRead, notifyKeys, resetDemo, restore, markOf, changeCount, logLink, addStation, getLang, setLang, getIntensity, setIntensity, INTENSITY, INTENSITY_NAV, INTENSITY_LABEL } from './api.js';
 import SimpleHome, { ShowFamily } from './screens/SimpleHome.jsx';
 import IntensityControl from './components/IntensityControl.jsx';
 import { ensureEndorsed } from './tourStory.js';
@@ -55,7 +55,7 @@ import ShareDialog from './components/ShareDialog.jsx';
 import ShareGaps from './components/ShareGaps.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import SyncStatus from './components/SyncStatus.jsx';
-import { serverMode } from './sync.js';
+import { serverMode, undoSince } from './sync.js';
 import { VerifyProvider } from './components/VerifyModal.jsx';
 import { TOURS, tourMinutes, stopCount } from './tour.js';
 import { QADrawer, TourCard, TourRoute } from './components/TourCards.jsx';
@@ -156,8 +156,14 @@ export default function App() {
     if (location.hash !== h) history.pushState(null, '', h);
     setRoute(parse()); setMenu(null);
   };
-  // F9: a toast can carry a snapshot taken before the action; Undo restores it.
-  const toast = (m, undo) => { setToastMsg({ m, undo }); clearTimeout(window.__toast); window.__toast = setTimeout(() => setToastMsg(null), undo ? 6000 : 3400); };
+  // F9: a toast can carry a snapshot taken before the action; Undo restores it. With the server, Undo
+  // asks it to take back just this page's changes since that snapshot, keeping everyone else's.
+  const toast = (m, undo) => { setToastMsg({ m, undo, mark: undo && markOf(undo), upto: changeCount() }); clearTimeout(window.__toast); window.__toast = setTimeout(() => setToastMsg(null), undo ? 6000 : 3400); };
+  const undoToast = (t) => {
+    if (!serverMode()) { restore(t.undo); setToastMsg(null); return; }
+    setToastMsg({ m: 'Undoing…' });
+    undoSince(t.mark, t.upto).then((r) => toast(r.error || (r.skipped ? `Undone, but ${r.skipped} later change${r.skipped === 1 ? '' : 's'} could not be kept.` : 'Undone')));
+  };
 
   // Share links and verify codes: with the pilot server, only what was shared is fetched (see publicRoute.js).
   if (route.publicKind === 's') return <PublicShare key={route.param} token={route.param} version={version} />;
@@ -340,7 +346,7 @@ export default function App() {
         )}
         {launch && <Launcher onGo={go} onClose={() => setLaunch(false)} only={pilot} />}
         {pwOpen && <PasswordDialog onClose={() => setPwOpen(false)} toast={toast} />}
-        <div className={`toast${toastMsg ? ' show' : ''}`} role="status" aria-live="polite">{toastMsg?.m}{toastMsg?.undo && <button className="toast-undo" onClick={() => { restore(toastMsg.undo); setToastMsg(null); }}>Undo</button>}</div>
+        <div className={`toast${toastMsg ? ' show' : ''}`} role="status" aria-live="polite">{toastMsg?.m}{toastMsg?.undo && <button className="toast-undo" onClick={() => undoToast(toastMsg)}>Undo</button>}</div>
       </div>
     </VerifyProvider>
   );

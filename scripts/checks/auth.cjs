@@ -104,6 +104,18 @@ const status = async (url, opts) => (await fetch(url, opts)).status;
     ok(await status(`${U}/api/reset`, { method: 'POST', headers: H }) === 403, 'student cannot reset the record');
     const me1 = await (await fetch(`${U}/api/auth/me`, { headers: H })).json();
     ok(me1.user?.kind === 'student' && /^st-/.test(me1.user.studentId) && !('password' in me1.user), 'me → student account, no hash');
+    // Undo in pilot: your own change yes, once; someone else's no; a whole-record restore stays admin-only.
+    const post = (u, body, h) => fetch(`${U}/api/${u}`, { method: 'POST', headers: { 'content-type': 'application/json', ...h }, body: JSON.stringify(body) });
+    const AH = { cookie: `tp_session=${adminCookie.value}` };
+    const mine = await (await post('action', { fn: 'setIntensity', args: [me1.user.studentId, 'full'], rec: [] }, H)).json();
+    const theirs = await (await post('action', { fn: 'addNote', args: [me1.user.studentId, 'Admin note'], rec: [] }, AH)).json();
+    ok((await post('undo', { rev: theirs.rev }, H)).status === 403, 'pilot: a student cannot undo the admin’s change');
+    const u1 = await post('undo', { rev: mine.rev }, H), u1j = await u1.json();
+    ok(u1.status === 200 && Array.isArray(u1j.skipped) && u1j.undone[0] === mine.rev, 'pilot: a student undoes their own change → { rev, undone, skipped }');
+    ok((await post('undo', { rev: mine.rev }, H)).status === 409, 'pilot: the same change cannot be undone twice');
+    const st1 = (await (await fetch(`${U}/api/state`, { headers: H })).json()).snapshot.store;
+    ok(st1.notes[me1.user.studentId]?.some((n) => n.text === 'Admin note'), 'pilot: the admin’s later change is kept');
+    ok((await post('action', { fn: 'restore', args: ['{}'], rec: [] }, H)).status === 403, 'pilot: whole-record restore stays admin-only');
 
     // ── Sign out, sign back in, sign out ──
     await s.click('.persona-btn'); await s.click('.sign-out'); await s.waitForSelector('.auth-card h1');

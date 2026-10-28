@@ -77,6 +77,25 @@ async function addStation(p, title, teacher) {
   await C.fill('.map-q', T1); await C.waitForTimeout(400);
   ok(/3 match/.test(await C.textContent('.find-n')), 'a fresh device sees the stations after the restart');
 
+  // Undo for everyone: A deletes a station, B then adds a reflection elsewhere, A presses Undo.
+  // Only A's change is taken back (POST /api/undo); B's reflection stays, on the server and both devices.
+  const del = evByTitle(await state(), T2), keep = evByTitle(await state(), T3), RF = `Kept after undo ${T1}`;
+  await A.goto(U + `maya/map/${del.id}`); await B.goto(U + `maya/map/${keep.id}`);
+  await B.click('.station-panel.open >> text=Add a reflection'); await B.fill('.station-panel.open textarea[aria-label="Reflection"]', RF);
+  await A.click('.station-panel.open button.danger:has-text("Delete")');
+  ok(await until(async () => !evByTitle(await state(), T2)), 'delete reaches the server');
+  await B.click('.station-panel.open >> text=Save reflection');
+  const hasRf = (s) => s?.reflections.some((r) => r.eventId === keep.id && r.text === RF);
+  ok(await until(async () => hasRf((await state()).store)), 'the other device’s reflection reaches the server');
+  let undoBody = null; A.on('request', (r) => { if (r.url().endsWith('/api/undo')) undoBody = r.postData(); });
+  await A.click('.toast-undo');
+  ok(await until(async () => (await A.textContent('.toast')) === 'Undone'), 'A is told: Undone');
+  const back = (s) => s?.events.some((e) => e.id === del.id && e.title === T2);
+  ok(await until(async () => back((await state()).store) && hasRf((await state()).store)), 'server: station back with its id, reflection kept');
+  ok(await until(async () => { const [x, y] = [await local(A), await local(B)]; return back(x) && back(y) && hasRf(x) && hasRf(y); }), 'both devices: station back and reflection kept');
+  const again = await (await fetch(`${API}/undo`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: undoBody })).json();
+  ok(/already undone/.test(again.error || ''), `the same undo again is refused: ${again.error} (${undoBody})`);
+
   // Reset from one device puts every device back.
   await A.goto(U + 'reset'); await A.waitForTimeout(300);
   ok(await until(async () => !evByTitle(await state(), T1)), 'reset clears the server record');

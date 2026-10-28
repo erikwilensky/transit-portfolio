@@ -3,7 +3,8 @@
 // the same api.js function with the recorded ids and times (api.runAction), so both end identical.
 import { send, readJson } from '../lib.mjs';
 import { api, changed, onChange, rev } from '../store.mjs';
-import { MODE, canAct } from '../auth.mjs';
+import { MODE, canAct, isAdmin } from '../auth.mjs';
+import { undoProblem, rebuild } from '../history.mjs';
 
 // The changes a browser may ask for: every api.js mutator, except reset (POST /api/reset).
 const ALLOW = new Set(api.MUTATORS.filter((n) => n !== 'resetDemo'));
@@ -11,6 +12,7 @@ const ALLOW = new Set(api.MUTATORS.filter((n) => n !== 'resetDemo'));
 let chain = Promise.resolve();
 const serial = (fn) => { const p = chain.then(fn); chain = p.catch(() => {}); return p; };
 const decode = (args) => args.map((x) => (x && typeof x === 'object' && x.$undefined === 1 ? undefined : x));
+const userId = (req) => req.user?.id ?? null;
 const json = (v) => (v === undefined ? null : JSON.parse(JSON.stringify(v)));
 
 export default (app) => {
@@ -26,12 +28,27 @@ export default (app) => {
       const prev = rev;
       try {
         const result = json(api.runAction(fn, decode(args), rec));
-        return { status: 200, body: { result, rev: changed({ fn }), prev } };
+        return { status: 200, body: { result, rev: changed({ fn, step: { fn, args, rec }, userId: userId(req) }), prev } };
       } catch (e) {
         // The change may have half-run: save and announce anyway, so every device resyncs.
         console.error(`Action ${fn} failed:`, e.message);
         return { status: e.status || 422, body: { error: e.message, rev: changed({ fn, error: true }), prev } };
       }
+    });
+    send(res, out.status, out.body);
+  });
+
+  // Undo one change (or a few made together) by rev: rebuilt without it, every later change kept (server/history.mjs).
+  // Pilot: only your own changes, unless admin. → { rev, prev, undone, skipped: [{ rev, fn, error }] }
+  app.post('/api/undo', async (req, res) => {
+    const body = await readJson(req);
+    const revs = [...new Set(Array.isArray(body.revs) ? body.revs : [body.rev])];
+    if (!revs.length || !revs.every(Number.isInteger)) return send(res, 400, { error: 'Say which change to undo' });
+    const out = await serial(() => {
+      for (const r of revs) { const p = undoProblem(r, req.user, { mode: MODE, isAdmin }); if (p) return { status: p.status, body: { error: p.error } }; }
+      const prev = rev;
+      const u = rebuild(revs);
+      return { status: 200, body: { rev: changed({ fn: 'undo', undo: u, userId: userId(req) }), prev, undone: u.revs, skipped: u.dropped } };
     });
     send(res, out.status, out.body);
   });
