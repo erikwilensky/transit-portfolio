@@ -1,0 +1,30 @@
+/* Family sign-in letters (FamilyLetters.jsx): A4 portrait, two letters a page, NIST navy, no shadows. */
+.fl-list { list-style: none; margin: 8px 0 12px; padding: 0; border-top: 1px solid var(--rule, #cfd6e2); }
+.fl-row { display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--rule, #cfd6e2); }
+.fl-row > div:first-child { display: flex; flex-direction: column; min-width: 180px; }
+.fl-row small { color: var(--muted); font-size: 12px; }
+.fl-fam { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; font-size: 14px; }
+.fl-member { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; justify-content: flex-end; }
+.fl-look { margin-top: 14px; max-width: 320px; }
+@media (max-width: 560px) { .fl-fam, .fl-member { align-items: flex-start; justify-content: flex-start; } }
+
+.fl-page { box-sizing: border-box; width: min(210mm, 100%); margin: 0 auto 20px; background: #fff; color: #0b2240; border: 1px solid #cfd6e2; }
+.fl-letter { box-sizing: border-box; min-height: 148mm; padding: 12mm 14mm; display: flex; flex-direction: column; gap: 4mm; font-size: 10.5pt; line-height: 1.4; }
+.fl-letter + .fl-letter { border-top: 0.3mm dashed #9aa6b8; }
+.fl-school { font-size: 8pt; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #002855; border-bottom: 0.6mm solid #002855; padding-bottom: 2mm; }
+.fl-dear { margin: 2mm 0 0; font-size: 15pt; font-weight: 600; color: #002855; }
+.fl-body { display: flex; gap: 8mm; align-items: flex-start; }
+.fl-text { flex: 1; min-width: 0; }
+.fl-text p { margin: 0 0 2.5mm; }
+.fl-code { flex: none; width: 46mm; display: flex; flex-direction: column; gap: 2mm; align-items: center; }
+.fl-code .fl-qr { width: 44mm !important; height: 44mm !important; padding: 0; border-radius: 0; background: #fff; }
+.fl-link { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 7pt; word-break: break-all; text-align: center; color: #0b2240; }
+.fl-exp { margin-top: auto; font-weight: 600; color: #002855; border-top: 0.3mm solid #cfd6e2; padding-top: 2mm; font-size: 9.5pt; }
+@media (max-width: 560px) { .fl-letter { padding: 6mm; min-height: 0; } .fl-body { flex-direction: column-reverse; align-items: center; } }
+
+@page letters { size: A4 portrait; margin: 0; }
+@media print {
+  .fl-page { page: letters; width: 210mm; height: 297mm; margin: 0; border: 0; break-after: page; break-inside: avoid; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .fl-page:last-child { break-after: auto; }
+  .fl-letter { height: 148.5mm; min-height: 0; overflow: hidden; }
+}

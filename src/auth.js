@@ -3,6 +3,7 @@
 // Pilot mode: each person signs in and sees only their own role's screens, built as a persona.
 import { addStudent, addTeacher, getStudent, getTeacher } from './api.js';
 import { PERSONAS, NAV, setPilotPersona } from './personas.js';
+import { clearCaches } from './pwa.js';
 
 let state = { mode: 'demo', user: null, server: false };
 const listeners = new Set();
@@ -43,6 +44,7 @@ export const sessionCount = () => call('GET', '/api/auth/sessions').then((j) => 
 export async function signOut(everywhere = false) {
   try { await call('POST', everywhere ? '/api/auth/logout-everywhere' : '/api/auth/logout'); } catch { /* already signed out */ }
   try { Object.keys(localStorage).filter((k) => k.startsWith('tp-')).forEach((k) => localStorage.removeItem(k)); } catch { /* blocked */ }
+  await clearCaches();
   location.hash = '#/';
   location.reload();
 }
@@ -72,6 +74,22 @@ export const signinCards = {
   groups: () => call('GET', '/api/admin/cards'),
   forAdmin: (body) => call('POST', '/api/admin/cards', body),
   unpause: (id) => call('POST', `/api/admin/accounts/${encodeURIComponent(id)}/unpause`),
+};
+// Family sign-in letters (server/routes/17-family.mjs): printed invitations, joining as family, removing a family member.
+export const family = {
+  invite: (token) => call('GET', `/api/family/invite/${encodeURIComponent(token)}`),
+  join: async (body) => { const j = await call('POST', '/api/family/join', body); set({ ...state, user: j.user }); return j; },
+  advisees: () => call('GET', '/api/advisor/family').then((j) => j.students),
+  forAdvisees: (body) => call('POST', '/api/advisor/family/letters', body),
+  groups: (homeroom) => call('GET', `/api/admin/family${homeroom ? `?homeroom=${encodeURIComponent(homeroom)}` : ''}`),
+  forAdmin: (body) => call('POST', '/api/admin/family/letters', body),
+  unlink: (studentId, accountId) => call('POST', '/api/family/unlink', { studentId, accountId }),
+};
+// Pilot feedback (server/routes/65-feedback.mjs): anyone signed in sends; leadership and the pilot admin read.
+export const feedback = {
+  send: (body) => call('POST', '/api/feedback', body),
+  list: () => call('GET', '/api/admin/feedback').then((j) => j.items),
+  done: (id, done) => call('POST', `/api/admin/feedback/${encodeURIComponent(id)}`, { done }).then((j) => j.item),
 };
 
 // ── An account becomes a persona in the PERSONAS shape, so every existing screen works unchanged ──

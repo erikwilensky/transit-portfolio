@@ -8,6 +8,7 @@ import ReflectComposer from '../components/ReflectComposer.jsx';
 import AddStation from '../components/AddStation.jsx';
 import GoalDialog from '../components/GoalDialog.jsx';
 import TermReview from '../components/TermReview.jsx';
+import { OpenPrompts } from '../components/ClassPrompts.jsx';
 import { MapLegend, VerifyBadge, VerifyLegend } from '../components/Badge.jsx';
 import { fmtDate, fmtTerm, TYPE_LABEL, VERIFY_LABEL, inkOn } from '../format.js';
 import { TOUR_REFLECTION, TOUR_STATION, tourEvent } from '../tourStory.js';
@@ -19,13 +20,14 @@ const countRefl = (m) => m.events.filter((e) => e.type === 'reflection').length 
 const yearOf = (e, s) => fmtTerm(e.date, s.g9StartYear, s.startGrade).split(',')[0];
 const SEE = [['student', 'Me'], ['advisor', 'Advisor'], ['school', 'School'], ['public', 'Public']];
 
-export default function StudentMap({ map, studentId, toast, focusId, go, persona }) {
+export default function StudentMap({ map, studentId, toast, focusId, go, persona, version, addRequest }) {
   const level = getIntensity(studentId); // simple | standard | full
   const simple = level === 'simple', full = level === 'full';
   const [hidden, setHidden] = useState([]);
   const [selected, setSelected] = useState(focusId && focusId.startsWith('ev-') ? focusId : null);
   const [signal, setSignal] = useState(null);
   const [adding, setAdding] = useState(null); // null | {} prefill
+  useEffect(() => { if (addRequest) setAdding({}); }, [addRequest]); // a nudge's "Add something"
   const [newIds, setNewIds] = useState(() => new Set(focusId && focusId.startsWith('ev-') && getStore().events.find((e) => e.id === focusId)?.verification === 'student-added' ? [focusId] : []));
   const [tourStage, setTourStage] = useState(focusId === 'tour' ? 'signal' : null);
   const [seeAs, setSeeAs] = useState('student');
@@ -100,6 +102,7 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
   return (
     <div className="home">
       <div className="home-head">
+        <OpenPrompts studentId={studentId} simple={simple} toast={toast} version={version} />
         <div className="who">
           <span className="pres-avatar" style={{ background: s.avatar.colour, color: inkOn(s.avatar.colour) }}>{s.avatar.initials}</span>
           <div>

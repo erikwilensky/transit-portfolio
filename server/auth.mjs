@@ -180,10 +180,18 @@ const WHOLE_SCHOOL_ONLY = new Set(['addSchoolLine', 'renameLine', 'decideBranch'
 const STUDENT_FNS = new Set(['setStudentDrafts', 'setGithub', 'disconnectGithub', 'simulateWeek', 'addStation', 'addBranch', 'endLine', 'restartLine',
   'completeOnboarding', 'capturePhone', 'setPrivacy', 'logLink', 'addGoal', 'setIntensity', 'remindParent', 'sync', 'importCandidates', 'addReflection',
   'setVisibility', 'editStation', 'deleteStation', 'completeGoal', 'setTags', 'requestEndorsement', 'addCheckIn', 'acceptCandidate', 'dismissCandidate',
-  'restoreCandidate', 'mergeCandidate', 'resubmit', 'answerEvidence', 'acceptInterchange', 'ignoreInterchange']);
+  'restoreCandidate', 'mergeCandidate', 'resubmit', 'answerEvidence', 'acceptInterchange', 'ignoreInterchange', 'answerPrompt', 'skipPrompt']);
 // A student's own file import only, never as a school source.
 const STUDENT_EXTRA = { importCandidates: (a) => a[1]?.sourceId === 'mine' && Array.isArray(a[0]) && a[0].length > 0 };
 const st = () => api.getStore();
+// Class prompts, for an advisor or subject teacher: only a class they teach (an advisor of every student in it is not
+// enough), and never a student's answer.
+const teachesClass = (u, classId) => !!classId && !!(st().classes || []).find((c) => c.id === classId)?.teacherIds?.includes(u.teacherId);
+const STAFF_EXTRA = {
+  askClass: (u, a) => teachesClass(u, a[0]),
+  remindClass: (u, a) => teachesClass(u, api.getClassPrompt(a[0])?.classId),
+  answerPrompt: () => false, skipPrompt: () => false,
+};
 export function canAct(user, fn, args = []) {
   if (!user || typeof fn !== 'string') return false;
   // Undo sends a whole copy of the record, and in a pilot every browser holds only its own part of it.
@@ -194,10 +202,13 @@ export function canAct(user, fn, args = []) {
   // Only your own bell: every key must be one of yours (st:…, t:…, fam:…, role:…, or your record's demo persona id).
   if (fn === 'markNotificationsRead') { const mine = new Set(api.notifyKeys({ kind: user.kind, studentId: user.studentId, teacherId: user.teacherId, children: user.children })); return [].concat(args[0] ?? []).every((k) => mine.has(k)); }
   try {
+    // A nudge: the student's own advisor, or whole-school staff, as themselves.
+    if (fn === 'nudgeStudent') return STAFF.includes(user.kind) && !!user.teacherId && args[1] === user.teacherId && (reachOf(user) === null || api.getStudent(args[0])?.advisorId === user.teacherId);
     if (STAFF.includes(user.kind)) {
       const reach = reachOf(user);
       if (reach === null) return true;
       if (WHOLE_SCHOOL_ONLY.has(fn)) return false;
+      if (STAFF_EXTRA[fn] && !STAFF_EXTRA[fn](user, args)) return false;
       const t = touchedBy(fn, args);
       return t.students.every((sid) => reach.has(sid)) && t.as.every((id) => id === user.teacherId);
     }

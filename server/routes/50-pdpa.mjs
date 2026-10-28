@@ -10,6 +10,7 @@ import { DATA_DIR, send, readJson } from '../lib.mjs';
 import { api, changed } from '../store.mjs';
 import * as A from '../auth.mjs';
 import { zip } from '../zip.mjs';
+import { feedbackOf, eraseFeedbackOf } from '../feedback.mjs';
 
 const UPLOADS = path.join(DATA_DIR, 'uploads');
 const AUDIT = path.join(DATA_DIR, 'audit.log');
@@ -52,6 +53,8 @@ const ABOUT = {
   letters: 'Your reference letter.', applications: 'Your university applications.',
   alumEvents: 'Stations added after you left NIST.', answered: 'Which prompts and map moments you answered with a reflection.',
   roster: 'Rows from imported files that were matched to you.',
+  classAnswers: 'Your answers to questions a teacher asked your class (or that you said were not for you).', classPrompts: 'Questions teachers asked your classes.',
+  nudges: 'Nudges your advisor sent you to add something.',
 };
 const README = (s, files, accounts, when) => [
   `Everything NIST Transit Portfolio holds about ${s.name} (student id ${s.id})`,
@@ -63,6 +66,7 @@ const README = (s, files, accounts, when) => [
   'activity.json       Your activity log: what you and others did on your record, and who opened your share links.',
   ...files.map(([f, about]) => `${f.padEnd(20)}${about}`),
   accounts ? 'accounts.json       Your sign-in account and the family accounts linked to you. Passwords are never kept in a readable form and are not included.' : null,
+  'feedback.json       Feedback you sent with the Feedback button, with the screen you were on and your browser.',
   'mentions.json       Other people\'s items that list you (a class task you handed in), with only your entry.',
   'files/              The files you uploaded as evidence. manifest.json gives each one\'s original name.',
   'manifest.json       A list of every file in this copy.',
@@ -86,8 +90,10 @@ export function buildCopy(sid) {
   }
   if (accounts.length) entries.push({ name: 'accounts.json', data: json(accounts.map((a) => accountCopy(a, sid))) });
   entries.push({ name: 'mentions.json', data: json(d.mentioned) });
+  const fb = feedbackOf(sid, studentAccounts(sid).map((a) => a.id));
+  entries.push({ name: 'feedback.json', data: json(fb) });
   const files = [];
-  for (const f of filesIn(d)) {
+  for (const f of filesIn({ d, fb })) {
     let meta = {}; try { meta = JSON.parse(fs.readFileSync(path.join(UPLOADS, `${f}.json`), 'utf8')); } catch { /* no meta */ }
     try { entries.push({ name: `files/${f}`, data: fs.readFileSync(path.join(UPLOADS, f)) }); files.push({ file: `files/${f}`, name: meta.name || f, type: meta.type, size: meta.size, added: meta.at }); } catch { files.push({ file: null, name: meta.name || f, missing: true }); }
   }
@@ -111,8 +117,9 @@ export function eraseStudent(sid, by) {
   const s = api.getStudent(sid); if (!s) throw fail(404, 'No such student.');
   const own = studentAccounts(sid), family = familyAccounts(sid);
   const gone = [...own, ...family.filter((a) => a.children.length === 1)].map((a) => a.id);
-  const files = filesIn(api.studentData(sid, own.map((a) => a.id)));
+  const files = filesIn({ d: api.studentData(sid, own.map((a) => a.id)), fb: feedbackOf(sid, own.map((a) => a.id)) });
   const removed = api.eraseStudent(sid, own.map((a) => a.id));
+  const feedback = eraseFeedbackOf(sid, own.map((a) => a.id)).length;
   changed({ fn: 'eraseStudent', by, erased: { studentId: sid, accounts: gone } });
   // Their files, unless another record still points to one (a station copied to a class page, for instance).
   const rest = api.snapshot();
@@ -126,7 +133,7 @@ export function eraseStudent(sid, by) {
   for (const id of gone) A.removeAccount(id);
   for (const a of family) if (!gone.includes(a.id)) A.updateAccount(a, { children: a.children.filter((c) => c !== sid) });
   audit({ action: 'erase', by: by || null, studentId: sid });
-  return { removed, files: filesRemoved, accounts: gone.length, familyUnlinked: family.length - (gone.length - own.length) };
+  return { removed, feedback, files: filesRemoved, accounts: gone.length, familyUnlinked: family.length - (gone.length - own.length) };
 }
 
 const requireAdmin = (req) => { if (!req.user) throw fail(401, 'Sign in first.'); if (!A.isAdmin(req.user)) throw fail(403, 'Only an admin can do that.'); };

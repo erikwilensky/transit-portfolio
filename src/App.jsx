@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { applyLens, getAlumMap, getPresentations, getStudent, getStudentMap, getStudents, subscribe, getDrafts, setStudentDrafts, hasPublicCopy, getNotifications, markNotificationsRead, notifyKeys, resetDemo, restore, markOf, changeCount, logLink, addStation, getLang, setLang, getIntensity, setIntensity, INTENSITY, INTENSITY_NAV, INTENSITY_LABEL } from './api.js';
-import SimpleHome, { ShowFamily } from './screens/SimpleHome.jsx';
+import SimpleHome, { ShowFamily, QuickAdd } from './screens/SimpleHome.jsx';
+import { InstallHint } from './components/PhoneApp.jsx';
 import IntensityControl from './components/IntensityControl.jsx';
 import { ensureEndorsed } from './tourStory.js';
 import { PERSONAS, KIND_LABEL, NAV, personaById, home, navOf, pilotPersona } from './personas.js';
@@ -28,6 +29,8 @@ import Activity from './screens/Activity.jsx';
 import Privacy from './screens/Privacy.jsx';
 import Onboarding from './screens/Onboarding.jsx';
 import Pdpa from './screens/Pdpa.jsx';
+import { FeedbackDialog } from './components/Feedback.jsx';
+import { NudgeBanner } from './components/Nudges.jsx';
 import Applications from './screens/Applications.jsx';
 import SignalBoard from './screens/SignalBoard.jsx';
 import SchoolLine from './screens/SchoolLine.jsx';
@@ -68,7 +71,7 @@ const parse = () => {
   const [a, b, c] = location.hash.replace(/^#\/?/, '').split('/');
   if (a === 's' || a === 'v' || a === 'p') return { publicKind: a, param: b, lang: c };
   const p = personaById(a);
-  const screens = navOf(p).map(([id]) => id).concat(p.kind === 'advisor' ? ['student'] : p.kind === 'student' ? ['poster'] : []);
+  const screens = navOf(p).map(([id]) => id).concat(p.kind === 'advisor' ? ['student'] : p.kind === 'student' ? ['poster', 'add', 'snap'] : []);
   return { persona: p.id, screen: screens.includes(b) ? b : home(p), param: c || null };
 };
 
@@ -92,6 +95,7 @@ export default function App() {
   const [launch, setLaunch] = useState(false);
   const [qa, setQa] = useState(false);
   const [pwOpen, setPwOpen] = useState(false);
+  const [fbOpen, setFbOpen] = useState(false); // pilot feedback
   // Pilot mode: the signed-in person's own persona; no switcher, tours, presenter or reset.
   const pilot = pilotPersona();
   // F18: Escape closes the top dialog, else an open station panel; Tab stays inside an open dialog;
@@ -214,7 +218,7 @@ export default function App() {
                 <span className="pb-text"><small>{T(pilot ? 'Signed in' : 'Viewing as')}</small><b>{persona.name}</b></span><span aria-hidden="true">▾</span>
               </button>
               {menu === 'persona' && pilot && (
-                <AccountMenu persona={persona} onPassword={() => { setMenu(null); setPwOpen(true); }} />
+                <AccountMenu persona={persona} onPassword={() => { setMenu(null); setPwOpen(true); }} onFeedback={() => { setMenu(null); setFbOpen(true); }} />
               )}
               {menu === 'persona' && !pilot && (
                 <div className="menu persona-menu" role="menu">
@@ -295,6 +299,7 @@ export default function App() {
         <main className={`screen screen-${route.screen}`} key={`${persona.id}-${route.screen}`}>
           <ErrorBoundary resetKey={`${persona.id}-${route.screen}-${route.param}`}>
           {persona.kind === 'student' && <StudentScreens {...ctx} screen={route.screen} param={route.param} studentId={studentId} />}
+          {persona.kind === 'student' && route.screen === 'map' && !tour && !getStudent(studentId)?.onboarding && <InstallHint />}
           {acts(persona, 'advisor') && route.screen === 'advisory' && <AdvisorGrid advisorId={persona.teacherId} version={version} toast={toast} onOpen={(id) => go(persona.id, 'student', id)} />}
           {acts(persona, 'advisor') && route.screen === 'student' && (getStudent(route.param || 'st-01') ? <AdvisorStudent studentId={route.param || 'st-01'} {...ctx} /> : <NotInRecord onBack={() => go(persona.id, 'advisory')} />)}
           {acts(persona, 'teacher') && route.screen === 'queue' && <TeacherQueue teacherId={persona.teacherId} focus={route.param} {...ctx} />}
@@ -327,6 +332,7 @@ export default function App() {
           {pilot && route.screen === 'usage' && (persona.admin || persona.kind === 'leadership') && <Usage {...ctx} />}
           {route.screen !== 'accounts' && route.screen !== 'usage' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} persona={persona} />}
           </ErrorBoundary>
+          {pilot && level === 'simple' && <div className="fb-simple"><button onClick={() => setFbOpen(true)}>Something not working? Tell us</button></div>}
         </main>
 
         {tour?.steps[tourState.step].card && <TourCard kind={tour.steps[tourState.step].card} ctx={ctx} />}
@@ -347,6 +353,7 @@ export default function App() {
         )}
         {launch && <Launcher onGo={go} onClose={() => setLaunch(false)} only={pilot} />}
         {pwOpen && <PasswordDialog onClose={() => setPwOpen(false)} toast={toast} />}
+        {fbOpen && <FeedbackDialog simple={level === 'simple'} onClose={() => setFbOpen(false)} toast={toast} />}
         <div className={`toast${toastMsg ? ' show' : ''}`} role="status" aria-live="polite">{toastMsg?.m}{toastMsg?.undo && <button className="toast-undo" onClick={() => undoToast(toastMsg)}>Undo</button>}</div>
       </div>
     </VerifyProvider>
@@ -365,6 +372,10 @@ function StudentScreens({ screen, param, studentId, drafts, setDrafts, audience,
   const links = myDrafts.flatMap((p) => p.shareLinks);
   const updateDraft = (presId, patch) => setDrafts((d) => ({ ...d, [studentId]: d[studentId].map((p) => (p.id === presId ? { ...p, ...patch } : p)) }));
   const [newLink, setNewLink] = useState(null);
+  // A nudge (banner or notification, #/<persona>/map/add) opens the add flow.
+  const [addReq, setAddReq] = useState(0);
+  useEffect(() => { if (param === 'add' && screen === 'map') setAddReq((n) => n + 1); }, [param, screen]);
+  const nudge = <NudgeBanner studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} onAdd={() => setAddReq((n) => n + 1)} />;
   // N11: stations a presentation would show but a link cannot, because they are not publishable.
   const [gapFor, setGapFor] = useState(null);
   const gapsOf = (pres) => { const l = applyLens(map, pres, { hiddenLines: pres.filters.hiddenLines }); return map.events.filter((e) => l.visible.has(e.id) && e.type !== 'goal' && e.visibility !== 'publishable'); };
@@ -383,15 +394,21 @@ function StudentScreens({ screen, param, studentId, drafts, setDrafts, audience,
     logLink(studentId, `${site ? 'Published a hand-built site' : 'Created share link'} /s/${link.token} for “${pres.title}”`);
     setNewLink({ link, title: site ? `${pres.title} (your own site)` : pres.title });
   };
+  // The phone app's shortcuts, #/me/add and #/me/snap: the add flow over the student's home, at any level.
+  if (screen === 'add' || screen === 'snap') {
+    const home = () => { history.replaceState(null, '', `#/${persona.id}/map`); go(persona.id, 'map'); };
+    return <><StudentScreens {...{ drafts, setDrafts, audience, setAudience, tier, setTier, toast, version, go, persona, studentId }} screen="map" />
+      {!map.student.onboarding && <QuickAdd map={map} studentId={studentId} toast={toast} camera={screen === 'snap'} onClose={home} />}</>;
+  }
   if (map.student.onboarding) return <Onboarding map={map} studentId={studentId} onDone={() => { toast('Your map is ready.'); go(persona.id, 'map'); }} />;
   const level = getIntensity(studentId);
-  if (level === 'simple' && screen === 'map') return <SimpleHome map={map} studentId={studentId} toast={toast} version={version} />;
+  if (level === 'simple' && screen === 'map') return <>{nudge}<SimpleHome map={map} studentId={studentId} toast={toast} version={version} addRequest={addReq} /></>;
   if (screen === 'poster') return <Poster map={map} publicMap={publicMap} drafts={myDrafts} toast={toast} />;
   if (screen === 'family') return <ShowFamily map={map} toast={toast} version={version} />;
   if (screen === 'links') return <ShareLinks studentId={studentId} drafts={myDrafts} updateDraft={updateDraft} toast={toast} version={version} />;
   if (screen === 'activity') return <Activity studentId={studentId} version={version} />;
   if (screen === 'privacy') return <Privacy studentId={studentId} drafts={myDrafts} toast={toast} go={go} persona={persona} version={version} />;
-  if (screen === 'map') return <StudentMap map={map} studentId={studentId} toast={toast} version={version} focusId={param} go={go} persona={persona} />;
+  if (screen === 'map') return <>{nudge}<StudentMap map={map} studentId={studentId} toast={toast} version={version} focusId={param} go={go} persona={persona} addRequest={addReq} /></>;
   if (screen === 'studio') return <>{newLink && <ShareDialog link={newLink.link} title={newLink.title} onClose={() => setNewLink(null)} />}
     {gapFor && <ShareGaps pres={gapFor} gaps={gapsOf(gapFor)} lines={map.lines} toast={toast} onClose={() => setGapFor(null)} onShare={() => { const p = gapFor; setGapFor(null); share(myDrafts.find((x) => x.id === p.id) || p); }} />}<Studio key={studentId} level={level} map={publicMap} drafts={myDrafts} audience={(level === 'simple' && !['general', 'university', 'employer'].includes(audience)) || (level === 'standard' && audience === 'custom') ? 'general' : audience} setAudience={setAudience} tier={level === 'simple' ? 'template' : level === 'standard' && tier === 'code' ? 'builder' : tier} setTier={setTier} updateDraft={updateDraft} onShare={askShare} toast={toast} /></>;
   if (screen === 'shared') return <SharedView key={studentId} publicMap={publicMap} drafts={myDrafts} links={links} />;

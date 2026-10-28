@@ -1,0 +1,43 @@
+/* Class prompts (ClassPrompts.jsx): asking a class, its answers, and the open question on a student's home. */
+.cp-ask { display: grid; gap: 12px; }
+.cp-ask label { display: grid; gap: 4px; font-size: 14px; font-weight: 600; }
+.cp-ask label small { font-weight: 400; color: var(--muted); }
+.cp-ask .cp-check { grid-template-columns: auto 1fr; align-items: start; gap: 10px; font-weight: 400; }
+.cp-ask .cp-check input { margin-top: 3px; }
+.cp-ask .cp-check > span { display: grid; gap: 2px; } .cp-ask .cp-check b { font-weight: 600; }
+.cp-foot { display: flex; gap: 8px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
+.cp-foot span { margin-right: auto; font-size: 13px; color: var(--muted); }
+
+.cp-list { margin: 18px 0; display: grid; gap: 10px; }
+.cp-list h2 { font-size: 17px; margin: 0; }
+.cp-item { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); padding: 12px 16px; display: grid; gap: 8px; }
+.cp-item header { display: flex; gap: 14px; align-items: flex-start; justify-content: space-between; }
+.cp-item header div { display: grid; gap: 2px; min-width: 0; }
+.cp-item header b { font-weight: 600; } .cp-item small { color: var(--muted); font-size: 12px; }
+.cp-n { display: grid; text-align: right; flex: none; } .cp-n b { font-size: 18px; font-weight: 600; }
+.cp-acts { display: flex; gap: 8px; flex-wrap: wrap; } .cp-acts .ghost { padding: 6px 10px; font-size: 13px; }
+.cp-answers { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.cp-answers li { border-top: 1px solid var(--rule); padding-top: 6px; }
+.cp-answers b { font-weight: 600; margin-right: 8px; } .cp-answers p { margin: 2px 0 0; font-size: 14px; white-space: pre-wrap; }
+.mc-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.mc-list .cp-askbtn { padding: 8px 12px; font-size: 13px; white-space: nowrap; }
+
+.cp-open .cp-card { width: 100%; display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; align-items: center; text-align: left; padding: 12px 14px; border-radius: 14px; border: 2px solid var(--b-gold); background: var(--surface); color: var(--ink); }
+.cp-open .cp-card:hover { border-color: var(--navy); }
+.cp-open .cp-ic { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--b-gold); color: var(--navy); font-size: 22px; font-weight: 600; }
+.cp-open .cp-card > span:nth-child(2) { display: grid; gap: 2px; min-width: 0; }
+.cp-open .cp-card small { font-size: 13px; color: var(--muted); } .cp-open .cp-card b { font-weight: 600; font-size: 16px; }
+.cp-open .cp-go { background: var(--navy); color: #fff; border-radius: 10px; padding: 8px 14px; font-weight: 600; font-size: 14px; }
+.cp-open.big .cp-card { padding: 20px; border-radius: 20px; grid-template-columns: 56px minmax(0, 1fr) auto; min-height: 108px; }
+.cp-open.big .cp-ic { width: 56px; height: 56px; border-radius: 16px; font-size: 28px; }
+.cp-open.big .cp-card b { font-size: 19px; } .cp-open.big .cp-card small { font-size: 14.5px; }
+.cp-open.big .cp-go { font-size: 17px; padding: 12px 20px; border-radius: 14px; }
+.cp-flow .cp-big { border: 2px solid var(--b-gold); border-radius: 20px; padding: 22px; background: color-mix(in srgb, var(--b-gold) 12%, var(--surface)); }
+.cp-flow .cp-big h2 { font-size: 28px; }
+:root[data-theme="dark"] .cp-open .cp-go { background: var(--b-sky); color: var(--navy); }
+@media (max-width: 640px) {
+  .cp-open .cp-card, .cp-open.big .cp-card { grid-template-columns: 40px minmax(0, 1fr); }
+  .cp-open .cp-go { grid-column: 1 / -1; text-align: center; }
+  .cp-item header { flex-direction: column; } .cp-n { text-align: left; }
+}
+.cp-head-acts { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }

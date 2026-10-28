@@ -20,14 +20,14 @@ src/sync.js             browser side of the shared record
 
 Run: `npm run build && npm run server` (port 8787, or PORT). In dev: `npm run server` plus
 `npm run dev` (Vite proxies /api). Data lives in DATA_DIR (default `.data/`): `state.json`,
-`uploads/`, `accounts.json`, `sessions.json`, `usage.json`, `audit.log`.
+`uploads/`, `accounts.json`, `sessions.json`, `usage.json`, `feedback.json`, `audit.log`.
 
 ## Contracts between features
 
 - **Routes**: `/api/state`, `/api/action`, `/api/undo`, `/api/stream`, `/api/reset` (shared record);
   `/api/upload`, `/api/files/:name` (files); `/api/public/*` (share links and verify, no sign-in);
   `/api/auth/*`, `/api/admin/*` (sign-in and accounts); `/api/me/export`, `/api/admin/students/:id/*`
-  (PDPA copy and erasure); `/api/admin/usage` (pilot usage); `/api/health`.
+  (PDPA copy and erasure); `/api/admin/usage` (pilot usage); `/api/feedback`, `/api/admin/feedback` (feedback); `/api/health`.
 - **Sign-in guard**: the auth module pushes a function onto `middleware` that sets `req.user`
   (or null) on every /api request and refuses unsigned requests in pilot mode, except
   `/api/health`, `/api/public/*`, `/api/auth/*` and `GET /api/files/*`.
@@ -598,3 +598,143 @@ No email is sent, so people get in through one-time setup links. Cards put those
   listed); `{ pauseLeavers: true }` pauses them. Every import unpauses `returning`. The reply carries `paused` and `unpaused`.
 - Tests: `server/test/cards.test.mjs`; `node scripts/checks/signin-cards.cjs` (the real roster from `ROSTER`, default the
   project-files copy, skipped when missing; writes its roster copy, screenshots and a PDF to `SCRATCH` or the temp folder).
+
+## Family sign-in letters (`server/routes/17-family.mjs`, `src/components/FamilyLetters.jsx`, `src/screens/FamilyJoin.jsx`)
+
+The class lists hold no parents, so families join by a printed invitation, one per student. No email is sent.
+- **Invites** in `DATA_DIR/family-invites.json`: `{ hash, studentId, by, createdAt, expiresAt, uses: [accountId] }`. The token
+  (16 random bytes) is stored only as its SHA-256 and never logged. Valid 30 days, for up to 2 family members. A new letter
+  for a student replaces their earlier invite. Paused students (their student account is paused) get no letter, and their
+  open letters are refused (403). A student without a sign-in account can still get one.
+- **Joining** (open routes, pilot only): `GET /api/family/invite/:token` → `{ firstName, homeroom, expiresAt, me? }` (nothing
+  else about the child; `me: { kind, name, has }` when signed in). `POST /api/family/join { token, name, email, password }`
+  makes a `parent` account with `children: [studentId]` and signs in. The email of an existing parent account plus its
+  password, or `{ token }` while signed in as a parent, adds the child to that account's `children` (siblings → one account).
+  A school account's email → 409; signed in as staff or a student → 403. Expired, replaced or used up → 404. Per address: 200
+  invite looks, 30 joins and 30 bad tokens per 15 minutes (429); a wrong password counts like a failed sign-in.
+- **Letters**: `GET /api/advisor/family` → `{ students: [{ id, name, homeroom, year, paused, family: [{ id, name, email }],
+  invite: { expiresAt, uses } | null }] }` and `POST /api/advisor/family/letters { studentIds?, onlyNew? }`: staff whose
+  `teacherId` is the students' `advisorId` (403 otherwise, as for sign-in cards). Admin: `GET /api/admin/family?homeroom=` →
+  `{ homerooms: [{ name, year, students, withFamily, paused, waiting }], students? }` and `POST /api/admin/family/letters
+  { homerooms, studentIds?, onlyNew? }`. Both → `{ school, letters: [{ studentId, firstName, homeroom, year, url, expiresAt }] }`,
+  `url` = `<origin>/#/family/<token>`; `onlyNew` skips students who already have a family account. 30 batches per account per
+  15 minutes.
+- **Remove a family member**: `POST /api/family/unlink { studentId, accountId }` (their advisor or the admin) takes the child
+  out of that parent's `children`; an account left with no child is removed. The admin can also delete the account
+  (`DELETE /api/admin/accounts/:id`). The family's part of the record follows `children` on its next fetch (`reachOf`).
+- **Screens** (pilot only): "Print family letters" on the advisory page (each advisee: family members joined, the open letter,
+  "Remove a family member") and on Accounts (per homeroom, plus each homeroom's families, with "Delete account"). "Only
+  students with no family account yet" is on by default. The sheet reuses the sign-in card overlay: A4 portrait, two letters a
+  page (half a page each, dashed cut line), each with the school name, "Dear family of <first name> (<homeroom>)", what the
+  Transit Portfolio is and that they see only what the child shares with family, the QR code and link, and the last day it
+  works. `#/family/<token>` (`src/main.jsx`) opens the join page, signed in or not; after joining it lands on the family view.
+- Tests: `server/test/family.test.mjs`; `node scripts/checks/family-letters.cjs` (the real roster from `ROSTER`, skipped when
+  missing; screenshots and a PDF go to `SCRATCH` or the temp folder).
+## Class prompts: asking a whole class (`src/api.js`, `src/components/ClassPrompts.jsx`)
+
+A teacher asks one question of a whole class after an event ("What did you learn from the science fair?"); each student
+answers it from the top of their home.
+
+- Teacher: My classes has "Ask the class" on each class and on the class page: the question, an optional "what it is
+  about" (a few words, used as the station title), "Add it as a moment on <the class's line>" (ticked by default; not
+  offered for a class off the map) and an optional answer-by date. The class page lists its questions with "answered N
+  of M" (M: the class's students when it was asked; "said not for them" counted apart), the answers with names, "Remind
+  the rest (K)" and, for moments, a link to Endorsements.
+- Student: the oldest open question shows at the top of the home at every level (a big card above the Simple home's
+  actions; a strip at the top of the map home at Standard and Full). The flow is the Simple one: the question card
+  ("Answer it" or "Not for me"), the answer, an optional photo (uploaded as in the Simple add flow), done.
+- Mutators (replayed on the server like the rest; ids and times from `uid()`/`nowIso()`):
+  - `askClass(classId, teacherId, { question, context, asMoment, due })` → a `store.classPrompts[]` item
+    `{ id: 'cq-…', classId, teacherId, question, context, asMoment, lineId, due, date, at, studentIds, reminded }`;
+    notifies every student currently in the class (`toStudent`). `asMoment` is kept only when the class has a line.
+  - `answerPrompt(promptId, studentId, { text, image?, imageCaption?, title? })` → a `store.classAnswers[]` item
+    `{ id: 'ca-…', promptId, studentId, date, at, text, eventId }`. With `asMoment`: a station (type project, title =
+    context or question) on the class's line, the answer as its reflection, and an endorsement request to the asking
+    teacher (`requestFrom`), so it lands in their Endorsements. Without: a reflection station on that line. The class's
+    line joins the student's map if missing (a sub-line of it is used if they have one). Once per student.
+  - `skipPrompt(promptId, studentId)` ("Not for me") → `{ …, skipped: true }`; hidden from the student.
+  - `remindClass(promptId, teacherId)` → one notification to each student still in the class who has neither answered
+    nor skipped; at most once a day per prompt (`reminded` = that day; a second call returns 0).
+  - Reads: `classPrompts(classId)` (with `answers`, `skipped`, `waiting`), `openPromptsFor(studentId)`, `getClassPrompt(id)`.
+- canAct: `askClass` and `remindClass`: admins and whole-school staff, or an advisor/teacher who is in the class's
+  `teacherIds`, acting as themselves (advising every student in it is not enough). `answerPrompt` and `skipPrompt`
+  (`STUDENT_FNS`): the student the prompt was asked of, never a subject teacher or advisor for them.
+- Scope (`scopedSnapshot`): `classPrompts` go to whole-school roles, the asking teacher and the class's teachers, and to
+  each student asked (their copy's `studentIds` is just themselves, so classmates are not listed). `classAnswers` go to
+  whoever receives the prompt as a teacher, and each student gets only their own. Families and other staff get neither.
+- Tests: `server/test/class-prompts.test.mjs`; `node scripts/checks/class-prompts.cjs` (real roster, skipped when
+  missing: a teacher asks a Year 8 class, a student answers at Simple level on a phone with a photo, the teacher sees
+  1 of N, the answer and the station in Endorsements, reminds the rest; then a Standard-level skip).
+## Phone app (`public/manifest.webmanifest`, `public/sw.js`, `src/pwa.js`, `src/components/PhoneApp.jsx`)
+
+The site installs on a phone's home screen, in demo and pilot alike.
+- **Manifest**: "NIST Transit Portfolio" / "Transit", standalone, navy theme and background, `start_url: "./#/"`
+  and `scope: "./"` (relative, so the hash router and any URL path work). Icons in `public/icons/`: 192/512
+  rounded (`any`) and full-bleed (`maskable`), plus `apple-touch-icon.png` (180). They are PNGs drawn from
+  `public/icons/icon.svg` by `node scripts/icons.cjs` (Playwright); rerun it and commit the PNGs after changing the SVG.
+  `index.html` links the manifest, the touch icon, `theme-color` and the iOS `apple-mobile-web-app-*` tags.
+  Shortcuts: "Add a moment" (`#/me/add`) and "Take a photo" (`#/me/snap`).
+- **Service worker** (`public/sw.js`, registered by `registerServiceWorker()` in production builds only): caches the
+  app shell only: the build's entry script and stylesheet (listed at build time), `/assets/*` as they load (hashed
+  names, cache first), the icons, the manifest and `offline.html`. It never touches `/api/*` (any path containing
+  `/api/`, uploaded files `/api/files/*` included): those go straight to the network and are never cached, so
+  nothing personal stays on a shared device. Page loads always go to the server; with no network (or a 502/503/504/530
+  from the tunnel) the worker shows `offline.html`: "You're offline. Your moments will be here when you're back."
+- **Updates**: `vite.config.js` writes this build's `VERSION` and `SHELL` into `dist/sw.js`, so every deploy is a new
+  worker. It calls `skipWaiting()` and `clients.claim()`, drops older caches, and the open app shows
+  "A new version is ready · Reload" (`UpdateBar`). The app checks for a new worker whenever it comes back to the front.
+- **Server** (`serveStatic` in `server/lib.mjs`): `.webmanifest` is `application/manifest+json`; `sw.js`, the manifest
+  and `icons/*` are `Cache-Control: no-cache` (they keep their address across deploys); hashed assets stay immutable.
+- **Sign-out** (`signOut` in `src/auth.js`) deletes every Cache Storage cache (`clearCaches()`) as well as the `tp-*` keys.
+- **Install hint** (`InstallHint`): students on a phone (`pointer: coarse`, small screen), not already in the
+  installed app, on their home screen. Android/Chrome: an Install button (`beforeinstallprompt`); iOS: "tap Share,
+  then Add to Home Screen"; others: the browser menu. "×" hides it for good on that device
+  (`localStorage['pwa-install-dismissed']`, not a `tp-` key, so it outlasts sign-out).
+- **Quick camera** (`#/<student>/snap`, `#/me/snap`; `#/me/add` without the camera step): any student at any level gets
+  Simple's add flow (`QuickAdd`, exported from `SimpleHome.jsx`) over their home screen. `snap` starts on a "Take a
+  photo" step (an `<input capture="environment">`, "Choose a photo", or "No photo, just write it"), then the usual
+  steps: what it was, which colour, what they learned, ask a teacher. Closing or finishing goes to `#/<student>/map`.
+  `me` is the signed-in student in a pilot (Maya in the demo); staff get their own home. A student still onboarding
+  sees onboarding first.
+- Check: `node scripts/checks/phone-app.cjs` (needs `npm run build`; runs demo and pilot servers on a copy of `dist/`).
+## Feedback and advisor nudges (`server/routes/65-feedback.mjs`, `src/components/Feedback.jsx`, `src/components/Nudges.jsx`)
+
+- **Feedback** (pilot only): everyone signed in has "Feedback" in their account menu; Simple-level students also get a
+  big "Something not working? Tell us" button at the foot of their screens. The dialog asks what kind
+  (Something's broken / An idea / Something's confusing), a message, and optionally a picture (uploaded through
+  `POST /api/upload` as usual); the current `#/...` route goes with it.
+  - `POST /api/feedback { kind: broken|idea|confusing, message, route, screenshot? }` (anyone signed in) → 201 `{ id }`.
+    Message 3–4,000 characters; `screenshot` must be an `/api/files/` image this account uploaded. At most 10 per
+    account per hour (`FEEDBACK_LIMIT`), else 429.
+  - Kept outside the shared record in `DATA_DIR/feedback.json` (`server/feedback.mjs`): `[{ id, at, by (account id),
+    name, role (account kind), studentId?, year? (British Year), route, ua, kind, message, screenshot: { url, name,
+    size } | null, done: { at, by, name } | null }]`.
+  - `GET /api/admin/feedback` (admin or leadership) → `{ items }` newest first, each with the account's current
+    name (`gone: true` once the account was removed). `POST /api/admin/feedback/:id { done }` → `{ item }`.
+  - **Pilot usage** shows a "Feedback" section under the tiles: kind filter, "Done too", the sender's name, role and
+    Year, the screen, the browser, the picture, and "Mark as done" / "Reopen".
+  - **PDPA**: a student's copy has `feedback.json` (what their own accounts sent, plus pictures under `files/`);
+    erasure removes it and its pictures (`eraseStudent` returns `feedback`: how many went).
+- **Nudges** (`src/api.js`, demo and pilot): `store.nudges = [{ id, studentId, from (teacher id), text, date, ts }]`
+  (made on first use, so old saves load as they are).
+  - `lastOwnMoment(sid)`: the latest of their own (`student-added`, not a goal) moments' dates, reflections on their
+    moments, and the log's "added" lines by them (a back-dated moment added today counts as today), up to `TODAY`.
+    It reads what the viewer holds, so a student who only adds private things can look quiet to their advisor.
+  - `quietAdvisees(advisorId)` → `[{ student, last (date|null), nudge }]` for advisees with nothing of their own for
+    21 days (`QUIET_DAYS`) or ever, alphabetically. `canNudge(sid)`: no nudge in the last 7 days (`NUDGE_GAP`);
+    `lastNudge`, `nudgeAge`, `nudgesOf`.
+  - `nudgeStudent(studentId, advisorId, text?)` (mutator): text trimmed to 500 characters, empty → `NUDGE_TEXT`
+    ("Your advisor would love to see what you've been up to. Add one thing from this week."). Notifies
+    `toStudent(sid)` with "Ms Surname: <text>" (`go: map/add`), logs it, throws 409 inside the 7 days and 400 for an
+    unknown student or teacher. `canAct`: only staff acting as themselves (`args[1] === teacherId`) who are the
+    student's advisor or whole-school (`reachOf` null), and admins; not subject teachers, students or families.
+  - Advisory page: "Quiet for 3 weeks" above the grid (hidden when nobody is quiet): each student with "last added
+    <date>" or "Not started yet", "Send a nudge" (opens the editable default text) or "Nudged 3 days ago", and
+    "Nudge all N" for everyone not nudged this week. Long lists show 8, then "Show all".
+  - Student side (Simple and Standard): `openNudge(sid)` (the latest nudge from the last 14 days, until they add a
+    moment or reflection after it) shows a banner on their home with "Add something" (opens the add flow; so does
+    the notification, via `#/<persona>/map/add`) and "Not now" (hidden on this device).
+- Tests: `server/test/feedback-nudges.test.mjs` (HTTP: permissions, the 7 days, scoped copies, feedback limits,
+  reading, done, PDPA copy and erasure), `server/test/nudges.test.mjs` (quiet rules); browser:
+  `node scripts/checks/feedback-nudges.cjs` (the real roster from `TP_ROSTER`, skipped without it; screenshots to
+  `SCRATCH` or the temp folder).

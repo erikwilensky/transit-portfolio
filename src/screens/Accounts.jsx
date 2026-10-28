@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { admin, exportUrl, signinCards } from '../auth.js';
 import { AdminCards } from '../components/SignInCards.jsx';
+import { AdminFamily } from '../components/FamilyLetters.jsx';
 import RosterImport from './RosterImport.jsx';
 import SubjectLines from './SubjectLines.jsx';
 import '../auth.css';
@@ -24,6 +25,7 @@ export default function Accounts({ toast, persona }) {
   const [confirm, setConfirm] = useState(null);
   const [roster, setRoster] = useState(false);
   const [cards, setCards] = useState(false);
+  const [letters, setLetters] = useState(false);
   useEffect(() => { admin.list().then(setData, (x) => setErr(x.message)); }, []);
   if (err && !data) return <div className="acc"><p className="auth-err">{err}</p></div>;
   if (!data) return <div className="acc"><p className="auth-lede">Loading accounts…</p></div>;
@@ -55,6 +57,7 @@ export default function Accounts({ toast, persona }) {
         <div className="auth-row">
           {!roster && <button className="ghost" onClick={() => { setLink(null); setForm(null); setRoster(true); }}>Import class lists</button>}
           {!cards && <button className="ghost" onClick={() => { setLink(null); setCards(true); }}>Print sign-in cards</button>}
+          {!letters && <button className="ghost" onClick={() => { setLink(null); setLetters(true); }}>Print family letters</button>}
           {!form && <button className="auth-btn" onClick={() => { setLink(null); setRoster(false); setForm({ ...blank }); }}>Add an account</button>}
         </div>
       </div>
@@ -79,6 +82,7 @@ export default function Accounts({ toast, persona }) {
       )}
       {roster && <RosterImport onClose={() => setRoster(false)} onDone={(j) => { setData(j); toast('Class lists imported'); }} />}
       {cards && <AdminCards toast={toast} onClose={() => setCards(false)} onMade={() => admin.list().then(setData, () => {})} />}
+      {letters && <AdminFamily toast={toast} onClose={() => setLetters(false)} onChange={() => admin.list().then(setData, () => {})} />}
       {form && <AccountForm form={form} setForm={setForm} data={data} onSubmit={save} />}
       <table className="acc-table">
         <thead><tr><th>Name</th><th>Role</th><th>Linked to</th><th>Status</th><th><span className="sr-only">Actions</span></th></tr></thead>

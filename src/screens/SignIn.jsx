@@ -134,7 +134,7 @@ export function PasswordDialog({ onClose, toast }) {
 }
 
 // The signed-in person's own menu: who, how many devices, password, sign out (here or everywhere).
-export function AccountMenu({ persona, onPassword }) {
+export function AccountMenu({ persona, onPassword, onFeedback }) {
   const [devices, setDevices] = useState(null);
   useEffect(() => { sessionCount().then(setDevices, () => {}); }, []);
   return (
@@ -142,6 +142,7 @@ export function AccountMenu({ persona, onPassword }) {
       <div className="acct-who"><b>{persona.name}</b><small>{persona.role}</small><small>{persona.account?.email}</small></div>
       {devices > 0 && <div className="acct-devices">Signed in on {devices === 1 ? 'this device only' : `${devices} devices`}</div>}
       <button role="menuitem" onClick={onPassword}><span><b>Change password</b></span></button>
+      {onFeedback && <button role="menuitem" className="fb-menu" onClick={onFeedback}><span><b>Feedback</b><small>Something broken, confusing, or an idea</small></span></button>}
       <button role="menuitem" className="sign-out" onClick={() => signOut()}><span><b>Sign out</b></span></button>
       {devices > 1 && <button role="menuitem" className="sign-out-all" onClick={() => signOut(true)}><span><b>Sign out everywhere</b><small>On all {devices} devices, this one too</small></span></button>}
     </div>
