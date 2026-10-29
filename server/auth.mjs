@@ -201,6 +201,7 @@ export function canAct(user, fn, args = []) {
   if (fn === 'restore') return false;
   if (SPOT_FNS.has(fn)) { try { return spotOk(user, fn, args); } catch { return false; } }
   if (fn === 'setHandoverNote') { try { return handoverOk(user, args); } catch { return false; } }
+  if (TR_FNS.has(fn)) { try { return termReflectionOk(user, fn, args); } catch { return false; } }
   if (isAdmin(user)) return true;
   if (ADMIN_ONLY.has(fn)) return false;
   if (ANYONE.has(fn)) return true;
@@ -301,3 +302,17 @@ function handoverOk(user, [studentId, , by]) {
   return !!s && (s.advisorId === by || api.previousAdvisorOf(studentId) === by);
 }
 for (const f of ['carryOverGoal', 'closeGoal']) STUDENT_FNS.add(f);
+// ── Term reflection (api.openReflectionWindow, closeReflectionWindow, saveTermReflection, finishTermReflection) ──
+// Opening: an advisor for their own advisees (advisorId is their teacherId), whole-school staff (a coordinator) for any
+// advisory or a whole Year, as themselves; admins too. Closing early: whoever opened it, that advisory's advisor,
+// whole-school staff and admins. Writing: only the student, on their own reflection in a window that includes them.
+const TR_FNS = new Set(['openReflectionWindow', 'closeReflectionWindow', 'saveTermReflection', 'finishTermReflection']);
+function termReflectionOk(user, fn, args) {
+  if (fn === 'saveTermReflection' || fn === 'finishTermReflection') return user.kind === 'student' && !!user.studentId && args[1] === user.studentId && !!api.getReflectionWindow(args[0])?.studentIds.includes(user.studentId);
+  if (isAdmin(user)) return fn === 'closeReflectionWindow' || !args[1] || args[1] === user.teacherId;
+  if (!STAFF.includes(user.kind) || !user.teacherId) return false;
+  const whole = reachOf(user) === null;
+  if (fn === 'closeReflectionWindow') { const w = api.getReflectionWindow(args[0]); return !!w && (whole || w.by === user.teacherId || w.advisorId === user.teacherId); }
+  const spec = args[0] || {};
+  return args[1] === user.teacherId && (whole || (!spec.year && spec.advisorId === user.teacherId));
+}

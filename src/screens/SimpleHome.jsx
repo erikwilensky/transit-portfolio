@@ -151,7 +151,7 @@ function Tracks({ map, onOpen }) {
   );
 }
 
-function Steps({ n, at }) {
+export function Steps({ n, at }) {
   return <div className="sh-steps" aria-label={`Step ${at + 1} of ${n}`}>{Array.from({ length: n }, (_, i) => <i key={i} className={i <= at ? 'on' : ''} />)}</div>;
 }
 
@@ -254,7 +254,7 @@ const IDEAS = [
   [/math/i, ['Take part in a maths competition', 'Learn my times tables up to 15']],
   [/service|communit|environment|green/i, ['Help at a beach clean-up', 'Start a recycling bin in our classroom']],
 ];
-const ideasFor = (l) => IDEAS.find(([re]) => re.test(l.name))?.[1] || ['Join a new club', 'Try something I have never done'];
+export const ideasFor = (l) => IDEAS.find(([re]) => re.test(l.name))?.[1] || ['Join a new club', 'Try something I have never done'];
 const addDays = (n) => new Date(Date.parse(TODAY) + n * 864e5).toISOString().slice(0, 10);
 // Terms end in December, March and June (NIST's calendar, near enough for a target date).
 function whens() {

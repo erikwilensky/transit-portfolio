@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { overview } from '../auth.js';
 import '../auth.css';
 import './overview.css';
+import { YearReflections } from '../components/TermReflection.jsx';
 
 // School overview (server/routes/63-overview.mjs): counts by Year and by line, a weekly chart and quiet homerooms.
 // The server sends counts only; a group of 1 to 4 students arrives as "fewer than 5".
@@ -11,7 +12,7 @@ const fmtDay = (d) => new Date(`${d}T12:00:00`).toLocaleDateString('en-GB', { da
 const small = (v) => v === SMALL;
 const Val = ({ v }) => (small(v) ? <span className="ov-small">fewer than 5</span> : <>{v ?? '—'}</>);
 
-export default function Overview() {
+export default function Overview({ persona, version, toast }) {
   const [data, setData] = useState(null);
   const [err, setErr] = useState(null);
   const [id, setId] = useState('term');
@@ -67,6 +68,7 @@ export default function Overview() {
         <h2 id="ov-w">Moments each week</h2>
         <WeekBars weeks={r.weeks} />
       </section>
+      <YearReflections persona={persona} version={version} toast={toast} />
     </div>
   );
 }

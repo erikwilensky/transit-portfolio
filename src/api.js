@@ -1694,14 +1694,15 @@ export function quietAdvisees(advisorId) {
   return store.students.filter((s) => s.advisorId === advisorId && !s.cohortOnly).map((s) => ({ student: s, last: lastOwnMoment(s.id), nudge: lastNudge(s.id) }))
     .filter((q) => !q.last || q.last < since).sort((a, b) => a.student.name.localeCompare(b.student.name));
 }
-export function nudgeStudent(studentId, advisorId, text) {
+// about: what the nudge is for ('reflection:<windowId>': the notification opens the term reflection, not the add flow).
+export function nudgeStudent(studentId, advisorId, text, about) {
   const s = getStudent(studentId), t = teacherById[advisorId];
   if (!s || !t) throw Object.assign(new Error('No such student or advisor.'), { status: 400 });
   if (!canNudge(studentId)) throw Object.assign(new Error(`${s.name.split(' ')[0]} was nudged in the last ${NUDGE_GAP} days.`), { status: 409 });
   const msg = String(text ?? '').trim().slice(0, 500) || NUDGE_TEXT;
-  const n = { id: uid('nu-'), studentId, from: advisorId, text: msg, date: TODAY, ts: nowIso() };
+  const n = { id: uid('nu-'), studentId, from: advisorId, text: msg, date: TODAY, ts: nowIso(), ...(about ? { about: String(about).slice(0, 60) } : {}) };
   (store.nudges ||= []).push(n);
-  notify(toStudent(studentId), `${shortName(t.name)}: ${msg}`, { persona: toStudent(studentId), screen: 'map', param: 'add' });
+  notify(toStudent(studentId), `${shortName(t.name)}: ${msg}`, { persona: toStudent(studentId), screen: 'map', param: about ? 'reflect' : 'add' });
   log(studentId, t.name, 'nudge', 'Sent a nudge to add something');
   emit();
   return n;
@@ -2019,6 +2020,126 @@ export function handoverPreview(parsed) {
   return { fromYear: wasYear, year, newYear: !!(wasYear && year && wasYear !== year), changes, notes, groups: [...groups.values()].sort((a, b) => b.n - a.n) };
 }
 
+// ── Term reflection: a guided look back at the end of a term (src/components/TermReflection.jsx) ──
+// An advisor (their advisees) or whole-school staff (a whole Year) open a window; each student in it picks up to
+// TR_PICKS moments of the term, answers three short questions on each and sets one goal. Kept as a draft until they
+// finish; then it is a reflection station (reflectsOn: the moments) with one reflection per moment, plus the goal.
+// store.reflectionWindows: { id: 'rw-…', title, opens, closes, from, studentIds, advisorId, year, by, at, closedOn? }
+// store.termReflections: { id: 'tr-…', windowId, studentId, status: 'draft' | 'done', step, picks, answers: { [eventId |
+// '_']: { did, learned, next } }, goal: { goalId } | { title, lineId, date } | null, visibility, startedAt, savedAt,
+// doneAt, eventId, goalId }. Both made on first use.
+export const TR_PICKS = 3;
+const trErr = (m, status = 400) => Object.assign(new Error(m), { status });
+const isDay = (d) => /^\d{4}-\d{2}-\d{2}$/.test(String(d || ''));
+const trClip = (v, n) => String(v ?? '').slice(0, n);
+export const getReflectionWindows = () => store.reflectionWindows || [];
+export const getReflectionWindow = (id) => getReflectionWindows().find((w) => w.id === id) || null;
+export const windowOpen = (w) => !!w && !w.closedOn && w.opens <= TODAY && TODAY <= w.closes;
+const windowLive = (w) => !w.closedOn && w.closes >= TODAY; // open now or opening later
+export const termRecord = (windowId, studentId) => (store.termReflections || []).find((r) => r.windowId === windowId && r.studentId === studentId) || null;
+// Terms start in August, January and April (NIST's calendar, near enough to choose "this term's" moments).
+export const termStartOf = (d) => { const y = d.slice(0, 4), m = +d.slice(5, 7); return m >= 8 ? `${y}-08-01` : m >= 4 ? `${y}-04-01` : `${y}-01-01`; };
+export const termName = (d = TODAY) => { const m = +d.slice(5, 7); return `Term ${m >= 8 ? 1 : m >= 4 ? 3 : 2} reflection`; };
+// The end of next term: a goal's date ("By the end of next term").
+export const nextTermEnd = (d = TODAY) => { const y = +d.slice(0, 4) - (+d.slice(5, 7) < 8 ? 1 : 0); return [`${y}-12-11`, `${y + 1}-03-26`, `${y + 1}-06-11`, `${y + 1}-12-11`].filter((x) => x > d)[1]; };
+// Students a spec covers: an advisor's advisees, or everyone in a British Year.
+const trStudents = ({ advisorId, year }) => store.students.filter((s) => !s.cohortOnly && (advisorId ? s.advisorId === advisorId : s.grade + 1 === Number(year)));
+export function openReflectionWindow({ title, opens = TODAY, closes, advisorId = null, year = null } = {}, by = null) {
+  if (by && !teacherById[by]) throw trErr('No such teacher');
+  if (!advisorId === !year) throw trErr('Pick an advisory or a Year');
+  if (advisorId && !teacherById[advisorId]) throw trErr('No such advisor');
+  const name = String(title || '').trim().slice(0, 80) || termName(opens);
+  if (!isDay(opens) || !isDay(closes) || closes < opens || closes < TODAY) throw trErr('Pick when it opens and closes');
+  const busy = new Set(getReflectionWindows().filter(windowLive).flatMap((w) => w.studentIds));
+  const all = trStudents({ advisorId, year }), ids = all.map((s) => s.id).filter((id) => !busy.has(id));
+  if (!ids.length) throw trErr(all.length ? 'These students already have a reflection open' : 'No students to ask', all.length ? 409 : 400);
+  const w = { id: uid('rw-'), title: name, opens, closes, from: termStartOf(opens), studentIds: ids, advisorId: advisorId || null, year: year ? Number(year) : null, by: by || null, at: nowIso() };
+  (store.reflectionWindows ||= []).push(w);
+  if (opens <= TODAY) for (const sid of ids) notify(toStudent(sid), `${name} is open: look back on your term and pick what you are proud of`, { persona: toStudent(sid), screen: 'map', param: 'reflect' });
+  emit();
+  return w;
+}
+export function closeReflectionWindow(id) {
+  const w = getReflectionWindow(id);
+  if (!w) throw trErr('No such reflection', 404);
+  w.closedOn = TODAY;
+  emit();
+  return w;
+}
+// A student's open window that they have not finished yet (the earliest to close), with their draft.
+export function myReflection(studentId) {
+  const w = getReflectionWindows().filter((x) => windowOpen(x) && x.studentIds.includes(studentId) && termRecord(x.id, studentId)?.status !== 'done').sort((a, b) => a.closes.localeCompare(b.closes))[0];
+  return w ? { window: w, record: termRecord(w.id, studentId) } : null;
+}
+// The moments to look back on: this term's (newest first); with fewer than six, the latest earlier ones too (earlier: true).
+export function termMoments(studentId, w) {
+  const evs = getStudentMap(studentId, 'student').events.filter((e) => e.type !== 'goal' && e.type !== 'reflection' && e.date <= TODAY).sort((a, b) => b.date.localeCompare(a.date));
+  const now = evs.filter((e) => e.date >= (w?.from || TERM_START));
+  return [...now, ...evs.filter((e) => !now.includes(e)).slice(0, Math.max(0, 6 - now.length)).map((e) => ({ ...e, earlier: true }))];
+}
+function trClean(studentId, d = {}) {
+  const mine = new Set(store.events.filter((e) => e.studentId === studentId && e.type !== 'goal' && e.type !== 'reflection').map((e) => e.id));
+  const picks = [...new Set([].concat(d.picks || []))].filter((id) => mine.has(id)).slice(0, TR_PICKS);
+  const answers = {};
+  for (const k of [...picks, '_']) { const a = d.answers?.[k]; if (a && typeof a === 'object') answers[k] = { did: trClip(a.did, 1000), learned: trClip(a.learned, 1000), next: trClip(a.next, 1000) }; }
+  const g = d.goal;
+  const own = g?.goalId && store.events.find((e) => e.id === g.goalId && e.studentId === studentId && e.type === 'goal');
+  const goal = own ? { goalId: own.id } : g && typeof g === 'object' && (g.title || g.lineId || g.date) ? { title: trClip(g.title, 120), lineId: typeof g.lineId === 'string' ? g.lineId : null, date: isDay(g.date) ? g.date : null } : null;
+  return { picks, answers, goal, visibility: ['private', 'advisor', 'school'].includes(d.visibility) ? d.visibility : 'advisor', step: Number.isInteger(d.step) ? Math.max(0, Math.min(20, d.step)) : 0 };
+}
+function trOpenFor(windowId, studentId) {
+  const w = getReflectionWindow(windowId), s = getStudent(studentId);
+  if (!w || !s || !w.studentIds.includes(studentId)) throw trErr('This reflection is not for you', 404);
+  if (!windowOpen(w)) throw trErr('This reflection is closed', 410);
+  const r = termRecord(windowId, studentId);
+  if (r?.status === 'done') throw trErr('You already finished this', 409);
+  return { w, s, r };
+}
+// Keeps the student's progress so they can come back to it.
+export function saveTermReflection(windowId, studentId, draft) {
+  let { r } = trOpenFor(windowId, studentId);
+  const at = nowIso();
+  if (!r) (store.termReflections ||= []).push(r = { id: uid('tr-'), windowId, studentId, status: 'draft', startedAt: at });
+  Object.assign(r, trClean(studentId, draft), { savedAt: at });
+  emit();
+  return r;
+}
+// "What I did. What I learned. What next." as one paragraph.
+const trText = (a) => ['did', 'learned', 'next'].map((k) => String(a?.[k] || '').trim()).filter(Boolean).map((t) => (/[.!?…]$/.test(t) ? t : `${t}.`)).join(' ');
+export function finishTermReflection(windowId, studentId, draft) {
+  const { w, s } = trOpenFor(windowId, studentId);
+  const f = trClean(studentId, draft);
+  const keys = f.picks.length ? f.picks : ['_'];
+  const texts = keys.map((k) => [k, trText(f.answers[k])]).filter(([, t]) => t);
+  if (!texts.length) throw trErr('Write a little about what you did first');
+  const g = f.goal;
+  if (g && !g.goalId && (!g.title || g.title.trim().length < 3 || !g.date || g.date <= TODAY || !lineById(g.lineId))) throw trErr('Finish your goal, or skip it');
+  const lanes = [...new Set(f.picks.map((id) => getEvent(id).lineIds.find((l) => s.laneOrder.includes(l))).filter(Boolean))];
+  const e = addStation(studentId, { title: w.title, type: 'reflection', lineIds: lanes.length ? lanes : s.laneOrder.slice(0, 1), summary: trClip(texts[0][1], 200), visibility: f.visibility, via: 'Term reflection' });
+  Object.assign(e, { reflectsOn: f.picks, termReflection: w.id });
+  for (const [k, text] of texts) store.reflections.push({ id: uid('rf-x'), eventId: e.id, about: k === '_' ? null : k, prompt: k === '_' ? 'Looking back at this term' : `Looking back at “${getEvent(k).title}”`, text, parts: f.answers[k], date: TODAY, visibility: f.visibility });
+  let goalId = g?.goalId || null;
+  if (g && !goalId) goalId = addGoal(studentId, { title: g.title.trim(), date: g.date, lineId: laneFor(s, g.lineId), summary: `My goal for next term, from my ${w.title}.`, checkIn: true }).id;
+  const r = saveTermReflection(windowId, studentId, f);
+  Object.assign(r, { status: 'done', doneAt: nowIso(), eventId: e.id, goalId });
+  log(studentId, s.name, 'reflection', `Finished “${w.title}”`);
+  emit();
+  return r;
+}
+// Who has finished: the students of one window (or only an advisor's advisees in it), alphabetically.
+export function reflectionProgress(windowId, advisorId) {
+  const w = getReflectionWindow(windowId); if (!w) return null;
+  const rows = w.studentIds.map(getStudent).filter((s) => s && (!advisorId || s.advisorId === advisorId)).sort((a, b) => a.name.localeCompare(b.name))
+    .map((s) => { const r = termRecord(w.id, s.id); return { student: s, status: r?.status === 'done' ? 'done' : r ? 'started' : 'not started', doneAt: r?.doneAt || null }; });
+  return { window: w, rows, total: rows.length, done: rows.filter((x) => x.status === 'done').length, started: rows.filter((x) => x.status === 'started').length };
+}
+// The advisory page: the latest window over this advisor's advisees, open now or closed in the last 30 days.
+export function advisoryReflection(advisorId) {
+  const mine = new Set(store.students.filter((s) => s.advisorId === advisorId).map((s) => s.id));
+  const w = getReflectionWindows().filter((x) => x.studentIds.some((id) => mine.has(id)) && (x.closedOn || x.closes) >= daysBefore(30)).sort((a, b) => b.opens.localeCompare(a.opens) || b.at.localeCompare(a.at))[0];
+  return w ? reflectionProgress(w.id, advisorId) : null;
+}
+
 // ── Shared record: with the pilot server, every change is replayed there ──
 // A screen calls a change below; it runs here at once (instant UI) while recording the ids and
 // times it made. The hook (src/sync.js) posts { fn, args, rec } to /api/action, and the server runs
@@ -2075,6 +2196,7 @@ addMomentComment = act('addMomentComment', addMomentComment); editMomentComment 
 reportItem = act('reportItem', reportItem); moderateReport = act('moderateReport', moderateReport);
 spotMoment = act('spotMoment', spotMoment); acceptSpotted = act('acceptSpotted', acceptSpotted); declineSpotted = act('declineSpotted', declineSpotted);
 setHandoverNote = act('setHandoverNote', setHandoverNote); carryOverGoal = act('carryOverGoal', carryOverGoal); closeGoal = act('closeGoal', closeGoal);
+openReflectionWindow = act('openReflectionWindow', openReflectionWindow); closeReflectionWindow = act('closeReflectionWindow', closeReflectionWindow); saveTermReflection = act('saveTermReflection', saveTermReflection); finishTermReflection = act('finishTermReflection', finishTermReflection);
 // Undo puts a whole earlier copy back, and reset goes back to the seed (sync.js sends it to /api/reset).
 restore = act('restore', restore); resetDemo = act('resetDemo', resetDemo);
 export const MUTATORS = Object.keys(ACTIONS);

@@ -1076,3 +1076,46 @@ not confirmed). Demo mode is unchanged: anyone with the address, cached for a ye
   index cache, the route's 404s and headers, demo mode); browser: `node scripts/checks/protected-files.cjs` (real roster
   from `TP_ROSTER`): Aaron Torres, Mr David Coultas, a teacher with no reach, a parent (family letter) and a signed-out
   browser, each in its own context.
+
+## Term reflection: a guided look back at the end of a term (`src/api.js`, `src/components/TermReflection.jsx`)
+
+An advisor (for their advisory) or a coordinator (for a whole Year) opens a reflection window; each student in it gets a
+card on their home, picks up to 3 moments of the term they are proud of, says what they did, learned and will do next,
+sets one goal, and finishes. Demo and pilot.
+
+- **Record** (made on first use): `store.reflectionWindows = [{ id: 'rw-…', title, opens, closes, from (term start, for
+  "this term's" moments), studentIds, advisorId | null, year | null, by, at, closedOn? }]` and `store.termReflections =
+  [{ id: 'tr-…', windowId, studentId, status: 'draft' | 'done', step, picks (≤ 3 event ids), answers: { [eventId | '_']:
+  { did, learned, next } }, goal: { goalId } | { title, lineId, date } | null, visibility, startedAt, savedAt, doneAt,
+  eventId, goalId }]`.
+- **Mutators**: `openReflectionWindow({ title, opens, closes, advisorId | year }, by)` (the advisor's advisees, or every
+  student in that British Year; students already in a live window are left out, 409 when none are left; notifies each
+  student with `go: map/reflect`); `closeReflectionWindow(id)`; `saveTermReflection(windowId, studentId, draft)` (the draft,
+  cleaned: own moments only, at most 3; 410 once closed, 409 once done); `finishTermReflection(windowId, studentId, draft)`:
+  a **reflection station** (`type: 'reflection'`, the window's title, on the picked moments' lines, `reflectsOn: [eventIds]`,
+  `termReflection: windowId`, the student's visibility: Only me / advisor / school) with one reflection per moment
+  (`about`, `prompt: Looking back at “…”`, `parts`), plus a new goal through `addGoal` (or a link to an existing one).
+  Reads: `myReflection(sid)`, `termMoments(sid, w)` (this term's, topped up with earlier ones to six),
+  `reflectionProgress(windowId, advisorId?)`, `advisoryReflection(advisorId)`, `termName()`, `nextTermEnd()`.
+- **canAct** (`TR_FNS` in `server/auth.mjs`, before the admin rule): open: an advisor for `advisorId` = their own
+  `teacherId`, whole-school staff for any advisory or a Year, as themselves; admins. Close: whoever opened it, its advisor,
+  whole-school staff, admins. Save and finish: only the student, their own, in a window that includes them (never staff,
+  admins or families).
+- **Scope**: windows go to whole-school roles whole, to staff when they cover a student in reach (only those ids), to a
+  covered student with only their own id; never to families. A student gets their own record whole; staff in reach only
+  `{ id, windowId, studentId, status, startedAt, doneAt, eventId }` (never a draft's words). The finished station follows
+  the usual visibility rules, so a family sees it only when the student's visibility reaches the family view
+  (`familyViewer`: Years 7–9 at advisor level), and "Only me" reaches nobody else. PDPA: `termReflections` is in the copy
+  and goes with erasure.
+- **Screens**: the student's home (every level, above the map): "Term 1 reflection" with Start / Carry on. Simple: one
+  screen at a time (look back as big cards; per moment the three questions with sentence starters; one goal from the
+  Simple goal pieces: ideas, colour, by the end of next term; review; finish). Standard and Full: one page (look back,
+  what it meant, goal: keep one / new / none, who can see it), "Save and finish later", then Review and Finish. My
+  advisory: "Term reflection" (open with title and dates), then "Reflections: 12 of 23 done", "Who hasn't finished" and
+  "Remind the rest (N)", which sends the existing nudge (`nudgeStudent(sid, tid, text, 'reflection:<windowId>')`: the
+  7-day gap applies; its notification opens the reflection, `#/<persona>/map/reflect`; the "Add something" banner skips
+  it). School overview: "Term reflections" (open for a Year; each window's done count; close). The conference sheet's
+  "Latest reflections" shows it (advisor copy; family copy by visibility).
+- Tests: `server/test/term-reflection.test.mjs`; browser: `node scripts/checks/term-reflection.cjs` (real roster: Ms Jane
+  Altemen opens it for 8C; Aaron Torres finishes at Simple on a phone; a classmate at Standard saves a draft, resumes in a
+  new browser and finishes "Only me"; reminders; conference sheet; families). Screenshots `tp-reflect-*.png`.
