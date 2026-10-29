@@ -1215,9 +1215,9 @@ store.events.push(
 const SEED = JSON.stringify(store);
 // The key carries a hash of the seed, so a deploy that changes the seed data starts everyone clean.
 const STORE_KEY = `tp-store-${[...SEED].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0, 2166136261).toString(36)}`;
-let saveTimer = null, applying = false, publicCopy = false;
+let saveTimer = null, applying = false, publicCopy = false, previewOnly = false;
 function persist() {
-  if (applying || publicCopy) return;
+  if (applying || publicCopy || previewOnly) return;
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     try { localStorage.setItem(STORE_KEY, JSON.stringify({ store, seq, at: Date.now() })); } catch { /* storage full or blocked: the demo still works in memory */ }
@@ -1236,7 +1236,7 @@ function apply(saved) {
 try { const raw = localStorage.getItem(STORE_KEY); if (raw) apply(JSON.parse(raw)); } catch { /* ignore a broken save */ }
 // Another tab changed the record: take its copy. Endorse on the laptop, see the badge flip on the iPad.
 // (With the pilot server, tabs keep in step through the server instead.)
-try { addEventListener('storage', (e) => { if (!hook && !publicCopy && e.key === STORE_KEY && e.newValue) { try { apply(JSON.parse(e.newValue)); } catch { /* ignore */ } } }); } catch { /* no window */ }
+try { addEventListener('storage', (e) => { if (!hook && !publicCopy && !previewOnly && e.key === STORE_KEY && e.newValue) { try { apply(JSON.parse(e.newValue)); } catch { /* ignore */ } } }); } catch { /* no window */ }
 export const isSaved = () => { try { return !!localStorage.getItem(STORE_KEY); } catch { return false; } };
 // F3: back to the seeded record, in every open tab.
 export function resetDemo() {
@@ -1707,7 +1707,7 @@ export function openNudge(studentId) {
 // times it made. The hook (src/sync.js) posts { fn, args, rec } to /api/action, and the server runs
 // the same function with the same values (runAction), so both copies end identical, ids and all.
 // Only the outermost call is sent: changes that call other changes (addBranch → addStation) replay whole.
-let hook = null, depth = 0, changeNo = 0;
+let hook = null, depth = 0, changeNo = 0, guard = null;
 export const setActionHook = (fn) => { hook = fn; };
 export const changeCount = () => changeNo; // outermost changes made in this page so far
 const ACTIONS = {};
@@ -1715,6 +1715,7 @@ const act = (name, fn) => {
   ACTIONS[name] = fn;
   return (...args) => {
     if (depth) return fn(...args);
+    if (guard?.(name, args)) return undefined; // admin "See as" preview: refused before it runs (setActionGuard)
     const rec = tape = []; depth++;
     let out;
     try { out = fn(...args); } finally { depth--; tape = null; }
@@ -1756,3 +1757,8 @@ nudgeStudent = act('nudgeStudent', nudgeStudent);
 // Undo puts a whole earlier copy back, and reset goes back to the seed (sync.js sends it to /api/reset).
 restore = act('restore', restore); resetDemo = act('resetDemo', resetDemo);
 export const MUTATORS = Object.keys(ACTIONS);
+
+// Admin "See as" (src/preview.js): another account's copy of the record, shown read-only. Never saved in this
+// browser, never takes another tab's save, and every change is offered to the guard first (true: refused, not run).
+export const setActionGuard = (fn) => { guard = fn; };
+export function loadPreview(snap) { previewOnly = true; clearTimeout(saveTimer); apply(snap); }

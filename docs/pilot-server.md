@@ -785,3 +785,31 @@ How far the rollout has got: who has set a password, who is using it, who has a 
   only accounts with no password; it replaces their earlier links). On the advisory page a strip "Signed up 14 of 23 ·
   Families 3 of 23 · Active this week 9" with "Who's missing" (not signed up; no family account).
 - Tests: `server/test/progress.test.mjs`; `node scripts/checks/signup-progress.cjs` (the real roster: 8C, Ms Jane Altemen).
+## See as: an admin's read-only preview of any account (`server/routes/18-preview.mjs`, `src/preview.js`)
+
+Testing several accounts in one browser is confusing (one browser holds one sign-in). Instead, Accounts gives every
+row but your own a **See as <first name>** link: the app as that person sees it, read-only, while the admin stays
+signed in as themselves. No session swap, no cookie change.
+
+- `GET /api/admin/preview/:accountId` (admin only; 401 signed out, 403 anyone else, 404 unknown) →
+  `{ user, snapshot, rev }`: `user` is the account as `/api/auth/me` gives it to them (`me()` in `10-auth.mjs`, with
+  the linked record), `snapshot` their scoped copy (`scopedSnapshot`, as their own `/api/state` would be). Never a
+  password hash, setup token or session. Each start writes one line to `DATA_DIR/audit.log` (the PDPA audit file):
+  `{ at, action: 'preview', by: <admin id>, accountId, kind }`, no content. Admin accounts can be previewed too.
+- Browser: `#/preview/<accountId>` (same tab, or a new tab with Ctrl/Cmd-click) remembers the account for that tab
+  only (`sessionStorage` `tp-preview`, so a reload stays in the preview and other tabs are the admin's own view),
+  fetches the preview and loads it with `api.loadPreview` instead of starting sync: no `/api/stream`, no `/api/state`,
+  nothing posted, and the copy is never saved to this browser's `localStorage` (nor replaced by another tab's save).
+  The persona is `personaFor(user)`, so nav, home and a student's interface level are theirs.
+- Read-only: `api.setActionGuard` sees every change before it runs. One the viewer asked for (a click, a key) shows
+  "Preview only: nothing is saved" and throws, so the screen stops where it is; one a screen makes on its own (an
+  effect or timer, e.g. reading the bell) is skipped quietly. Any other non-GET `/api/*` request (`fetch` or XHR:
+  uploads, feedback, sign-in cards) is refused in the page with the same message. The account menu (password, sign
+  out) is hidden. Uploaded files (`GET /api/files/*`) open as usual.
+- The banner across the top: "Seeing the portfolio as Aaron Torres (Year 8, 8C). Read-only." (staff and families:
+  the role their header shows) and **Exit preview**, which forgets the preview and reloads into `#/me/accounts`.
+- Tests: `server/test/preview.test.mjs` (admin only, scoped copy, no secrets, audit lines); browser:
+  `node scripts/checks/see-as.cjs` (the real roster from `TP_ROSTER`, skipped without it): Aaron Torres, Mr David
+  Coultas, Ms Jane Altemen (advisor of 8C), a coordinator and a parent each compared with their own sign-in; a moment
+  added in the preview is refused and the server's rev is unchanged; nothing synced; Exit returns to Accounts; the
+  admin's cookie, sign-in and saved record are unchanged.

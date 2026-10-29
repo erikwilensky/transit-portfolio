@@ -12,6 +12,8 @@ import './print.css';
 import { registerServiceWorker } from './pwa.js';
 import { UpdateBar } from './components/PhoneApp.jsx';
 import { RefusedBar } from './components/Refused.jsx';
+import { PreviewBar } from './components/PreviewBar.jsx';
+import { previewTarget, startPreview, watchPreviewLinks } from './preview.js';
 
 // Pilot mode: sign in first (public share, verify and family links stay open). Demo mode: straight into the app.
 const isPublic = () => /^#\/?(s|v|p)(\/|$)/.test(location.hash);
@@ -38,11 +40,15 @@ function Root() {
 // or once signed in. Never on public share and verify pages (they read /api/public/*); if a reader
 // moves on from one into the app, start then.
 const mayShare = () => { const a = getAuth(); return a.server && (a.mode !== 'pilot' || !!a.user); };
-const render = () => createRoot(document.getElementById('root')).render(<><Root /><UpdateBar /><RefusedBar /></>);
+const render = () => createRoot(document.getElementById('root')).render(<><PreviewBar /><Root /><UpdateBar /><RefusedBar /></>);
 registerServiceWorker(); // the phone app (src/pwa.js)
 loadAuth().then(() => {
   if (getAuth().mode === 'pilot') useLiveDate(); // a pilot runs on the real calendar, like its server
   if (!mayShare()) return render();
+  // Admin "See as" (src/preview.js): that person's copy, read-only, and no sync. If it cannot start, the admin's own view.
+  watchPreviewLinks();
+  const pv = getAuth().mode === 'pilot' && previewTarget();
+  if (pv) return startPreview(pv).then((on) => (on ? render() : startSync().finally(render)));
   if (!isPublicRoute()) return startSync().finally(render);
   render();
   const f = () => { if (!isPublicRoute()) { removeEventListener('hashchange', f); startSync(); } };

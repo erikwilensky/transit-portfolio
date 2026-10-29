@@ -17,7 +17,7 @@ const sameOrigin = (req) => { const o = req.headers.origin; if (!o) return true;
 
 // Mostly what the browser needs to build a persona, plus the linked record (so a browser
 // without the live record yet still knows a newly created student or teacher).
-function me(a) {
+export function me(a) {
   const user = A.publicUser(a);
   if (!user) return null;
   if (a.studentId) user.record = { student: api.getStudent(a.studentId) || null };
