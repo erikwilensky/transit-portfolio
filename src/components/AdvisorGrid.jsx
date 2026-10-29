@@ -6,6 +6,7 @@ import { isPilot } from '../auth.js';
 import { AdvisorCards } from './SignInCards.jsx';
 import { AdvisorFamily } from './FamilyLetters.jsx';
 import { QuietGroup } from './Nudges.jsx';
+import { AdvisorProgress } from './SignupProgress.jsx';
 
 export default function AdvisorGrid({ advisorId, onOpen, toast, version }) {
   const cohort = useMemo(() => getCohort(advisorId), [advisorId, version]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -26,6 +27,7 @@ export default function AdvisorGrid({ advisorId, onOpen, toast, version }) {
           <span><b>{cohort.reduce((n, c) => n + c.openSignals, 0)}</b> open reflection signals</span>
         </div>
       </div>
+      {isPilot() && <AdvisorProgress version={version} />}
       {isPilot() && <AdvisorCards toast={toast} />}
       {isPilot() && <AdvisorFamily toast={toast} />}
       <QuietGroup advisorId={advisorId} toast={toast} version={version} />

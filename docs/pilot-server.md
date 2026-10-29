@@ -738,3 +738,23 @@ The site installs on a phone's home screen, in demo and pilot alike.
   reading, done, PDPA copy and erasure), `server/test/nudges.test.mjs` (quiet rules); browser:
   `node scripts/checks/feedback-nudges.cjs` (the real roster from `TP_ROSTER`, skipped without it; screenshots to
   `SCRATCH` or the temp folder).
+
+## Sign-up progress (`server/routes/62-progress.mjs`, `src/components/SignupProgress.jsx`)
+
+How far the rollout has got: who has set a password, who is using it, who has a family account. Counts only.
+- **Last sign-in**: every new session (`A.startSession`: password, setup link, family join) writes `account.lastSignInAt`.
+  "Last here" is the later of that and the account's last request in `usage.json` (`lastSeenAll()` in 60-usage).
+  **Active** = has a password and was last here in the last 7 days. **Added a moment** = at least one non-goal event in
+  the record. **Family joined** = at least one `parent` account with the student in `children`. Paused accounts are left out.
+- **`GET /api/admin/progress?homeroom=`** (admin or leadership): `{ today, homerooms: [{ name, year, students, signedUp,
+  waiting, active, moments, families }], totals, staff: { rows: [{ kind, total, signedUp, active }], total }, students? }`,
+  homerooms sorted by Year then name; `waiting` = has an account but no password. With `homeroom`, `students: [{ id, name,
+  homeroom, year, hasAccount, signedUp, active, moment, families, lastSignIn }]`.
+- **`GET /api/advisor/progress`** (staff whose `teacherId` is their advisees' `advisorId`; 403 for anyone with no advisees):
+  `{ total, signedUp, active, families, students }`.
+- **Screens** (pilot only): "Sign-up progress" on Pilot usage: a row per homeroom with inline bars, a totals row and a row
+  per staff role; a homeroom opens its students with a chip (Not signed up / Signed up / Active this week) and the last
+  day they were here. The admin also gets "Print N sign-in cards" per homeroom (`POST /api/admin/cards { homerooms: [name] }`,
+  only accounts with no password; it replaces their earlier links). On the advisory page a strip "Signed up 14 of 23 ·
+  Families 3 of 23 · Active this week 9" with "Who's missing" (not signed up; no family account).
+- Tests: `server/test/progress.test.mjs`; `node scripts/checks/signup-progress.cjs` (the real roster: 8C, Ms Jane Altemen).

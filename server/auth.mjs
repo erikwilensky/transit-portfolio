@@ -117,8 +117,10 @@ export function accountBySetup(t) {
 // ── Sessions: random token in a cookie, its hash on disk, 30 days ──
 const prune = () => { const now = Date.now(); let n = 0; for (const [k, s] of Object.entries(sessions)) if (s.expiresAt < now || !accountById(s.userId)) { delete sessions[k]; n++; } return n; };
 if (prune()) saveSessions();
+// Every successful sign-in (password, setup link, family join) notes lastSignInAt on the account, for sign-up progress.
 export function startSession(userId) {
   const t = token();
+  const a = accountById(userId); if (a) { a.lastSignInAt = new Date().toISOString(); saveAccounts(); }
   sessions[sha(t)] = { userId, createdAt: Date.now(), expiresAt: Date.now() + SESSION_DAYS * 864e5 };
   prune(); saveSessions();
   return { token: t, maxAge: SESSION_DAYS * 86400 };

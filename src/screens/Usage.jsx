@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { admin } from '../auth.js';
 import '../auth.css';
 import { FeedbackList } from '../components/Feedback.jsx';
+import { SchoolProgress } from '../components/SignupProgress.jsx';
 
 const ROLE = { student: 'Students', parent: 'Families', advisor: 'Advisors', teacher: 'Subject teachers', counsellor: 'Counsellors', coordinator: 'Coordinators', leadership: 'Leadership', admin: 'Pilot admin' };
 const STATUS = { today: 'Today', week: 'This week', earlier: 'Earlier', never: 'Never' };
@@ -47,6 +48,7 @@ export default function Usage() {
         <div className="tile"><b>{t.never}</b><span>never signed in</span></div>
         <div className="tile"><b>{t.changes || 0}</b><span>changes since the pilot began</span></div>
       </div>
+      <SchoolProgress />
       <FeedbackList />
       <section className="card-sec">
         <h2>People active each week</h2>

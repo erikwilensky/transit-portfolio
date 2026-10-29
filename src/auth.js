@@ -85,6 +85,11 @@ export const family = {
   forAdmin: (body) => call('POST', '/api/admin/family/letters', body),
   unlink: (studentId, accountId) => call('POST', '/api/family/unlink', { studentId, accountId }),
 };
+// Sign-up progress (server/routes/62-progress.mjs): by homeroom for leadership and the admin; an advisor's own advisees.
+export const progress = {
+  school: (homeroom) => call('GET', `/api/admin/progress${homeroom ? `?homeroom=${encodeURIComponent(homeroom)}` : ''}`),
+  advisees: () => call('GET', '/api/advisor/progress'),
+};
 // Pilot feedback (server/routes/65-feedback.mjs): anyone signed in sends; leadership and the pilot admin read.
 export const feedback = {
   send: (body) => call('POST', '/api/feedback', body),
