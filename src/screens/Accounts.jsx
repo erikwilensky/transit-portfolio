@@ -8,6 +8,8 @@ import '../auth.css';
 
 const ago = (iso) => { const m = Math.round((Date.now() - new Date(iso)) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`; };
 
+// "See as" (src/preview.js): "Mr David Coultas" → David.
+const firstName = (n) => n.replace(/^(Mr|Mrs|Ms|Miss|Dr|Kru|Khun)\.?\s+/i, '').split(/\s+/)[0];
 const ROLES = [['student', 'Student'], ['parent', 'Parent or carer'], ['advisor', 'Advisor'], ['teacher', 'Subject teacher'], ['counsellor', 'University counsellor'], ['coordinator', 'Coordinator'], ['leadership', 'Leadership'], ['admin', 'Pilot admin (no record)']];
 const ROLE_NAME = Object.fromEntries(ROLES);
 const STAFF = ['advisor', 'teacher', 'counsellor', 'coordinator', 'leadership'];
@@ -96,6 +98,7 @@ export default function Accounts({ toast, persona }) {
               <td><div className="acc-actions">
                 {a.id !== persona.account?.id && <>
                   {a.paused && <button className="auth-btn" onClick={() => run(signinCards.unpause(a.id), () => toast(`${a.name} can sign in again`))}>Unpause</button>}
+                  <a className="ghost acc-see" href={`#/preview/${a.id}`} title={`The app as ${a.name} sees it, read-only. You stay signed in as yourself.`}>See as {firstName(a.name)}</a>
                   <button className="ghost" onClick={() => edit(a)}>Edit</button>
                   <button className="ghost" onClick={() => newLink(a)}>New setup link</button>
                   {confirm === a.id ? <button className="ghost danger" onClick={() => run(admin.remove(a.id), () => { setConfirm(null); toast(`Removed ${a.name}. Their record stays.`); })}>Yes, remove</button>
