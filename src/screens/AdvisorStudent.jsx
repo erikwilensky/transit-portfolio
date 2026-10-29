@@ -7,6 +7,7 @@ import MetroMap from '../components/MetroMap.jsx';
 import StationPanel from '../components/StationPanel.jsx';
 import { SignInHelp } from './SignIn.jsx';
 import { isPilot } from '../auth.js';
+import { ConferenceSheets } from '../components/ConferenceSheets.jsx';
 
 const daysBetween = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
 
@@ -20,6 +21,8 @@ export default function AdvisorStudent({ studentId, version, toast, go, persona,
   const notes = getNotes(studentId);
   const [meeting, setMeeting] = useState(false);
   const [parent, setParent] = useState(false);
+  const [sheet, setSheet] = useState(false);
+  const one = useMemo(() => [studentId], [studentId]);
   const g = growth(studentId);
   const prompts = getPrompts(studentId);
   const s = map.student;
@@ -44,6 +47,7 @@ export default function AdvisorStudent({ studentId, version, toast, go, persona,
         <span className="pres-avatar" style={{ background: s.avatar.colour, color: inkOn(s.avatar.colour) }}>{s.avatar.initials}</span>
         <div><h1>{s.name}</h1><p>Year {s.grade + 1} · {s.programme} · advisor view (advisor, school and publishable items)</p></div>
         <span className="spacer" />
+        <button className="ghost" onClick={() => setSheet(true)}>Conference sheet</button>
         <button className="primary" onClick={() => setMeeting(true)}>Start meeting mode</button>
       </div>
       <div className="as-body">
@@ -92,6 +96,7 @@ export default function AdvisorStudent({ studentId, version, toast, go, persona,
           {isPilot() && <SignInHelp studentId={studentId} first={first} />}
         </aside>
       </div>
+      {sheet && <ConferenceSheets studentIds={one} advisorId={persona.teacherId} title={`${s.name} – Conference sheet`} onClose={() => setSheet(false)} />}
       {meeting && <MeetingMode studentId={studentId} agenda={agenda} advisorId={persona.teacherId} version={version} toast={toast} onClose={() => setMeeting(false)} />}
     </div>
   );

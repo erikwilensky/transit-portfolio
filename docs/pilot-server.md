@@ -844,3 +844,24 @@ counsellor's draft comments (`store.comments`, `addComment`, `DraftComments.jsx`
 - Tests: `server/test/moment-comments.test.mjs`; browser: `node scripts/checks/moment-comments.cjs` (the real roster
   from `TP_ROSTER`; Aaron Torres, Mr David Coultas, Ms Jane Altemen, a linked parent, a teacher out of reach;
   screenshots to the temp folder as `tp-comments-*.png`).
+
+## Conference sheets (`src/conference.js`, `src/conference-points.js`, `src/components/ConferenceSheets.jsx`)
+
+A printable A4 one-pager per student for a parent-student-advisor conference, made in the browser from the record the
+advisor already has (no new route, no mutator). Two ways in: **Conference sheet** on the advisor's page for one student,
+and **Print conference sheets** on the advisory page (all students, or tick some). Both open a full-screen sheet view with
+**Print** and a **Family copy** switch; printing shows only the sheets, one per page (`@page conference`, A4, no margins).
+
+- `conferenceSheet(studentId, { family })` reads `getStudentMap(id, 'advisor')`, so private moments and private
+  reflections never appear (the pilot server never sends them to an advisor anyway). It returns this term's moments
+  (`TERM_START` to `TODAY`) by line, the 3 latest reflections, goals with a status (Due soon within 6 weeks, Planned,
+  Past its date, Done this term), endorsements received, class-question answers (stations from `Class question`) and,
+  for the advisor copy only, `staff`: moment-comment count, the last two advisor notes and open reflection signals.
+- Family copy: `family: true` reads the map as the family view does (`familyViewer`: Years 7 to 9 at advisor level, from
+  Year 10 what the student shares with the school) and leaves `staff` out, so the advisor can hand it over.
+- `talkingPoints({ first, lines, goals, moments, reflections, endorsements })` is pure (tested in
+  `server/test/conference-points.test.mjs`): the busiest line, a line with nothing this term, the next goal (or one past
+  its date), then fallbacks; always three, never repeated.
+- Footer: "Prepared by <advisor> on <date> · confidential to the student, family and school". Each sheet is a fixed A4
+  page; the moment list shortens as lines grow, and the note lines in the talking-points box give way first.
+- Check: `scripts/checks/conference-sheets.cjs` (real roster: Ms Jane Altemen's advisory 8C, 23 sheets, 23 PDF pages).
