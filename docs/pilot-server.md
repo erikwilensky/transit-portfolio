@@ -27,7 +27,7 @@ Run: `npm run build && npm run server` (port 8787, or PORT). In dev: `npm run se
 - **Routes**: `/api/state`, `/api/action`, `/api/undo`, `/api/stream`, `/api/reset` (shared record);
   `/api/upload`, `/api/files/:name` (files); `/api/public/*` (share links and verify, no sign-in);
   `/api/auth/*`, `/api/admin/*` (sign-in and accounts); `/api/me/export`, `/api/admin/students/:id/*`
-  (PDPA copy and erasure); `/api/admin/usage` (pilot usage); `/api/feedback`, `/api/admin/feedback` (feedback); `/api/health`.
+  (PDPA copy and erasure); `/api/admin/usage` (pilot usage); `/api/feedback`, `/api/admin/feedback` (feedback); `/api/overview` (school overview); `/api/health`.
 - **Sign-in guard**: the auth module pushes a function onto `middleware` that sets `req.user`
   (or null) on every /api request and refuses unsigned requests in pilot mode, except
   `/api/health`, `/api/public/*`, `/api/auth/*` and `GET /api/files/*`.
@@ -962,3 +962,27 @@ Demo and pilot (the Reports screen is in the pilot nav only). No automatic filte
 - Tests: `server/test/safeguarding.test.mjs`; browser: `node scripts/checks/safeguarding.cjs` (the real roster from
   `TP_ROSTER`, skipped without it): Aaron Torres adds a moment with a photo, a parent joins by the family letter and sees it,
   Mr David Coultas reports it, a coordinator hides it from Reports, Aaron sees the notice, the parent no longer sees it.
+
+## School overview (`server/routes/63-overview.mjs`, `src/screens/Overview.jsx`)
+
+Aggregate counts for leadership, coordinators and the pilot admin. Computed on the server from the whole record, so
+no student data leaves it: no names, no ids, and any group of 1 to 4 students shows "fewer than 5" (0 is shown as 0).
+- **`GET /api/overview`** (leadership, coordinator or admin; 403 for everyone else) → `{ today, min: 5, ranges, quiet }`.
+  `ranges` = `[term, weeks4]`, each `{ id, label, from, to, years, totals, lines, weeks }`: "This term" from `TERM_START`,
+  "Last 4 weeks" the 28 days to `TODAY`.
+  - `years`: Year 7 to 13 (and `totals`, "All Years"): `{ year, students, signedUp, active, withMoment, moments, perStudent,
+    reflections, endorsements, families }`. Signed up, active (last 7 days) and families come from `context()` in
+    62-progress (paused accounts left out); moments are non-goal events in the range; reflections are those dated in the
+    range (plus reflection moments); endorsements those given in the range. A Year of 1 to 4 students hides every value;
+    otherwise any student count of 1 to 4 is hidden.
+  - `lines`: each school line (a sub-line counts for its school line; students' own lines in one "Students' own lines"
+    row) `{ id, name, moments, endorsedPct }` (endorsed = teacher-endorsed or has an endorsement); hidden when its
+    moments come from 1 to 4 students.
+  - `weeks`: 7-day buckets ending today `{ from, to, moments }`, hidden when from 1 to 4 students.
+  - `quiet`: homerooms of 5 or more where under 30% were active this week, `[{ name, pct }]`, lowest first.
+- **`GET /api/overview?format=csv&range=term|weeks4`**: the same as a CSV file (a section per table).
+- **Screen** (pilot only): "School overview" in the nav of leadership, coordinators and admins (`personaFor` in
+  src/auth.js): a This term / Last 4 weeks toggle, four tiles, the Year table, the line table with an endorsed bar,
+  Quiet groups and an inline SVG chart of moments per week (NIST navy, no gradients). "Download as CSV" fetches the CSV.
+- Tests: `server/test/overview.test.mjs`; `node scripts/checks/school-overview.cjs` (the real roster: 8 students of the
+  first Year 8 homeroom, leadership, a coordinator and a subject teacher picked from the file).

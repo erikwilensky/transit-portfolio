@@ -8,6 +8,7 @@ import { PERSONAS, KIND_LABEL, NAV, personaById, home, navOf, pilotPersona } fro
 import Accounts from './screens/Accounts.jsx';
 import Usage from './screens/Usage.jsx';
 import Reports from './screens/Reports.jsx';
+import Overview from './screens/Overview.jsx';
 import { isModerator } from './api.js';
 import { AccountMenu, PasswordDialog } from './screens/SignIn.jsx';
 import { ago, appUrl, inkOn } from './format.js';
@@ -335,7 +336,8 @@ export default function App() {
           {persona.admin && route.screen === 'accounts' && <Accounts {...ctx} />}
           {pilot && route.screen === 'usage' && (persona.admin || persona.kind === 'leadership') && <Usage {...ctx} />}
           {isModerator(persona) && route.screen === 'reports' && <Reports {...ctx} focus={route.param} />}
-          {route.screen !== 'accounts' && route.screen !== 'usage' && route.screen !== 'reports' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} persona={persona} />}
+          {pilot && route.screen === 'overview' && (persona.admin || persona.kind === 'leadership' || persona.kind === 'coordinator') && <Overview {...ctx} />}
+          {route.screen !== 'accounts' && route.screen !== 'usage' && route.screen !== 'reports' && route.screen !== 'overview' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} persona={persona} />}
           </ErrorBoundary>
           {pilot && level === 'simple' && <div className="fb-simple"><button onClick={() => setFbOpen(true)}>Something not working? Tell us</button></div>}
         </main>
