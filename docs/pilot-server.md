@@ -27,7 +27,7 @@ Run: `npm run build && npm run server` (port 8787, or PORT). In dev: `npm run se
 - **Routes**: `/api/state`, `/api/action`, `/api/undo`, `/api/stream`, `/api/reset` (shared record);
   `/api/upload`, `/api/files/:name` (files); `/api/public/*` (share links and verify, no sign-in);
   `/api/auth/*`, `/api/admin/*` (sign-in and accounts); `/api/me/export`, `/api/admin/students/:id/*`
-  (PDPA copy and erasure); `/api/admin/usage` (pilot usage); `/api/feedback`, `/api/admin/feedback` (feedback); `/api/health`.
+  (PDPA copy and erasure); `/api/admin/usage` (pilot usage); `/api/feedback`, `/api/admin/feedback` (feedback); `/api/overview` (school overview); `/api/health`.
 - **Sign-in guard**: the auth module pushes a function onto `middleware` that sets `req.user`
   (or null) on every /api request and refuses unsigned requests in pilot mode, except
   `/api/health`, `/api/public/*`, `/api/auth/*` and `GET /api/files/*`.
@@ -395,8 +395,7 @@ only the students they work with. Demo mode still sends the whole record to ever
   so what the server computed on the whole record wins. Every change anywhere still bumps the stream, and
   each browser then refetches its own part. An address naming a student not in the person's part shows
   "This student is not in your part of the record" (advisor student page, reference letter).
-- **Files**: `GET /api/files/:name` stays public by an unguessable name (no sign-in, no reach check), so a
-  file's link works for anyone who has it, as a share link does.
+- **Files**: `GET /api/files/:name` follows the record too; see "Protected uploaded files" below.
 - Tests: `npm run test:server` (`server/test/scope.test.mjs`), `node scripts/checks/scope.cjs` (every role
   through a real pilot server and every screen it can reach), and the scoping part of `auth.cjs`.
 ## A student's data: a copy and erasure (`server/routes/50-pdpa.mjs`, `server/zip.mjs`)
@@ -962,3 +961,118 @@ Demo and pilot (the Reports screen is in the pilot nav only). No automatic filte
 - Tests: `server/test/safeguarding.test.mjs`; browser: `node scripts/checks/safeguarding.cjs` (the real roster from
   `TP_ROSTER`, skipped without it): Aaron Torres adds a moment with a photo, a parent joins by the family letter and sees it,
   Mr David Coultas reports it, a coordinator hides it from Reports, Aaron sees the notice, the parent no longer sees it.
+
+## School overview (`server/routes/63-overview.mjs`, `src/screens/Overview.jsx`)
+
+Aggregate counts for leadership, coordinators and the pilot admin. Computed on the server from the whole record, so
+no student data leaves it: no names, no ids, and any group of 1 to 4 students shows "fewer than 5" (0 is shown as 0).
+- **`GET /api/overview`** (leadership, coordinator or admin; 403 for everyone else) → `{ today, min: 5, ranges, quiet }`.
+  `ranges` = `[term, weeks4]`, each `{ id, label, from, to, years, totals, lines, weeks }`: "This term" from `TERM_START`,
+  "Last 4 weeks" the 28 days to `TODAY`.
+  - `years`: Year 7 to 13 (and `totals`, "All Years"): `{ year, students, signedUp, active, withMoment, moments, perStudent,
+    reflections, endorsements, families }`. Signed up, active (last 7 days) and families come from `context()` in
+    62-progress (paused accounts left out); moments are non-goal events in the range; reflections are those dated in the
+    range (plus reflection moments); endorsements those given in the range. A Year of 1 to 4 students hides every value;
+    otherwise any student count of 1 to 4 is hidden.
+  - `lines`: each school line (a sub-line counts for its school line; students' own lines in one "Students' own lines"
+    row) `{ id, name, moments, endorsedPct }` (endorsed = teacher-endorsed or has an endorsement); hidden when its
+    moments come from 1 to 4 students.
+  - `weeks`: 7-day buckets ending today `{ from, to, moments }`, hidden when from 1 to 4 students.
+  - `quiet`: homerooms of 5 or more where under 30% were active this week, `[{ name, pct }]`, lowest first.
+- **`GET /api/overview?format=csv&range=term|weeks4`**: the same as a CSV file (a section per table).
+- **Screen** (pilot only): "School overview" in the nav of leadership, coordinators and admins (`personaFor` in
+  src/auth.js): a This term / Last 4 weeks toggle, four tiles, the Year table, the line table with an endorsed bar,
+  Quiet groups and an inline SVG chart of moments per week (NIST navy, no gradients). "Download as CSV" fetches the CSV.
+- Tests: `server/test/overview.test.mjs`; `node scripts/checks/school-overview.cjs` (the real roster: 8 students of the
+  first Year 8 homeroom, leadership, a coordinator and a subject teacher picked from the file).
+## Spotted moments: a teacher saw something worth keeping (`src/api.js`, `src/components/Spotted.jsx`)
+
+A teacher, advisor or any staff member sees a student do something worth keeping and suggests it for their journey.
+It goes on the map only when the student accepts it.
+
+- Teacher: My classes, class page: "I spotted something" on each student row, or tick several students and press
+  "I spotted something (N)" to suggest the same moment to each. The advisor's student page has the same button. The
+  dialog asks for a title, a short note (optional, the student reads it), a line (default: the class's line, else the
+  teacher's subject line, else the first school line) and an optional photo (uploaded as elsewhere). Under the class
+  table (and as "You spotted" on the advisor's page) the teacher's suggestions show as Waiting, Added or Not added.
+- Student: at the top of the home at every level (a big card at Simple, a strip in the map home at Standard and Full):
+  "Mr Coultas spotted something you did", the title, note and photo, "Add to my journey" or "Not for me".
+- Mutators (replayed like the rest):
+  - `spotMoment(studentIds, teacherId, { title, note, image, lineId, classId })` → one `store.spotted[]` item per student
+    `{ id: 'sp-…', studentId, teacherId, classId, lineId, title, note, image, date, at, expires, status: 'open' }`
+    (`expires` = date + `SPOT_DAYS`, 30); notifies each student (`toStudent`). Needs a title and a school line.
+  - `acceptSpotted(id, studentId)` → a station (type project, visibility `school`, `spotted: { id, teacherId }`, the photo
+    as evidence) on the line (joins the map if missing; a sub-line of it if they have one), an endorsement by that teacher
+    (`verification: 'teacher-endorsed'`, the note as its text), and a notification to the teacher.
+  - `declineSpotted(id, studentId)` → `status: 'declined'`. Nobody is told. Accepting or declining twice, or after expiry, throws.
+  - Reads: `spottedFor(studentId)` (open, not expired), `spottedBy(teacherId, { classId, studentId })` (with
+    `shown`: waiting | added | not added), `spotStatus(x)`, `spotLineFor(teacherId, classId)`, `getSpotted(id)`.
+- canAct (`SPOT_FNS`, checked before the admin rule): `spotMoment`: staff (or an admin with a staff record) as their own
+  `teacherId`, for students in their reach (whole-school roles: any student). `acceptSpotted`/`declineSpotted`: only the
+  student it was made for. Staff, admins and families never do this for a student.
+- Scope: `store.spotted` goes to the student (their own) and to the teacher who made it. In the teacher's copy a declined
+  one carries `status: 'closed'` and no `decidedAt`, so it looks the same as one that expired ("Not added"). Nobody else
+  gets them, whole-school roles included. The accepted station follows the usual rules (`school` visibility reaches staff in reach).
+- PDPA: `spotted` is part of a student's copy and their erasure.
+- Tests: `server/test/spotted-moments.test.mjs`; browser: `node scripts/checks/spotted-moments.cjs` (the real roster, skipped
+  without it): Mr David Coultas spots for Aaron Torres in C-392000 with a photo and for two classmates at once; Aaron
+  accepts at Simple on a phone; one classmate declines at Standard; the teacher sees Added / Not added / Waiting.
+## Year handover (`src/api.js`, `src/components/YearHandover.jsx`, `server/scope.mjs`)
+
+When the new year's class lists are imported, students keep their whole journey, their new advisor and teachers see
+it, and the old advisor stops seeing students who are no longer theirs.
+
+- **Record**: `importRoster` notes every change of a student's advisor in `store.handovers = [{ id, studentId, from, to,
+  date, at, fromYear, year, newYear }]` (`fromYear`/`year` the file's `academicYear`). When the academic year changes it
+  sets `store.yearStart = { year, fromYear, date, at }`. Handover notes: `store.handoverNotes = [{ id, studentId, by, text,
+  at, year }]`, one per student per author. Read with `getHandovers()`, `latestHandover(sid)`, `previousAdvisorOf(sid)`,
+  `getYearStart()`, `getHandoverNote(sid, by)`, `newToAdvisor(tid)`, `lastYearOf(sid)` (previous advisor, their note,
+  last year's moments by line as an advisor sees them, goals carried over), `goalsToReview(sid)`, `handoverPreview(roster)`.
+- **Mutators**: `setHandoverNote(studentId, text, by)` (empty text removes it), `carryOverGoal(id, date)` (moves the date,
+  sets `carriedOver: { from, on }`; a bad or past date becomes `carryDate(old)`: a year on, at least a month ahead) and
+  `closeGoal(id)` (sets `closedOn`; the goal leaves every map, `getStudentMap`, and stays in the record).
+- **canAct**: `setHandoverNote` only by the student's current advisor or the advisor of their latest handover (`from`),
+  as themselves; admins, coordinators, leadership, counsellors and teachers may not write one. `carryOverGoal` and
+  `closeGoal` are in `STUDENT_FNS` (own goals) and follow reach for staff.
+- **Reach** (`teacherReach`): an ended class place (`to` before today) no longer counts. For a student whose latest
+  handover was from this teacher, only links made after the handover date count (their earlier prompts, comments,
+  requests, endorsements, sponsorships); being the advisor or teaching a current class still does. So the old advisor
+  keeps students she still teaches, and loses the rest.
+- **Scope**: handovers and notes go to staff only, never to a student or family. Notes: the student's current advisor,
+  the note's author and whole-school roles (subject teachers do not get them). `store.handedOver` gives the previous
+  advisor `{ studentId, name, grade, homeroom, to, date }` for students she handed over and no longer reaches, so she
+  can finish their notes.
+- **Screens** (pilot only): My advisory has "Write handover notes" (each advisee, with the prompt strengths, what helps,
+  what to watch; then "Students you handed over"), a "New to you" banner and tag; the student page has a "Last year"
+  panel. Accounts has "Start of year": what the import does, then the dry run's `handover` (`POST /api/admin/roster
+  { dryRun: true }` → `handover: { fromYear, year, newYear, changes, notes, groups: [{ from, to, n }] }`), also shown in a
+  normal import preview when advisors change. Students see "A new year: carry over or close" on their home for last
+  year's goals whose date has passed (`goalsToReview`: only once a new year has started).
+- Tests: `server/test/year-handover.test.mjs`; `node scripts/checks/year-handover.cjs` (real roster; the next year's
+  copy is made in a temp dir and deleted).
+## Protected uploaded files (`server/files.mjs`, `server/routes/30-uploads.mjs`, pilot only)
+
+In a pilot, `GET /api/files/:name` serves a file only to someone who may read a record that uses it. Anyone else,
+signed in or not, gets the same `404 { error: 'Not found' }` as a file that does not exist (never 403, so a name is
+not confirmed). Demo mode is unchanged: anyone with the address, cached for a year.
+
+- **`canSeeFile(user, name, meta)`** (`meta`: the `.json` beside the upload) is true for: the uploader (`meta.by`, the
+  account id), so a file attached to nothing yet is theirs alone; anyone, signed in or not, when an open share link
+  shows it (in `publicSnapshot(token)` of a link that is not revoked or expired: publishable moments, never hidden
+  ones, and the presentation's own images); admin and leadership for feedback screenshots; anyone whose own copy of the
+  record uses it (in `scopedSnapshot(user)`). That last rule gives the student their own files and, by `server/scope.mjs`,
+  staff with reach at the levels they may read (never private moments), the class's teachers for class answers, a
+  family only what the family view shows and not moments a moderator hid, and new store keys by the generic rule
+  (an array of `{ studentId }` follows reach). An admin's **See as** (`GET /api/admin/preview/:id`) also opens that
+  account's files for that admin for two hours (`previewing(admin, accountId)`).
+- **Fast**: `fileIndex()` maps file name → the students whose records use it (`'*'`: a record tied to no one),
+  built once after each change (keyed by the store's `rev` and the date). A file not in it goes to its uploader only; a
+  person with none of those students in reach is refused without building their copy. Each person's set of files
+  (from their scoped copy) and the share links' set are kept until the next change.
+- **Headers**: `Cache-Control: private, no-cache` and `Vary: Cookie`, so each view (a cheap 304 with the ETag) is
+  checked again and a file stops opening as soon as the record changes. Range requests are checked the same way.
+  `GET /api/files/*` stays outside the sign-in guard (no 401), so a share page's photos load signed out.
+- Tests: `server/test/protected-files.test.mjs` (every role, hidden moments, share links, class answers, See as, the
+  index cache, the route's 404s and headers, demo mode); browser: `node scripts/checks/protected-files.cjs` (real roster
+  from `TP_ROSTER`): Aaron Torres, Mr David Coultas, a teacher with no reach, a parent (family letter) and a signed-out
+  browser, each in its own context.

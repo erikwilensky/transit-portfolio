@@ -114,6 +114,7 @@ export function importRoster(parsed) {
   const roster = checked(parsed);
   const { writes, summary } = planRoster(roster, rosterCurrent(), rosterOpts());
   store.teachers ||= structuredClone(teachersData); store.classes ||= []; store.enrolments ||= []; store.drafts ||= {};
+  const wasAdvisor = new Map(store.students.map((x) => [x.id, x.advisorId])), wasYear = store.rosterImport?.school?.academicYear; // year handover
   // Indexed, so a whole school (about 1,000 students and 10,000 class places) imports in well under a second.
   const upsert = (list, ws, key = (x) => x.id, wkey = (w) => w.id) => {
     const at = new Map(list.map((x) => [key(x), x]));
@@ -126,6 +127,7 @@ export function importRoster(parsed) {
   const ends = new Map(writes.endEnrolments.map((x) => [pair(x), x.to]));
   if (ends.size) for (const e of store.enrolments) if (ends.has(pair(e))) e.to = ends.get(pair(e));
   store.rosterImport = { school: roster.school, at: nowIso(), summary };
+  noteHandovers(wasAdvisor, wasYear, roster);
   emit();
   return summary;
 }
@@ -187,7 +189,7 @@ export function getStudentMap(studentId, viewer = 'student', opts = {}) {
   const allowed = VISIBLE_TO[viewer];
   const noHidden = opts.family || viewer === 'school' || viewer === 'public';
   const events = store.events
-    .filter((e) => e.studentId === studentId && allowed.includes(e.visibility) && !(noHidden && e.hidden))
+    .filter((e) => e.studentId === studentId && allowed.includes(e.visibility) && !(noHidden && e.hidden) && !(e.type === 'goal' && e.closedOn))
     .map((e) => ({
       ...e,
       // Reflections carry their own visibility (private by default).
@@ -1865,6 +1867,158 @@ export function moderateReport(id, action, note, by) {
   return r;
 }
 
+// ── Spotted moments: a teacher saw a student do something worth keeping (src/components/Spotted.jsx) ──
+// store.spotted: { id: 'sp-…', studentId, teacherId, classId, lineId, title, note, image, date, at, expires, status:
+// 'open' | 'accepted' | 'declined', decidedAt, eventId }. A suggestion until the student accepts it; then a station on
+// that line, marked spotted by the teacher and endorsed by them. Open ones expire SPOT_DAYS after they were made.
+export const SPOT_DAYS = 30;
+const spots = () => (store.spotted ||= []);
+export const getSpotted = (id) => spots().find((x) => x.id === id);
+const spotOpen = (x) => x.status === 'open' && x.expires >= TODAY;
+// What the teacher sees: waiting, added, or "not added" (declined and expired look the same).
+export const spotStatus = (x) => (x.status === 'accepted' ? 'added' : spotOpen(x) ? 'waiting' : 'not added');
+const spotView = (x) => ({ ...x, teacher: teacherById[x.teacherId] || null, line: lineById(x.lineId) || null, className: (x.classId && classById(x.classId)?.name) || '' });
+// A student's open suggestions, oldest first.
+export const spottedFor = (studentId) => spots().filter((x) => x.studentId === studentId && spotOpen(x)).sort((a, b) => a.at.localeCompare(b.at)).map(spotView);
+// The suggestions a teacher made, newest first; optionally only for one class or one student.
+export const spottedBy = (teacherId, { classId, studentId } = {}) => spots().filter((x) => x.teacherId === teacherId && (!classId || x.classId === classId) && (!studentId || x.studentId === studentId))
+  .sort((a, b) => b.at.localeCompare(a.at) || b.id.localeCompare(a.id)).map((x) => ({ ...spotView(x), student: getStudent(x.studentId) || null, shown: spotStatus(x) }));
+// The line a spotted moment starts on: the class's line, else the teacher's subject line, else the first school line.
+export const spotLineFor = (teacherId, classId) => (classId && classById(classId)?.lineId) || subjectLineOf(teacherId) || getSchoolLines()[0]?.id || null;
+const spotErr = (m, status = 400) => Object.assign(new Error(m), { status });
+export function spotMoment(studentIds, teacherId, { title, note = '', image = null, lineId, classId = null } = {}) {
+  const t = teacherById[teacherId];
+  if (!t) throw spotErr('No such teacher');
+  const ids = [...new Set([].concat(studentIds || []))];
+  if (!ids.length || ids.some((sid) => !getStudent(sid))) throw spotErr('Pick the students first');
+  const name = String(title || '').trim().slice(0, 120);
+  if (name.length < 3) throw spotErr('Give it a title');
+  if (!getSchoolLines().some((l) => l.id === lineId)) throw spotErr('Pick a line');
+  if (classId && !classById(classId)) throw spotErr('No such class', 404);
+  const date = TODAY, at = nowIso(), expires = new Date(Date.parse(TODAY) + SPOT_DAYS * 864e5).toISOString().slice(0, 10);
+  const out = ids.map((sid) => {
+    const x = { id: uid('sp-'), studentId: sid, teacherId, classId: classId || null, lineId, title: name, note: String(note || '').trim().slice(0, 500),
+      image: typeof image === 'string' && image ? image : null, date, at, expires, status: 'open' };
+    spots().push(x);
+    notify(toStudent(sid), `${shortName(t.name)} spotted something you did: “${name}”`, { persona: toStudent(sid), screen: 'map' });
+    return x;
+  });
+  emit();
+  return out;
+}
+const mySpot = (id, studentId) => {
+  const x = getSpotted(id);
+  if (!x || x.studentId !== studentId) throw spotErr('This is not for you', 404);
+  if (x.status !== 'open') throw spotErr('You already answered this', 409);
+  if (!spotOpen(x)) throw spotErr('This has expired', 410);
+  return x;
+};
+// "Add to my journey": a station on the line, spotted by and endorsed by the teacher. The line joins the map if missing.
+export function acceptSpotted(id, studentId) {
+  const x = mySpot(id, studentId), s = getStudent(studentId), t = teacherById[x.teacherId];
+  const e = addStation(studentId, { title: x.title, summary: x.note, lineIds: [laneFor(s, x.lineId)], type: 'project', image: x.image, imageCaption: 'Photo', visibility: 'school', via: 'Spotted by a teacher' });
+  e.spotted = { id: x.id, teacherId: x.teacherId };
+  if (t) {
+    store.endorsements.push({ id: uid('en-x'), eventId: e.id, teacherId: x.teacherId, note: x.note || `Spotted by ${t.name}.`, date: TODAY, live: true });
+    e.verification = 'teacher-endorsed';
+    notify(toTeacher(x.teacherId), `${s.name.split(' ')[0]} added “${x.title}” to their journey`, { persona: toTeacher(x.teacherId), ...(x.classId ? { screen: 'classes', param: x.classId } : { screen: 'student', param: studentId }) });
+  }
+  Object.assign(x, { status: 'accepted', decidedAt: nowIso(), eventId: e.id });
+  emit();
+  return e;
+}
+// "Not for me": hidden from the student; the teacher only sees "not added".
+export function declineSpotted(id, studentId) {
+  const x = mySpot(id, studentId);
+  Object.assign(x, { status: 'declined', decidedAt: nowIso() });
+  emit();
+  return x;
+}
+// ── Year handover: a new year's class lists move students to new advisors (docs/pilot-server.md) ──
+// importRoster notes each change of advisor in store.handovers ({ id, studentId, from, to, date, at, fromYear, year,
+// newYear }) and, when the academic year changes, store.yearStart ({ year, fromYear, date, at }). The outgoing
+// advisor writes a handover note per student (store.handoverNotes: { id, studentId, by, text, at, year }), staff-only.
+function noteHandovers(was, wasYear, roster) {
+  const year = roster.school?.academicYear || null, newYear = !!(wasYear && year && wasYear !== year);
+  store.handovers ||= [];
+  const at = nowIso();
+  for (const s of roster.students) {
+    const from = was.get(s.id);
+    if (!from || from === s.advisorId) continue;
+    store.handovers.push({ id: uid('ho-'), studentId: s.id, from, to: s.advisorId, date: TODAY, at, fromYear: wasYear || null, year, newYear });
+  }
+  if (newYear) store.yearStart = { year, fromYear: wasYear, date: TODAY, at };
+}
+export const HANDOVER_PROMPT = ['Strengths: what they are good at and proud of', 'What helps: how they work best, what to say or do', 'What to watch: anything to keep an eye on'];
+export const getHandovers = () => store.handovers || [];
+export const latestHandover = (sid) => getHandovers().filter((h) => h.studentId === sid).at(-1) || null;
+export const previousAdvisorOf = (sid) => latestHandover(sid)?.from || null;
+export const getYearStart = () => store.yearStart || null;
+export const getHandoverNote = (sid, by) => (store.handoverNotes || []).find((n) => n.studentId === sid && n.by === by) || null;
+export const getHandoverNotes = (sid) => (store.handoverNotes || []).filter((n) => n.studentId === sid);
+// Only the student's current or immediately previous advisor writes it (server/auth.mjs). An empty text removes it.
+export function setHandoverNote(studentId, text, by) {
+  if (!teacherById[by]) throw cmErr('No such teacher.');
+  const t = String(text ?? '').trim().slice(0, 3000);
+  store.handoverNotes ||= [];
+  const old = getHandoverNote(studentId, by);
+  if (!t) store.handoverNotes = store.handoverNotes.filter((n) => n !== old);
+  else if (old) Object.assign(old, { text: t, at: nowIso() });
+  else store.handoverNotes.push({ id: uid('hn-'), studentId, by, text: t, at: nowIso(), year: getStudent(studentId)?.advisorId === by ? store.rosterImport?.school?.academicYear || null : latestHandover(studentId)?.fromYear || null });
+  emit();
+  return getHandoverNote(studentId, by);
+}
+// "New to you": the advisor's students whose latest handover was to them.
+export const newToAdvisor = (advisorId) => store.students.filter((s) => s.advisorId === advisorId && latestHandover(s.id)?.to === advisorId);
+const yearFrom = (ay) => { const m = String(ay || '').match(/(\d{4})/); return m ? `${m[1]}-08-01` : null; };
+// The "Last year" panel: the previous advisor, their note, last year's moments by line (as an advisor sees them),
+// and the goals the student carried over.
+export function lastYearOf(studentId) {
+  const h = latestHandover(studentId);
+  if (!h) return null;
+  const map = getStudentMap(studentId, 'advisor');
+  const since = yearFrom(h.fromYear) || '0000';
+  const evs = map.events.filter((e) => e.type !== 'goal' && e.type !== 'reflection' && e.date >= since && e.date < h.date);
+  const byLine = map.lines.map((l) => ({ line: l, n: evs.filter((e) => e.lineIds.includes(l.id)).length })).filter((x) => x.n);
+  return { handover: h, from: teacherById[h.from] || null, note: getHandoverNote(studentId, h.from), moments: evs.length, byLine, carried: map.events.filter((e) => e.type === 'goal' && e.carriedOver) };
+}
+// At the start of a new year: last year's goals whose date has passed, for the student to carry over or close.
+export function goalsToReview(studentId) {
+  const ys = getYearStart(); if (!ys) return [];
+  return store.events.filter((e) => e.studentId === studentId && e.type === 'goal' && !e.requirement && !e.closedOn && !(e.carriedOver?.on >= ys.date) && e.date < ys.date && e.date < TODAY).sort((a, b) => a.date.localeCompare(b.date));
+}
+export const carryDate = (date) => { const d = new Date(`${date}T00:00:00Z`); d.setUTCFullYear(d.getUTCFullYear() + 1); const s = d.toISOString().slice(0, 10); return s > TODAY ? s : daysAfter(TODAY, 30); };
+const daysAfter = (iso, n) => new Date(Date.parse(iso) + n * 864e5).toISOString().slice(0, 10);
+export function carryOverGoal(id, date) {
+  const e = getEvent(id); if (!e || e.type !== 'goal') throw cmErr('No such goal.', 404);
+  const to = /^\d{4}-\d{2}-\d{2}$/.test(String(date)) && date >= TODAY ? date : carryDate(e.date);
+  e.carriedOver = { from: e.date, on: TODAY }; e.date = to;
+  log(e.studentId, getStudent(e.studentId)?.name, 'goal', `Carried “${e.title}” over to this year (${to})`);
+  emit();
+  return e;
+}
+export function closeGoal(id) {
+  const e = getEvent(id); if (!e || e.type !== 'goal') throw cmErr('No such goal.', 404);
+  e.closedOn = TODAY;
+  log(e.studentId, getStudent(e.studentId)?.name, 'goal', `Closed the goal “${e.title}”`);
+  emit();
+  return e;
+}
+// Accounts › Start of year: what a roster file would change, before importing it.
+export function handoverPreview(parsed) {
+  const roster = checked(parsed);
+  const wasYear = store.rosterImport?.school?.academicYear || null, year = roster.school?.academicYear || null;
+  const groups = new Map(); let changes = 0, notes = 0;
+  for (const s of roster.students) {
+    const cur = getStudent(s.id);
+    if (!cur?.advisorId || cur.advisorId === s.advisorId) continue;
+    changes++; if (getHandoverNote(s.id, cur.advisorId)) notes++;
+    const k = `${cur.advisorId}|${s.advisorId}`;
+    groups.set(k, { from: teacherById[cur.advisorId]?.name || cur.advisorId, to: roster.teachers.find((t) => t.id === s.advisorId)?.name || s.advisorId, n: (groups.get(k)?.n || 0) + 1 });
+  }
+  return { fromYear: wasYear, year, newYear: !!(wasYear && year && wasYear !== year), changes, notes, groups: [...groups.values()].sort((a, b) => b.n - a.n) };
+}
+
 // ── Shared record: with the pilot server, every change is replayed there ──
 // A screen calls a change below; it runs here at once (instant UI) while recording the ids and
 // times it made. The hook (src/sync.js) posts { fn, args, rec } to /api/action, and the server runs
@@ -1919,6 +2073,8 @@ askClass = act('askClass', askClass); remindClass = act('remindClass', remindCla
 nudgeStudent = act('nudgeStudent', nudgeStudent);
 addMomentComment = act('addMomentComment', addMomentComment); editMomentComment = act('editMomentComment', editMomentComment); deleteMomentComment = act('deleteMomentComment', deleteMomentComment); markCommentsRead = act('markCommentsRead', markCommentsRead);
 reportItem = act('reportItem', reportItem); moderateReport = act('moderateReport', moderateReport);
+spotMoment = act('spotMoment', spotMoment); acceptSpotted = act('acceptSpotted', acceptSpotted); declineSpotted = act('declineSpotted', declineSpotted);
+setHandoverNote = act('setHandoverNote', setHandoverNote); carryOverGoal = act('carryOverGoal', carryOverGoal); closeGoal = act('closeGoal', closeGoal);
 // Undo puts a whole earlier copy back, and reset goes back to the seed (sync.js sends it to /api/reset).
 restore = act('restore', restore); resetDemo = act('resetDemo', resetDemo);
 export const MUTATORS = Object.keys(ACTIONS);

@@ -8,6 +8,7 @@ import { PERSONAS, KIND_LABEL, NAV, personaById, home, navOf, pilotPersona } fro
 import Accounts from './screens/Accounts.jsx';
 import Usage from './screens/Usage.jsx';
 import Reports from './screens/Reports.jsx';
+import Overview from './screens/Overview.jsx';
 import { isModerator } from './api.js';
 import { AccountMenu, PasswordDialog } from './screens/SignIn.jsx';
 import { ago, appUrl, inkOn } from './format.js';
@@ -16,6 +17,7 @@ import SharedView from './components/SharedView.jsx';
 import IntegrationsPanel from './components/IntegrationsPanel.jsx';
 import AdvisorGrid from './components/AdvisorGrid.jsx';
 import StudentMap from './screens/StudentMap.jsx';
+import { CarryOverGoals } from './components/YearHandover.jsx';
 import AdvisorStudent from './screens/AdvisorStudent.jsx';
 import TeacherQueue from './screens/TeacherQueue.jsx';
 import MyClasses from './screens/MyClasses.jsx';
@@ -335,7 +337,8 @@ export default function App() {
           {persona.admin && route.screen === 'accounts' && <Accounts {...ctx} />}
           {pilot && route.screen === 'usage' && (persona.admin || persona.kind === 'leadership') && <Usage {...ctx} />}
           {isModerator(persona) && route.screen === 'reports' && <Reports {...ctx} focus={route.param} />}
-          {route.screen !== 'accounts' && route.screen !== 'usage' && route.screen !== 'reports' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} persona={persona} />}
+          {pilot && route.screen === 'overview' && (persona.admin || persona.kind === 'leadership' || persona.kind === 'coordinator') && <Overview {...ctx} />}
+          {route.screen !== 'accounts' && route.screen !== 'usage' && route.screen !== 'reports' && route.screen !== 'overview' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} persona={persona} />}
           </ErrorBoundary>
           {pilot && level === 'simple' && <div className="fb-simple"><button onClick={() => setFbOpen(true)}>Something not working? Tell us</button></div>}
         </main>
@@ -380,7 +383,7 @@ function StudentScreens({ screen, param, studentId, drafts, setDrafts, audience,
   // A nudge (banner or notification, #/<persona>/map/add) opens the add flow.
   const [addReq, setAddReq] = useState(0);
   useEffect(() => { if (param === 'add' && screen === 'map') setAddReq((n) => n + 1); }, [param, screen]);
-  const nudge = <NudgeBanner studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} onAdd={() => setAddReq((n) => n + 1)} />;
+  const nudge = <><NudgeBanner studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} onAdd={() => setAddReq((n) => n + 1)} /><CarryOverGoals studentId={studentId} version={version} toast={toast} simple={getIntensity(studentId) === 'simple'} /></>;
   // N11: stations a presentation would show but a link cannot, because they are not publishable.
   const [gapFor, setGapFor] = useState(null);
   const gapsOf = (pres) => { const l = applyLens(map, pres, { hiddenLines: pres.filters.hiddenLines }); return map.events.filter((e) => l.visible.has(e.id) && e.type !== 'goal' && e.visibility !== 'publishable'); };

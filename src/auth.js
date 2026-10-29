@@ -97,6 +97,11 @@ export const feedback = {
   list: () => call('GET', '/api/admin/feedback').then((j) => j.items),
   done: (id, done) => call('POST', `/api/admin/feedback/${encodeURIComponent(id)}`, { done }).then((j) => j.item),
 };
+// School overview (server/routes/63-overview.mjs): aggregate counts, no names; leadership, coordinators and admins.
+export const overview = {
+  get: () => call('GET', '/api/overview'),
+  csvUrl: (range) => `/api/overview?format=csv&range=${encodeURIComponent(range)}`,
+};
 
 // ── An account becomes a persona in the PERSONAS shape, so every existing screen works unchanged ──
 const COLOURS = { student: '#4F529B', advisor: '#008A60', teacher: '#002855', counsellor: '#E73C3E', coordinator: '#FF8F1C', leadership: '#002855', parent: '#FFB81C', admin: '#002855' };
@@ -140,6 +145,8 @@ export function personaFor(user) {
   if (kind === 'leadership' || user.admin) p.nav = [...(p.nav || NAV[kind]), ['usage', 'Pilot usage']];
   // Safeguarding reports (src/screens/Reports.jsx): coordinators, counsellors, leadership and admins.
   if (isModerator(user)) p.nav = [...(p.nav || NAV[kind]), ['reports', 'Reports']];
+  // School overview (src/screens/Overview.jsx): leadership, coordinators and admins.
+  if (kind === 'leadership' || kind === 'coordinator' || user.admin) p.nav = [...(p.nav || NAV[kind]), ['overview', 'School overview']];
   return p;
 }
 function applyPersona() {

@@ -1,0 +1,19 @@
+/* School overview (Overview.jsx): aggregate tables, a weekly chart and quiet homerooms. */
+.ov .tiles { margin: 0; }
+.ov-dl { text-decoration: none; display: inline-block; }
+.ov-tabs { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ov-tabs button { font: inherit; font-size: 14px; padding: 6px 14px; border: 1px solid var(--rule); border-radius: 999px; background: var(--surface); color: var(--ink); cursor: pointer; }
+.ov-tabs button.on { background: var(--navy); border-color: var(--navy); color: #fff; font-weight: 600; }
+.ov-tabs .fineprint { margin-left: 8px; }
+.ov-small { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+.ov-years td, .ov-years th { white-space: nowrap; }
+.ov-total td { border-top: 2px solid var(--rule); }
+.ov-quiet { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px 16px; }
+.ov-quiet li { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--rule); font-variant-numeric: tabular-nums; }
+.ov-quiet b { font-weight: 600; }
+.ov-quiet span { color: var(--muted); }
+.ov-n { white-space: nowrap; } .ov-n span { display: inline-block; min-width: 2.6em; }
+.ov-bar { display: inline-block; vertical-align: middle; width: 64px; height: 6px; border-radius: 3px; background: var(--rule); overflow: hidden; }
+.ov-bar > i { display: block; height: 100%; background: #002855; }
+:root[data-theme="dark"] .ov-bar > i { background: var(--b-sky); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ov-bar > i { background: var(--b-sky); } :root:not([data-theme="light"]) .ov-tabs button.on { color: #fff; } }

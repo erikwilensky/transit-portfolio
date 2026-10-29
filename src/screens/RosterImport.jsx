@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { admin } from '../auth.js';
 import { parseRoster } from '../imports/roster.js';
 import { toCsv } from '../imports/csv.js';
+import { StartOfYear } from '../components/YearHandover.jsx';
 
 const PARTS = [['teachers', 'Staff'], ['students', 'Students'], ['classes', 'Classes'], ['enrolments', 'Class places']];
 const readAll = (files) => Promise.all([...files].map((f) => f.text().then((text) => ({ name: f.name, text }))));
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 // Pilot admin: the school's class lists in, then a sign-in link for everyone with an email (docs/roster-format.md).
-export default function RosterImport({ onDone, onClose }) {
+export default function RosterImport({ onDone, onClose, startOfYear = false }) {
   const [step, setStep] = useState({ at: 'pick' }); // pick → preview → done
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
@@ -39,13 +40,15 @@ export default function RosterImport({ onDone, onClose }) {
 
   return (
     <section className="acc-form acc-roster" aria-labelledby="roster-h">
-      <h2 id="roster-h">Import class lists</h2>
+      <h2 id="roster-h">{startOfYear ? 'Start of year' : 'Import class lists'}</h2>
+      {startOfYear && step.at === 'pick' && <StartOfYear />}
       {step.at === 'pick' && <>
         <p className="auth-lede">Pick the roster file from the school (.json), or the four CSV files together: teachers, students, classes and enrolments. Nothing changes until you confirm. Importing again later updates people; it never makes copies or removes anyone.</p>
         <label className="auth-btn acc-file">{busy ? 'Reading…' : 'Choose files'}<input type="file" accept=".json,.csv,application/json,text/csv" multiple onChange={pick} disabled={busy} /></label>
         {step.problems && <Problems files={step.files} p={step.problems} />}
       </>}
       {step.at === 'preview' && <Preview step={step} pause={pause} setPause={setPause} />}
+      {step.at === 'preview' && (startOfYear || step.preview.handover?.changes > 0) && <StartOfYear preview={step.preview.handover} />}
       {step.at === 'done' && <Done result={step.result} school={step.school} download={download} />}
       {err && <p className="auth-err" role="alert">{err}</p>}
       <div className="auth-row">

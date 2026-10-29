@@ -17,7 +17,7 @@ const byRoom = (x, y) => x.year - y.year || x.name.localeCompare(y.name, 'en', {
 const blank = (name, year) => ({ name, year, students: 0, signedUp: 0, waiting: 0, active: 0, moments: 0, families: 0 });
 
 // One pass over accounts and the record, then a row per student.
-function context(now = new Date()) {
+export function context(now = new Date()) {
   const accounts = A.allAccounts(), seen = lastSeenAll();
   const since = new Date(now.getTime() - 7 * 864e5).toISOString();
   const student = new Map(), families = new Map();
