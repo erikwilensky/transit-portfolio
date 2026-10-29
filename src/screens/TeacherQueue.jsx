@@ -7,15 +7,22 @@ import SponsorPanel from '../components/SponsorPanel.jsx';
 import { getSponsored } from '../api.js';
 import { FileLinks } from '../components/FileAttach.jsx';
 import { isPilot } from '../auth.js';
+import { classAnswerGroups } from '../api.js';
+import '../components/class-answers.css';
 
-const CHIPS = ['Independent work', 'Beyond the syllabus', 'Strong collaboration', 'Real-world impact', 'Clear progress'];
+export const CHIPS = ['Independent work', 'Beyond the syllabus', 'Strong collaboration', 'Real-world impact', 'Clear progress'];
 
 // A subject teacher's home: items waiting for an endorsement, one click each.
-export default function TeacherQueue({ teacherId, toast, version, focus }) {
+export default function TeacherQueue({ teacherId, toast, version, focus, go, persona }) {
   // #/nair/queue/sponsor scrolls to the sponsored plans (used by the deep-dive tour).
   useEffect(() => { if (focus === 'sponsor') setTimeout(() => document.getElementById('sponsor')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300); }, [focus]);
   const t = getTeacher(teacherId);
-  const pending = getRequests(teacherId);
+  // Answers to one class question (2 or more) wait as one card that opens Review answers (ClassAnswers.jsx).
+  const groups = classAnswerGroups(teacherId);
+  const inGroup = new Set(groups.flatMap((g) => g.requests.map((r) => r.id)));
+  const waitingAll = getRequests(teacherId);
+  const pending = waitingAll.filter((r) => !inGroup.has(r.id));
+  const review = (g) => go?.(persona.id, 'classes', `${g.prompt.classId}~answers~${g.prompt.id}`);
   const done = getRequests(teacherId, null).filter((r) => r.status !== 'pending');
   const [classTask, setClassTask] = useState(false);
   const [picked, setPicked] = useState([]);
@@ -56,7 +63,7 @@ export default function TeacherQueue({ teacherId, toast, version, focus }) {
           {getSponsored(teacherId).some((e) => e.sponsor.status === 'invited') && <a className="sp-jump" href="#sponsor" onClick={(ev) => { ev.preventDefault(); document.getElementById('sponsor')?.scrollIntoView({ behavior: 'smooth' }); }}>{getSponsored(teacherId).filter((e) => e.sponsor.status === 'invited').length} new sponsor invitation ↓</a>}
         </div>
         <div className="meter" aria-label="Workload this term">
-          <div><b>{pending.length}</b><span>waiting</span></div>
+          <div><b>{waitingAll.length}</b><span>waiting</span></div>
           <div><b>{termEndorsed}</b><span>endorsed this term</span></div>
         </div>
       </header>
@@ -69,9 +76,18 @@ export default function TeacherQueue({ teacherId, toast, version, focus }) {
           <button className="primary" disabled={!picked.length} onClick={() => doEndorse(picked)}>Endorse {picked.length || ''} selected</button>
         </div>
       )}
-      {!pending.length && <div className="empty-state"><b>All caught up.</b> New requests will appear here and in your notifications.</div>}
+      {!waitingAll.length && <div className="empty-state"><b>All caught up.</b> New requests will appear here and in your notifications.</div>}
 
       <div className="queue-list">
+        {groups.map((g) => (
+          <article key={g.prompt.id} className="q-group" tabIndex={0} aria-label={`Answers to ${g.prompt.question}`} onKeyDown={(ev) => { if (ev.target === ev.currentTarget && ev.key === 'Enter') review(g); }}>
+            <div className="q-meta"><span>{g.prompt.className || 'Your class'}</span><span>Asked {fmtDate(g.prompt.date)}</span>{g.requests.some((r) => r.fresh) && <span className="new-pill">NEW</span>}</div>
+            <h3>Answers to “{g.prompt.question}” · {g.requests.length} waiting</h3>
+            <div className="q-who">{g.requests.slice(0, 6).map((r) => <span key={r.id} className="pres-avatar xs" title={r.student?.name} style={{ background: r.student?.avatar.colour, color: inkOn(r.student?.avatar.colour || '#002855') }}>{r.student?.avatar.initials}</span>)}
+              <span>{g.requests.slice(0, 3).map((r) => r.student?.name.split(' ')[0]).filter(Boolean).join(', ')}{g.requests.length > 3 ? ` and ${g.requests.length - 3} more` : ''}</span></div>
+            <div className="q-actions"><button className="primary" onClick={() => review(g)}>Review all</button></div>
+          </article>
+        ))}
         {pending.map((r) => {
           const e = r.event;
           const img = e.evidence.find((x) => x.kind === 'image');

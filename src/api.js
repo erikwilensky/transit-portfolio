@@ -1611,6 +1611,52 @@ export function skipPrompt(promptId, studentId) {
   return a;
 }
 
+// ── Reviewing a class question's answers (ClassAnswers.jsx): read only, endorsing uses endorse/declineRequest ──
+// One row per student asked. status: waiting | endorsed | more (asked for more) | answered (a reflection, or not a
+// moment: nothing to endorse) | skipped ("Not for me") | none (not answered yet). request: the moment's endorsement
+// request to the asking teacher, if any.
+export const REVIEW_ORDER = ['waiting', 'more', 'endorsed', 'answered', 'skipped', 'none'];
+export const REVIEW_LABEL = { waiting: 'Waiting', endorsed: 'Endorsed', more: 'Asked for more', answered: 'Answered', skipped: 'Not for them', none: 'Not answered yet' };
+export function promptReview(promptId) {
+  const p = getClassPrompt(promptId);
+  if (!p) return null;
+  const rows = p.studentIds.map((sid) => {
+    const a = answerOf(p.id, sid), student = getStudent(sid) || null;
+    if (!a || a.skipped) return { studentId: sid, student, answer: a || null, status: a ? 'skipped' : 'none' };
+    const e = (a.eventId && getEvent(a.eventId)) || null;
+    const request = (e && store.requests.find((r) => r.eventId === e.id && r.teacherId === p.teacherId)) || null;
+    const status = !p.asMoment || !e ? 'answered' : e.verification === 'teacher-endorsed' ? 'endorsed'
+      : request?.status === 'pending' ? 'waiting' : request?.status === 'returned' ? 'more' : 'answered';
+    return { studentId: sid, student, answer: a, event: e, request, photo: e?.evidence.find((x) => x.kind === 'image') || null, status };
+  }).sort((x, y) => REVIEW_ORDER.indexOf(x.status) - REVIEW_ORDER.indexOf(y.status) || (x.student?.name || '~').localeCompare(y.student?.name || '~'));
+  return { prompt: { ...p, className: classById(p.classId)?.name || '', teacher: teacherById[p.teacherId] || null }, rows };
+}
+// The asking teacher's pending requests that answer one class question, grouped (2 or more) for the Endorsements queue.
+export function classAnswerGroups(teacherId) {
+  const byEvent = new Map(cAnswers().filter((a) => a.eventId).map((a) => [a.eventId, a.promptId]));
+  const out = new Map();
+  for (const r of store.requests) {
+    if (r.teacherId !== teacherId || r.status !== 'pending' || !byEvent.has(r.eventId)) continue;
+    const p = getClassPrompt(byEvent.get(r.eventId));
+    if (!p || p.teacherId !== teacherId) continue;
+    if (!out.has(p.id)) out.set(p.id, { prompt: { ...p, className: classById(p.classId)?.name || '' }, requests: [] });
+    out.get(p.id).requests.push({ ...r, student: getStudent(r.studentId), event: getEvent(r.eventId) });
+  }
+  return [...out.values()].filter((g) => g.requests.length > 1);
+}
+// "Download answers (CSV)": every student asked, with a status, from the record this browser holds. A UTF-8 BOM
+// so Excel reads Thai names; cells starting = + - @ get a leading ' so a spreadsheet never runs them.
+export function answersCsv(promptId) {
+  const rv = promptReview(promptId);
+  if (!rv) return '';
+  const cell = (v) => { let s = String(v ?? ''); if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`; return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const when = (iso) => { if (!iso) return ''; const d = new Date(iso), z = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`; };
+  const head = ['Name', 'Homeroom', 'Status', 'Answered at', 'Answer', 'Endorsed'];
+  const rows = rv.rows.map((r) => [r.student?.name || r.studentId, r.student?.homeroom || '', REVIEW_LABEL[r.status], r.answer && !r.answer.skipped ? when(r.answer.at) : '',
+    r.answer?.text || '', rv.prompt.asMoment && r.answer && !r.answer.skipped ? (r.status === 'endorsed' ? 'yes' : 'no') : '']);
+  return `﻿${[head, ...rows].map((r) => r.map(cell).join(',')).join('\r\n')}\r\n`;
+}
+
 // ── Advisor nudges: a friendly note to an advisee who has gone quiet ──
 // store.nudges = [{ id, studentId, from (teacher id), text, date, ts }], made on first use. At most one per student per 7 days.
 export const NUDGE_TEXT = "Your advisor would love to see what you've been up to. Add one thing from this week.";

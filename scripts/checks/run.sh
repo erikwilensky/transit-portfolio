@@ -13,6 +13,7 @@ echo "== simple-flow"; node simple-flow.cjs || fail=1
 echo "== signin-cards"; node signin-cards.cjs || fail=1
 echo "== family-letters (starts its own clean pilot server on the real roster)"; node family-letters.cjs || fail=1
 echo "== class-prompts"; node class-prompts.cjs || fail=1
+echo "== class-answers (starts its own clean pilot server on the real roster)"; node class-answers.cjs || fail=1
 echo "== phone-app (starts its own demo and pilot servers)"; node phone-app.cjs || fail=1
 echo "== feedback-nudges"; node feedback-nudges.cjs || fail=1
 echo "== signup-progress (starts its own clean pilot server on the real roster)"; node signup-progress.cjs || fail=1

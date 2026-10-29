@@ -4,12 +4,14 @@ import { fmtDate, inkOn } from '../format.js';
 import MetroMap from '../components/MetroMap.jsx';
 import StationPanel from '../components/StationPanel.jsx';
 import { AskClassDialog, ClassQuestions } from '../components/ClassPrompts.jsx';
+import ClassAnswers from '../components/ClassAnswers.jsx';
 import './classes.css';
 
 // Pilot: a teacher's classes from the class lists. #/<persona>/classes, /classes/<classId>,
-// /classes/<classId>~<studentId> (that student's map, read only).
+// /classes/<classId>~<studentId> (that student's map, read only), /classes/<classId>~answers~<promptId> (Review answers).
 export default function MyClasses({ teacherId, param, go, persona, version, toast }) {
-  const [classId, studentId] = String(param || '').split('~');
+  const [classId, studentId, promptId] = String(param || '').split('~');
+  if (classId && studentId === 'answers') return <ClassAnswers promptId={promptId} teacherId={teacherId} version={version} toast={toast} back={<button className="cb-back" onClick={() => go(persona.id, 'classes', classId)}>‹ Back to the class</button>} />;
   if (classId && studentId) return <StudentRead classId={classId} studentId={studentId} teacherId={teacherId} go={go} persona={persona} version={version} />;
   if (classId) return <ClassPage classId={classId} teacherId={teacherId} go={go} persona={persona} version={version} toast={toast} />;
   return <ClassList teacherId={teacherId} go={go} persona={persona} version={version} toast={toast} />;
