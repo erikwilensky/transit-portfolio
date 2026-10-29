@@ -44,6 +44,7 @@ export default function StationPanel({ event, map, onClose, readOnly = false, on
           {event.type !== 'goal' && event.tags && <TagBox key={`t-${event.id}`} event={event} readOnly={readOnly} t={t} />}
           <VerifyBadge level={event.verification} large event={event} />
           <span className="vhelp">{t(VERIFY_HELP[event.verification])}{event.alum && event.verification === 'student-added' ? ' Added after leaving NIST.' : ''}</span>
+          {event.spotted && <p className="sp-by">{t('Spotted by')} {getTeacher(event.spotted.teacherId)?.name || t('a teacher')}</p>}
 
           {event.evidence.length > 0 && (
             <section>

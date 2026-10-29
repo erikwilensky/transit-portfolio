@@ -8,6 +8,7 @@ import StationPanel from '../components/StationPanel.jsx';
 import { SignInHelp } from './SignIn.jsx';
 import { isPilot } from '../auth.js';
 import { ConferenceSheets } from '../components/ConferenceSheets.jsx';
+import { SpotDialog, SpottedList } from '../components/Spotted.jsx';
 
 const daysBetween = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
 
@@ -22,6 +23,7 @@ export default function AdvisorStudent({ studentId, version, toast, go, persona,
   const [meeting, setMeeting] = useState(false);
   const [parent, setParent] = useState(false);
   const [sheet, setSheet] = useState(false);
+  const [spotting, setSpotting] = useState(false);
   const one = useMemo(() => [studentId], [studentId]);
   const g = growth(studentId);
   const prompts = getPrompts(studentId);
@@ -47,6 +49,7 @@ export default function AdvisorStudent({ studentId, version, toast, go, persona,
         <span className="pres-avatar" style={{ background: s.avatar.colour, color: inkOn(s.avatar.colour) }}>{s.avatar.initials}</span>
         <div><h1>{s.name}</h1><p>Year {s.grade + 1} · {s.programme} · advisor view (advisor, school and publishable items)</p></div>
         <span className="spacer" />
+        {persona.teacherId && <button className="ghost" onClick={() => setSpotting(true)}>I spotted something</button>}
         <button className="ghost" onClick={() => setSheet(true)}>Conference sheet</button>
         <button className="primary" onClick={() => setMeeting(true)}>Start meeting mode</button>
       </div>
@@ -56,6 +59,8 @@ export default function AdvisorStudent({ studentId, version, toast, go, persona,
           <StationPanel event={event} map={map} onClose={() => setSelected(null)} readOnly toast={toast} />
         </div>
         <aside className="as-side">
+          {spotting && <SpotDialog students={[s]} teacherId={persona.teacherId} toast={toast} onClose={() => setSpotting(false)} />}
+          <SpottedList teacherId={persona.teacherId} studentId={studentId} version={version} title="You spotted" />
           <section className="card-sec">
             <h3>Meeting agenda</h3>
             <ol className="agenda">{agenda.map((a, i) => <li key={i}>{a}</li>)}</ol>

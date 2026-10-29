@@ -147,6 +147,9 @@ export function scopedSnapshot(user) {
   const myKeys = new Set([self && 'student', tid, ...(parent ? (user.children || []).map((c) => `fam:${c}`) : [])].filter(Boolean));
   store.reports = moderator ? (full.reports || []) : (full.reports || []).filter((r) => inReach(r.studentId) && myKeys.has(r.from?.key) && (r.from.key !== 'student' || r.studentId === self))
     .map(({ id, kind, eventId, commentId, studentId, reason, at, status }) => ({ id, kind, eventId, ...(commentId ? { commentId } : {}), studentId, reason, at, status, from: { key: tid || (self ? 'student' : `fam:${studentId}`) }, history: [] }));
+  // Spotted moments: the student gets their own; the teacher who made them gets theirs, a declined one only as closed.
+  const closed = ({ decidedAt, ...x }) => ({ ...x, status: 'closed' });
+  store.spotted = (full.spotted || []).flatMap((x) => (self && x.studentId === self ? [x] : tid && x.teacherId === tid ? [x.status === 'declined' ? closed(x) : x] : []));
   const keys = recipientKeys(user);
   store.notifications = full.notifications.filter((n) => keys.has(n.to));
   // The activity log, without lines that name a station this person does not receive. Families: views and consent only.
@@ -211,6 +214,9 @@ export const TOUCHES = {
   markCommentsRead: (a) => T([ev(a[0])], [a[1] !== 'student' ? a[1] ?? '?' : null]),
   editMomentComment: (a) => T([api.getMomentComment(a[0])?.studentId], [a[1] !== 'student' ? a[1] ?? '?' : null]),
   deleteMomentComment: (a) => T([api.getMomentComment(a[0])?.studentId], [a[1] !== 'student' ? a[1] ?? '?' : null]),
+  spotMoment: (a) => T([].concat(a[0] ?? []), [a[1] ?? '?']),
+  acceptSpotted: (a) => T([api.getSpotted(a[0])?.studentId === a[1] ? a[1] : '?']),
+  declineSpotted: (a) => T([api.getSpotted(a[0])?.studentId === a[1] ? a[1] : '?']),
   addSchoolLine: () => T([]), setSubjectLine: () => T([]), setRollout: () => T([]), setFamily: () => T([]), setLang: () => T([]), markNotificationsRead: () => T([]), recordView: () => T([]),
 };
 // A mutator not listed: any student or station id found in its arguments counts as touched.

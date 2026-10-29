@@ -1865,6 +1865,74 @@ export function moderateReport(id, action, note, by) {
   return r;
 }
 
+// ── Spotted moments: a teacher saw a student do something worth keeping (src/components/Spotted.jsx) ──
+// store.spotted: { id: 'sp-…', studentId, teacherId, classId, lineId, title, note, image, date, at, expires, status:
+// 'open' | 'accepted' | 'declined', decidedAt, eventId }. A suggestion until the student accepts it; then a station on
+// that line, marked spotted by the teacher and endorsed by them. Open ones expire SPOT_DAYS after they were made.
+export const SPOT_DAYS = 30;
+const spots = () => (store.spotted ||= []);
+export const getSpotted = (id) => spots().find((x) => x.id === id);
+const spotOpen = (x) => x.status === 'open' && x.expires >= TODAY;
+// What the teacher sees: waiting, added, or "not added" (declined and expired look the same).
+export const spotStatus = (x) => (x.status === 'accepted' ? 'added' : spotOpen(x) ? 'waiting' : 'not added');
+const spotView = (x) => ({ ...x, teacher: teacherById[x.teacherId] || null, line: lineById(x.lineId) || null, className: (x.classId && classById(x.classId)?.name) || '' });
+// A student's open suggestions, oldest first.
+export const spottedFor = (studentId) => spots().filter((x) => x.studentId === studentId && spotOpen(x)).sort((a, b) => a.at.localeCompare(b.at)).map(spotView);
+// The suggestions a teacher made, newest first; optionally only for one class or one student.
+export const spottedBy = (teacherId, { classId, studentId } = {}) => spots().filter((x) => x.teacherId === teacherId && (!classId || x.classId === classId) && (!studentId || x.studentId === studentId))
+  .sort((a, b) => b.at.localeCompare(a.at) || b.id.localeCompare(a.id)).map((x) => ({ ...spotView(x), student: getStudent(x.studentId) || null, shown: spotStatus(x) }));
+// The line a spotted moment starts on: the class's line, else the teacher's subject line, else the first school line.
+export const spotLineFor = (teacherId, classId) => (classId && classById(classId)?.lineId) || subjectLineOf(teacherId) || getSchoolLines()[0]?.id || null;
+const spotErr = (m, status = 400) => Object.assign(new Error(m), { status });
+export function spotMoment(studentIds, teacherId, { title, note = '', image = null, lineId, classId = null } = {}) {
+  const t = teacherById[teacherId];
+  if (!t) throw spotErr('No such teacher');
+  const ids = [...new Set([].concat(studentIds || []))];
+  if (!ids.length || ids.some((sid) => !getStudent(sid))) throw spotErr('Pick the students first');
+  const name = String(title || '').trim().slice(0, 120);
+  if (name.length < 3) throw spotErr('Give it a title');
+  if (!getSchoolLines().some((l) => l.id === lineId)) throw spotErr('Pick a line');
+  if (classId && !classById(classId)) throw spotErr('No such class', 404);
+  const date = TODAY, at = nowIso(), expires = new Date(Date.parse(TODAY) + SPOT_DAYS * 864e5).toISOString().slice(0, 10);
+  const out = ids.map((sid) => {
+    const x = { id: uid('sp-'), studentId: sid, teacherId, classId: classId || null, lineId, title: name, note: String(note || '').trim().slice(0, 500),
+      image: typeof image === 'string' && image ? image : null, date, at, expires, status: 'open' };
+    spots().push(x);
+    notify(toStudent(sid), `${shortName(t.name)} spotted something you did: “${name}”`, { persona: toStudent(sid), screen: 'map' });
+    return x;
+  });
+  emit();
+  return out;
+}
+const mySpot = (id, studentId) => {
+  const x = getSpotted(id);
+  if (!x || x.studentId !== studentId) throw spotErr('This is not for you', 404);
+  if (x.status !== 'open') throw spotErr('You already answered this', 409);
+  if (!spotOpen(x)) throw spotErr('This has expired', 410);
+  return x;
+};
+// "Add to my journey": a station on the line, spotted by and endorsed by the teacher. The line joins the map if missing.
+export function acceptSpotted(id, studentId) {
+  const x = mySpot(id, studentId), s = getStudent(studentId), t = teacherById[x.teacherId];
+  const e = addStation(studentId, { title: x.title, summary: x.note, lineIds: [laneFor(s, x.lineId)], type: 'project', image: x.image, imageCaption: 'Photo', visibility: 'school', via: 'Spotted by a teacher' });
+  e.spotted = { id: x.id, teacherId: x.teacherId };
+  if (t) {
+    store.endorsements.push({ id: uid('en-x'), eventId: e.id, teacherId: x.teacherId, note: x.note || `Spotted by ${t.name}.`, date: TODAY, live: true });
+    e.verification = 'teacher-endorsed';
+    notify(toTeacher(x.teacherId), `${s.name.split(' ')[0]} added “${x.title}” to their journey`, { persona: toTeacher(x.teacherId), ...(x.classId ? { screen: 'classes', param: x.classId } : { screen: 'student', param: studentId }) });
+  }
+  Object.assign(x, { status: 'accepted', decidedAt: nowIso(), eventId: e.id });
+  emit();
+  return e;
+}
+// "Not for me": hidden from the student; the teacher only sees "not added".
+export function declineSpotted(id, studentId) {
+  const x = mySpot(id, studentId);
+  Object.assign(x, { status: 'declined', decidedAt: nowIso() });
+  emit();
+  return x;
+}
+
 // ── Shared record: with the pilot server, every change is replayed there ──
 // A screen calls a change below; it runs here at once (instant UI) while recording the ids and
 // times it made. The hook (src/sync.js) posts { fn, args, rec } to /api/action, and the server runs
@@ -1919,6 +1987,7 @@ askClass = act('askClass', askClass); remindClass = act('remindClass', remindCla
 nudgeStudent = act('nudgeStudent', nudgeStudent);
 addMomentComment = act('addMomentComment', addMomentComment); editMomentComment = act('editMomentComment', editMomentComment); deleteMomentComment = act('deleteMomentComment', deleteMomentComment); markCommentsRead = act('markCommentsRead', markCommentsRead);
 reportItem = act('reportItem', reportItem); moderateReport = act('moderateReport', moderateReport);
+spotMoment = act('spotMoment', spotMoment); acceptSpotted = act('acceptSpotted', acceptSpotted); declineSpotted = act('declineSpotted', declineSpotted);
 // Undo puts a whole earlier copy back, and reset goes back to the seed (sync.js sends it to /api/reset).
 restore = act('restore', restore); resetDemo = act('resetDemo', resetDemo);
 export const MUTATORS = Object.keys(ACTIONS);

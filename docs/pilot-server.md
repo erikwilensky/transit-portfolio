@@ -962,3 +962,36 @@ Demo and pilot (the Reports screen is in the pilot nav only). No automatic filte
 - Tests: `server/test/safeguarding.test.mjs`; browser: `node scripts/checks/safeguarding.cjs` (the real roster from
   `TP_ROSTER`, skipped without it): Aaron Torres adds a moment with a photo, a parent joins by the family letter and sees it,
   Mr David Coultas reports it, a coordinator hides it from Reports, Aaron sees the notice, the parent no longer sees it.
+
+## Spotted moments: a teacher saw something worth keeping (`src/api.js`, `src/components/Spotted.jsx`)
+
+A teacher, advisor or any staff member sees a student do something worth keeping and suggests it for their journey.
+It goes on the map only when the student accepts it.
+
+- Teacher: My classes, class page: "I spotted something" on each student row, or tick several students and press
+  "I spotted something (N)" to suggest the same moment to each. The advisor's student page has the same button. The
+  dialog asks for a title, a short note (optional, the student reads it), a line (default: the class's line, else the
+  teacher's subject line, else the first school line) and an optional photo (uploaded as elsewhere). Under the class
+  table (and as "You spotted" on the advisor's page) the teacher's suggestions show as Waiting, Added or Not added.
+- Student: at the top of the home at every level (a big card at Simple, a strip in the map home at Standard and Full):
+  "Mr Coultas spotted something you did", the title, note and photo, "Add to my journey" or "Not for me".
+- Mutators (replayed like the rest):
+  - `spotMoment(studentIds, teacherId, { title, note, image, lineId, classId })` → one `store.spotted[]` item per student
+    `{ id: 'sp-…', studentId, teacherId, classId, lineId, title, note, image, date, at, expires, status: 'open' }`
+    (`expires` = date + `SPOT_DAYS`, 30); notifies each student (`toStudent`). Needs a title and a school line.
+  - `acceptSpotted(id, studentId)` → a station (type project, visibility `school`, `spotted: { id, teacherId }`, the photo
+    as evidence) on the line (joins the map if missing; a sub-line of it if they have one), an endorsement by that teacher
+    (`verification: 'teacher-endorsed'`, the note as its text), and a notification to the teacher.
+  - `declineSpotted(id, studentId)` → `status: 'declined'`. Nobody is told. Accepting or declining twice, or after expiry, throws.
+  - Reads: `spottedFor(studentId)` (open, not expired), `spottedBy(teacherId, { classId, studentId })` (with
+    `shown`: waiting | added | not added), `spotStatus(x)`, `spotLineFor(teacherId, classId)`, `getSpotted(id)`.
+- canAct (`SPOT_FNS`, checked before the admin rule): `spotMoment`: staff (or an admin with a staff record) as their own
+  `teacherId`, for students in their reach (whole-school roles: any student). `acceptSpotted`/`declineSpotted`: only the
+  student it was made for. Staff, admins and families never do this for a student.
+- Scope: `store.spotted` goes to the student (their own) and to the teacher who made it. In the teacher's copy a declined
+  one carries `status: 'closed'` and no `decidedAt`, so it looks the same as one that expired ("Not added"). Nobody else
+  gets them, whole-school roles included. The accepted station follows the usual rules (`school` visibility reaches staff in reach).
+- PDPA: `spotted` is part of a student's copy and their erasure.
+- Tests: `server/test/spotted-moments.test.mjs`; browser: `node scripts/checks/spotted-moments.cjs` (the real roster, skipped
+  without it): Mr David Coultas spots for Aaron Torres in C-392000 with a photo and for two classmates at once; Aaron
+  accepts at Simple on a phone; one classmate declines at Standard; the teacher sees Added / Not added / Waiting.

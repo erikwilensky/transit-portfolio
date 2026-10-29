@@ -199,6 +199,7 @@ export function canAct(user, fn, args = []) {
   if (!user || typeof fn !== 'string') return false;
   // Undo sends a whole copy of the record, and in a pilot every browser holds only its own part of it.
   if (fn === 'restore') return false;
+  if (SPOT_FNS.has(fn)) { try { return spotOk(user, fn, args); } catch { return false; } }
   if (isAdmin(user)) return true;
   if (ADMIN_ONLY.has(fn)) return false;
   if (ANYONE.has(fn)) return true;
@@ -277,4 +278,15 @@ function safeOk(user, fn, args) {
   if (STAFF.includes(user.kind)) { const reach = reachOf(user); return !!user.teacherId && key === user.teacherId && (reach === null || reach.has(e.studentId)); }
   if (user.kind === 'parent') return !c && !e.hidden && key === `fam:${e.studentId}` && (user.children || []).includes(e.studentId) && from?.name === user.name && api.VISIBLE_TO[api.familyViewer(e.studentId)].includes(e.visibility);
   return false;
+}
+
+// ── Spotted moments (api.spotMoment, acceptSpotted, declineSpotted) ──
+// Spotting: any staff member (admins too, when linked to a staff record), as themselves, for students in their reach.
+// Accepting or declining: only the student it was made for, never staff or admins on their behalf.
+const SPOT_FNS = new Set(['spotMoment', 'acceptSpotted', 'declineSpotted']);
+function spotOk(user, fn, args) {
+  if (fn !== 'spotMoment') return user.kind === 'student' && !!user.studentId && args[1] === user.studentId && api.getSpotted(args[0])?.studentId === user.studentId;
+  if (!(STAFF.includes(user.kind) || isAdmin(user)) || !user.teacherId || args[1] !== user.teacherId) return false;
+  const ids = [].concat(args[0] ?? []), reach = reachOf(user);
+  return ids.length > 0 && ids.every((sid) => typeof sid === 'string' && (reach === null ? !!api.getStudent(sid) : reach.has(sid)));
 }
