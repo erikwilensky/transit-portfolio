@@ -665,6 +665,33 @@ answers it from the top of their home.
 - Tests: `server/test/class-prompts.test.mjs`; `node scripts/checks/class-prompts.cjs` (real roster, skipped when
   missing: a teacher asks a Year 8 class, a student answers at Simple level on a phone with a photo, the teacher sees
   1 of N, the answer and the station in Endorsements, reminds the rest; then a Standard-level skip).
+
+## Reviewing class-question answers (`src/components/ClassAnswers.jsx`, `src/api.js`)
+
+- Route: `#/<persona>/classes/<classId>~answers~<promptId>` ("Review answers" on each question on the class page;
+  "Review all" on its card in Endorsements). One card per answer: name, homeroom, date, answer, photo thumbnail and
+  the state of its station: Waiting, Endorsed, Asked for more, or Answered (a reflection question: nothing to endorse).
+  Students who skipped or have not answered are listed below.
+- Endorsing (the asking teacher, for a question asked as a moment): tick answers, or "Select all waiting", then
+  "Endorse selected" or "Endorse all waiting (N)", with one shared note and the Endorsements queue's quick chips
+  (`CHIPS`, exported from `TeacherQueue.jsx`). It is one `endorse(requestIds, teacherId, note)` call, so one change
+  and one undo. "Ask for more" per answer sends `declineRequest(requestId, note)`. Keyboard: J/K or arrows move,
+  X selects, E endorses, A opens the "ask for more" note (Enter sends, Escape cancels). Another teacher of the class
+  reads the answers and downloads the CSV, but the requests are not theirs to decide.
+- No new mutator or permission: canAct already lets a teacher `endorse` a list of requests when every request is
+  addressed to them and they act as themselves (each touched student is in their reach through that request).
+- Endorsements: pending requests answering the same class question (2 or more) show as one card, "Answers to “…” ·
+  N waiting · Review all", instead of N cards; the "waiting" meter still counts them all.
+- "Download answers (CSV)" is made in the browser from the teacher's scoped record (`answersCsv(promptId)`): columns
+  Name, Homeroom, Status, Answered at (local time), Answer, Endorsed (yes/no; empty for a reflection question or no
+  answer), one row per student asked, including "Not for them" and "Not answered yet". UTF-8 with a BOM so Excel opens
+  Thai text; cells starting `= + - @` get a leading `'`.
+- Reads: `promptReview(promptId)` → `{ prompt, rows: [{ studentId, student, answer, event, request, photo, status }] }`
+  (status: `waiting | more | endorsed | answered | skipped | none`), `classAnswerGroups(teacherId)`, `answersCsv(promptId)`.
+- Tests: `server/test/class-answers.test.mjs`; `node scripts/checks/class-answers.cjs` (real roster: Mr David Coultas
+  asks Y8 Sciences 08.04 (04); four students answer in their own browsers; one grouped card in Endorsements; Review
+  all; ask one for more by keyboard; endorse the other three at once with a note and chip; CSV rows; Aaron Torres sees
+  "Checked by a teacher"; another teacher's bulk endorse is refused).
 ## Phone app (`public/manifest.webmanifest`, `public/sw.js`, `src/pwa.js`, `src/components/PhoneApp.jsx`)
 
 The site installs on a phone's home screen, in demo and pilot alike.

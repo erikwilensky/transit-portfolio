@@ -62,6 +62,7 @@ export function ClassQuestions({ c, teacherId, go, persona, version, toast }) {
               {p.answers.length > 0 && list.length > 1 && <button className="ghost" aria-expanded={shown} onClick={() => setOpen(shown ? null : p.id)}>{shown ? 'Hide answers' : `Read ${p.answers.length} answer${p.answers.length === 1 ? '' : 's'}`}</button>}
               {p.waiting.length > 0 && <button className="ghost" disabled={p.reminded === TODAY} onClick={() => { const k = remindClass(p.id, teacherId); toast?.(k ? `Reminded ${k} student${k === 1 ? '' : 's'}.` : 'Nobody to remind.'); }}>{p.reminded === TODAY ? 'Reminded today' : `Remind the rest (${p.waiting.length})`}</button>}
               {p.asMoment && p.answers.length > 0 && <a className="ghost" href={`#/${persona.id}/queue`} onClick={(e) => { e.preventDefault(); go(persona.id, 'queue'); }}>Open Endorsements</a>}
+              {p.answers.length > 0 && <a className="ghost ca-open" href={`#/${persona.id}/classes/${c.id}~answers~${p.id}`} onClick={(e) => { e.preventDefault(); go(persona.id, 'classes', `${c.id}~answers~${p.id}`); }}>Review answers</a>}
             </div>
             {shown && p.answers.length > 0 && (
               <ul className="cp-answers">{p.answers.map((a) => <li key={a.id}><b>{getStudent(a.studentId)?.name || 'A student'}</b><small>{fmtDate(a.date)}</small><p>{a.text}</p></li>)}</ul>
