@@ -74,7 +74,7 @@ async function flush() {
       // pilot, where this browser holds only its own part of the record and ran the change on that) fetch.
       if (r.ok && j.prev === rev && !item.undo && !j.scoped) rev = j.rev; else rev = -1;
       item.done?.(r.ok, j);
-      if (!r.ok) console.warn('Change refused by the server', r.status, j.error);
+      if (!r.ok) { console.warn('Change refused by the server', r.status, j.error); globalThis.dispatchEvent?.(new CustomEvent('tp-refused', { detail: { status: r.status, error: j.error } })); }
     } catch {
       setStatus('offline');
       await new Promise((ok) => setTimeout(ok, wait)); wait = Math.min(wait * 2, 15000);

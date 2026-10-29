@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { applyLens, classesOf, classRoster, getRequests, getStudent, getStudentMap } from '../api.js';
+import { applyLens, classesOf, classRoster, getRequests, getStudent, getStudentMap, VISIBLE_TO } from '../api.js';
 import { fmtDate, inkOn } from '../format.js';
 import MetroMap from '../components/MetroMap.jsx';
 import StationPanel from '../components/StationPanel.jsx';
@@ -106,11 +106,18 @@ function ClassPage({ classId, teacherId, go, persona, version, toast }) {
   );
 }
 
-// A student's map as a teacher reads it: school-level stations (their advisor also sees advisor-level ones).
+// A student's map as a teacher reads it: school-level stations, plus any the student asked this teacher about or
+// that they sponsor (their advisor also sees advisor-level ones).
 function StudentRead({ classId, studentId, teacherId, go, persona, version }) {
   const s = getStudent(studentId);
   const viewer = s?.advisorId === teacherId ? 'advisor' : 'school';
-  const map = useMemo(() => s && getStudentMap(studentId, viewer), [studentId, viewer, version]); // eslint-disable-line react-hooks/exhaustive-deps
+  const map = useMemo(() => {
+    if (!s) return null;
+    const m = getStudentMap(studentId, 'advisor');
+    if (viewer === 'advisor') return m;
+    const asked = new Set(getRequests(teacherId, null).map((r) => r.eventId));
+    return { ...m, signals: [], events: m.events.filter((e) => VISIBLE_TO.school.includes(e.visibility) || asked.has(e.id) || e.sponsor?.teacherId === teacherId) };
+  }, [studentId, viewer, teacherId, version]); // eslint-disable-line react-hooks/exhaustive-deps
   const lens = useMemo(() => map && applyLens(map, null), [map]);
   const [sel, setSel] = useState(null);
   const c = useMemo(() => classRoster(classId, teacherId), [classId, teacherId, version]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -121,7 +128,7 @@ function StudentRead({ classId, studentId, teacherId, go, persona, version }) {
       <div className="as-head">
         {back}
         <span className="pres-avatar" style={{ background: s.avatar.colour, color: inkOn(s.avatar.colour) }}>{s.avatar.initials}</span>
-        <div><h1>{s.name}</h1><p>Year {s.grade + 1} · {s.programme}{s.homeroom ? ` · ${s.homeroom}` : ''} · {viewer === 'advisor' ? 'advisor view' : 'teacher view (school and publishable items)'}</p></div>
+        <div><h1>{s.name}</h1><p>Year {s.grade + 1} · {s.programme}{s.homeroom ? ` · ${s.homeroom}` : ''} · {viewer === 'advisor' ? 'advisor view' : 'teacher view (school items, and what they asked you about)'}</p></div>
       </div>
       {map.events.length ? (
         <div className="as-body">

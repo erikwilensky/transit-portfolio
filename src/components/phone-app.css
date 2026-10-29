@@ -12,3 +12,4 @@
 .app:has(.modal-back) .pa-hint { display: none; }
 .pa-share { vertical-align: -2px; color: var(--ink); }
 body.pa-hint-on { padding-bottom: calc(140px + env(safe-area-inset-bottom)); }
+.rf-bar { white-space: normal; width: max-content; max-width: min(560px, calc(100vw - 24px)); }

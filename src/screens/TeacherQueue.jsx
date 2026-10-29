@@ -6,6 +6,7 @@ import { VerifyBadge } from '../components/Badge.jsx';
 import SponsorPanel from '../components/SponsorPanel.jsx';
 import { getSponsored } from '../api.js';
 import { FileLinks } from '../components/FileAttach.jsx';
+import { isPilot } from '../auth.js';
 
 const CHIPS = ['Independent work', 'Beyond the syllabus', 'Strong collaboration', 'Real-world impact', 'Clear progress'];
 
@@ -20,7 +21,8 @@ export default function TeacherQueue({ teacherId, toast, version, focus }) {
   const [picked, setPicked] = useState([]);
   const [notes, setNotes] = useState({});
   const [chips, setChips] = useState({});
-  const termEndorsed = 14 + done.filter((r) => r.status === 'endorsed').length;
+  // The demo's teachers come with a term's worth of earlier endorsements; a pilot counts only real ones.
+  const termEndorsed = (isPilot() ? 0 : 14) + done.filter((r) => r.status === 'endorsed').length;
   const autoShare = (() => { const ev = getStore().events.filter((e) => e.date >= '2026-08-15'); return Math.round(100 * ev.filter((e) => e.verification === 'school-verified').length / Math.max(1, ev.length)); })();
   const noteFor = (r) => [...(chips[r.id] || []), notes[r.id]].filter(Boolean).join('. ') || 'Endorsed.';
   // F18: J and K (or the arrow keys) move between cards, E endorses, A asks for more, X selects.
@@ -49,7 +51,7 @@ export default function TeacherQueue({ teacherId, toast, version, focus }) {
         <div>
           <div className="kicker">Endorsement queue</div>
           <h1>{t.name}</h1>
-          <p>{t.role} · items that need a teacher’s eye. About 3 minutes each; {autoShare}% of stations verify themselves with no teacher needed.</p>
+          <p>{t.role} · items that need a teacher’s eye.{isPilot() ? '' : ` About 3 minutes each; ${autoShare}% of stations verify themselves with no teacher needed.`}</p>
           <button className="ghost ct-open" onClick={() => setClassTask(true)}>Endorse a whole-class task</button>
           {getSponsored(teacherId).some((e) => e.sponsor.status === 'invited') && <a className="sp-jump" href="#sponsor" onClick={(ev) => { ev.preventDefault(); document.getElementById('sponsor')?.scrollIntoView({ behavior: 'smooth' }); }}>{getSponsored(teacherId).filter((e) => e.sponsor.status === 'invited').length} new sponsor invitation ↓</a>}
         </div>
