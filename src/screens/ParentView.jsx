@@ -3,7 +3,7 @@ import { applyLens, getStudent, getStudentMap, getTeacher, TERM_START, TODAY } f
 import MetroMap from '../components/MetroMap.jsx';
 import StationPanel from '../components/StationPanel.jsx';
 import Logo from '../components/Logo.jsx';
-import { dateIn, LangContext, tr } from '../i18n.js';
+import { dateIn, LangContext, savedLang, saveLang, tr } from '../i18n.js';
 
 // Family-facing sentences that need the student's or advisor's name in them.
 const SAY = {
@@ -14,6 +14,7 @@ const SAY = {
     title: (n) => `${n}’s map`,
     intro: (f) => `Each coloured line is something ${f} has followed through school. Dots are things that happened; tap one to see it.`,
     words: (f) => `Titles and reflections are in ${f}’s own words, in English.`,
+    empty: (f) => `Nothing on ${f}’s map is public yet. When ${f} shares something with the family, it appears here.`,
   },
   th: {
     family: (f) => `สำหรับครอบครัวของ ${f}`,
@@ -22,13 +23,14 @@ const SAY = {
     title: (n) => `แผนที่ของ ${n}`,
     intro: (f) => `เส้นแต่ละสีคือสิ่งที่ ${f} ทำต่อเนื่องมาตลอดช่วงที่เรียน จุดแต่ละจุดคือสิ่งที่เกิดขึ้น แตะที่จุดเพื่อดูรายละเอียด`,
     words: (f) => `ชื่อรายการและบทสะท้อนคิดเป็นคำของ ${f} เอง จึงเป็นภาษาอังกฤษ`,
+    empty: (f) => `แผนที่ของ ${f} ยังไม่มีรายการที่เปิดเผย เมื่อ ${f} แบ่งปันสิ่งใดกับครอบครัว จะแสดงที่นี่`,
   },
 };
 const QUESTIONS = ['Which line are you most proud of?', 'Is there a line you want to start, or stop?', 'What would you like help with next term?'];
 
 const startLang = (fromLink) => {
   if (fromLink === 'th' || fromLink === 'en') return fromLink;
-  try { const saved = localStorage.getItem('tp-parent-lang'); if (saved) return saved; } catch { /* storage blocked */ }
+  const saved = savedLang(); if (saved) return saved;
   return navigator.language?.startsWith('th') ? 'th' : 'en';
 };
 
@@ -39,7 +41,7 @@ export default function ParentView({ studentId, lang: linkLang }) {
   const lens = useMemo(() => map && applyLens(map, null), [map]);
   const [sel, setSel] = useState(null);
   const [lang, setLangState] = useState(() => startLang(linkLang));
-  const setLang = (l) => { setLangState(l); try { localStorage.setItem('tp-parent-lang', l); } catch { /* storage blocked */ } };
+  const setLang = (l) => { setLangState(l); saveLang(l); };
   if (!map) return <div className="link-dead"><h2>This link does not exist</h2></div>;
   const t = (x) => tr(lang, x);
   const say = SAY[lang];
@@ -69,7 +71,7 @@ export default function ParentView({ studentId, lang: linkLang }) {
           </section>
           <div className="pv-map">
             <MetroMap recent map={map} lens={lens} selectedId={sel} onSelect={setSel} fitKey={`pv-${studentId}`} />
-            {!map.events.some((e) => e.type !== 'goal') && <p className="pv-empty">{t(`Nothing on ${first}’s map is public yet. When ${first} shares something with the family, it appears here.`)}</p>}
+            {!map.events.some((e) => e.type !== 'goal') && <p className="pv-empty">{say.empty(first)}</p>}
             <StationPanel event={map.events.find((e) => e.id === sel)} map={map} onClose={() => setSel(null)} readOnly />
           </div>
         </div>

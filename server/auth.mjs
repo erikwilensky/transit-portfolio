@@ -175,7 +175,8 @@ export const noteSuccess = (email) => fails.delete(`e:${email}`);
 // themselves, and not the school-wide settings. Which students a call touches: touchedBy (scope.mjs).
 // /api/action calls it in pilot mode: `if (!canAct(req.user, fn, args)) 403`. Demo mode has no accounts.
 const ADMIN_ONLY = new Set(['resetDemo', 'restore', 'addStudent', 'addTeacher', 'eraseStudent', 'importRoster']);
-const ANYONE = new Set(['recordView', 'setLang']);
+// setLang is the demo's one shared family language; in a pilot each person keeps their own (POST /api/auth/prefs).
+const ANYONE = new Set(['recordView']);
 // School-wide settings an advisor or subject teacher does not change.
 const WHOLE_SCHOOL_ONLY = new Set(['addSchoolLine', 'renameLine', 'decideBranch', 'setRollout', 'matchRoster', 'setSubjectLine']);
 // The mutators a student may call, on their own record only.
@@ -248,3 +249,13 @@ function commentOk(user, fn, [target, by]) {
   if (!reach.has(e.studentId)) return false;
   return fn === 'markCommentsRead' || fn === 'deleteMomentComment' || api.commentsAsked(e.id, user.teacherId);
 }
+
+// ── Per-person settings (POST /api/auth/prefs): each account's own language, kept on the account ──
+export const LANGS = ['en', 'th'];
+export function setPrefs(a, { lang }) {
+  if (!LANGS.includes(lang)) return 'Pick English or Thai.';
+  a.lang = lang; saveAccounts();
+  return null;
+}
+// The demo's one shared family language (api.setLang) would change it for everybody: in a pilot only an admin may.
+ADMIN_ONLY.add('setLang');

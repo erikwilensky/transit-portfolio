@@ -277,7 +277,8 @@ server makes an empty folder and begins again from the seed.
   the mutators in `STUDENT_FNS`, and only when every student the call touches (`touchedBy`, looked up from
   the station, inbox item, request or evidence request) is their own `studentId`, never as a teacher.
   Parents: `answerConsent` for their own children, and `setFamily`. Everyone signed in: `recordView`,
-  `setLang`, and `markNotificationsRead` for their own keys only (see Notifications).
+  and `markNotificationsRead` for their own keys only (see Notifications). `setLang` (the demo's one shared
+  language) is admin only in a pilot: each person's language is on their account (see "Thai for families").
 - **Browser** (`src/auth.js`): reads the mode from `/api/auth/me` (no server, or demo → demo). In pilot it
   builds the signed-in person's persona in the PERSONAS shape (`personaFor`) and installs it with
   `setPilotPersona`, so `personaById` always returns it. `navOf(p)` gives a persona's navigation
@@ -321,7 +322,6 @@ server makes an empty folder and begins again from the seed.
   every field of the arguments (a whole-school role can still act as any teacher, `addGoal(.., by)` etc.).
   `restore` (a whole earlier copy) is refused for everyone in a pilot, since each browser holds only part
   of the record; Undo goes through `/api/undo`, which rebuilds on the server's whole record.
-- `setLang` changes the one shared family language setting for everybody.
 - In the browser the record is still also saved in localStorage; signing out clears it.
 - **Public pages** (`server/routes/40-public.mjs`, `src/publicRoute.js`, `src/screens/PublicPage.jsx`):
   `#/s/<token>` and `#/v/<code>` never load or sync the full record (`isPublicRoute()`). With a server,
@@ -844,3 +844,32 @@ counsellor's draft comments (`store.comments`, `addComment`, `DraftComments.jsx`
 - Tests: `server/test/moment-comments.test.mjs`; browser: `node scripts/checks/moment-comments.cjs` (the real roster
   from `TP_ROSTER`; Aaron Torres, Mr David Coultas, Ms Jane Altemen, a linked parent, a teacher out of reach;
   screenshots to the temp folder as `tp-comments-*.png`).
+
+## Thai for families (`server/routes/19-prefs.mjs`, `src/i18n.js`, `src/auth.js`)
+
+Each person reads the app in English or Thai, and the choice belongs to them, not to the school.
+- **Per account**: `POST /api/auth/prefs { lang }` (`'en'` or `'th'`, 400 otherwise; 401 signed out) sets `lang` on the
+  signed-in account in `accounts.json` and answers `{ user }`. It takes no account id, so nobody can set anyone else's.
+  `/api/auth/me` carries `user.lang`, so the choice follows the person to every device and survives restarts. No `lang`
+  means English. Any account may set it; the screens that are translated are the ones a family sees.
+- **Browser**: `api.getLang()` returns the person's own language (`setOwnLang`, set by `src/auth.js` from `user.lang`
+  when signed in to a pilot, and by See as from the previewed account), else the demo's shared `store.family.lang`.
+  `chooseLang(lang)` (`src/auth.js`) is the one toggle: in a pilot it posts the prefs; in the demo it calls the shared
+  `setLang` mutator as before. The family view's English / ไทย switch and the display menu use it.
+- **Before signing in**: the sign-in page (`SignIn.jsx`) and the family letter page (`FamilyJoin.jsx`) have an English / ไทย
+  switch, remembered on the device in `localStorage['transit-lang']` (not a `tp-` key, so signing out keeps it; it holds
+  nothing about anyone). A family account with no language yet takes that choice when it signs in, joins or finishes a
+  setup link. Server answers on these pages (wrong password, expired letter…) are shown in Thai from a fixed list
+  (`errText`). The parent conference link (`#/p/<id>`) uses the same remembered choice.
+- **What is in Thai**: family view, consent (the school's template requests, `consentText`; other wording stays as
+  written), weekly digest, header navigation, display menu, account menu, password dialog, feedback dialog, save status,
+  and notifications. Notifications are stored once, in English; `noteText(lang, text)` renders the ones families get
+  (and the consent answers students get) from their known templates. Names and quoted titles stay as written.
+- **Never translated**: students' own words (station titles, reflections) stay as written, marked `lang="en"`.
+- **Family letters** (`FamilyLetters.jsx`): a Language choice on the sheet: Thai and English (default: Thai paragraphs,
+  then English, on each letter), English only, or Thai only. Still two letters to an A4 page in every choice.
+- **Font**: `[lang="th"]` uses Sarabun (Google Fonts, already in `index.html`), then Noto Sans Thai and the system's Thai font.
+- Tests: `server/test/prefs.test.mjs`; `node scripts/checks/thai-families.cjs` (the real roster from `ROSTER`, skipped when
+  missing): two parents of different students in separate browsers, one Thai and one English, each keeps theirs after a
+  reload and on a second device; the Thai parent's family view, bell and menu are in Thai; the sign-in page remembers ไทย;
+  bilingual letters fit two to a page (PDF page count). Screenshots and a PDF go to `SCRATCH` or the temp folder.

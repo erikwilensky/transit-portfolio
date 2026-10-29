@@ -45,7 +45,8 @@ import Rollout from './screens/Rollout.jsx';
 import ParentView from './screens/ParentView.jsx';
 import Family from './screens/Family.jsx';
 import LearnerProfile from './screens/LearnerProfile.jsx';
-import { tr } from './i18n.js';
+import { agoIn, noteText, tr } from './i18n.js';
+import { chooseLang } from './auth.js';
 import { isPublicRoute } from './publicRoute.js';
 import Pilot from './screens/Pilot.jsx';
 import AuditLog from './screens/AuditLog.jsx';
@@ -247,7 +248,7 @@ export default function App() {
                   {!notes.length && <p className="menu-empty">{T('Nothing yet. Things other people do with this record will show up here.')}</p>}
                   {notes.map((n) => (
                     <button key={n.id} role="menuitem" className={n.read ? '' : 'unread'} onClick={() => n.go && go(n.go.persona, n.go.screen, n.go.param)}>
-                      <span><b>{n.text}</b><small>{ago(n.ts)}</small></span>
+                      <span><b>{noteText(lang, n.text)}</b><small>{agoIn(lang, n.ts)}</small></span>
                     </button>
                   ))}
                 </div>
@@ -255,16 +256,16 @@ export default function App() {
             </div>
             {level && <IntensityControl compact value={level} onChange={changeLevel} />}
             <div className="menu-wrap">
-              <button className="icon-btn view-btn" onClick={() => setMenu(menu === 'view' ? null : 'view')} aria-expanded={menu === 'view'} aria-haspopup="menu" aria-label="Display settings" title="Display settings">
+              <button className="icon-btn view-btn" onClick={() => setMenu(menu === 'view' ? null : 'view')} aria-expanded={menu === 'view'} aria-haspopup="menu" aria-label={T('Display settings')} title={T('Display settings')}>
                 <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /><circle cx="16" cy="7" r="2.2" fill="none" stroke="currentColor" strokeWidth="2" /><circle cx="10" cy="17" r="2.2" fill="none" stroke="currentColor" strokeWidth="2" /></svg>
               </button>
               {menu === 'view' && (
                 <div className="menu view-menu" role="menu">
                   {level && <><div className="menu-title">How much to show</div><div className="vm-row"><IntensityControl value={level} onChange={changeLevel} /><small className="vm-note">{INTENSITY.find(([k]) => k === level)?.[2]}</small></div></>}
-                  <div className="menu-title">Language</div>
-                  <div className="vm-row seg">{[['en', 'English'], ['th', 'ภาษาไทย']].map(([k, l]) => <button key={k} className={lang === k ? 'on' : ''} lang={k} onClick={() => setLang(k)}>{l}</button>)}</div>
-                  <div className="menu-title">Theme</div>
-                  <div className="vm-row seg">{[[false, 'Light'], [true, 'Dark']].map(([k, l]) => <button key={l} className={dark === k ? 'on' : ''} onClick={() => setDark(k)}>{l}</button>)}</div>
+                  <div className="menu-title">{T('Language')}</div>
+                  <div className="vm-row seg">{[['en', 'English'], ['th', 'ภาษาไทย']].map(([k, l]) => <button key={k} className={lang === k ? 'on' : ''} lang={k} onClick={() => chooseLang(k)}>{l}</button>)}</div>
+                  <div className="menu-title">{T('Theme')}</div>
+                  <div className="vm-row seg">{[[false, 'Light'], [true, 'Dark']].map(([k, l]) => <button key={l} className={dark === k ? 'on' : ''} onClick={() => setDark(k)}>{T(l)}</button>)}</div>
                 </div>
               )}
             </div>
