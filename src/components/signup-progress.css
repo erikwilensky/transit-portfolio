@@ -1,0 +1,27 @@
+/* Sign-up progress (SignupProgress.jsx): homeroom table on Pilot usage, a strip on the advisory page. */
+.sp { position: relative; }
+.sp-table td.sp-n { white-space: nowrap; }
+.sp-n span { display: inline-block; min-width: 2.2em; }
+.sp-bar { display: inline-block; vertical-align: middle; width: 64px; height: 6px; border-radius: 3px; background: var(--rule); overflow: hidden; }
+.sp-bar > i { display: block; height: 100%; background: var(--navy); }
+:root[data-theme="dark"] .sp-bar > i { background: var(--b-sky); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .sp-bar > i { background: var(--b-sky); } }
+.sp-room { padding: 0; font-size: 14px; }
+.sp-table tr.on td { background: color-mix(in srgb, var(--navy) 6%, transparent); }
+.sp-cards { padding: 4px 10px; font-size: 13px; white-space: nowrap; }
+.sp-list ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px 16px; }
+.sp-list li { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
+.sp-list li small { flex-basis: 100%; }
+.sp-total td { border-top: 2px solid var(--rule); }
+.sp-staff th { padding-top: 18px; }
+.sp-sum td { border-top: 1px solid var(--rule); }
+.sp-strip { margin: 0 0 12px; font-size: 14px; }
+.sp-strip > p { display: flex; flex-wrap: wrap; gap: 4px 0; align-items: baseline; margin: 0; }
+.sp-strip > p > span + span::before { content: '·'; margin: 0 8px; color: var(--muted); }
+.sp-strip b { font-weight: 600; }
+.sp-strip .linkish { margin-left: 10px; }
+.sp-missing { display: flex; flex-wrap: wrap; gap: 8px 32px; margin-top: 8px; }
+.sp-missing h3 { font-size: 13px; font-weight: 600; margin: 0 0 4px; color: var(--muted); }
+.sp-missing ul { margin: 0; padding-left: 18px; columns: 2; column-gap: 24px; }
+@media (max-width: 600px) { .sp-missing ul { columns: 1; } }
+.acc-tag.sp-up { background: color-mix(in srgb, var(--navy) 10%, var(--surface)); }

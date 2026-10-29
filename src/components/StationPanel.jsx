@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { VerifyBadge } from './Badge.jsx';
 import RecordInspector from './RecordInspector.jsx';
+import MomentComments, { commentViewer } from './MomentComments.jsx';
+import { HiddenNotice, ReportButton } from './Report.jsx';
 import { ATL, LEARNER_PROFILE, setTags, addCheckIn, addReflection, completeGoal, deleteStation, editStation, getTeacher, getTeachers, requestEndorsement, getEvent, requestFor, resubmit, setVisibility, snapshot, TODAY, endorserChoices } from '../api.js';
 import { createPortal } from 'react-dom';
 import EvidenceDoc, { docLabel } from './EvidenceDoc.jsx';
@@ -27,6 +29,7 @@ export default function StationPanel({ event, map, onClose, readOnly = false, on
           <button className="panel-close" onClick={onClose} aria-label={t('Close')}>×</button>
           <div className="panel-type">{event.lineIds.length > 1 ? `${t('Interchange')} · ` : ''}{t(TYPE_LABEL[event.type])}</div>
           <h2>{event.title}</h2>
+          <HiddenNotice item={event} />
           <div className="panel-date">{fmtDate(event.date)} · {termText(lang, fmtTerm(event.date, map.student.g9StartYear, map.student.startGrade, map.student.endGrade))}</div>
           <div className="chips">
             {event.lineIds.map((id) => {
@@ -81,6 +84,8 @@ export default function StationPanel({ event, map, onClose, readOnly = false, on
             </section>
           ))}
 
+          {!(readOnly && commentViewer(event)?.me === 'student') && <MomentComments key={`c-${event.id}`} event={event} toast={toast} />}
+
           <dl className="meta">
             <dt>{t('Source')}</dt><dd>{event.source.system}{event.source.ref ? ` · ${event.source.ref}` : ''}</dd>
             {event.mergedFrom?.length > 0 && <><dt>{t('Merged with')}</dt><dd>{event.mergedFrom.map((m) => `${m.system} · ${m.ref}`).join(', ')}{event.source.original ? ` (first added by ${event.source.original === 'Manual entry' ? 'the student' : event.source.original})` : ''}</dd></>}
@@ -90,6 +95,7 @@ export default function StationPanel({ event, map, onClose, readOnly = false, on
               </select>)}</dd></>}
           </dl>
           <button className="ghost small-btn" onClick={() => setInspect(event.id)}>{t('View record')}</button>
+          <ReportButton event={event} toast={toast} />
           {onAsk && <AskBox key={event.id} first={map.student.name.split(' ')[0]} onAsk={(t) => onAsk(event.id, t)} />}
           {!readOnly && <p className="fineprint">Verified facts can be included, excluded or reordered in a presentation, never edited.</p>}
         </div>

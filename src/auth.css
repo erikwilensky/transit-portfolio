@@ -123,3 +123,9 @@
 .acc-counts td { padding: 6px 10px 6px 0; border-bottom: 1px solid var(--rule); font-variant-numeric: tabular-nums; }
 .acc-ok { margin: 0; border-left: 4px solid #008A60; background: color-mix(in srgb, #008A60 10%, var(--surface)); padding: 9px 12px; border-radius: 4px; font-weight: 500; }
 .acc-dl { align-self: flex-start; }
+
+/* Thai for families: English / ไทย on the sign-in and family letter pages, top right of the navy band. */
+.auth-lang { position: absolute; top: 14px; right: 14px; z-index: 1; background: rgba(255,255,255,.14); }
+.auth-lang button { color: #fff; }
+.auth-lang button.on { background: #fff; color: #002855; box-shadow: none; }
+.auth-page[lang="th"] .auth-lede, .auth-page[lang="th"] .auth-band p { line-height: 1.65; }

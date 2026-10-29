@@ -6,6 +6,8 @@ import { isPilot } from '../auth.js';
 import { AdvisorCards } from './SignInCards.jsx';
 import { AdvisorFamily } from './FamilyLetters.jsx';
 import { QuietGroup } from './Nudges.jsx';
+import { AdvisorProgress } from './SignupProgress.jsx';
+import { AdvisoryConference } from './ConferenceSheets.jsx';
 
 export default function AdvisorGrid({ advisorId, onOpen, toast, version }) {
   const cohort = useMemo(() => getCohort(advisorId), [advisorId, version]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -26,8 +28,10 @@ export default function AdvisorGrid({ advisorId, onOpen, toast, version }) {
           <span><b>{cohort.reduce((n, c) => n + c.openSignals, 0)}</b> open reflection signals</span>
         </div>
       </div>
+      {isPilot() && <AdvisorProgress version={version} />}
       {isPilot() && <AdvisorCards toast={toast} />}
       {isPilot() && <AdvisorFamily toast={toast} />}
+      <AdvisoryConference advisorId={advisorId} cohort={cohort} group={group.name} />
       <QuietGroup advisorId={advisorId} toast={toast} version={version} />
       <p className="fineprint">Advisor view shows advisor, school and publishable items. Students are listed alphabetically; the grid never ranks or compares them. Each card compares a student only with their own last term.</p>
       <div className="adv-grid">

@@ -106,6 +106,12 @@ export function summary(now = new Date()) {
   const count = (s) => people.filter((p) => p.status === s).length;
   return { today, tz: TZ, people, weeks, byRole, byYear, totals: { ...totals, people: people.length, today: count('today'), week: count('today') + count('week'), never: count('never') } };
 }
+// Each account's last request ever (ISO), for sign-up progress (server/routes/62-progress.mjs).
+export function lastSeenAll() {
+  const out = {};
+  for (const d of Object.keys(usage.days).sort()) for (const [id, u] of Object.entries(usage.days[d].u)) if (u.seen) out[id] = u.seen;
+  return out;
+}
 export const _reset = () => { usage = { days: {} }; };
 
 export default (app) => {

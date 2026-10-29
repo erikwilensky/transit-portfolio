@@ -277,7 +277,8 @@ server makes an empty folder and begins again from the seed.
   the mutators in `STUDENT_FNS`, and only when every student the call touches (`touchedBy`, looked up from
   the station, inbox item, request or evidence request) is their own `studentId`, never as a teacher.
   Parents: `answerConsent` for their own children, and `setFamily`. Everyone signed in: `recordView`,
-  `setLang`, and `markNotificationsRead` for their own keys only (see Notifications).
+  and `markNotificationsRead` for their own keys only (see Notifications). `setLang` (the demo's one shared
+  language) is admin only in a pilot: each person's language is on their account (see "Thai for families").
 - **Browser** (`src/auth.js`): reads the mode from `/api/auth/me` (no server, or demo → demo). In pilot it
   builds the signed-in person's persona in the PERSONAS shape (`personaFor`) and installs it with
   `setPilotPersona`, so `personaById` always returns it. `navOf(p)` gives a persona's navigation
@@ -321,7 +322,6 @@ server makes an empty folder and begins again from the seed.
   every field of the arguments (a whole-school role can still act as any teacher, `addGoal(.., by)` etc.).
   `restore` (a whole earlier copy) is refused for everyone in a pilot, since each browser holds only part
   of the record; Undo goes through `/api/undo`, which rebuilds on the server's whole record.
-- `setLang` changes the one shared family language setting for everybody.
 - In the browser the record is still also saved in localStorage; signing out clears it.
 - **Public pages** (`server/routes/40-public.mjs`, `src/publicRoute.js`, `src/screens/PublicPage.jsx`):
   `#/s/<token>` and `#/v/<code>` never load or sync the full record (`isPublicRoute()`). With a server,
@@ -665,6 +665,33 @@ answers it from the top of their home.
 - Tests: `server/test/class-prompts.test.mjs`; `node scripts/checks/class-prompts.cjs` (real roster, skipped when
   missing: a teacher asks a Year 8 class, a student answers at Simple level on a phone with a photo, the teacher sees
   1 of N, the answer and the station in Endorsements, reminds the rest; then a Standard-level skip).
+
+## Reviewing class-question answers (`src/components/ClassAnswers.jsx`, `src/api.js`)
+
+- Route: `#/<persona>/classes/<classId>~answers~<promptId>` ("Review answers" on each question on the class page;
+  "Review all" on its card in Endorsements). One card per answer: name, homeroom, date, answer, photo thumbnail and
+  the state of its station: Waiting, Endorsed, Asked for more, or Answered (a reflection question: nothing to endorse).
+  Students who skipped or have not answered are listed below.
+- Endorsing (the asking teacher, for a question asked as a moment): tick answers, or "Select all waiting", then
+  "Endorse selected" or "Endorse all waiting (N)", with one shared note and the Endorsements queue's quick chips
+  (`CHIPS`, exported from `TeacherQueue.jsx`). It is one `endorse(requestIds, teacherId, note)` call, so one change
+  and one undo. "Ask for more" per answer sends `declineRequest(requestId, note)`. Keyboard: J/K or arrows move,
+  X selects, E endorses, A opens the "ask for more" note (Enter sends, Escape cancels). Another teacher of the class
+  reads the answers and downloads the CSV, but the requests are not theirs to decide.
+- No new mutator or permission: canAct already lets a teacher `endorse` a list of requests when every request is
+  addressed to them and they act as themselves (each touched student is in their reach through that request).
+- Endorsements: pending requests answering the same class question (2 or more) show as one card, "Answers to “…” ·
+  N waiting · Review all", instead of N cards; the "waiting" meter still counts them all.
+- "Download answers (CSV)" is made in the browser from the teacher's scoped record (`answersCsv(promptId)`): columns
+  Name, Homeroom, Status, Answered at (local time), Answer, Endorsed (yes/no; empty for a reflection question or no
+  answer), one row per student asked, including "Not for them" and "Not answered yet". UTF-8 with a BOM so Excel opens
+  Thai text; cells starting `= + - @` get a leading `'`.
+- Reads: `promptReview(promptId)` → `{ prompt, rows: [{ studentId, student, answer, event, request, photo, status }] }`
+  (status: `waiting | more | endorsed | answered | skipped | none`), `classAnswerGroups(teacherId)`, `answersCsv(promptId)`.
+- Tests: `server/test/class-answers.test.mjs`; `node scripts/checks/class-answers.cjs` (real roster: Mr David Coultas
+  asks Y8 Sciences 08.04 (04); four students answer in their own browsers; one grouped card in Endorsements; Review
+  all; ask one for more by keyboard; endorse the other three at once with a note and chip; CSV rows; Aaron Torres sees
+  "Checked by a teacher"; another teacher's bulk endorse is refused).
 ## Phone app (`public/manifest.webmanifest`, `public/sw.js`, `src/pwa.js`, `src/components/PhoneApp.jsx`)
 
 The site installs on a phone's home screen, in demo and pilot alike.
@@ -738,3 +765,200 @@ The site installs on a phone's home screen, in demo and pilot alike.
   reading, done, PDPA copy and erasure), `server/test/nudges.test.mjs` (quiet rules); browser:
   `node scripts/checks/feedback-nudges.cjs` (the real roster from `TP_ROSTER`, skipped without it; screenshots to
   `SCRATCH` or the temp folder).
+
+## Sign-up progress (`server/routes/62-progress.mjs`, `src/components/SignupProgress.jsx`)
+
+How far the rollout has got: who has set a password, who is using it, who has a family account. Counts only.
+- **Last sign-in**: every new session (`A.startSession`: password, setup link, family join) writes `account.lastSignInAt`.
+  "Last here" is the later of that and the account's last request in `usage.json` (`lastSeenAll()` in 60-usage).
+  **Active** = has a password and was last here in the last 7 days. **Added a moment** = at least one non-goal event in
+  the record. **Family joined** = at least one `parent` account with the student in `children`. Paused accounts are left out.
+- **`GET /api/admin/progress?homeroom=`** (admin or leadership): `{ today, homerooms: [{ name, year, students, signedUp,
+  waiting, active, moments, families }], totals, staff: { rows: [{ kind, total, signedUp, active }], total }, students? }`,
+  homerooms sorted by Year then name; `waiting` = has an account but no password. With `homeroom`, `students: [{ id, name,
+  homeroom, year, hasAccount, signedUp, active, moment, families, lastSignIn }]`.
+- **`GET /api/advisor/progress`** (staff whose `teacherId` is their advisees' `advisorId`; 403 for anyone with no advisees):
+  `{ total, signedUp, active, families, students }`.
+- **Screens** (pilot only): "Sign-up progress" on Pilot usage: a row per homeroom with inline bars, a totals row and a row
+  per staff role; a homeroom opens its students with a chip (Not signed up / Signed up / Active this week) and the last
+  day they were here. The admin also gets "Print N sign-in cards" per homeroom (`POST /api/admin/cards { homerooms: [name] }`,
+  only accounts with no password; it replaces their earlier links). On the advisory page a strip "Signed up 14 of 23 ·
+  Families 3 of 23 · Active this week 9" with "Who's missing" (not signed up; no family account).
+- Tests: `server/test/progress.test.mjs`; `node scripts/checks/signup-progress.cjs` (the real roster: 8C, Ms Jane Altemen).
+## See as: an admin's read-only preview of any account (`server/routes/18-preview.mjs`, `src/preview.js`)
+
+Testing several accounts in one browser is confusing (one browser holds one sign-in). Instead, Accounts gives every
+row but your own a **See as <first name>** link: the app as that person sees it, read-only, while the admin stays
+signed in as themselves. No session swap, no cookie change.
+
+- `GET /api/admin/preview/:accountId` (admin only; 401 signed out, 403 anyone else, 404 unknown) →
+  `{ user, snapshot, rev }`: `user` is the account as `/api/auth/me` gives it to them (`me()` in `10-auth.mjs`, with
+  the linked record), `snapshot` their scoped copy (`scopedSnapshot`, as their own `/api/state` would be). Never a
+  password hash, setup token or session. Each start writes one line to `DATA_DIR/audit.log` (the PDPA audit file):
+  `{ at, action: 'preview', by: <admin id>, accountId, kind }`, no content. Admin accounts can be previewed too.
+- Browser: `#/preview/<accountId>` (same tab, or a new tab with Ctrl/Cmd-click) remembers the account for that tab
+  only (`sessionStorage` `tp-preview`, so a reload stays in the preview and other tabs are the admin's own view),
+  fetches the preview and loads it with `api.loadPreview` instead of starting sync: no `/api/stream`, no `/api/state`,
+  nothing posted, and the copy is never saved to this browser's `localStorage` (nor replaced by another tab's save).
+  The persona is `personaFor(user)`, so nav, home and a student's interface level are theirs.
+- Read-only: `api.setActionGuard` sees every change before it runs. One the viewer asked for (a click, a key) shows
+  "Preview only: nothing is saved" and throws, so the screen stops where it is; one a screen makes on its own (an
+  effect or timer, e.g. reading the bell) is skipped quietly. Any other non-GET `/api/*` request (`fetch` or XHR:
+  uploads, feedback, sign-in cards) is refused in the page with the same message. The account menu (password, sign
+  out) is hidden. Uploaded files (`GET /api/files/*`) open as usual.
+- The banner across the top: "Seeing the portfolio as Aaron Torres (Year 8, 8C). Read-only." (staff and families:
+  the role their header shows) and **Exit preview**, which forgets the preview and reloads into `#/me/accounts`.
+- Tests: `server/test/preview.test.mjs` (admin only, scoped copy, no secrets, audit lines); browser:
+  `node scripts/checks/see-as.cjs` (the real roster from `TP_ROSTER`, skipped without it): Aaron Torres, Mr David
+  Coultas, Ms Jane Altemen (advisor of 8C), a coordinator and a parent each compared with their own sign-in; a moment
+  added in the preview is refused and the server's rev is unchanged; nothing synced; Exit returns to Accounts; the
+  admin's cookie, sign-in and saved record are unchanged.
+## Comments on a moment (`src/api.js`, `src/components/MomentComments.jsx`)
+
+A conversation on one station between the student and the staff who can see it. Demo and pilot. Separate from the
+counsellor's draft comments (`store.comments`, `addComment`, `DraftComments.jsx`), which stay as they were.
+
+- **Record**: `store.momentComments = [{ id, eventId, studentId, by ('student' | teacher id), text, at, edited? }]` and
+  `store.commentReads = [{ studentId, eventId, by, at }]` (when each person last read a thread), both made on first use.
+- **Mutators** (deterministic, `uid()`/`nowIso()`): `addMomentComment(eventId, by, text)` (text trimmed to 2,000
+  characters; 400 empty or private station, 404 unknown station); `editMomentComment(id, by, text)` (the author, within
+  `COMMENT_EDIT_MIN` = 15 minutes, else 409); `deleteMomentComment(id, by)` (the author, any time);
+  `markCommentsRead(eventId, by)`. Reads: `getMomentComments(eventId)`, `unreadComments(eventId, me)` (by others since
+  `me` last read or wrote), `commentStaff(eventId)` (advisor, teachers asked about it, sponsor, staff who wrote),
+  `commentsAsked(eventId, tid)`, `commentWho(c, me)` (students read "Mr Coultas", staff full names, "You" for your own).
+- **Notifications**: a staff comment → the student ("Mr Coultas wrote on “…”: …", `go: map/<eventId>`; at Simple
+  level the moment opens). A student comment → every `commentStaff`: the advisor to `student/<sid>~<eventId>` (their map
+  with the station open), anyone else to `queue/c~<eventId>` (that thread in Endorsements).
+- **canAct** (`server/auth.mjs`, before the role rules): as yourself only (`'student'` / your `teacherId`), never on a
+  private station. Students: their own stations (also listed in `STUDENT_FNS`). Whole-school staff and admins: any.
+  Advisors and teachers: a student in reach; to write, only as the advisor, a teacher the student asked about that
+  station (`requests`), or its sponsor; `markCommentsRead` needs only reach. Edit is refused after 15 minutes by the
+  server's clock too. Families: never.
+- **Scope** (`server/scope.mjs`): `momentComments` only for stations the viewer receives, none for parents;
+  `commentReads` only the viewer's own.
+- **PDPA**: both are in the copy (`momentComments.json`, `commentReads.json`) and go with erasure.
+- **Screens**: a "Comments" section in the station panel (student map, advisor's student map, My classes read view),
+  collapsed under each Endorsements card ("Comments (n)" with "n new"), and "Comments on moments" on the queue for
+  threads beyond the waiting cards. Simple: the moment card shows "n new" in My moments, and the moment has the thread
+  with a big "Reply". Not on share links, public pages, the family view, previews ("See as") or the studio.
+- Tests: `server/test/moment-comments.test.mjs`; browser: `node scripts/checks/moment-comments.cjs` (the real roster
+  from `TP_ROSTER`; Aaron Torres, Mr David Coultas, Ms Jane Altemen, a linked parent, a teacher out of reach;
+  screenshots to the temp folder as `tp-comments-*.png`).
+
+## Conference sheets (`src/conference.js`, `src/conference-points.js`, `src/components/ConferenceSheets.jsx`)
+
+A printable A4 one-pager per student for a parent-student-advisor conference, made in the browser from the record the
+advisor already has (no new route, no mutator). Two ways in: **Conference sheet** on the advisor's page for one student,
+and **Print conference sheets** on the advisory page (all students, or tick some). Both open a full-screen sheet view with
+**Print** and a **Family copy** switch; printing shows only the sheets, one per page (`@page conference`, A4, no margins).
+
+- `conferenceSheet(studentId, { family })` reads `getStudentMap(id, 'advisor')`, so private moments and private
+  reflections never appear (the pilot server never sends them to an advisor anyway). It returns this term's moments
+  (`TERM_START` to `TODAY`) by line, the 3 latest reflections, goals with a status (Due soon within 6 weeks, Planned,
+  Past its date, Done this term), endorsements received, class-question answers (stations from `Class question`) and,
+  for the advisor copy only, `staff`: moment-comment count, the last two advisor notes and open reflection signals.
+- Family copy: `family: true` reads the map as the family view does (`familyViewer`: Years 7 to 9 at advisor level, from
+  Year 10 what the student shares with the school) and leaves `staff` out, so the advisor can hand it over.
+- `talkingPoints({ first, lines, goals, moments, reflections, endorsements })` is pure (tested in
+  `server/test/conference-points.test.mjs`): the busiest line, a line with nothing this term, the next goal (or one past
+  its date), then fallbacks; always three, never repeated.
+- Footer: "Prepared by <advisor> on <date> · confidential to the student, family and school". Each sheet is a fixed A4
+  page; the moment list shortens as lines grow, and the note lines in the talking-points box give way first.
+- Check: `scripts/checks/conference-sheets.cjs` (real roster: Ms Jane Altemen's advisory 8C, 23 sheets, 23 PDF pages).
+## Simple level: goals (`src/screens/SimpleHome.jsx`, `src/screens/simple-goals.css`)
+
+- **Something I want to do**: a third big card on the Simple home, next to "Add something I did". "Answer a question"
+  now shows only when there is a question (it used to sit there disabled). On a phone the cards stack, smaller.
+- **The flow** (`GoalFlow`), one question per screen: 1) what, with up to six example chips from the student's lines
+  (by line name: science, music, art, sport, design, languages, maths, service; a chip also picks its line); 2) which
+  colour (big line buttons); 3) when: "In a few weeks" (+21 days), "By the end of this term", "This year", or "Pick a
+  date" (terms are taken to end 11 Dec, 26 Mar and 11 Jun; near enough for a target); 4) "Want a teacher to help you
+  with it?": the same choices as asking a teacher to check a moment (`endorserChoices(studentId, [], [lineId])`, the
+  teacher of their class on that line first, "Someone else", "Not now"); skipped when there is nobody to ask. Saves with
+  the existing `addGoal(studentId, { title, date, lineId, checkIn: true, sponsor })`: a sponsor gets the existing
+  invitation in their queue's "Planned work you sponsor" (`SponsorPanel`), the advisor a check-in notice.
+- **On the journey**: a goal is a dashed, tinted stop ahead of Today on its line, joined to Today by a dashed track (the
+  track widens its time range to fit the latest goal). Tapping it opens the goal card. **Coming up** lists the
+  student's goals (not school requirements) with the sponsor's state ("Waiting for Mr Surname to say yes", "… is
+  helping you" plus their expectations, "… can't help this time").
+- **I did it!** runs the existing `completeGoal(id)` (a moment dated today; an accepted sponsor gets an endorsement
+  request with `source: 'sponsor'`, "Finished project you sponsored" in their queue), then offers a photo (the same
+  photo step as adding a moment, `PhotoPick`; saved with `editStation(id, { evidence })`) and one sentence
+  (`addReflection`). Both can be skipped.
+- **Not doing this any more**: asks once, then the existing `deleteStation(id)` (a student may delete their own
+  student-added stations; goals are). No new mutator.
+- The advisor already sees goals on their student page (dashed on the map; within 120 days in the meeting agenda).
+- Tests: `server/test/simple-goals.test.mjs` (who may plan, answer, complete, drop; the sponsor's download and request);
+  browser: `node scripts/checks/simple-goals.cjs` (the real roster from `TP_ROSTER`; Aaron Torres on a phone plans
+  "Enter the science fair" on Science and asks Mr David Coultas; Coultas accepts; Ms Jane Altemen sees it in the
+  agenda; Aaron marks it done with a photo and a sentence; Coultas endorses it in one click and the stop is solid;
+  a second goal is dropped. Screenshots to the temp folder as `tp-goals-*.png`).
+## Thai for families (`server/routes/19-prefs.mjs`, `src/i18n.js`, `src/auth.js`)
+
+Each person reads the app in English or Thai, and the choice belongs to them, not to the school.
+- **Per account**: `POST /api/auth/prefs { lang }` (`'en'` or `'th'`, 400 otherwise; 401 signed out) sets `lang` on the
+  signed-in account in `accounts.json` and answers `{ user }`. It takes no account id, so nobody can set anyone else's.
+  `/api/auth/me` carries `user.lang`, so the choice follows the person to every device and survives restarts. No `lang`
+  means English. Any account may set it; the screens that are translated are the ones a family sees.
+- **Browser**: `api.getLang()` returns the person's own language (`setOwnLang`, set by `src/auth.js` from `user.lang`
+  when signed in to a pilot, and by See as from the previewed account), else the demo's shared `store.family.lang`.
+  `chooseLang(lang)` (`src/auth.js`) is the one toggle: in a pilot it posts the prefs; in the demo it calls the shared
+  `setLang` mutator as before. The family view's English / ไทย switch and the display menu use it.
+- **Before signing in**: the sign-in page (`SignIn.jsx`) and the family letter page (`FamilyJoin.jsx`) have an English / ไทย
+  switch, remembered on the device in `localStorage['transit-lang']` (not a `tp-` key, so signing out keeps it; it holds
+  nothing about anyone). A family account with no language yet takes that choice when it signs in, joins or finishes a
+  setup link. Server answers on these pages (wrong password, expired letter…) are shown in Thai from a fixed list
+  (`errText`). The parent conference link (`#/p/<id>`) uses the same remembered choice.
+- **What is in Thai**: family view, consent (the school's template requests, `consentText`; other wording stays as
+  written), weekly digest, header navigation, display menu, account menu, password dialog, feedback dialog, save status,
+  and notifications. Notifications are stored once, in English; `noteText(lang, text)` renders the ones families get
+  (and the consent answers students get) from their known templates. Names and quoted titles stay as written.
+- **Never translated**: students' own words (station titles, reflections) stay as written, marked `lang="en"`.
+- **Family letters** (`FamilyLetters.jsx`): a Language choice on the sheet: Thai and English (default: Thai paragraphs,
+  then English, on each letter), English only, or Thai only. Still two letters to an A4 page in every choice.
+- **Font**: `[lang="th"]` uses Sarabun (Google Fonts, already in `index.html`), then Noto Sans Thai and the system's Thai font.
+- Tests: `server/test/prefs.test.mjs`; `node scripts/checks/thai-families.cjs` (the real roster from `ROSTER`, skipped when
+  missing): two parents of different students in separate browsers, one Thai and one English, each keeps theirs after a
+  reload and on a second device; the Thai parent's family view, bell and menu are in Thai; the sign-in page remembers ไทย;
+  bilingual letters fit two to a page (PDF page count). Screenshots and a PDF go to `SCRATCH` or the temp folder.
+## Safeguarding: reports and the moderators' queue (`src/api.js`, `src/components/Report.jsx`, `src/screens/Reports.jsx`)
+
+Anyone signed in can report a moment or a moment comment they can see; the school's moderators decide what happens to it.
+Demo and pilot (the Reports screen is in the pilot nav only). No automatic filter.
+
+- **Record**: `store.reports = [{ id, kind: 'station' | 'comment', eventId, commentId?, studentId (the owner), reason, note, at,
+  from: { key, name, role }, status: open | hidden | shown | photo-removed | no-action, history: [{ action, note, at, by }] }]`,
+  made on first use. Reasons (`REPORT_REASONS`): `inappropriate`, `personal`, `unkind`, `other`. A hidden item carries
+  `hidden: { at, by }` (the station in `events`, or the comment in `momentComments`).
+- **Mutators** (deterministic, so they replay and undo like any change): `reportItem({ eventId } | { commentId }, reason, note,
+  from)`; `from.key` is `'student'` (the owner), a teacher id, `'fam:<studentId>'` or `'admin'` (`from.name` for the last two).
+  One open report per person per item (a second returns the first); at most 20 per person per hour (429). Never on a private
+  moment; families never on a comment. `moderateReport(id, action, note, by)` (`by`: the moderator's teacher id, or null for
+  an admin without one); `action`: `hide`, `unhide`, `photo` (takes every image off the station's evidence), `none`. The
+  answer goes into the history of every report on the same item. `editStation` ignores `hidden`.
+- **Notifications**: a new report → `role:coordinator`, `role:counsellor`, `role:leadership` ("New report: “…” (Student).
+  Reason.", `go: reports/<id>`), never naming the reporter. Hide → the student: "A teacher has hidden “…” while they look at
+  it." (a comment: "… hidden a comment on “…” …"); unhide and photo removal also tell the student.
+- **canAct** (`server/auth.mjs`, `SAFE_FNS`): reporting as yourself only, on what you can see: a student their own moment and
+  comments on it; staff a student in reach; a parent a child's moment that the family view shows and that is not hidden, with
+  their own account name. Moderating: `MODERATOR_KINDS` (coordinator, counsellor, leadership) and admins, as themselves.
+- **Who sees what** (`server/scope.mjs`): moderators and admins get `reports` whole (reporter included). Anyone else gets only
+  the reports they made, without names, notes or history; the student reported never learns who reported. A hidden moment
+  leaves the family's copy (and its activity lines), the family view (`getStudentMap(id, viewer, { family: true })`, also
+  the digest), every `'school'` and `'public'` view (share links, posters, reference letters, `schoolEvents()` lists) and the
+  verify page; the student and staff keep it, with a notice. A hidden comment stays with staff and, when they wrote it, the
+  student.
+- **Remove photo**: the images leave the station, and `server/routes/70-reports.mjs` deletes the uploaded file (and its
+  `.json`) from `DATA_DIR/uploads` unless the record still uses it elsewhere. Undo of that change cannot bring the file back.
+- **PDPA**: the copy has `reports.json` with reasons, notes and outcomes, never `from`; erasure removes reports about the student.
+- **Screens**: "Report" in the station panel (any view with a signed-in viewer who may report; not on share links or previews)
+  and under each comment; Simple level: "Something wrong? Tell a teacher" on the moment. Reports (`#/<persona>/reports`):
+  Open and Done tabs; each card has the item (title, photo thumbnail, text), student, reporter (name and role), reason, note,
+  time, history, a note box and "Hide from everyone but the student and staff" / "Show it again", "Remove photo", "No action
+  needed".
+- **Uploads** (unchanged): `POST /api/upload` already accepts only images (jpeg, png, gif, webp, heic, heif, avif), PDF, office
+  documents, txt/csv, audio and video, by declared type or else by extension (415 otherwise; SVG and HTML refused), at most
+  25 MB; files are served with `nosniff` and a type fixed by the extension. Content is not sniffed.
+- Tests: `server/test/safeguarding.test.mjs`; browser: `node scripts/checks/safeguarding.cjs` (the real roster from
+  `TP_ROSTER`, skipped without it): Aaron Torres adds a moment with a photo, a parent joins by the family letter and sees it,
+  Mr David Coultas reports it, a coordinator hides it from Reports, Aaron sees the notice, the parent no longer sees it.

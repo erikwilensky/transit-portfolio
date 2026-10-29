@@ -7,6 +7,8 @@ import { ensureEndorsed } from './tourStory.js';
 import { PERSONAS, KIND_LABEL, NAV, personaById, home, navOf, pilotPersona } from './personas.js';
 import Accounts from './screens/Accounts.jsx';
 import Usage from './screens/Usage.jsx';
+import Reports from './screens/Reports.jsx';
+import { isModerator } from './api.js';
 import { AccountMenu, PasswordDialog } from './screens/SignIn.jsx';
 import { ago, appUrl, inkOn } from './format.js';
 import Studio from './components/Studio.jsx';
@@ -45,7 +47,8 @@ import Rollout from './screens/Rollout.jsx';
 import ParentView from './screens/ParentView.jsx';
 import Family from './screens/Family.jsx';
 import LearnerProfile from './screens/LearnerProfile.jsx';
-import { tr } from './i18n.js';
+import { agoIn, noteText, tr } from './i18n.js';
+import { chooseLang } from './auth.js';
 import { isPublicRoute } from './publicRoute.js';
 import Pilot from './screens/Pilot.jsx';
 import AuditLog from './screens/AuditLog.jsx';
@@ -60,6 +63,7 @@ import ShareGaps from './components/ShareGaps.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import SyncStatus from './components/SyncStatus.jsx';
 import { serverMode, undoSince } from './sync.js';
+import { inPreview } from './preview.js'; // admin "See as": no account menu for the person shown
 import { VerifyProvider } from './components/VerifyModal.jsx';
 import { TOURS, tourMinutes, stopCount } from './tour.js';
 import { QADrawer, TourCard, TourRoute } from './components/TourCards.jsx';
@@ -215,9 +219,9 @@ export default function App() {
             <div className="menu-wrap">
               <button className="persona-btn" onClick={() => setMenu(menu === 'persona' ? null : 'persona')} aria-expanded={menu === 'persona'} aria-haspopup="menu">
                 <span className="av" style={{ background: persona.colour, color: inkOn(persona.colour) }}>{persona.initials}</span>
-                <span className="pb-text"><small>{T(pilot ? 'Signed in' : 'Viewing as')}</small><b>{persona.name}</b></span><span aria-hidden="true">▾</span>
+                <span className="pb-text"><small>{T(inPreview() ? 'Seeing as' : pilot ? 'Signed in' : 'Viewing as')}</small><b>{persona.name}</b></span><span aria-hidden="true">▾</span>
               </button>
-              {menu === 'persona' && pilot && (
+              {menu === 'persona' && pilot && !inPreview() && (
                 <AccountMenu persona={persona} onPassword={() => { setMenu(null); setPwOpen(true); }} onFeedback={() => { setMenu(null); setFbOpen(true); }} />
               )}
               {menu === 'persona' && !pilot && (
@@ -246,7 +250,7 @@ export default function App() {
                   {!notes.length && <p className="menu-empty">{T('Nothing yet. Things other people do with this record will show up here.')}</p>}
                   {notes.map((n) => (
                     <button key={n.id} role="menuitem" className={n.read ? '' : 'unread'} onClick={() => n.go && go(n.go.persona, n.go.screen, n.go.param)}>
-                      <span><b>{n.text}</b><small>{ago(n.ts)}</small></span>
+                      <span><b>{noteText(lang, n.text)}</b><small>{agoIn(lang, n.ts)}</small></span>
                     </button>
                   ))}
                 </div>
@@ -254,16 +258,16 @@ export default function App() {
             </div>
             {level && <IntensityControl compact value={level} onChange={changeLevel} />}
             <div className="menu-wrap">
-              <button className="icon-btn view-btn" onClick={() => setMenu(menu === 'view' ? null : 'view')} aria-expanded={menu === 'view'} aria-haspopup="menu" aria-label="Display settings" title="Display settings">
+              <button className="icon-btn view-btn" onClick={() => setMenu(menu === 'view' ? null : 'view')} aria-expanded={menu === 'view'} aria-haspopup="menu" aria-label={T('Display settings')} title={T('Display settings')}>
                 <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /><circle cx="16" cy="7" r="2.2" fill="none" stroke="currentColor" strokeWidth="2" /><circle cx="10" cy="17" r="2.2" fill="none" stroke="currentColor" strokeWidth="2" /></svg>
               </button>
               {menu === 'view' && (
                 <div className="menu view-menu" role="menu">
                   {level && <><div className="menu-title">How much to show</div><div className="vm-row"><IntensityControl value={level} onChange={changeLevel} /><small className="vm-note">{INTENSITY.find(([k]) => k === level)?.[2]}</small></div></>}
-                  <div className="menu-title">Language</div>
-                  <div className="vm-row seg">{[['en', 'English'], ['th', 'ภาษาไทย']].map(([k, l]) => <button key={k} className={lang === k ? 'on' : ''} lang={k} onClick={() => setLang(k)}>{l}</button>)}</div>
-                  <div className="menu-title">Theme</div>
-                  <div className="vm-row seg">{[[false, 'Light'], [true, 'Dark']].map(([k, l]) => <button key={l} className={dark === k ? 'on' : ''} onClick={() => setDark(k)}>{l}</button>)}</div>
+                  <div className="menu-title">{T('Language')}</div>
+                  <div className="vm-row seg">{[['en', 'English'], ['th', 'ภาษาไทย']].map(([k, l]) => <button key={k} className={lang === k ? 'on' : ''} lang={k} onClick={() => chooseLang(k)}>{l}</button>)}</div>
+                  <div className="menu-title">{T('Theme')}</div>
+                  <div className="vm-row seg">{[[false, 'Light'], [true, 'Dark']].map(([k, l]) => <button key={l} className={dark === k ? 'on' : ''} onClick={() => setDark(k)}>{T(l)}</button>)}</div>
                 </div>
               )}
             </div>
@@ -301,7 +305,7 @@ export default function App() {
           {persona.kind === 'student' && <StudentScreens {...ctx} screen={route.screen} param={route.param} studentId={studentId} />}
           {persona.kind === 'student' && route.screen === 'map' && !tour && !getStudent(studentId)?.onboarding && <InstallHint />}
           {acts(persona, 'advisor') && route.screen === 'advisory' && <AdvisorGrid advisorId={persona.teacherId} version={version} toast={toast} onOpen={(id) => go(persona.id, 'student', id)} />}
-          {acts(persona, 'advisor') && route.screen === 'student' && (getStudent(route.param || 'st-01') ? <AdvisorStudent studentId={route.param || 'st-01'} {...ctx} /> : <NotInRecord onBack={() => go(persona.id, 'advisory')} />)}
+          {acts(persona, 'advisor') && route.screen === 'student' && (getStudent(route.param?.split('~')[0] || 'st-01') ? <AdvisorStudent studentId={route.param?.split('~')[0] || 'st-01'} focus={route.param?.split('~')[1]} {...ctx} /> : <NotInRecord onBack={() => go(persona.id, 'advisory')} />)}
           {acts(persona, 'teacher') && route.screen === 'queue' && <TeacherQueue teacherId={persona.teacherId} focus={route.param} {...ctx} />}
           {pilot && acts(persona, 'teacher') && route.screen === 'classes' && <MyClasses teacherId={persona.teacherId} param={route.param} {...ctx} />}
           {persona.kind === 'coordinator' && route.screen === 'cas' && <CasDashboard {...ctx} />}
@@ -330,7 +334,8 @@ export default function App() {
           {persona.kind === 'external' && <ShareLanding token={persona.token} drafts={drafts} version={version} embedded />}
           {persona.admin && route.screen === 'accounts' && <Accounts {...ctx} />}
           {pilot && route.screen === 'usage' && (persona.admin || persona.kind === 'leadership') && <Usage {...ctx} />}
-          {route.screen !== 'accounts' && route.screen !== 'usage' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} persona={persona} />}
+          {isModerator(persona) && route.screen === 'reports' && <Reports {...ctx} focus={route.param} />}
+          {route.screen !== 'accounts' && route.screen !== 'usage' && route.screen !== 'reports' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} persona={persona} />}
           </ErrorBoundary>
           {pilot && level === 'simple' && <div className="fb-simple"><button onClick={() => setFbOpen(true)}>Something not working? Tell us</button></div>}
         </main>
@@ -402,7 +407,7 @@ function StudentScreens({ screen, param, studentId, drafts, setDrafts, audience,
   }
   if (map.student.onboarding) return <Onboarding map={map} studentId={studentId} onDone={() => { toast('Your map is ready.'); go(persona.id, 'map'); }} />;
   const level = getIntensity(studentId);
-  if (level === 'simple' && screen === 'map') return <>{nudge}<SimpleHome map={map} studentId={studentId} toast={toast} version={version} addRequest={addReq} /></>;
+  if (level === 'simple' && screen === 'map') return <>{nudge}<SimpleHome map={map} studentId={studentId} toast={toast} version={version} addRequest={addReq} focusId={param} /></>;
   if (screen === 'poster') return <Poster map={map} publicMap={publicMap} drafts={myDrafts} toast={toast} />;
   if (screen === 'family') return <ShowFamily map={map} toast={toast} version={version} />;
   if (screen === 'links') return <ShareLinks studentId={studentId} drafts={myDrafts} updateDraft={updateDraft} toast={toast} version={version} />;

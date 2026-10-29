@@ -4,12 +4,23 @@ import { useEffect, useState } from 'react';
 import { feedback } from '../auth.js';
 import { uploadFile } from '../upload.js';
 import { ago } from '../format.js';
+import { getLang } from '../api.js';
 import './feedback-nudges.css';
+
+// The dialog in Thai for a family member who chose Thai (their account's language).
+const FB_TH = {
+  "Something's broken": 'มีบางอย่างใช้ไม่ได้', 'An idea': 'ข้อเสนอแนะ', "Something's confusing": 'มีบางอย่างไม่ชัดเจน', 'Send feedback': 'ส่งความคิดเห็น',
+  'This goes to the pilot team, with the screen you are on and your browser. Your teachers do not see it.': 'ข้อความนี้จะส่งถึงทีมโครงการนำร่อง พร้อมหน้าจอที่คุณเปิดอยู่และข้อมูลเบราว์เซอร์ ครูจะไม่เห็นข้อความนี้',
+  'Your idea': 'ข้อเสนอแนะของคุณ', 'What happened, and what did you expect?': 'เกิดอะไรขึ้น และคุณคาดว่าควรเป็นอย่างไร',
+  'Remove picture': 'ลบรูปภาพ', 'Adding the picture…': 'กำลังเพิ่มรูปภาพ…', 'Attach a screenshot (optional)': 'แนบภาพหน้าจอ (ไม่บังคับ)',
+  'Sending…': 'กำลังส่ง…', Send: 'ส่ง', Close: 'ปิด', 'Screen:': 'หน้าจอ:', 'Thanks. Your feedback was sent.': 'ขอบคุณ ส่งความคิดเห็นของคุณแล้ว',
+};
 
 export const FB_KINDS = [['broken', "Something's broken", '!'], ['idea', 'An idea', '+'], ['confusing', "Something's confusing", '?']];
 const ROLE = { student: 'Student', parent: 'Family', advisor: 'Advisor', teacher: 'Subject teacher', counsellor: 'Counsellor', coordinator: 'Coordinator', leadership: 'Leadership', admin: 'Pilot admin' };
 
 export function FeedbackDialog({ simple, onClose, toast }) {
+  const t = (s) => (!simple && getLang() === 'th' && FB_TH[s]) || s;
   const [kind, setKind] = useState(null);
   const [message, setMessage] = useState('');
   const [shot, setShot] = useState(null); // { url, name, preview }
@@ -25,27 +36,27 @@ export function FeedbackDialog({ simple, onClose, toast }) {
   };
   const submit = async () => {
     setErr(null); setBusy('send');
-    try { await feedback.send({ kind, message, route, screenshot: shot?.url }); toast(simple ? 'Thank you! We got it.' : 'Thanks. Your feedback was sent.'); onClose(); }
+    try { await feedback.send({ kind, message, route, screenshot: shot?.url }); toast(simple ? 'Thank you! We got it.' : t('Thanks. Your feedback was sent.')); onClose(); }
     catch (x) { setErr(x.message); setBusy(false); }
   };
   return (
     <div className="modal-back" onClick={onClose}>
-      <div className={`modal fb-dialog${simple ? ' simple' : ''}`} role="dialog" aria-label={simple ? 'Tell us something' : 'Send feedback'} onClick={(e) => e.stopPropagation()}>
-        <button className="panel-close" onClick={onClose} aria-label="Close">×</button>
-        <h2>{simple ? 'Tell us something' : 'Send feedback'}</h2>
-        <p className="fineprint">{simple ? 'This goes to the people who make the app. Your teachers do not see it.' : 'This goes to the pilot team, with the screen you are on and your browser. Your teachers do not see it.'}</p>
+      <div className={`modal fb-dialog${simple ? ' simple' : ''}`} role="dialog" aria-label={simple ? 'Tell us something' : t('Send feedback')} onClick={(e) => e.stopPropagation()}>
+        <button className="panel-close" onClick={onClose} aria-label={t('Close')}>×</button>
+        <h2>{simple ? 'Tell us something' : t('Send feedback')}</h2>
+        <p className="fineprint">{simple ? 'This goes to the people who make the app. Your teachers do not see it.' : t('This goes to the pilot team, with the screen you are on and your browser. Your teachers do not see it.')}</p>
         <div className="fb-kinds" role="radiogroup" aria-label="What kind">
-          {FB_KINDS.map(([k, label, ic]) => <button key={k} role="radio" aria-checked={kind === k} className={kind === k ? 'on' : ''} onClick={() => setKind(k)}><span aria-hidden="true">{ic}</span>{label}</button>)}
+          {FB_KINDS.map(([k, label, ic]) => <button key={k} role="radio" aria-checked={kind === k} className={kind === k ? 'on' : ''} onClick={() => setKind(k)}><span aria-hidden="true">{ic}</span>{t(label)}</button>)}
         </div>
-        <label className="fb-label" htmlFor="fb-msg">{simple ? 'What happened?' : kind === 'idea' ? 'Your idea' : 'What happened, and what did you expect?'}</label>
+        <label className="fb-label" htmlFor="fb-msg">{simple ? 'What happened?' : t(kind === 'idea' ? 'Your idea' : 'What happened, and what did you expect?')}</label>
         <textarea id="fb-msg" rows={simple ? 4 : 5} maxLength={4000} value={message} onChange={(e) => setMessage(e.target.value)} placeholder={simple ? 'Write it in your own words.' : ''} />
         <div className="fb-shot">
-          {shot ? <><img src={shot.preview} alt="Your screenshot" /><button className="ghost" onClick={() => setShot(null)}>Remove picture</button></>
-            : <label className="ghost fb-file">{busy === 'photo' ? 'Adding the picture…' : simple ? 'Add a picture of the screen' : 'Attach a screenshot (optional)'}<input type="file" accept="image/*" onChange={(e) => pick(e.target.files?.[0])} disabled={!!busy} hidden /></label>}
+          {shot ? <><img src={shot.preview} alt="Your screenshot" /><button className="ghost" onClick={() => setShot(null)}>{t('Remove picture')}</button></>
+            : <label className="ghost fb-file">{busy === 'photo' ? t('Adding the picture…') : simple ? 'Add a picture of the screen' : t('Attach a screenshot (optional)')}<input type="file" accept="image/*" onChange={(e) => pick(e.target.files?.[0])} disabled={!!busy} hidden /></label>}
         </div>
         {err && <p className="auth-err" role="alert">{err}</p>}
-        <div className="fb-foot"><small className="fineprint">Screen: {route}</small>
-          <button className="primary" disabled={!kind || message.trim().length < 3 || !!busy} onClick={submit}>{busy === 'send' ? 'Sending…' : 'Send'}</button></div>
+        <div className="fb-foot"><small className="fineprint">{t('Screen:')} {route}</small>
+          <button className="primary" disabled={!kind || message.trim().length < 3 || !!busy} onClick={submit}>{busy === 'send' ? t('Sending…') : t('Send')}</button></div>
       </div>
     </div>
   );

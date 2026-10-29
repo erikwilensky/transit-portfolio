@@ -2245,3 +2245,6 @@ label.file-btn { display: inline-flex; align-items: center; cursor: pointer; }
 :root[data-theme="dark"] :is(.sh-photo-btn, .sh-badge.v-waiting) { color: var(--b-sky); border-color: var(--b-sky); }
 :root[data-theme="dark"] .sh-photo-btn.cam { color: var(--ink); border-color: var(--rule); }
 :root[data-theme="dark"] .sh-ask:not(.other) { background: var(--b-sky); border-color: var(--b-sky); color: var(--navy); }
+
+/* Thai for families: Thai text anywhere (a family's own language, the bilingual letters) in Sarabun, loaded in index.html. */
+[lang="th"] { font-family: "Switzer", Sarabun, "Noto Sans Thai", "TH SarabunPSK", sans-serif; }

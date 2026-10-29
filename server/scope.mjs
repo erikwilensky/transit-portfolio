@@ -79,7 +79,8 @@ export function scopedSnapshot(user) {
   const levels = (sid) => api.VISIBLE_TO[sid === self ? 'student' : parent ? api.familyViewer(sid) : 'advisor'];
   // A station a student explicitly sent to this teacher (an endorsement request or a sponsor invitation) reaches them.
   const askedMe = new Set(tid ? full.requests.filter((r) => r.teacherId === tid).map((r) => r.eventId) : []);
-  const showEvent = (e) => inReach(e.studentId) && (levels(e.studentId).includes(e.visibility) || (!!tid && (askedMe.has(e.id) || e.sponsor?.teacherId === tid)));
+  // A moment a moderator hid (api.moderateReport) stays with the student and staff only.
+  const showEvent = (e) => inReach(e.studentId) && !(parent && e.hidden) && (levels(e.studentId).includes(e.visibility) || (!!tid && (askedMe.has(e.id) || e.sponsor?.teacherId === tid)));
 
   const store = {};
   store.students = full.students.filter((s) => inReach(s.id));
@@ -137,6 +138,15 @@ export function scopedSnapshot(user) {
   store.classPrompts = (full.classPrompts || []).flatMap((p) => (askedMine(p) ? [p] : self && p.studentIds.includes(self) ? [{ ...p, studentIds: [self] }] : []));
   const keptAsked = new Set(store.classPrompts.filter(askedMine).map((p) => p.id));
   store.classAnswers = (full.classAnswers || []).filter((a) => keptAsked.has(a.promptId) || (!!self && a.studentId === self));
+  // Moment comments: on stations this person receives, never for families; read marks, only their own.
+  const meKey = self ? 'student' : tid;
+  store.momentComments = parent ? [] : (full.momentComments || []).filter((c) => shown.has(c.eventId) && api.commentShown(c, staff));
+  store.commentReads = parent || !meKey ? [] : (full.commentReads || []).filter((r) => shown.has(r.eventId) && r.by === meKey);
+  // Reports (safeguarding): moderators get them whole; anyone else only the ones they made, without who else or the history.
+  const moderator = isAdmin(user) || api.MODERATOR_KINDS.includes(user?.kind);
+  const myKeys = new Set([self && 'student', tid, ...(parent ? (user.children || []).map((c) => `fam:${c}`) : [])].filter(Boolean));
+  store.reports = moderator ? (full.reports || []) : (full.reports || []).filter((r) => inReach(r.studentId) && myKeys.has(r.from?.key) && (r.from.key !== 'student' || r.studentId === self))
+    .map(({ id, kind, eventId, commentId, studentId, reason, at, status }) => ({ id, kind, eventId, ...(commentId ? { commentId } : {}), studentId, reason, at, status, from: { key: tid || (self ? 'student' : `fam:${studentId}`) }, history: [] }));
   const keys = recipientKeys(user);
   store.notifications = full.notifications.filter((n) => keys.has(n.to));
   // The activity log, without lines that name a station this person does not receive. Families: views and consent only.
@@ -197,6 +207,10 @@ export const TOUCHES = {
   remindClass: (a) => { const p = api.getClassPrompt(a[0]); return T(p ? p.studentIds.filter((sid) => api.getStudent(sid)) : ['?'], [a[1] ?? '?']); },
   answerPrompt: (a) => T([api.getClassPrompt(a[0])?.studentIds.includes(a[1]) ? a[1] : '?']),
   skipPrompt: (a) => T([api.getClassPrompt(a[0])?.studentIds.includes(a[1]) ? a[1] : '?']),
+  addMomentComment: (a) => T([ev(a[0])], [a[1] !== 'student' ? a[1] ?? '?' : null]),
+  markCommentsRead: (a) => T([ev(a[0])], [a[1] !== 'student' ? a[1] ?? '?' : null]),
+  editMomentComment: (a) => T([api.getMomentComment(a[0])?.studentId], [a[1] !== 'student' ? a[1] ?? '?' : null]),
+  deleteMomentComment: (a) => T([api.getMomentComment(a[0])?.studentId], [a[1] !== 'student' ? a[1] ?? '?' : null]),
   addSchoolLine: () => T([]), setSubjectLine: () => T([]), setRollout: () => T([]), setFamily: () => T([]), setLang: () => T([]), markNotificationsRead: () => T([]), recordView: () => T([]),
 };
 // A mutator not listed: any student or station id found in its arguments counts as touched.

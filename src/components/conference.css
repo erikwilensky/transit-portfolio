@@ -1,0 +1,85 @@
+/* Conference sheets (ConferenceSheets.jsx): an A4 one-pager per student, NIST navy, no shadows, weights up to 600. */
+.cf-open { margin: 0 8px 8px 0; }
+.cf-panel { border: 1px solid var(--rule, #cfd6e2); border-radius: 12px; background: var(--surface, #fff); padding: 16px; margin: 0 0 16px; max-width: 760px; }
+.cf-panel h2 { margin: 0 0 6px; font-size: 18px; font-weight: 600; }
+.cf-choose { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 10px 0; }
+.cf-pick { border: 0; margin: 0 0 10px; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 4px 12px; font-size: 14px; }
+.cf-check { display: flex; gap: 8px; align-items: center; margin: 8px 0; font-size: 14px; }
+.cf-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.cf-overlay { position: fixed; inset: 0; z-index: 1000; overflow: auto; background: var(--bg, #eef1f6); padding: 0 16px 32px; }
+.cf-bar { position: sticky; top: 0; z-index: 1; display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: center; justify-content: space-between; background: var(--surface, #fff); border-bottom: 1px solid var(--rule, #cfd6e2); margin: 0 -16px 20px; padding: 12px 16px; }
+.cf-bar small { display: block; color: var(--muted); font-size: 13px; }
+.cf-bar .cf-check { margin: 0; }
+
+.cf-sheet { box-sizing: border-box; width: min(210mm, 100%); min-height: 297mm; margin: 0 auto 20px; padding: 12mm 13mm 10mm; background: #fff; color: #0b2240; border: 1px solid #cfd6e2;
+  display: flex; flex-direction: column; gap: 3.5mm; font-size: 9pt; line-height: 1.35; font-family: var(--font, Switzer, Arial, sans-serif); }
+.cf-sheet h2, .cf-sheet h3 { color: #002855; font-weight: 600; margin: 0; }
+.cf-sheet h3 { font-size: 8pt; letter-spacing: .07em; text-transform: uppercase; margin: 0 0 1.5mm; }
+.cf-sheet h3 ~ h3 { margin-top: 3mm; }
+.cf-sheet ul, .cf-sheet ol { list-style: none; margin: 0; padding: 0; }
+.cf-sheet small { color: #4a566c; font-size: 7.5pt; }
+.cf-head { display: flex; align-items: center; gap: 3mm; color: #002855; border-bottom: 1.5pt solid #002855; padding-bottom: 2.5mm; }
+.cf-logo { height: 9mm; width: auto; line-height: 0; color: #002855; }
+.cf-logo svg { height: 100%; width: auto; }
+.cf-school { display: flex; flex-direction: column; font-size: 9.5pt; font-weight: 600; line-height: 1.25; }
+.cf-school small { font-weight: 400; }
+.cf-kicker { margin-left: auto; font-size: 8pt; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+.cf-who { display: flex; align-items: center; gap: 4mm; flex-wrap: wrap; }
+.cf-avatar { width: 15mm; height: 15mm; border-radius: 50%; display: grid; place-items: center; font-size: 13pt; font-weight: 600; flex: none; object-fit: cover; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.cf-who h2 { font-size: 17pt; }
+.cf-who p { margin: 0.5mm 0 0; color: #4a566c; }
+.cf-counts { display: flex; gap: 2mm; margin: 0 0 0 auto; }
+.cf-counts div { border: 1px solid #cfd6e2; border-radius: 2mm; padding: 1.2mm 2.5mm; text-align: center; min-width: 15mm; }
+.cf-counts dt { font-size: 6.5pt; color: #4a566c; text-transform: uppercase; letter-spacing: .05em; }
+.cf-counts dd { margin: 0; font-size: 13pt; font-weight: 600; color: #002855; }
+.cf-sec { break-inside: avoid; }
+.cf-strips { display: flex; flex-direction: column; gap: 1mm; margin-bottom: 2mm !important; }
+.cf-strip { display: grid; grid-template-columns: 38mm minmax(0, 1fr) 7mm; align-items: center; gap: 2mm; }
+.cf-ln { display: flex; align-items: center; gap: 1.5mm; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 600; }
+.cf-ln i, .cf-moments i { width: 2.4mm; height: 2.4mm; border-radius: 50%; flex: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.cf-track { position: relative; height: 3.4mm; }
+.cf-track svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.cf-dots i { position: absolute; top: 50%; width: 2.6mm; height: 2.6mm; margin: -1.3mm 0 0 -1.3mm; border-radius: 50%; background: #fff; border: 0.5mm solid; box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.cf-n { text-align: right; color: #002855; }
+.cf-strip.quiet .cf-ln, .cf-strip.quiet .cf-n { color: #6b7790; font-weight: 400; }
+.cf-moments { columns: 2; column-gap: 6mm; }
+.cf-moments li { display: grid; grid-template-columns: 2.4mm minmax(0, 1fr) auto; column-gap: 1.5mm; align-items: baseline; padding: 0.8mm 0; border-top: 0.2mm solid #e1e6ee; break-inside: avoid; }
+.cf-moments .cf-v { grid-column: 2 / 4; }
+.cf-moments .cf-t { font-weight: 600; }
+.cf-v { font-size: 7pt; color: #4a566c; }
+.cf-v.school-verified, .cf-v.teacher-endorsed { color: #002855; font-weight: 600; }
+.cf-v::before { content: '○ '; }
+.cf-v.school-verified::before { content: '● '; }
+.cf-v.teacher-endorsed::before { content: '◐ '; }
+.cf-more { margin: 0; color: #4a566c; font-style: italic; border-top: 0 !important; }
+.cf-none { margin: 0; color: #4a566c; font-style: italic; }
+.cf-cols { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 6mm; }
+.cf-refl li { padding: 1.2mm 0 1.2mm 3mm; border-left: 0.6mm solid #002855; margin-bottom: 1.8mm; }
+.cf-refl q { display: block; quotes: '“' '”'; }
+.cf-goals li, .cf-end li { display: flex; flex-wrap: wrap; gap: 0 2mm; align-items: baseline; padding: 0.7mm 0; border-top: 0.2mm solid #e1e6ee; }
+.cf-goals .cf-t { font-weight: 600; flex: 1 1 auto; }
+.cf-end small { margin-left: auto; }
+.cf-st { font-size: 7pt; font-weight: 600; border: 0.25mm solid #9aa6b8; border-radius: 1mm; padding: 0 1.2mm; color: #4a566c; }
+.cf-st.due-soon { border-color: #A35200; color: #A35200; }
+.cf-st.past-its-date { border-color: #a3133a; color: #a3133a; }
+.cf-st.done { border-color: #007A55; color: #007A55; }
+.cf-staff { border: 0.3mm dashed #9aa6b8; border-radius: 2mm; padding: 2mm 3mm; }
+.cf-staff p { margin: 0 0 1mm; }
+.cf-counts .cf-staff { border-style: dashed; padding: 1.2mm 2.5mm; }
+.cf-sheet > * { flex: none; }
+.cf-talk { border: 0.4mm solid #002855; border-radius: 2mm; padding: 2.5mm 3.5mm; margin-top: auto; break-inside: avoid; flex: 0 1 auto; min-height: 26mm; overflow: hidden; } /* on a full page the note lines give way first */
+.cf-talk ol { list-style: decimal; padding-left: 5mm; margin-bottom: 2mm; }
+.cf-talk li { margin: 0 0 1mm; }
+.cf-lines span { display: block; height: 6.5mm; border-bottom: 0.25mm solid #9aa6b8; }
+.cf-foot { border-top: 0.25mm solid #cfd6e2; padding-top: 1.5mm; font-size: 7.5pt; color: #4a566c; }
+@media (max-width: 640px) { .cf-sheet { min-height: 0; padding: 6mm; } .cf-cols { grid-template-columns: 1fr; } .cf-moments { columns: 1; } .cf-counts { margin: 0; flex-wrap: wrap; } .cf-strip { grid-template-columns: 26mm minmax(0, 1fr) 6mm; } }
+
+@page conference { size: A4 portrait; margin: 0; }
+@media print {
+  body:has(.cf-overlay) > :not(.cf-overlay) { display: none !important; }
+  .cf-overlay { position: static; overflow: visible; padding: 0; background: #fff; }
+  .cf-bar { display: none !important; }
+  .cf-sheet { page: conference; width: 210mm; height: 297mm; min-height: 0; overflow: hidden; margin: 0; border: 0; break-after: page; break-inside: avoid; }
+  .cf-sheet:last-child { break-after: auto; }
+}

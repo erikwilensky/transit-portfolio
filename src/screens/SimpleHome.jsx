@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { addReflection, addStation, endorserChoices, getStudent, getTeacher, getTeachers, requestFor, setVisibility, snapshot, teachersOf, TODAY } from '../api.js';
+import { addGoal, addReflection, addStation, completeGoal, deleteStation, editStation, endorserChoices, getEvent, getStudent, getTeacher, getTeachers, requestFor, setVisibility, snapshot, teachersOf, TODAY } from '../api.js';
 import { fmtDate } from '../format.js';
 import { isPilot } from '../auth.js';
 import { evidenceFor } from '../upload.js';
 import { UploadStatus, useUpload } from '../components/FileAttach.jsx';
 import { SUGGEST } from '../components/AddStation.jsx';
 import { OpenPrompts } from '../components/ClassPrompts.jsx';
+import MomentComments, { NewBadge, useUnread } from '../components/MomentComments.jsx';
+import './simple-goals.css';
+import { HiddenNotice, ReportButton } from '../components/Report.jsx';
 
 // Simple: the student interface for Years 7 and 8 (and anyone who picks it). Not the full app with parts hidden,
 // but its own calmer design: one question per screen, big buttons, plain words, and a map drawn as a few
@@ -39,11 +42,11 @@ function checkers(studentId, lineId) {
   return (s ? [s, ...all.filter((t) => t !== s)] : all).map((t) => ({ t, why: t.role }));
 }
 
-export default function SimpleHome({ map, studentId, toast, version, addRequest }) {
+export default function SimpleHome({ map, studentId, toast, version, addRequest, focusId }) {
   const [adding, setAdding] = useState(false);
   useEffect(() => { if (addRequest) setAdding(true); }, [addRequest]); // a nudge's "Add something"
   const [asking, setAsking] = useState(null); // { event, prompt, signal }
-  const [open, setOpen] = useState(null);
+  const [open, setOpen] = useState(focusId?.startsWith('ev-') ? focusId : null); // a notification's moment
   const first = map.student.name.split(' ')[0];
   const moments = map.events.filter((e) => e.type !== 'goal' && e.type !== 'reflection').sort((a, b) => b.date.localeCompare(a.date));
   const signals = map.signals.filter((g) => g.open && g.eventId);
@@ -52,7 +55,11 @@ export default function SimpleHome({ map, studentId, toast, version, addRequest 
     ? { event: map.events.find((e) => e.id === signals[0].eventId), prompt: signals[0].prompt, signal: signals[0] }
     : moments.find((e) => !e.reflections?.length) ? { event: moments.find((e) => !e.reflections?.length), prompt: `What was the best part of “${moments.find((e) => !e.reflections?.length).title}”?` }
     : latest ? { event: latest, prompt: 'What are you looking forward to next?' } : null;
-  const openEvent = map.events.find((e) => e.id === open);
+  const openEvent = map.events.find((e) => e.id === open && e.type !== 'goal');
+  const goals = map.events.filter((e) => e.type === 'goal' && !e.requirement).sort((a, b) => a.date.localeCompare(b.date));
+  const [planning, setPlanning] = useState(false);
+  const [finishing, setFinishing] = useState(null); // a goal just marked done: add a photo and a sentence
+  const openGoal = goals.find((e) => e.id === open);
   return (
     <div className="simple">
       <section className="sh-hello">
@@ -64,11 +71,12 @@ export default function SimpleHome({ map, studentId, toast, version, addRequest 
 
       <div className="sh-actions">
         <button className="sh-card add" onClick={() => setAdding(true)}><span className="sh-ic" aria-hidden="true">＋</span><b>Add something I did</b><small>A club, a project, a match, anything</small></button>
-        <button className="sh-card ask" disabled={!question} onClick={() => setAsking(question)}>
+        <button className="sh-card goal" onClick={() => setPlanning(true)}><span className="sh-ic" aria-hidden="true">→</span><b>Something I want to do</b><small>Plan it, and tick it off when it happens</small></button>
+        {question && <button className="sh-card ask" onClick={() => setAsking(question)}>
           <span className="sh-ic" aria-hidden="true">?</span><b>{signals.length ? `Your advisor asked you something` : 'Answer a question'}</b>
-          <small>{question ? question.prompt : 'Nothing to answer right now'}</small>
+          <small>{question.prompt}</small>
           {signals.length > 0 && <span className="sh-dot" aria-label="New" />}
-        </button>
+        </button>}
       </div>
 
       <section className="sh-map" aria-label="My journey map">
@@ -76,21 +84,34 @@ export default function SimpleHome({ map, studentId, toast, version, addRequest 
         <Tracks map={map} onOpen={setOpen} />
       </section>
 
+      {goals.length > 0 && (
+        <section className="sh-coming">
+          <h2>Coming up</h2>
+          <ul>{goals.map((e) => <li key={e.id}><GoalCard e={e} map={map} toast={toast} onDone={setFinishing} /></li>)}</ul>
+        </section>
+      )}
+
       {moments.length > 0 && (
         <section className="sh-feed">
           <h2>My moments</h2>
           <ul>{moments.slice(0, 6).map((e) => { const l = lineOf(map, e.lineIds[0]); return (
             <li key={e.id}><button onClick={() => setOpen(e.id)} style={{ '--c': l?.colour }}>
               {e.evidence.find((v) => v.kind === 'image') ? <img src={e.evidence.find((v) => v.kind === 'image').url} alt="" /> : <span className="sh-ph" aria-hidden="true" />}
-              <span><b>{e.title}</b><small>{fmtDate(e.date)} · {l?.name}</small><Badge e={e} /></span>
+              <span><b>{e.title}</b><small>{fmtDate(e.date)} · {l?.name}</small><Badge e={e} /><Unread e={e} /></span>
             </button></li>
           ); })}</ul>
         </section>
       )}
 
+      {planning && <GoalFlow map={map} studentId={studentId} onClose={() => setPlanning(false)} onDone={(e, t) => { setPlanning(false); toast(`“${e.title}” is on your journey as a dashed stop.${t ? ` You asked ${callName(t.name)} to help.` : ''}`); }} />}
+      {openGoal && <div className="modal-back" onClick={() => setOpen(null)}><div className="modal sh-flow" role="dialog" aria-label={openGoal.title} onClick={(ev) => ev.stopPropagation()}>
+        <button className="panel-close" onClick={() => setOpen(null)} aria-label="Close">×</button>
+        <GoalCard e={openGoal} map={map} toast={toast} onDone={(id) => { setOpen(null); setFinishing(id); }} />
+      </div></div>}
+      {finishing && <DoneFlow id={finishing} studentId={studentId} toast={toast} onClose={() => setFinishing(null)} />}
       {adding && <QuickAdd map={map} studentId={studentId} toast={toast} onClose={() => setAdding(false)} />}
       {asking && <AskFlow q={asking} studentId={studentId} onClose={() => setAsking(null)} onDone={() => { setAsking(null); toast('Saved. Your advisor can read it.'); }} />}
-      {openEvent && <Moment e={openEvent} map={map} onClose={() => setOpen(null)} onReflect={() => { setOpen(null); setAsking({ event: openEvent, prompt: `What did “${openEvent.title}” teach you?` }); }} />}
+      {openEvent && <Moment e={openEvent} map={map} toast={toast} onClose={() => setOpen(null)} onReflect={() => { setOpen(null); setAsking({ event: openEvent, prompt: `What did “${openEvent.title}” teach you?` }); }} />}
     </div>
   );
 }
@@ -99,21 +120,26 @@ export default function SimpleHome({ map, studentId, toast, version, addRequest 
 function Tracks({ map, onOpen }) {
   const lines = map.lines.filter((l) => l.status !== 'ended');
   const evs = map.events.filter((e) => e.type !== 'goal' && e.type !== 'reflection');
+  const goals = map.events.filter((e) => e.type === 'goal' && !e.requirement);
   const start = evs.length ? evs.map((e) => e.date).sort()[0] : TODAY;
-  const t0 = new Date(start).getTime() - 20 * 86400000, t1 = new Date(TODAY).getTime() + 30 * 86400000;
+  const end = [TODAY, ...goals.map((e) => e.date)].sort().at(-1);
+  const t0 = new Date(start).getTime() - 20 * 86400000, t1 = new Date(end).getTime() + 30 * 86400000;
   const x = (d) => 4 + ((new Date(d).getTime() - t0) / (t1 - t0)) * 92;
   if (!lines.length) return <p className="sh-empty">Your colours appear here once you pick what you are into.</p>;
   return (
     <div className="sh-tracks">
       {lines.map((l) => {
         const on = evs.filter((e) => e.lineIds.includes(l.id));
+        const ahead = goals.filter((e) => e.lineIds.includes(l.id));
         return (
           <div key={l.id} className="sh-track" style={{ '--c': l.colour }}>
             <span className="sh-name">{l.name}</span>
             <div className="sh-rail">
               <span className={`sh-bar${on.length ? '' : ' empty'}`} style={{ left: `${on.length ? x(on[0].date) : 4}%`, right: `${100 - x(TODAY)}%` }} />
+              {ahead.some((e) => e.date > TODAY) && <span className="sh-bar plan" style={{ left: `${x(TODAY)}%`, right: `${100 - x(ahead.map((e) => e.date).sort().at(-1))}%` }} />}
               {on.map((e) => <button key={e.id} className={`sh-stop v-${e.verification}`} style={{ left: `${x(e.date)}%` }} onClick={() => onOpen(e.id)} aria-label={`${e.title}, ${fmtDate(e.date)}`} title={e.title} />)}
-              {!on.length && <span className="sh-wait">Add your first {l.name.toLowerCase()} moment</span>}
+              {ahead.map((e) => <button key={e.id} className="sh-stop goal" style={{ left: `${x(e.date)}%` }} onClick={() => onOpen(e.id)} aria-label={`Planned: ${e.title}, by ${fmtDate(e.date)}`} title={`Planned: ${e.title}`} />)}
+              {!on.length && !ahead.length && <span className="sh-wait">Add your first {l.name.toLowerCase()} moment</span>}
             </div>
           </div>
         );
@@ -140,8 +166,6 @@ function AddFlow({ map, studentId, onClose, onDone, camera }) {
   const set = (p) => setF((x) => ({ ...x, ...p }));
   const photo = useUpload();
   const pickPhoto = (e) => { const file = e.target.files?.[0]; e.target.value = ''; photo.run(file, (r) => set({ image: evidenceFor(r, file.name).url, imageCaption: 'Photo' })); };
-  const phone = useMemo(() => typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches, []);
-  const samples = !isPilot(); // the sample pictures are demo props
   const who = useMemo(() => (f.line ? checkers(studentId, f.line) : []), [studentId, f.line]);
   const save = (teacher) => {
     const snap = snapshot();
@@ -166,14 +190,7 @@ function AddFlow({ map, studentId, onClose, onDone, camera }) {
           <h2>What did you do?</h2>
           <input className="sh-input" autoFocus value={f.title} onChange={(e) => set({ title: e.target.value })} placeholder="e.g. Joined the robotics club" onKeyDown={(e) => e.key === 'Enter' && f.title.trim() && !photo.busy && setStep(1)} />
           <p className="sh-sub">Add a photo if you have one</p>
-          {f.image && !photo.busy
-            ? <div className="sh-preview"><img src={f.image} alt="Your photo" /><button type="button" className="ghost" onClick={() => set({ image: null })}>Remove photo</button></div>
-            : <div className="sh-shoot">
-              <label className={`sh-photo-btn${photo.busy ? ' busy' : ''}`}><span aria-hidden="true">▣</span>{photo.busy ? 'Uploading your photo…' : 'Take or choose a photo'}<input type="file" accept="image/*" disabled={photo.busy} onChange={pickPhoto} /></label>
-              {phone && !photo.busy && <label className="sh-photo-btn cam">Use the camera<input type="file" accept="image/*" capture="environment" onChange={pickPhoto} /></label>}
-            </div>}
-          <UploadStatus up={photo} />
-          {samples && !photo.busy && <div className="sh-photos">{PHOTOS.map(([n, l]) => <button key={n} className={f.image?.includes(n) ? 'on' : ''} onClick={() => set({ image: f.image?.includes(n) ? null : `evidence/${n}.svg`, imageCaption: l })}><img src={`evidence/${n}.svg`} alt={l} /></button>)}</div>}
+          <PhotoPick f={f} set={set} photo={photo} pickPhoto={pickPhoto} />
           <div className="sh-next"><button className="primary" disabled={!f.title.trim() || photo.busy} onClick={() => setStep(1)}>{photo.busy ? 'Wait for the photo…' : 'Next'}</button></div>
         </>}
         {step === 1 && <>
@@ -206,6 +223,162 @@ function AddFlow({ map, studentId, onClose, onDone, camera }) {
   );
 }
 
+// The photo part of a flow: preview, or big "take or choose" buttons (a camera button on a phone), and in the demo the sample pictures.
+function PhotoPick({ f, set, photo, pickPhoto }) {
+  const phone = useMemo(() => typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches, []);
+  const samples = !isPilot(); // the sample pictures are demo props
+  return <>
+    {f.image && !photo.busy
+      ? <div className="sh-preview"><img src={f.image} alt="Your photo" /><button type="button" className="ghost" onClick={() => set({ image: null })}>Remove photo</button></div>
+      : <div className="sh-shoot">
+        <label className={`sh-photo-btn${photo.busy ? ' busy' : ''}`}><span aria-hidden="true">▣</span>{photo.busy ? 'Uploading your photo…' : 'Take or choose a photo'}<input type="file" accept="image/*" disabled={photo.busy} onChange={pickPhoto} /></label>
+        {phone && !photo.busy && <label className="sh-photo-btn cam">Use the camera<input type="file" accept="image/*" capture="environment" onChange={pickPhoto} /></label>}
+      </div>}
+    <UploadStatus up={photo} />
+    {samples && !photo.busy && <div className="sh-photos">{PHOTOS.map(([n, l]) => <button key={n} className={f.image?.includes(n) ? 'on' : ''} onClick={() => set({ image: f.image?.includes(n) ? null : `evidence/${n}.svg`, imageCaption: l })}><img src={`evidence/${n}.svg`} alt={l} /></button>)}</div>}
+  </>;
+}
+
+// ── Goals, the Simple way: something I want to do, as a dashed stop ahead of Today (api.addGoal). ──
+// Friendly examples by the name of a line; a line without any gets the general ones.
+const IDEAS = [
+  [/scien|chem|bio|phys(?!ical)/i, ['Enter the science fair', 'Grow a plant from seed and track it']],
+  [/music|band|choir|sing/i, ['Play a song at the concert', 'Learn a new piece on my instrument']],
+  [/theat|drama/i, ['Get a part in the school play', 'Help backstage at a show']],
+  [/\bart|draw|paint/i, ['Finish a sketchbook', 'Put a piece in the art show']],
+  [/sport|physical|health|football|swim/i, ['Make a school team', 'Run 5 km without stopping']],
+  [/design|robot|comput|code|tech/i, ['Build a robot that moves on its own', 'Make a simple game']],
+  [/lang|english|thai|chinese|french|spanish|liter/i, ['Read five books this term', 'Write a story for the school magazine']],
+  [/math/i, ['Take part in a maths competition', 'Learn my times tables up to 15']],
+  [/service|communit|environment|green/i, ['Help at a beach clean-up', 'Start a recycling bin in our classroom']],
+];
+const ideasFor = (l) => IDEAS.find(([re]) => re.test(l.name))?.[1] || ['Join a new club', 'Try something I have never done'];
+const addDays = (n) => new Date(Date.parse(TODAY) + n * 864e5).toISOString().slice(0, 10);
+// Terms end in December, March and June (NIST's calendar, near enough for a target date).
+function whens() {
+  const y = +TODAY.slice(0, 4) - (+TODAY.slice(5, 7) < 8 ? 1 : 0);
+  const term = [`${y}-12-11`, `${y + 1}-03-26`, `${y + 1}-06-11`].find((d) => d > addDays(7)) || `${y + 1}-06-11`;
+  return [['In a few weeks', addDays(21)], ['By the end of this term', term], ['This year', `${y + 1}-06-11`]];
+}
+const callOf = (id) => callName(getTeacher(id)?.name || 'your teacher');
+function sponsorLine(e) {
+  const sp = e.sponsor; if (!sp) return null;
+  const n = callOf(sp.teacherId);
+  return sp.status === 'invited' ? `Waiting for ${n} to say yes` : sp.status === 'accepted' ? `${n} is helping you` : sp.status === 'declined' ? `${n} can't help this time` : null;
+}
+
+function GoalFlow({ map, studentId, onClose, onDone }) {
+  const [step, setStep] = useState(0);
+  const [f, setF] = useState({ title: '', line: null, date: null });
+  const [more, setMore] = useState(false);
+  const [pick, setPick] = useState(false);
+  const set = (p) => setF((x) => ({ ...x, ...p }));
+  const lines = map.lines.filter((l) => l.status !== 'ended');
+  const ideas = lines.flatMap((l) => ideasFor(l).map((t) => [t, l])).filter(([t], i, a) => a.findIndex(([u]) => u === t) === i).slice(0, 6);
+  const who = useMemo(() => (f.line ? checkers(studentId, f.line) : []), [studentId, f.line]);
+  const save = (t, date = f.date) => onDone(addGoal(studentId, { title: f.title.trim(), date, lineId: f.line, summary: '', checkIn: true, sponsor: t?.id || null, sponsorNote: '' }), t);
+  const when = (date) => { set({ date }); if (who.length) setStep(3); else save(null, date); };
+  return (
+    <div className="modal-back" onClick={onClose}>
+      <div className="modal sh-flow" role="dialog" aria-label="Something I want to do" onClick={(e) => e.stopPropagation()}>
+        <button className="panel-close" onClick={onClose} aria-label="Close">×</button>
+        <Steps n={!f.line || who.length ? 4 : 3} at={step} />
+        {step === 0 && <>
+          <h2>What do you want to do?</h2>
+          <input className="sh-input" autoFocus value={f.title} onChange={(e) => set({ title: e.target.value })} placeholder="e.g. Enter the science fair" onKeyDown={(e) => e.key === 'Enter' && f.title.trim().length > 3 && setStep(1)} />
+          {ideas.length > 0 && <><p className="sh-sub">Some ideas</p>
+            <div className="sh-starters">{ideas.map(([t, l]) => <button key={t} className="sh-idea" style={{ '--c': l.colour }} onClick={() => { set({ title: t, line: l.id }); setStep(1); }}>{t}</button>)}</div></>}
+          <div className="sh-next"><button className="primary" disabled={f.title.trim().length < 4} onClick={() => setStep(1)}>Next</button></div>
+        </>}
+        {step === 1 && <>
+          <h2>Which colour does it go with?</h2>
+          <div className="sh-lines">{lines.map((l) => <button key={l.id} style={{ '--c': l.colour }} className={f.line === l.id ? 'on' : ''} onClick={() => { set({ line: l.id }); setMore(false); setStep(2); }}><i />{l.name}</button>)}</div>
+          <div className="sh-next"><button className="ghost" onClick={() => setStep(0)}>Back</button></div>
+        </>}
+        {step === 2 && <>
+          <h2>When do you want to do it by?</h2>
+          <div className="sh-when">{whens().map(([label, d]) => <button key={label} onClick={() => when(d)}><b>{label}</b><small>By {fmtDate(d)}</small></button>)}
+            {pick
+              ? <label className="sh-date">Pick a date<input type="date" autoFocus min={addDays(1)} value={f.date || ''} onChange={(e) => set({ date: e.target.value })} /></label>
+              : <button onClick={() => setPick(true)}><b>Pick a date</b><small>On a calendar</small></button>}</div>
+          <div className="sh-next"><button className="ghost" onClick={() => setStep(1)}>Back</button>{pick && <button className="primary" disabled={!f.date || f.date <= TODAY} onClick={() => when(f.date)}>Next</button>}</div>
+        </>}
+        {step === 3 && who.length > 0 && <>
+          <h2>Want a teacher to help you with it?</h2>
+          <p className="sh-sub">They can give you tips along the way, and say it really happened when you do it.</p>
+          <div className="sh-who">
+            <button className="sh-ask" onClick={() => save(who[0].t)}><b>Ask {who[0].t.name}</b>{who[0].why && <small>{who[0].why}</small>}</button>
+            {who.length > 1 && !more && <button className="sh-ask other" onClick={() => setMore(true)}><b>Someone else</b></button>}
+            {more && <div className="sh-others" role="group" aria-label="Other teachers">{who.slice(1, 7).map(({ t, why }) => <button key={t.id} className="sh-ask other" onClick={() => save(t)}><b>{t.name}</b>{why && <small>{why}</small>}</button>)}</div>}
+          </div>
+          <div className="sh-next"><button className="ghost" onClick={() => setStep(2)}>Back</button><button className="ghost sh-notnow" onClick={() => save(null)}>Not now</button></div>
+          <p className="sh-note">Your advisor can see it too.</p>
+        </>}
+      </div>
+    </div>
+  );
+}
+
+// A goal in "Coming up" (and when its dashed stop is tapped): who is helping, "I did it!", or drop it (api.deleteStation).
+function GoalCard({ e, map, toast, onDone }) {
+  const [drop, setDrop] = useState(false);
+  const l = lineOf(map, e.lineIds[0]);
+  const sp = sponsorLine(e);
+  return (
+    <div className="sh-goal" style={{ '--c': l?.colour }}>
+      <span className="sh-line">{l?.name}</span>
+      <b>{e.title}</b>
+      <small>{e.date < TODAY ? `You planned it for ${fmtDate(e.date)}` : `By ${fmtDate(e.date)}`}{sp ? ` · ${sp}` : ''}</small>
+      {e.sponsor?.status === 'accepted' && e.sponsor.expectations && <p className="sh-tip">{callOf(e.sponsor.teacherId)}: “{e.sponsor.expectations}”</p>}
+      {drop
+        ? <div className="sh-goal-do"><span>Take it off your journey?</span><button className="ghost" onClick={() => { deleteStation(e.id); toast(`“${e.title}” is off your journey.`); }}>Yes, take it off</button><button className="ghost" onClick={() => setDrop(false)}>Keep it</button></div>
+        : <div className="sh-goal-do"><button className="primary" onClick={() => { completeGoal(e.id); onDone(e.id); }}>I did it!</button><button className="ghost" onClick={() => setDrop(true)}>Not doing this any more</button></div>}
+    </div>
+  );
+}
+
+// After "I did it!" (api.completeGoal: the goal is a moment now, and a sponsor gets it to endorse):
+// add a photo, then one sentence. Both can be skipped.
+function DoneFlow({ id, studentId, toast, onClose }) {
+  const [step, setStep] = useState(0);
+  const [f, setF] = useState({ image: null, imageCaption: 'Photo', text: '' });
+  const set = (p) => setF((x) => ({ ...x, ...p }));
+  const photo = useUpload();
+  const pickPhoto = (ev) => { const file = ev.target.files?.[0]; ev.target.value = ''; photo.run(file, (r) => set({ image: evidenceFor(r, file.name).url, imageCaption: 'Photo' })); };
+  const [e] = useState(() => getEvent(id));
+  if (!e) return null;
+  const sp = e.sponsor?.status === 'done' ? callOf(e.sponsor.teacherId) : null;
+  const finish = () => {
+    if (photo.busy) return;
+    if (f.image) editStation(e.id, { evidence: [...(getEvent(e.id)?.evidence || []), { kind: 'image', url: f.image, caption: f.imageCaption }] });
+    if (f.text.trim()) addReflection({ studentId, eventId: e.id, prompt: 'How did it go?', text: f.text.trim(), visibility: 'advisor' });
+    onClose();
+    toast(`${WARM[e.title.length % WARM.length]} “${e.title}” is a real stop on your journey now.${sp ? ` ${sp} can check it.` : ''}`);
+  };
+  return (
+    <div className="modal-back" onClick={finish}>
+      <div className="modal sh-flow" role="dialog" aria-label="I did it" onClick={(ev) => ev.stopPropagation()}>
+        <button className="panel-close" onClick={finish} aria-label="Close">×</button>
+        <Steps n={2} at={step} />
+        {step === 0 && <>
+          <h2>You did it! Add a photo?</h2>
+          <p className="sh-sub">Of “{e.title}”. You can skip this.</p>
+          <PhotoPick f={f} set={set} photo={photo} pickPhoto={pickPhoto} />
+          <div className="sh-next"><button className="primary" disabled={photo.busy} onClick={() => setStep(1)}>{photo.busy ? 'Wait for the photo…' : f.image ? 'Next' : 'Skip'}</button></div>
+        </>}
+        {step === 1 && <>
+          <h2>How did it go?</h2>
+          <p className="sh-sub">One sentence is plenty.</p>
+          <div className="sh-starters">{STARTERS.map((s) => <button key={s} onClick={() => set({ text: `${f.text ? `${f.text} ` : ''}${s.replace('…', ' ')}` })}>{s}</button>)}</div>
+          <textarea className="sh-input" rows={3} autoFocus value={f.text} onChange={(ev) => set({ text: ev.target.value })} />
+          <div className="sh-next"><button className="ghost" onClick={() => setStep(0)}>Back</button><button className="primary" onClick={finish}>{f.text.trim() ? 'Save' : 'Skip and finish'}</button></div>
+          {sp && <p className="sh-note">{sp} helped with this, so it goes to them to check.</p>}
+        </>}
+      </div>
+    </div>
+  );
+}
+
 function AskFlow({ q, studentId, onClose, onDone }) {
   const [text, setText] = useState('');
   return (
@@ -222,7 +395,8 @@ function AskFlow({ q, studentId, onClose, onDone }) {
   );
 }
 
-function Moment({ e, map, onClose, onReflect }) {
+const Unread = ({ e }) => <NewBadge n={useUnread(e)} />;
+function Moment({ e, map, onClose, onReflect, toast }) {
   const img = e.evidence.find((v) => v.kind === 'image');
   const l = lineOf(map, e.lineIds[0]);
   return (
@@ -232,10 +406,13 @@ function Moment({ e, map, onClose, onReflect }) {
         {img && <img src={img.url} alt={img.caption} />}
         <span className="sh-line">{l?.name}</span>
         <h2>{e.title}</h2>
+        <HiddenNotice item={e} />
         <p className="sh-sub">{fmtDate(e.date)} · <Badge e={e} /></p>
         {e.summary && <p>{e.summary}</p>}
         {e.reflections?.map((r) => <blockquote key={r.id}>{r.text}</blockquote>)}
         <div className="sh-next"><button className="primary" onClick={onReflect}>{e.reflections?.length ? 'Add another thought' : 'What did I learn?'}</button></div>
+        <MomentComments key={`c-${e.id}`} event={e} simple toast={toast} />
+        <ReportButton event={e} simple toast={toast} />
       </div>
     </div>
   );

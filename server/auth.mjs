@@ -117,8 +117,10 @@ export function accountBySetup(t) {
 // ── Sessions: random token in a cookie, its hash on disk, 30 days ──
 const prune = () => { const now = Date.now(); let n = 0; for (const [k, s] of Object.entries(sessions)) if (s.expiresAt < now || !accountById(s.userId)) { delete sessions[k]; n++; } return n; };
 if (prune()) saveSessions();
+// Every successful sign-in (password, setup link, family join) notes lastSignInAt on the account, for sign-up progress.
 export function startSession(userId) {
   const t = token();
+  const a = accountById(userId); if (a) { a.lastSignInAt = new Date().toISOString(); saveAccounts(); }
   sessions[sha(t)] = { userId, createdAt: Date.now(), expiresAt: Date.now() + SESSION_DAYS * 864e5 };
   prune(); saveSessions();
   return { token: t, maxAge: SESSION_DAYS * 86400 };
@@ -173,7 +175,8 @@ export const noteSuccess = (email) => fails.delete(`e:${email}`);
 // themselves, and not the school-wide settings. Which students a call touches: touchedBy (scope.mjs).
 // /api/action calls it in pilot mode: `if (!canAct(req.user, fn, args)) 403`. Demo mode has no accounts.
 const ADMIN_ONLY = new Set(['resetDemo', 'restore', 'addStudent', 'addTeacher', 'eraseStudent', 'importRoster']);
-const ANYONE = new Set(['recordView', 'setLang']);
+// setLang is the demo's one shared family language; in a pilot each person keeps their own (POST /api/auth/prefs).
+const ANYONE = new Set(['recordView']);
 // School-wide settings an advisor or subject teacher does not change.
 const WHOLE_SCHOOL_ONLY = new Set(['addSchoolLine', 'renameLine', 'decideBranch', 'setRollout', 'matchRoster', 'setSubjectLine']);
 // The mutators a student may call, on their own record only.
@@ -199,6 +202,8 @@ export function canAct(user, fn, args = []) {
   if (isAdmin(user)) return true;
   if (ADMIN_ONLY.has(fn)) return false;
   if (ANYONE.has(fn)) return true;
+  if (COMMENT_FNS.has(fn)) { try { return commentOk(user, fn, args); } catch { return false; } }
+  if (SAFE_FNS.has(fn)) { try { return safeOk(user, fn, args); } catch { return false; } }
   // Only your own bell: every key must be one of yours (st:…, t:…, fam:…, role:…, or your record's demo persona id).
   if (fn === 'markNotificationsRead') { const mine = new Set(api.notifyKeys({ kind: user.kind, studentId: user.studentId, teacherId: user.teacherId, children: user.children })); return [].concat(args[0] ?? []).every((k) => mine.has(k)); }
   try {
@@ -222,5 +227,54 @@ export function canAct(user, fn, args = []) {
       if (fn === 'answerConsent') return user.children.includes(st().consentReqs.find((r) => r.id === args[0])?.studentId);
     }
   } catch { /* malformed arguments */ }
+  return false;
+}
+
+// ── Moment comments (api.addMomentComment, editMomentComment, deleteMomentComment, markCommentsRead) ──
+// As yourself only ('student' for a student; your teacherId for staff), never on a private station. A student: their
+// own stations. Whole-school staff: any. An advisor or teacher: a student in reach, and to write, only as that student's
+// advisor, a teacher they asked about the station, or its sponsor (api.commentsAsked); reading marks need only reach.
+// Editing: within api.COMMENT_EDIT_MIN minutes by the server's clock too.
+const COMMENT_FNS = new Set(['addMomentComment', 'editMomentComment', 'deleteMomentComment', 'markCommentsRead']);
+for (const f of COMMENT_FNS) STUDENT_FNS.add(f);
+function commentOk(user, fn, [target, by]) {
+  const c = fn === 'editMomentComment' || fn === 'deleteMomentComment' ? api.getMomentComment(target) : null;
+  const e = api.getEvent(c ? c.eventId : target);
+  if (!e || (c === null && fn !== 'addMomentComment' && fn !== 'markCommentsRead') || e.visibility === 'private') return false;
+  if (c && c.by !== by) return false;
+  if (fn === 'editMomentComment' && Date.now() - Date.parse(c.at) > (api.COMMENT_EDIT_MIN + 1) * 60000) return false;
+  if (user.kind === 'student') return by === 'student' && e.studentId === user.studentId;
+  if (!STAFF.includes(user.kind) || !user.teacherId || by !== user.teacherId) return false;
+  const reach = reachOf(user);
+  if (reach === null) return true;
+  if (!reach.has(e.studentId)) return false;
+  return fn === 'markCommentsRead' || fn === 'deleteMomentComment' || api.commentsAsked(e.id, user.teacherId);
+}
+
+// ── Per-person settings (POST /api/auth/prefs): each account's own language, kept on the account ──
+export const LANGS = ['en', 'th'];
+export function setPrefs(a, { lang }) {
+  if (!LANGS.includes(lang)) return 'Pick English or Thai.';
+  a.lang = lang; saveAccounts();
+  return null;
+}
+// The demo's one shared family language (api.setLang) would change it for everybody: in a pilot only an admin may.
+ADMIN_ONLY.add('setLang');
+// ── Safeguarding (api.reportItem, api.moderateReport) ──
+// Reporting: as yourself only (from.key: 'student', your teacherId, 'fam:<child>' with your name, or admin), on what you
+// can see: a student their own moment or a comment on it; staff a student in reach; a family a child's moment as the
+// family view shows it (never a comment, never a hidden one). Moderating: coordinators, counsellors, leadership and
+// admins, as themselves.
+const SAFE_FNS = new Set(['reportItem', 'moderateReport']);
+function safeOk(user, fn, args) {
+  if (fn === 'moderateReport') return api.MODERATOR_KINDS.includes(user.kind) && (user.teacherId ? args[3] === user.teacherId : !args[3]);
+  const [target, , , from] = args;
+  const c = target?.commentId ? api.getMomentComment(target.commentId) : null;
+  const e = api.getEvent(c ? c.eventId : target?.eventId);
+  if (!e || e.visibility === 'private' || (target?.commentId && !c)) return false;
+  const key = from?.key;
+  if (user.kind === 'student') return key === 'student' && e.studentId === user.studentId;
+  if (STAFF.includes(user.kind)) { const reach = reachOf(user); return !!user.teacherId && key === user.teacherId && (reach === null || reach.has(e.studentId)); }
+  if (user.kind === 'parent') return !c && !e.hidden && key === `fam:${e.studentId}` && (user.children || []).includes(e.studentId) && from?.name === user.name && api.VISIBLE_TO[api.familyViewer(e.studentId)].includes(e.visibility);
   return false;
 }

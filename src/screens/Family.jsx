@@ -1,10 +1,10 @@
 import { inkOn } from '../format.js';
 import { useMemo, useState } from 'react';
-import { answerConsent, applyLens, consentOnFile, familyViewer, getConsentReqs, getDigest, getFamily, getLang, setLang, getStudent, getStudentMap, setFamily, TERM_START, TODAY, youngStudent } from '../api.js';
+import { answerConsent, applyLens, consentOnFile, familyViewer, getConsentReqs, getDigest, getFamily, getLang, getStudent, getStudentMap, setFamily, TERM_START, TODAY, youngStudent } from '../api.js';
 import MetroMap from '../components/MetroMap.jsx';
 import StationPanel from '../components/StationPanel.jsx';
-import { dateIn, LangContext, lineName, tr } from '../i18n.js';
-import { exportUrl, isPilot } from '../auth.js';
+import { consentText, dateIn, LangContext, lineName, tr } from '../i18n.js';
+import { chooseLang, exportUrl, isPilot } from '../auth.js';
 
 // N1: a parent's own screens, in English or Thai. One parent, two children:
 // Ploy (Year 11) decides what her family sees; Pim (Year 7) needs her parent's consent first.
@@ -25,7 +25,7 @@ const SAY = {
     olderP: (f) => `Consent was recorded when ${f} joined in Year 7. From Year 10, ${f} decides what is shared and with whom; you can still ask the school for a copy of the record at any time.`,
     onFile: 'Consent on file', waiting: 'Waiting for consent',
     digestT: 'Weekly digest', digestP: 'A short summary each Friday of what changed in each child’s record, in the language you choose.',
-    email: 'Email me this every Friday', lang: 'Language',
+    email: 'Email me this every Friday', lang: 'Language', child: 'Child', saved: (f) => `Saved. ${f} has been told.`, savedNo: 'Saved.',
     week: (a, b) => `Your week · ${a} to ${b}`,
     newSt: 'New on the map', endorsed: (t, x) => `${t} endorsed “${x}”`, views: (n) => `${n} view${n === 1 ? '' : 's'} of a shared link`,
     refl: (n) => `${n} new reflection${n === 1 ? '' : 's'} (you see the shared ones only)`, coming: 'Coming up', nothing: (f) => `A quiet week for ${f}.`,
@@ -49,7 +49,7 @@ const SAY = {
     olderP: (f) => `บันทึกความยินยอมไว้แล้วตั้งแต่ ${f} เข้าเรียน Year 7 ตั้งแต่ Year 10 ${f} เป็นผู้ตัดสินใจว่าจะแบ่งปันอะไรกับใคร คุณยังขอสำเนาข้อมูลจากโรงเรียนได้ทุกเมื่อ`,
     onFile: 'มีความยินยอมแล้ว', waiting: 'รอความยินยอม',
     digestT: 'สรุปประจำสัปดาห์', digestP: 'สรุปสั้น ๆ ทุกวันศุกร์ว่ามีอะไรเปลี่ยนแปลงในบันทึกของลูกแต่ละคน ในภาษาที่คุณเลือก',
-    email: 'ส่งอีเมลสรุปให้ฉันทุกวันศุกร์', lang: 'ภาษา',
+    email: 'ส่งอีเมลสรุปให้ฉันทุกวันศุกร์', lang: 'ภาษา', child: 'บุตรหลาน', saved: (f) => `บันทึกแล้ว ${f} จะได้รับแจ้ง`, savedNo: 'บันทึกแล้ว',
     week: (a, b) => `สัปดาห์ของคุณ · ${a} ถึง ${b}`,
     newSt: 'รายการใหม่บนแผนที่', endorsed: (t, x) => `${t} รับรอง “${x}”`, views: (n) => `มีผู้เปิดดูลิงก์ที่แบ่งปัน ${n} ครั้ง`,
     refl: (n) => `บทสะท้อนคิดใหม่ ${n} รายการ (คุณเห็นเฉพาะที่แบ่งปัน)`, coming: 'สิ่งที่กำลังจะมาถึง', nothing: (f) => `สัปดาห์นี้ ${f} ยังไม่มีอะไรใหม่`,
@@ -70,7 +70,7 @@ function Head({ persona, childId, screen, go, title, lede, lang }) {
         {lede && <p>{lede}</p>}
       </div>
       <div className="fam-ctl">
-        <div className="fam-kids" role="group" aria-label="Child">
+        <div className="fam-kids" role="group" aria-label={SAY[lang].child}>
           {persona.children.map((id) => { const s = getStudent(id); return (
             <button key={id} className={id === childId ? 'on' : ''} aria-pressed={id === childId} onClick={() => go(persona.id, screen, id)}>
               <span className="av" style={{ background: s.avatar.colour, color: inkOn(s.avatar.colour) }}>{s.avatar.initials}</span><span><b>{first(s)}</b><small>Year {s.grade + 1}</small></span>
@@ -79,8 +79,8 @@ function Head({ persona, childId, screen, go, title, lede, lang }) {
           ); })}
         </div>
         <div className="seg small" role="group" aria-label="Language / ภาษา">
-          <button className={getLang() === 'en' ? 'on' : ''} aria-pressed={getLang() === 'en'} onClick={() => setLang('en')} lang="en">English</button>
-          <button className={getLang() === 'th' ? 'on' : ''} aria-pressed={getLang() === 'th'} onClick={() => setLang('th')} lang="th">ไทย</button>
+          <button className={getLang() === 'en' ? 'on' : ''} aria-pressed={getLang() === 'en'} onClick={() => chooseLang('en')} lang="en">English</button>
+          <button className={getLang() === 'th' ? 'on' : ''} aria-pressed={getLang() === 'th'} onClick={() => chooseLang('th')} lang="th">ไทย</button>
         </div>
       </div>
     </header>
@@ -105,7 +105,7 @@ export default function Family({ persona, screen, param, go, toast, version }) {
 function FamilyMap({ persona, childId, go, lang, version }) {
   const s = getStudent(childId);
   const say = SAY[lang];
-  const map = useMemo(() => getStudentMap(childId, familyViewer(childId)), [childId, version]); // eslint-disable-line react-hooks/exhaustive-deps
+  const map = useMemo(() => getStudentMap(childId, familyViewer(childId), { family: true }), [childId, version]); // eslint-disable-line react-hooks/exhaustive-deps
   const lens = useMemo(() => applyLens(map, null), [map]);
   const [sel, setSel] = useState(null);
   const f = first(s);
@@ -152,15 +152,16 @@ function Consent({ persona, childId, go, toast, lang }) {
         <ul className="consent-list">
           {reqs.map((r) => {
             const open = r.status === 'pending' || editing === r.id;
+            const [title, detail, textLang] = consentText(lang, r, f);
             return (
               <li key={r.id} className={`consent-req st-${r.status}`}>
                 <div className="cr-top"><span className={`status ${r.status === 'approved' ? 's-ok' : r.status === 'declined' ? 's-off' : 's-warn'}`}><i>{r.status === 'approved' ? '✓' : r.status === 'declined' ? '–' : '!'}</i>{say.st[r.status]}</span><small>{say.asked(dateIn(lang, r.asked))}</small></div>
-                <h3 lang="en">{r.title}</h3>
-                <p lang="en">{r.detail}</p>
+                <h3 lang={textLang}>{title}</h3>
+                {detail && <p lang={textLang}>{detail}</p>}
                 {open ? (
                   <div className="cr-btns">
-                    <button className="primary" onClick={() => { answerConsent(r.id, 'approved', persona.name); setEditing(null); toast(lang === 'th' ? `บันทึกแล้ว ${f} จะได้รับแจ้ง` : `Saved. ${f} has been told.`); }}>{say.yes}</button>
-                    <button className="ghost" onClick={() => { answerConsent(r.id, 'declined', persona.name); setEditing(null); toast(lang === 'th' ? 'บันทึกแล้ว' : 'Saved.'); }}>{say.no}</button>
+                    <button className="primary" onClick={() => { answerConsent(r.id, 'approved', persona.name); setEditing(null); toast(say.saved(f)); }}>{say.yes}</button>
+                    <button className="ghost" onClick={() => { answerConsent(r.id, 'declined', persona.name); setEditing(null); toast(say.savedNo); }}>{say.no}</button>
                   </div>
                 ) : <button className="linkish" onClick={() => setEditing(r.id)}>{say.change}</button>}
               </li>
