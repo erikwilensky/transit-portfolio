@@ -20,4 +20,5 @@ echo "== signup-progress (starts its own clean pilot server on the real roster)"
 echo "== see-as (starts its own clean pilot server on the real roster)"; node see-as.cjs || fail=1
 echo "== moment-comments"; node moment-comments.cjs || fail=1
 echo "== conference-sheets (starts its own clean pilot server on the real roster)"; node conference-sheets.cjs || fail=1
+echo "== simple-goals (starts its own clean pilot server on the real roster)"; node simple-goals.cjs || fail=1
 echo "== tours"; node tours.cjs | grep -E "end url|ERRS|soon|boom|empty|hs" ; exit $fail
