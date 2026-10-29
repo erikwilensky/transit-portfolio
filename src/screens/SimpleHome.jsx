@@ -6,6 +6,7 @@ import { evidenceFor } from '../upload.js';
 import { UploadStatus, useUpload } from '../components/FileAttach.jsx';
 import { SUGGEST } from '../components/AddStation.jsx';
 import { OpenPrompts } from '../components/ClassPrompts.jsx';
+import { SpottedForMe } from '../components/Spotted.jsx';
 import MomentComments, { NewBadge, useUnread } from '../components/MomentComments.jsx';
 import './simple-goals.css';
 import { HiddenNotice, ReportButton } from '../components/Report.jsx';
@@ -68,6 +69,7 @@ export default function SimpleHome({ map, studentId, toast, version, addRequest,
       </section>
 
       <OpenPrompts studentId={studentId} simple toast={toast} version={version} />
+      <SpottedForMe studentId={studentId} simple toast={toast} version={version} />
 
       <div className="sh-actions">
         <button className="sh-card add" onClick={() => setAdding(true)}><span className="sh-ic" aria-hidden="true">＋</span><b>Add something I did</b><small>A club, a project, a match, anything</small></button>

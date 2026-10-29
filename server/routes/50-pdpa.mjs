@@ -57,6 +57,7 @@ const ABOUT = {
   nudges: 'Nudges your advisor sent you to add something.',
   momentComments: 'Comments on your moments, yours and your teachers\', with who wrote each and when.',
   commentReads: 'When you and your teachers last read the comments on each moment.',
+  spotted: 'Moments a teacher spotted and suggested for your journey, and whether you added them.',
 };
 const README = (s, files, accounts, when) => [
   `Everything NIST Transit Portfolio holds about ${s.name} (student id ${s.id})`,

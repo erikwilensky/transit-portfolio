@@ -1,0 +1,43 @@
+/* Spotted moments (Spotted.jsx): the teacher's dialog and list, and the suggestion on a student's home. */
+.spot-dialog { display: grid; gap: 12px; }
+.spot-dialog label { display: grid; gap: 4px; font-size: 14px; font-weight: 600; }
+.spot-dialog label small { font-weight: 400; color: var(--muted); }
+.spot-dialog .spot-who { margin: -6px 0 0; font-size: 13px; color: var(--muted); }
+.spot-photo { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.spot-photo img { max-height: 90px; border-radius: 8px; }
+.spot-photo-btn { position: relative; cursor: pointer; padding: 8px 12px; font-size: 13px; }
+.spot-photo-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+.spot-list { margin: 18px 0; display: grid; gap: 8px; }
+.spot-list h2 { font-size: 17px; margin: 0; }
+.spot-list ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.spot-list li { display: flex; gap: 12px; align-items: center; justify-content: space-between; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); padding: 8px 12px; }
+.spot-list li > span:first-child { display: grid; gap: 2px; min-width: 0; }
+.spot-list b { font-weight: 600; } .spot-list small { color: var(--muted); font-size: 12px; }
+.spot-st { flex: none; font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--rule); color: var(--muted); }
+.spot-st.added { border-color: var(--navy); color: var(--navy); }
+:root[data-theme="dark"] .spot-st.added { border-color: var(--b-sky); color: var(--b-sky); }
+
+.spot-me { margin: 0; }
+.spot-card { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 14px; border: 2px solid var(--navy); background: var(--surface); color: var(--ink); }
+.spot-ic { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--navy); color: #fff; font-size: 20px; }
+.spot-body { display: grid; gap: 3px; min-width: 0; }
+.spot-body small { font-size: 13px; color: var(--muted); } .spot-body b { font-weight: 600; font-size: 16px; }
+.spot-body p { margin: 0; font-size: 14px; }
+.spot-body img { max-width: 220px; max-height: 160px; border-radius: 10px; margin-top: 4px; }
+.spot-acts { display: grid; gap: 6px; }
+.spot-me.big .spot-card { padding: 20px; border-radius: 20px; grid-template-columns: 56px minmax(0, 1fr); }
+.spot-me.big .spot-ic { width: 56px; height: 56px; border-radius: 16px; font-size: 28px; }
+.spot-me.big .spot-body b { font-size: 20px; } .spot-me.big .spot-body small, .spot-me.big .spot-body p { font-size: 15px; }
+.spot-me.big .spot-acts { grid-column: 1 / -1; grid-template-columns: 1fr 1fr; }
+.spot-me.big .spot-acts button { font-size: 17px; padding: 14px 18px; border-radius: 14px; }
+:root[data-theme="dark"] .spot-card { border-color: var(--b-sky); }
+:root[data-theme="dark"] .spot-ic { background: var(--b-sky); color: var(--navy); }
+@media (max-width: 640px) {
+  .spot-card { grid-template-columns: 40px minmax(0, 1fr); }
+  .spot-acts { grid-column: 1 / -1; grid-template-columns: 1fr 1fr; }
+}
+.mc-spot-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 8px 0; font-size: 14px; }
+.mc-table .mc-tick { width: 28px; }
+.mc-table .spot-row { padding: 4px 8px; font-size: 12px; white-space: nowrap; }
+.sp-by { font-size: 13px; color: var(--muted); margin: 4px 0; }

@@ -5,6 +5,7 @@ import MetroMap from '../components/MetroMap.jsx';
 import StationPanel from '../components/StationPanel.jsx';
 import { AskClassDialog, ClassQuestions } from '../components/ClassPrompts.jsx';
 import ClassAnswers from '../components/ClassAnswers.jsx';
+import { SpotDialog, SpottedList } from '../components/Spotted.jsx';
 import './classes.css';
 
 // Pilot: a teacher's classes from the class lists. #/<persona>/classes, /classes/<classId>,
@@ -69,6 +70,8 @@ function ClassList({ teacherId, go, persona, version, toast }) {
 function ClassPage({ classId, teacherId, go, persona, version, toast }) {
   const c = useMemo(() => classRoster(classId, teacherId), [classId, teacherId, version]); // eslint-disable-line react-hooks/exhaustive-deps
   const [asking, setAsking] = useState(false);
+  const [ticked, setTicked] = useState([]);
+  const [spotting, setSpotting] = useState(null); // the students a spotted moment is for
   const back = <button className="cb-back" onClick={() => go(persona.id, 'classes')}>‹ My classes</button>;
   if (!c || !c.teacherIds?.includes(teacherId)) return <div className="page mc">{back}<div className="empty-state"><b>This class is not one of yours.</b></div></div>;
   return (
@@ -87,23 +90,31 @@ function ClassPage({ classId, teacherId, go, persona, version, toast }) {
       </header>
       {asking && <AskClassDialog c={c} teacherId={teacherId} toast={toast} onClose={() => setAsking(false)} />}
       <ClassQuestions c={c} teacherId={teacherId} go={go} persona={persona} version={version} toast={toast} />
+      {spotting && <SpotDialog students={spotting} teacherId={teacherId} classId={c.id} toast={toast} onClose={() => { setSpotting(null); setTicked([]); }} />}
+      {c.students.length > 0 && <div className="mc-spot-bar">
+        <span>{ticked.length ? `${plural(ticked.length, 'student')} ticked` : 'Tick students to add the same spotted moment to each.'}</span>
+        {ticked.length > 0 && <><button className="primary" onClick={() => setSpotting(c.students.map((x) => x.student).filter((x) => ticked.includes(x.id)))}>I spotted something ({ticked.length})</button><button className="ghost" onClick={() => setTicked([])}>Clear</button></>}
+      </div>}
       {!c.students.length && <div className="empty-state"><b>No students in this class right now.</b></div>}
       {c.students.length > 0 && (
         <table className="mc-table">
-          <thead><tr><th>Student</th><th>Year</th><th>Homeroom</th><th>Last moment{c.line ? ` on ${c.line.name}` : ''}</th><th>Asked you</th></tr></thead>
+          <thead><tr><th className="mc-tick"><input type="checkbox" aria-label="Tick every student" checked={ticked.length === c.students.length} onChange={(e) => setTicked(e.target.checked ? c.students.map((x) => x.student.id) : [])} /></th><th>Student</th><th>Year</th><th>Homeroom</th><th>Last moment{c.line ? ` on ${c.line.name}` : ''}</th><th>Asked you</th><th><span className="sr-only">Spotted</span></th></tr></thead>
           <tbody>
             {c.students.map(({ student: s, last, pending }) => (
               <tr key={s.id}>
+                <td className="mc-tick"><input type="checkbox" aria-label={`Tick ${s.name}`} checked={ticked.includes(s.id)} onChange={(e) => setTicked((t) => (e.target.checked ? [...t, s.id] : t.filter((x) => x !== s.id)))} /></td>
                 <td><a href={`#/${persona.id}/classes/${c.id}~${s.id}`} onClick={(e) => { e.preventDefault(); go(persona.id, 'classes', `${c.id}~${s.id}`); }}>{s.name}</a></td>
                 <td>Year {s.grade + 1}</td>
                 <td>{s.homeroom || '–'}</td>
                 <td>{last ? <>{last.title} <small>{fmtDate(last.date)}</small></> : <small>None yet</small>}</td>
                 <td>{pending ? <a href={`#/${persona.id}/queue`} onClick={(e) => { e.preventDefault(); go(persona.id, 'queue'); }}>{plural(pending, 'request')}</a> : <small>–</small>}</td>
+                <td><button className="ghost spot-row" onClick={() => setSpotting([s])}>I spotted something</button></td>
               </tr>
             ))}
           </tbody>
         </table>
       )}
+      <SpottedList teacherId={teacherId} classId={c.id} version={version} />
     </div>
   );
 }
