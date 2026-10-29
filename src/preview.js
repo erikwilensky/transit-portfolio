@@ -22,7 +22,10 @@ const forget = () => { try { sessionStorage.removeItem(KEY); } catch { /* blocke
 // "See as" in the same tab: start the page afresh in preview.
 export const watchPreviewLinks = () => addEventListener('hashchange', () => { if (fromHash()) location.reload(); });
 
+// Writes are blocked while previewing (blockWrites), so the exit note for the activity log uses the fetch from before.
+const rawFetch = globalThis.fetch?.bind(globalThis);
 export function exitPreview() {
+  try { if (info?.user) rawFetch('/api/admin/preview/stop', { method: 'POST', credentials: 'same-origin', keepalive: true, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ accountId: info.user.id }) }).catch(() => {}); } catch { /* no server */ }
   forget();
   location.hash = '#/me/accounts';
   location.reload();

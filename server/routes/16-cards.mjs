@@ -10,7 +10,8 @@
 import { send, readJson } from '../lib.mjs';
 import { api } from '../store.mjs';
 import * as A from '../auth.mjs';
-import { originOf, setupUrl, requireAdmin, listBody } from './10-auth.mjs';
+import { originOf, setupUrl, requireAdmin, listBody, accountTarget } from './10-auth.mjs';
+import * as L from '../audit.mjs';
 
 const bad = (status, message) => Object.assign(new Error(message), { status });
 const LIMIT = 30; // card batches per account per 15 minutes
@@ -27,6 +28,7 @@ function cardsFor(req, accounts, includeSignedUp) {
     const s = a.studentId && api.getStudent(a.studentId), t = a.teacherId && api.getTeacher(a.teacherId);
     return { name: a.name, homeroom: s ? s.homeroom || '' : t?.department || (t ? 'Staff' : ''), year: s ? s.grade + 1 : null, email: a.email, setupUrl: url, expiresAt: a.setup.expiresAt };
   }));
+  L.log(req, { action: 'setup-link', target: todo.length === 1 ? accountTarget(todo[0]) : { label: `${todo.length} accounts` }, detail: { why: 'sign-in cards', count: todo.length } });
   return { school: school(), cards: cards.sort(byName) };
 }
 
@@ -78,11 +80,11 @@ export default (app) => {
     requireAdmin(req);
     const a = A.accountById(id); if (!a) throw bad(404, 'No such account.');
     if (a.id === req.user.id) throw bad(400, 'You cannot pause your own account.');
-    A.pauseAccount(a); send(res, 200, listBody());
+    A.pauseAccount(a); L.log(req, { action: 'account-pause', target: accountTarget(a) }); send(res, 200, listBody());
   });
   app.post('/api/admin/accounts/:id/unpause', (req, res, { id }) => {
     requireAdmin(req);
     const a = A.accountById(id); if (!a) throw bad(404, 'No such account.');
-    A.unpauseAccount(a); send(res, 200, listBody());
+    A.unpauseAccount(a); L.log(req, { action: 'account-unpause', target: accountTarget(a) }); send(res, 200, listBody());
   });
 };
