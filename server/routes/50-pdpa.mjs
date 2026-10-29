@@ -11,6 +11,7 @@ import { api, changed } from '../store.mjs';
 import * as A from '../auth.mjs';
 import { zip } from '../zip.mjs';
 import { feedbackOf, eraseFeedbackOf } from '../feedback.mjs';
+import * as L from '../audit.mjs';
 
 const UPLOADS = path.join(DATA_DIR, 'uploads');
 const AUDIT = path.join(DATA_DIR, 'audit.log');
@@ -110,6 +111,7 @@ function sendCopy(req, res, sid) {
   const copy = buildCopy(sid);
   if (!copy) throw fail(404, 'No such student.');
   audit({ action: 'copy', by: req.user?.id || null, studentId: sid });
+  L.log(req, { action: 'pdpa-copy', target: L.studentsTarget([sid]) });
   const body = zip(copy.entries);
   const name = `${slug(copy.student.name)}-data-${new Date().toISOString().slice(0, 10)}.zip`;
   send(res, 200, body, { 'content-type': 'application/zip', 'content-disposition': `attachment; filename="${name}"`, 'content-length': body.length });
@@ -136,6 +138,8 @@ export function eraseStudent(sid, by) {
   for (const id of gone) A.removeAccount(id);
   for (const a of family) if (!gone.includes(a.id)) A.updateAccount(a, { children: a.children.filter((c) => c !== sid) });
   audit({ action: 'erase', by: by || null, studentId: sid });
+  // The activity log keeps the ids for safeguarding; the student's name label goes (server/audit.mjs).
+  L.redactStudent(sid, gone);
   return { removed, feedback, files: filesRemoved, accounts: gone.length, familyUnlinked: family.length - (gone.length - own.length) };
 }
 
@@ -158,6 +162,8 @@ export default (app) => {
     const s = api.getStudent(id); if (!s) throw fail(404, 'No such student.');
     const { confirm } = await readJson(req);
     if (!sameName(confirm, s.name)) throw fail(400, 'Type the student\'s name exactly to confirm.');
-    send(res, 200, eraseStudent(id, req.user.id));
+    const out = eraseStudent(id, req.user.id);
+    L.log(req, { action: 'pdpa-erase', target: { studentId: id, label: L.ERASED }, detail: { accounts: out.accounts, files: out.files } });
+    send(res, 200, out);
   });
 };

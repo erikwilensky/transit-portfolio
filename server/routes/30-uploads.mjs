@@ -12,6 +12,7 @@ import crypto from 'node:crypto';
 import { DATA_DIR, send, readBody } from '../lib.mjs';
 import { MODE } from '../auth.mjs';
 import { canSeeFile } from '../files.mjs';
+import { fileRefused } from '../audit.mjs';
 
 const DIR = path.join(DATA_DIR, 'uploads');
 fs.mkdirSync(DIR, { recursive: true });
@@ -66,7 +67,7 @@ export default (app) => {
     let st; try { st = fs.statSync(f); } catch { throw fail(404, 'Not found'); }
     let meta = {}; try { meta = JSON.parse(fs.readFileSync(`${f}.json`, 'utf8')); } catch { /* serve without the original name */ }
     const pilot = MODE === 'pilot';
-    if (pilot && !canSeeFile(req.user, name, meta)) throw fail(404, 'Not found');
+    if (pilot && !canSeeFile(req.user, name, meta)) { fileRefused(req, name); throw fail(404, 'Not found'); }
     const ext = name.split('.').pop();
     const type = SERVE[ext] || 'application/octet-stream';
     const fname = (meta.name || name).replace(/["\r\n]/g, '');

@@ -102,6 +102,12 @@ export const overview = {
   get: () => call('GET', '/api/overview'),
   csvUrl: (range) => `/api/overview?format=csv&range=${encodeURIComponent(range)}`,
 };
+// Activity log (server/routes/66-audit.mjs): admins and leadership. q: { person, student, action, result, from, to, page, size }.
+const auditQs = (q) => new URLSearchParams(Object.entries(q).filter(([, v]) => v !== '' && v != null)).toString();
+export const activityLog = {
+  list: (q) => call('GET', `/api/audit?${auditQs(q)}`),
+  csvUrl: (q) => `/api/audit?${auditQs({ ...q, page: null, size: null, format: 'csv' })}`,
+};
 
 // ── An account becomes a persona in the PERSONAS shape, so every existing screen works unchanged ──
 const COLOURS = { student: '#4F529B', advisor: '#008A60', teacher: '#002855', counsellor: '#E73C3E', coordinator: '#FF8F1C', leadership: '#002855', parent: '#FFB81C', admin: '#002855' };
@@ -147,6 +153,8 @@ export function personaFor(user) {
   if (isModerator(user)) p.nav = [...(p.nav || NAV[kind]), ['reports', 'Reports']];
   // School overview (src/screens/Overview.jsx): leadership, coordinators and admins.
   if (kind === 'leadership' || kind === 'coordinator' || user.admin) p.nav = [...(p.nav || NAV[kind]), ['overview', 'School overview']];
+  // Activity log (src/screens/ActivityLog.jsx): admins and leadership.
+  if (kind === 'leadership' || user.admin) p.nav = [...(p.nav || NAV[kind]), ['activitylog', 'Activity log']];
   return p;
 }
 function applyPersona() {

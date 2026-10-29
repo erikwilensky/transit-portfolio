@@ -428,6 +428,9 @@ Thailand's PDPA gives a student (and their parent) the right to a copy of their 
   never be left behind by a record-only erase.
 - **Audit**: each copy and erasure appends `{"at","action":"copy"|"erase","by":<account id>,"studentId"}` to
   `DATA_DIR/audit.log`. No names or content.
+- **Activity log**: each copy and erasure is also in the activity log (`pdpa-copy`, `pdpa-erase`; see "Activity log"
+  below). The activity log is kept for safeguarding, so erasure does not remove a student's entries: it replaces their
+  name label (and the names of their removed accounts) with "Erased student" and keeps the ids.
 - **Screens** (pilot only): Accounts has "A student's data" (download, and "Remove this student…" with
   "Type the student's name to confirm" and the reminder that backups hold the data for 30 days);
   the student's Privacy page and the parent's Consent page download their own copy; the PDPA page points
@@ -1076,3 +1079,39 @@ not confirmed). Demo mode is unchanged: anyone with the address, cached for a ye
   index cache, the route's 404s and headers, demo mode); browser: `node scripts/checks/protected-files.cjs` (real roster
   from `TP_ROSTER`): Aaron Torres, Mr David Coultas, a teacher with no reach, a parent (family letter) and a signed-out
   browser, each in its own context.
+
+## Activity log (`server/audit.mjs`, `server/routes/66-audit.mjs`, `src/screens/ActivityLog.jsx`, pilot only)
+
+Who did what in the pilot, for accountability. Server-side and append-only, outside the replayed record (`state.json`),
+so no mutator, Undo or restore can change it. Demo mode writes nothing.
+
+- **Files**: `DATA_DIR/audit-YYYY-MM.jsonl` (a new file each month, UTC), one JSON line per event:
+  `{ at, actor: { id, name, kind } | null, action, fn?, target: { studentId? | studentIds?, teacherId?, accountId?,
+  reportId?, id?, label? }, detail?, result: 'ok' | 'refused', status, ip }`. `ip` is `clientIp(req)` (so `TRUST_PROXY`
+  applies as for sign-in). `label` is a short name (the student's or the account's). Kept 400 days: older lines are
+  removed when the server starts (`prune()`). Back it up with the rest of `DATA_DIR`. `DATA_DIR/audit.log` (PDPA and
+  See as, earlier) is still written as before.
+- **Never logged**: passwords, setup or invite tokens and links, session cookies, the email typed at a failed sign-in
+  for an unknown address, note, comment, reflection or any other written text. A change's `target.id` is taken only
+  when the record has an item with that id (`getEvent`, `getReport`, …), never from free text.
+- **What is logged** (`action`): every `POST /api/action` as `change` with `fn` and its main student (`touchedBy`),
+  teacher and item, ok or refused (400 not allowed, 403 `canAct`, 422 failed); `report-decision` (`moderateReport`,
+  with `detail.decision`); `undo`; `sign-in`, `sign-in-failed`, `sign-in-locked` (the account tried is the actor),
+  `sign-out`; `password-set` (setup link or change), `setup-link` (new account, reset, advisor reset, forgot, sign-in
+  cards: `detail.why`), `reset-request`, `reset-dismissed`; `account-create`, `account-edit`, `role-change`
+  (`detail.from`/`to`), `account-pause`, `account-unpause`, `account-remove`; `roster-import` (counts; paused and
+  unpaused accounts get their own lines); `see-as-start`, `see-as-stop` (`POST /api/admin/preview/stop`, sent by
+  Exit preview; closing the tab sends nothing); `pdpa-copy`, `pdpa-erase`; `file-refused` (a `GET /api/files/…` refused
+  by protection: one line per actor, or per address when signed out, per hour, with `detail.count` and up to 20 file
+  names; held in memory until the hour ends or the server stops, and shown by the reader meanwhile);
+  `family-join`, `family-remove`, `family-letters`.
+- **Reading**: `GET /api/audit?person=&student=&action=&result=&from=&to=&page=&size=` (admin and leadership; 401
+  signed out, 403 anyone else) → `{ entries (newest first), total, page, size (default 100, up to 500), actions,
+  people }`. `person`: an account id, or part of a name (the actor, or the account the entry is about); `student`: a
+  student id, or part of the label; `from`/`to`: `YYYY-MM-DD`, inclusive, which also limits the months read.
+  `&format=csv` → every matching entry as CSV (cells starting `=`, `+`, `-` or `@` get a leading `'`).
+- **Screen**: "Activity log" in the nav for admins and leadership: filters (person with suggestions, student, what,
+  result, dates), 50 per page (Newer, Older), "Download as CSV" of the filtered set.
+- Tests: `server/test/activity-log.test.mjs` (written on action, refusals, no secrets, 403, filters, paging, CSV,
+  pruning, erasure keeps ids); browser: `node scripts/checks/activity-log.cjs` (real roster; admin, leadership, an
+  advisor, a student and a teacher, each in its own context).
