@@ -55,7 +55,7 @@ Run: `npm run build && npm run server` (port 8787, or PORT). In dev: `npm run se
 - Server code that changes the record directly (admin, public views) calls `changed()`; every device
   hears it on the stream and fetches the new state.
 - Browser: `main.jsx` calls `startSync()` after `loadAuth()` (demo, or signed in for pilot), never on
-  `#/s` and `#/v` (`isPublicRoute()`). Changes queue and retry while the server is away (header: "Offline,
+  `#/s` and `#/v` (`isPublicRoute()`). Changes queue and retry while the server is away (kept on the device for a pilot account: see "Offline capture"; header: "Offline,
   saving here"). Undo takes back one change on the server (see "Undo" below); only with no server does
   it put a whole snapshot back (`restore`).
 
@@ -705,7 +705,7 @@ The site installs on a phone's home screen, in demo and pilot alike.
   names, cache first), the icons, the manifest and `offline.html`. It never touches `/api/*` (any path containing
   `/api/`, uploaded files `/api/files/*` included): those go straight to the network and are never cached, so
   nothing personal stays on a shared device. Page loads always go to the server; with no network (or a 502/503/504/530
-  from the tunnel) the worker shows `offline.html`: "You're offline. Your moments will be here when you're back."
+  from the tunnel) the worker shows the kept app page for a signed-in account (see "Offline capture"), else `offline.html`: "You're offline. Your moments will be here when you're back."
 - **Updates**: `vite.config.js` writes this build's `VERSION` and `SHELL` into `dist/sw.js`, so every deploy is a new
   worker. It calls `skipWaiting()` and `clients.claim()`, drops older caches, and the open app shows
   "A new version is ready · Reload" (`UpdateBar`). The app checks for a new worker whenever it comes back to the front.
@@ -1076,3 +1076,39 @@ not confirmed). Demo mode is unchanged: anyone with the address, cached for a ye
   index cache, the route's 404s and headers, demo mode); browser: `node scripts/checks/protected-files.cjs` (real roster
   from `TP_ROSTER`): Aaron Torres, Mr David Coultas, a teacher with no reach, a parent (family letter) and a signed-out
   browser, each in its own context.
+
+## Offline capture (`src/outbox.js`, `src/sync.js`, `src/components/OfflineBar.jsx`)
+
+A signed-in pilot account can add moments (photos too) with no connection; they go when it is back. Server unchanged.
+- **The queue on the device**: every change (`POST /api/action`) and every photo chosen offline is kept in IndexedDB
+  (`tp-outbox`, store `items`, `{ k, uid, url, body }` or `{ k, uid, upload: { key, name, type }, blob }`), keyed by the
+  signed-in account id and sent in order (`k`); a row is deleted once the server answers. No IndexedDB (a private
+  window, blocked storage): the same queue in memory for that page. Demo mode (no account) keeps the old in-memory queue.
+- **Photos offline**: `uploadFile` (`src/upload.js`), when the upload cannot reach the server and the app is live on
+  it, hands the (shrunk) file to `holdUpload()`, which returns a placeholder `blob:<object url>#tpq-<key>` shown at
+  once. Coming back, the photo is uploaded first (`POST /api/upload`) and every waiting change naming it is rewritten
+  to `api/files/<id>.<ext>` before it is sent (`swapUrls`; an upload the server refuses becomes `""` and goes through
+  `RefusedBar`). After a reload the placeholders are made again from the kept blobs, in this device's copy too.
+- **Opening the app offline**: `loadAuth()` remembers a pilot sign-in (`localStorage['tp-offline-auth']`); with no
+  connection at all (a network error, not a page without a server) it uses that, and `startSync({ user, offline })`
+  runs on this device's copy of the record (`tp-store-*`) with the queue. The service worker keeps the page itself
+  (`index.html`, cached as `?shell`) once a signed-in page posts `'shell'` (`keepShell()` in `src/pwa.js`), and serves
+  it for a page load with no network before `offline.html`. It still never caches `/api/*`. Signing out deletes it with
+  every other cache, so a signed-out phone shows the offline page as before; demo mode never asks for it.
+- **Starting with changes left**: `startSync` takes up this account's rows only, keeps this device's copy (it already
+  shows them), sends them, then fetches the server's copy.
+- **Never under another account**: after being cut off (and on an offline start) `GET /api/auth/me` is asked before the
+  next queued change; a different account (signed in in another tab) or nobody: that account's changes are not sent,
+  dropped from the page's queue and kept on the device under their own account (sent when they sign in here again),
+  and `RefusedBar` says "This browser is now signed in as …". A change the server refuses after reconnecting goes
+  through `RefusedBar` as before.
+- **Status**: the header (`SyncStatus`) shows "3 changes waiting" (Simple level: "Saved on this phone"), with the
+  long words as its title; `OfflineBar` at the foot of the screen: "3 changes waiting. Saved on this phone. They will
+  send when you are back online." (Simple: "Saved on this phone. It will send when you are back online."; Thai too),
+  then "Sending … saved on this phone…" until it is done. Photos do not count as changes of their own.
+- **Signing out** (`signOut`): with changes not sent, it asks first ("2 changes are not sent yet. Sign out anyway?");
+  No keeps everything, Yes drops that account's rows only (other accounts' stay).
+- Tests: `src/outbox.test.mjs` (`npm test`: per-account rows, in-memory fallback, rewriting, the words); browser:
+  `node scripts/checks/offline-capture.cjs` (real roster from `TP_ROSTER`; `context.setOffline`): Aaron Torres on a
+  phone adds a moment with a photo offline, reloads offline, comes back; Mr David Coultas, in his own context, sees the
+  moment and the photo; the sign-out warning; a second account on the same browser never sends Aaron's queue.

@@ -30,7 +30,7 @@ export function FeedbackDialog({ simple, onClose, toast }) {
   const pick = async (file) => {
     if (!file) return;
     setErr(null); setBusy('photo');
-    try { const r = await uploadFile(file); if (r.local) throw new Error('The picture could not reach the school server.'); setShot({ url: r.url, name: r.name, preview: URL.createObjectURL(file) }); }
+    try { const r = await uploadFile(file); if (r.local || r.pending) throw new Error('The picture could not reach the school server.'); setShot({ url: r.url, name: r.name, preview: URL.createObjectURL(file) }); }
     catch (x) { setErr(x.message); }
     setBusy(false);
   };

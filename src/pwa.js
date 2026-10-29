@@ -35,6 +35,12 @@ export function registerServiceWorker() {
   }).catch(() => {});
 }
 
+// Offline capture: a signed-in account may open the app with no connection, so the worker keeps the page itself
+// (index.html, the same for everyone; never /api). Signing out clears it with the other caches.
+export function keepShell() {
+  try { navigator.serviceWorker?.ready.then((r) => r.active?.postMessage('shell')); } catch { /* none */ }
+}
+
 // Sign-out: nothing personal is ever cached, but a shared device starts clean anyway.
 export async function clearCaches() {
   try { navigator.serviceWorker?.controller?.postMessage('clear'); } catch { /* none */ }

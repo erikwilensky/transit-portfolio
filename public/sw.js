@@ -1,6 +1,8 @@
 // Transit Portfolio service worker: the phone app's shell (src/pwa.js registers it; docs/pilot-server.md, "Phone app").
 // Caches only the built app (scripts, styles, icons, the offline page). Never /api/*: the record, sign-in and
 // uploaded files (/api/files/*) are personal and must not stay on a shared device. Signing out clears every cache.
+// Offline capture: once a signed-in page asks ('shell'), the page itself (index.html, the same for everyone) is kept
+// too, so the app opens with no connection and its changes wait on the device (src/outbox.js).
 // VERSION and SHELL are filled in at build time (vite.config.js), so each deploy is a new worker that takes over at once.
 const VERSION = 'dev';
 const SHELL = [];
@@ -8,6 +10,7 @@ const CACHE = `tp-shell-${VERSION}`;
 const BASE = new URL('./', self.location).pathname;
 const STATIC = ['offline.html', 'icons/icon-192.png', 'manifest.webmanifest'];
 const OFFLINE = `${BASE}offline.html`;
+const PAGE = `${BASE}?shell`;
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll([...STATIC, ...SHELL].map((u) => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
@@ -17,6 +20,7 @@ self.addEventListener('activate', (e) => {
 });
 self.addEventListener('message', (e) => {
   if (e.data === 'clear') e.waitUntil(caches.keys().then((ks) => Promise.all(ks.map((k) => caches.delete(k)))));
+  if (e.data === 'shell') e.waitUntil(fetch(BASE, { cache: 'reload' }).then((res) => res.ok && res.type === 'basic' && caches.open(CACHE).then((c) => c.put(PAGE, res))).catch(() => {}));
 });
 
 const cacheFirst = async (req) => {
@@ -33,7 +37,9 @@ self.addEventListener('fetch', (e) => {
   if (url.origin !== self.location.origin || url.pathname.includes('/api/')) return; // network only, never cached
   if (req.mode === 'navigate') {
     // The page itself always comes from the server (it may have changed); a friendly page when there is none.
-    e.respondWith(fetch(req).then((res) => ([502, 503, 504, 530].includes(res.status) ? caches.match(OFFLINE).then((o) => o || res) : res)).catch(() => caches.match(OFFLINE)));
+    // A kept page (a signed-in account asked for it) comes before the friendly page.
+    const away = () => caches.match(PAGE).then((p) => p || caches.match(OFFLINE));
+    e.respondWith(fetch(req).then((res) => ([502, 503, 504, 530].includes(res.status) ? away().then((o) => o || res) : res)).catch(away));
     return;
   }
   // Built files have the content's hash in their name, so a cached copy is always right.
