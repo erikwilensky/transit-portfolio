@@ -962,3 +962,37 @@ Demo and pilot (the Reports screen is in the pilot nav only). No automatic filte
 - Tests: `server/test/safeguarding.test.mjs`; browser: `node scripts/checks/safeguarding.cjs` (the real roster from
   `TP_ROSTER`, skipped without it): Aaron Torres adds a moment with a photo, a parent joins by the family letter and sees it,
   Mr David Coultas reports it, a coordinator hides it from Reports, Aaron sees the notice, the parent no longer sees it.
+
+## Year handover (`src/api.js`, `src/components/YearHandover.jsx`, `server/scope.mjs`)
+
+When the new year's class lists are imported, students keep their whole journey, their new advisor and teachers see
+it, and the old advisor stops seeing students who are no longer theirs.
+
+- **Record**: `importRoster` notes every change of a student's advisor in `store.handovers = [{ id, studentId, from, to,
+  date, at, fromYear, year, newYear }]` (`fromYear`/`year` the file's `academicYear`). When the academic year changes it
+  sets `store.yearStart = { year, fromYear, date, at }`. Handover notes: `store.handoverNotes = [{ id, studentId, by, text,
+  at, year }]`, one per student per author. Read with `getHandovers()`, `latestHandover(sid)`, `previousAdvisorOf(sid)`,
+  `getYearStart()`, `getHandoverNote(sid, by)`, `newToAdvisor(tid)`, `lastYearOf(sid)` (previous advisor, their note,
+  last year's moments by line as an advisor sees them, goals carried over), `goalsToReview(sid)`, `handoverPreview(roster)`.
+- **Mutators**: `setHandoverNote(studentId, text, by)` (empty text removes it), `carryOverGoal(id, date)` (moves the date,
+  sets `carriedOver: { from, on }`; a bad or past date becomes `carryDate(old)`: a year on, at least a month ahead) and
+  `closeGoal(id)` (sets `closedOn`; the goal leaves every map, `getStudentMap`, and stays in the record).
+- **canAct**: `setHandoverNote` only by the student's current advisor or the advisor of their latest handover (`from`),
+  as themselves; admins, coordinators, leadership, counsellors and teachers may not write one. `carryOverGoal` and
+  `closeGoal` are in `STUDENT_FNS` (own goals) and follow reach for staff.
+- **Reach** (`teacherReach`): an ended class place (`to` before today) no longer counts. For a student whose latest
+  handover was from this teacher, only links made after the handover date count (their earlier prompts, comments,
+  requests, endorsements, sponsorships); being the advisor or teaching a current class still does. So the old advisor
+  keeps students she still teaches, and loses the rest.
+- **Scope**: handovers and notes go to staff only, never to a student or family. Notes: the student's current advisor,
+  the note's author and whole-school roles (subject teachers do not get them). `store.handedOver` gives the previous
+  advisor `{ studentId, name, grade, homeroom, to, date }` for students she handed over and no longer reaches, so she
+  can finish their notes.
+- **Screens** (pilot only): My advisory has "Write handover notes" (each advisee, with the prompt strengths, what helps,
+  what to watch; then "Students you handed over"), a "New to you" banner and tag; the student page has a "Last year"
+  panel. Accounts has "Start of year": what the import does, then the dry run's `handover` (`POST /api/admin/roster
+  { dryRun: true }` → `handover: { fromYear, year, newYear, changes, notes, groups: [{ from, to, n }] }`), also shown in a
+  normal import preview when advisors change. Students see "A new year: carry over or close" on their home for last
+  year's goals whose date has passed (`goalsToReview`: only once a new year has started).
+- Tests: `server/test/year-handover.test.mjs`; `node scripts/checks/year-handover.cjs` (real roster; the next year's
+  copy is made in a temp dir and deleted).

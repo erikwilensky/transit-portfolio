@@ -8,10 +8,12 @@ import { AdvisorFamily } from './FamilyLetters.jsx';
 import { QuietGroup } from './Nudges.jsx';
 import { AdvisorProgress } from './SignupProgress.jsx';
 import { AdvisoryConference } from './ConferenceSheets.jsx';
+import { HandoverNotes, NewToYou, isNewTo } from './YearHandover.jsx';
 
 export default function AdvisorGrid({ advisorId, onOpen, toast, version }) {
   const cohort = useMemo(() => getCohort(advisorId), [advisorId, version]); // eslint-disable-line react-hooks/exhaustive-deps
   const [prompted, setPrompted] = useState({});
+  const [handover, setHandover] = useState(false);
   const advisor = getTeacher(advisorId);
   const flagged = cohort.filter((c) => c.flagFewReflections).length;
   const group = advisoryOf(advisorId);
@@ -28,6 +30,8 @@ export default function AdvisorGrid({ advisorId, onOpen, toast, version }) {
           <span><b>{cohort.reduce((n, c) => n + c.openSignals, 0)}</b> open reflection signals</span>
         </div>
       </div>
+      {isPilot() && <NewToYou advisorId={advisorId} version={version} onOpen={onOpen} />}
+      {isPilot() && (handover ? <HandoverNotes advisorId={advisorId} version={version} toast={toast} onClose={() => setHandover(false)} /> : <div className="yh-open"><button className="ghost" onClick={() => setHandover(true)}>Write handover notes</button><small className="fineprint">For next year’s advisor. Staff only.</small></div>)}
       {isPilot() && <AdvisorProgress version={version} />}
       {isPilot() && <AdvisorCards toast={toast} />}
       {isPilot() && <AdvisorFamily toast={toast} />}
@@ -42,7 +46,7 @@ export default function AdvisorGrid({ advisorId, onOpen, toast, version }) {
             <article key={c.student.id} className={`adv-card${c.flagFewReflections ? ' flagged' : ''}`}>
               <header>
                 <span className="pres-avatar sm" style={{ background: c.student.avatar.colour, color: inkOn(c.student.avatar.colour) }}>{c.student.avatar.initials}</span>
-                <div><h3>{c.student.name}</h3><small>Year {c.student.grade + 1} · {c.student.programme}</small></div>
+                <div><h3>{c.student.name}{isPilot() && isNewTo(advisorId, c.student.id) && <span className="yh-tag">New to you</span>}</h3><small>Year {c.student.grade + 1} · {c.student.programme}</small></div>
               </header>
               <button className="adv-mini" onClick={() => onOpen(c.student.id)} aria-label={`Open ${c.student.name}'s map`}>
                 <MetroMap map={c} lens={lens} mini />

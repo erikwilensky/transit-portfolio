@@ -8,6 +8,7 @@ import StationPanel from '../components/StationPanel.jsx';
 import { SignInHelp } from './SignIn.jsx';
 import { isPilot } from '../auth.js';
 import { ConferenceSheets } from '../components/ConferenceSheets.jsx';
+import { LastYear } from '../components/YearHandover.jsx';
 
 const daysBetween = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
 
@@ -56,6 +57,7 @@ export default function AdvisorStudent({ studentId, version, toast, go, persona,
           <StationPanel event={event} map={map} onClose={() => setSelected(null)} readOnly toast={toast} />
         </div>
         <aside className="as-side">
+          <LastYear studentId={studentId} version={version} />
           <section className="card-sec">
             <h3>Meeting agenda</h3>
             <ol className="agenda">{agenda.map((a, i) => <li key={i}>{a}</li>)}</ol>

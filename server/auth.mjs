@@ -199,6 +199,7 @@ export function canAct(user, fn, args = []) {
   if (!user || typeof fn !== 'string') return false;
   // Undo sends a whole copy of the record, and in a pilot every browser holds only its own part of it.
   if (fn === 'restore') return false;
+  if (fn === 'setHandoverNote') { try { return handoverOk(user, args); } catch { return false; } }
   if (isAdmin(user)) return true;
   if (ADMIN_ONLY.has(fn)) return false;
   if (ANYONE.has(fn)) return true;
@@ -278,3 +279,13 @@ function safeOk(user, fn, args) {
   if (user.kind === 'parent') return !c && !e.hidden && key === `fam:${e.studentId}` && (user.children || []).includes(e.studentId) && from?.name === user.name && api.VISIBLE_TO[api.familyViewer(e.studentId)].includes(e.visibility);
   return false;
 }
+// ── Year handover (api.setHandoverNote, carryOverGoal, closeGoal) ──
+// A handover note: only the student's current advisor or the advisor they were handed over from (their latest handover),
+// as themselves. Nobody else writes one, admins and whole-school roles included (coordinators read them). Carrying over
+// or closing a goal: the student on their own goals, or staff by reach as for any station.
+function handoverOk(user, [studentId, , by]) {
+  if (!STAFF.includes(user.kind) || !user.teacherId || by !== user.teacherId) return false;
+  const s = api.getStudent(studentId);
+  return !!s && (s.advisorId === by || api.previousAdvisorOf(studentId) === by);
+}
+for (const f of ['carryOverGoal', 'closeGoal']) STUDENT_FNS.add(f);
