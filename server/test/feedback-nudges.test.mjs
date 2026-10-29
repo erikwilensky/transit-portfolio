@@ -93,7 +93,7 @@ test('nudges: advisor or whole-school staff only, once a week; feedback: sent, r
     assert.equal(er.feedback, 3);
     assert.deepEqual((await json(req('GET', '/api/admin/feedback', null, dan))).items.map((f) => f.name).sort(), ['Gus Hale', 'Ms Ada Brook']);
     assert.equal((await req('GET', mine.url, null, dan)).status, 404, 'her screenshot is gone');
-    assert.equal((await req('GET', adas.url, null, dan)).status, 200);
+    assert.equal((await req('GET', adas.url, null, ada)).status, 200, 'Ada\'s upload is kept (its uploader opens it)');
     assert.deepEqual((await state(ada)).nudges.map((n) => n.studentId), ['S2002']);
     assert.ok(!JSON.parse(fs.readFileSync(path.join(dir, 'feedback.json'), 'utf8')).some((f) => f.studentId === 'S2001'));
   } finally { srv.p.kill(); }

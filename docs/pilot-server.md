@@ -395,8 +395,7 @@ only the students they work with. Demo mode still sends the whole record to ever
   so what the server computed on the whole record wins. Every change anywhere still bumps the stream, and
   each browser then refetches its own part. An address naming a student not in the person's part shows
   "This student is not in your part of the record" (advisor student page, reference letter).
-- **Files**: `GET /api/files/:name` stays public by an unguessable name (no sign-in, no reach check), so a
-  file's link works for anyone who has it, as a share link does.
+- **Files**: `GET /api/files/:name` follows the record too; see "Protected uploaded files" below.
 - Tests: `npm run test:server` (`server/test/scope.test.mjs`), `node scripts/checks/scope.cjs` (every role
   through a real pilot server and every screen it can reach), and the scoping part of `auth.cjs`.
 ## A student's data: a copy and erasure (`server/routes/50-pdpa.mjs`, `server/zip.mjs`)
@@ -1051,3 +1050,29 @@ it, and the old advisor stops seeing students who are no longer theirs.
   year's goals whose date has passed (`goalsToReview`: only once a new year has started).
 - Tests: `server/test/year-handover.test.mjs`; `node scripts/checks/year-handover.cjs` (real roster; the next year's
   copy is made in a temp dir and deleted).
+## Protected uploaded files (`server/files.mjs`, `server/routes/30-uploads.mjs`, pilot only)
+
+In a pilot, `GET /api/files/:name` serves a file only to someone who may read a record that uses it. Anyone else,
+signed in or not, gets the same `404 { error: 'Not found' }` as a file that does not exist (never 403, so a name is
+not confirmed). Demo mode is unchanged: anyone with the address, cached for a year.
+
+- **`canSeeFile(user, name, meta)`** (`meta`: the `.json` beside the upload) is true for: the uploader (`meta.by`, the
+  account id), so a file attached to nothing yet is theirs alone; anyone, signed in or not, when an open share link
+  shows it (in `publicSnapshot(token)` of a link that is not revoked or expired: publishable moments, never hidden
+  ones, and the presentation's own images); admin and leadership for feedback screenshots; anyone whose own copy of the
+  record uses it (in `scopedSnapshot(user)`). That last rule gives the student their own files and, by `server/scope.mjs`,
+  staff with reach at the levels they may read (never private moments), the class's teachers for class answers, a
+  family only what the family view shows and not moments a moderator hid, and new store keys by the generic rule
+  (an array of `{ studentId }` follows reach). An admin's **See as** (`GET /api/admin/preview/:id`) also opens that
+  account's files for that admin for two hours (`previewing(admin, accountId)`).
+- **Fast**: `fileIndex()` maps file name → the students whose records use it (`'*'`: a record tied to no one),
+  built once after each change (keyed by the store's `rev` and the date). A file not in it goes to its uploader only; a
+  person with none of those students in reach is refused without building their copy. Each person's set of files
+  (from their scoped copy) and the share links' set are kept until the next change.
+- **Headers**: `Cache-Control: private, no-cache` and `Vary: Cookie`, so each view (a cheap 304 with the ETag) is
+  checked again and a file stops opening as soon as the record changes. Range requests are checked the same way.
+  `GET /api/files/*` stays outside the sign-in guard (no 401), so a share page's photos load signed out.
+- Tests: `server/test/protected-files.test.mjs` (every role, hidden moments, share links, class answers, See as, the
+  index cache, the route's 404s and headers, demo mode); browser: `node scripts/checks/protected-files.cjs` (real roster
+  from `TP_ROSTER`): Aaron Torres, Mr David Coultas, a teacher with no reach, a parent (family letter) and a signed-out
+  browser, each in its own context.

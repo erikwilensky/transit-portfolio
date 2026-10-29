@@ -1,13 +1,17 @@
 // Evidence files: a student's photo, PDF, document, recording or video.
 // POST /api/upload   body = the raw file; headers content-type and x-filename (URL-encoded)
 //                    → { url: '/api/files/<id>.<ext>', name, size, type }
-// GET  /api/files/:name  streams it back (Range supported, for audio and video).
+// GET  /api/files/:name  streams it back (Range supported, for audio and video). Pilot: only to someone who may read a
+//                    record that uses it, or its uploader (server/files.mjs); anyone else gets 404, and the answer is
+//                    Cache-Control: private, no-cache, so each view is checked again. Demo: anyone with the address.
 // Files live in DATA_DIR/uploads/ under a 128-bit random id, with a small .json beside each
 // one holding the original name and type. Only the types below are accepted.
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { DATA_DIR, send, readBody } from '../lib.mjs';
+import { MODE } from '../auth.mjs';
+import { canSeeFile } from '../files.mjs';
 
 const DIR = path.join(DATA_DIR, 'uploads');
 fs.mkdirSync(DIR, { recursive: true });
@@ -61,6 +65,8 @@ export default (app) => {
     const f = path.join(DIR, name);
     let st; try { st = fs.statSync(f); } catch { throw fail(404, 'Not found'); }
     let meta = {}; try { meta = JSON.parse(fs.readFileSync(`${f}.json`, 'utf8')); } catch { /* serve without the original name */ }
+    const pilot = MODE === 'pilot';
+    if (pilot && !canSeeFile(req.user, name, meta)) throw fail(404, 'Not found');
     const ext = name.split('.').pop();
     const type = SERVE[ext] || 'application/octet-stream';
     const fname = (meta.name || name).replace(/["\r\n]/g, '');
@@ -68,7 +74,8 @@ export default (app) => {
     const headers = {
       'content-type': type,
       'content-disposition': `${INLINE.test(type) ? 'inline' : 'attachment'}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(fname)}`,
-      'cache-control': 'private, max-age=31536000, immutable',
+      'cache-control': pilot ? 'private, no-cache' : 'private, max-age=31536000, immutable',
+      ...(pilot ? { vary: 'Cookie' } : {}),
       'x-content-type-options': 'nosniff',
       'accept-ranges': 'bytes',
       etag: `"${name}"`,

@@ -81,7 +81,7 @@ let srv;
     await s.locator('.sh-flow .sh-ask', { hasText: coultas.name }).first().click();
     const ev = await until(() => full().events.find((e) => e.studentId === STUDENT && e.title === TITLE));
     ok(!!ev && ev.evidence[0]?.url === src && /^api\/files\//.test(src), `the moment is saved with the uploaded photo (${src})`);
-    ok((await fetch(`${U}/${src}`)).status === 200, 'the photo file is served');
+    ok((await fetch(`${U}/${src}`, { headers: H(sTok) })).status === 200 && (await fetch(`${U}/${src}`)).status === 404, 'the photo file is served to Aaron, not signed out');
 
     // ── A parent joins through the family letter and sees the moment ──
     const lt = await (await fetch(`${U}/api/advisor/family/letters`, { method: 'POST', headers: H(aTok), body: JSON.stringify({ studentIds: [STUDENT] }) })).json();
