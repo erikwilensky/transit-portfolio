@@ -1702,6 +1702,90 @@ export function openNudge(studentId) {
   return since ? null : { ...n, fromName: teacherById[n.from]?.name || '' };
 }
 
+// ── Moment comments: a conversation on one station between the student and the staff who can see it ──
+// store.momentComments [{ id, eventId, studentId, by, text, at, edited? }] (by: 'student' or a teacher id) and
+// store.commentReads [{ studentId, eventId, by, at }] (when each person last read a thread), both made on first use.
+// Who writes (server/auth.mjs checks the role): the student; their advisor, a teacher asked about it or its sponsor
+// (commentsAsked); whole-school staff and admins. Never on a private station. Families never see them (server/scope.mjs).
+// The author edits within COMMENT_EDIT_MIN minutes of writing, and deletes any time.
+export const COMMENT_EDIT_MIN = 15;
+const cmErr = (message, status = 400) => Object.assign(new Error(message), { status });
+export const getMomentComments = (eventId) => (store.momentComments || []).filter((c) => c.eventId === eventId);
+export const getMomentComment = (id) => (store.momentComments || []).find((c) => c.id === id);
+export function commentsAsked(eventId, tid) {
+  const e = getEvent(eventId);
+  return !!e && !!tid && (getStudent(e.studentId)?.advisorId === tid || e.sponsor?.teacherId === tid || store.requests.some((r) => r.eventId === eventId && r.teacherId === tid));
+}
+// The staff a thread involves: the advisor, teachers asked about it, its sponsor, and staff who wrote in it.
+export function commentStaff(eventId) {
+  const e = getEvent(eventId); if (!e) return [];
+  const ids = [getStudent(e.studentId)?.advisorId, ...store.requests.filter((r) => r.eventId === eventId).map((r) => r.teacherId), e.sponsor?.teacherId, ...getMomentComments(eventId).map((c) => c.by)];
+  return [...new Set(ids.filter((id) => id && id !== 'student' && teacherById[id]))];
+}
+// Comments by others since this person ('student' or a teacher id) last read the thread or wrote in it.
+export function unreadComments(eventId, me) {
+  if (!me) return 0;
+  const list = getMomentComments(eventId);
+  const seen = [(store.commentReads || []).find((r) => r.eventId === eventId && r.by === me)?.at || '', ...list.filter((c) => c.by === me).map((c) => c.at)].sort().at(-1);
+  return list.filter((c) => c.by !== me && c.at > seen).length;
+}
+// What a viewer calls the writer: students say "Mr Coultas", staff read full names.
+export function commentWho(c, me) {
+  if (c.by === me) return 'You';
+  if (c.by === 'student') return getStudent(c.studentId)?.name || 'The student';
+  const n = teacherById[c.by]?.name || 'A teacher';
+  return me === 'student' ? shortName(n) : n;
+}
+const readMark = (e, by, at) => {
+  const list = (store.commentReads ||= []);
+  const r = list.find((x) => x.eventId === e.id && x.by === by);
+  if (r) r.at = at; else list.push({ studentId: e.studentId, eventId: e.id, by, at });
+};
+// Where a notification takes staff: an advisor to the student's map with the station open, anyone else to the queue's thread.
+const commentGo = (tid, e) => (getStudent(e.studentId)?.advisorId === tid
+  ? { persona: toTeacher(tid), screen: 'student', param: `${e.studentId}~${e.id}` }
+  : { persona: toTeacher(tid), screen: 'queue', param: `c~${e.id}` });
+export function addMomentComment(eventId, by, text) {
+  const e = getEvent(eventId); if (!e) throw cmErr('No such moment.', 404);
+  const t = String(text ?? '').trim().slice(0, 2000); if (!t) throw cmErr('Write something first.');
+  if (e.visibility === 'private') throw cmErr('This moment is just for the student. Share it with the advisor first.');
+  if (by !== 'student' && !teacherById[by]) throw cmErr('No such teacher.');
+  const c = { id: uid('cm-'), eventId, studentId: e.studentId, by, text: t, at: nowIso() };
+  (store.momentComments ||= []).push(c);
+  readMark(e, by, c.at);
+  const s = getStudent(e.studentId), who = by === 'student' ? s.name : teacherById[by].name;
+  const quote = t.length > 60 ? `${t.slice(0, 57)}…` : t;
+  if (by === 'student') for (const tid of commentStaff(eventId)) notify(toTeacher(tid), `${s.name.split(' ')[0]} wrote on “${e.title}”: ${quote}`, commentGo(tid, e));
+  else notify(toStudent(e.studentId), `${shortName(who)} wrote on “${e.title}”: ${quote}`, { persona: toStudent(e.studentId), screen: 'map', param: e.id });
+  log(e.studentId, who, 'comment', `Commented on “${e.title}”`);
+  emit();
+  return c;
+}
+const ownComment = (id, by) => {
+  const c = getMomentComment(id); if (!c) throw cmErr('That comment is gone.', 404);
+  if (c.by !== by) throw cmErr('Only the person who wrote a comment can change it.', 403);
+  return c;
+};
+export function editMomentComment(id, by, text) {
+  const c = ownComment(id, by);
+  const t = String(text ?? '').trim().slice(0, 2000); if (!t) throw cmErr('Write something first.');
+  const now = nowIso();
+  if (Date.parse(now) - Date.parse(c.at) > COMMENT_EDIT_MIN * 60000) throw cmErr(`A comment can be changed for ${COMMENT_EDIT_MIN} minutes after writing it.`, 409);
+  c.text = t; c.edited = now;
+  emit();
+  return c;
+}
+export function deleteMomentComment(id, by) {
+  const c = ownComment(id, by);
+  store.momentComments = store.momentComments.filter((x) => x.id !== id);
+  emit();
+}
+export function markCommentsRead(eventId, by) {
+  const e = getEvent(eventId); if (!e) return;
+  readMark(e, by, nowIso());
+  emit();
+}
+
 // ── Shared record: with the pilot server, every change is replayed there ──
 // A screen calls a change below; it runs here at once (instant UI) while recording the ids and
 // times it made. The hook (src/sync.js) posts { fn, args, rec } to /api/action, and the server runs
@@ -1754,6 +1838,7 @@ importCandidates = act('importCandidates', importCandidates); eraseStudent = act
 setSubjectLine = act('setSubjectLine', setSubjectLine);
 askClass = act('askClass', askClass); remindClass = act('remindClass', remindClass); answerPrompt = act('answerPrompt', answerPrompt); skipPrompt = act('skipPrompt', skipPrompt);
 nudgeStudent = act('nudgeStudent', nudgeStudent);
+addMomentComment = act('addMomentComment', addMomentComment); editMomentComment = act('editMomentComment', editMomentComment); deleteMomentComment = act('deleteMomentComment', deleteMomentComment); markCommentsRead = act('markCommentsRead', markCommentsRead);
 // Undo puts a whole earlier copy back, and reset goes back to the seed (sync.js sends it to /api/reset).
 restore = act('restore', restore); resetDemo = act('resetDemo', resetDemo);
 export const MUTATORS = Object.keys(ACTIONS);

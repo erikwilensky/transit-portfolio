@@ -55,6 +55,8 @@ const ABOUT = {
   roster: 'Rows from imported files that were matched to you.',
   classAnswers: 'Your answers to questions a teacher asked your class (or that you said were not for you).', classPrompts: 'Questions teachers asked your classes.',
   nudges: 'Nudges your advisor sent you to add something.',
+  momentComments: 'Comments on your moments, yours and your teachers\', with who wrote each and when.',
+  commentReads: 'When you and your teachers last read the comments on each moment.',
 };
 const README = (s, files, accounts, when) => [
   `Everything NIST Transit Portfolio holds about ${s.name} (student id ${s.id})`,

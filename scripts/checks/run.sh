@@ -18,4 +18,5 @@ echo "== phone-app (starts its own demo and pilot servers)"; node phone-app.cjs 
 echo "== feedback-nudges"; node feedback-nudges.cjs || fail=1
 echo "== signup-progress (starts its own clean pilot server on the real roster)"; node signup-progress.cjs || fail=1
 echo "== see-as (starts its own clean pilot server on the real roster)"; node see-as.cjs || fail=1
+echo "== moment-comments"; node moment-comments.cjs || fail=1
 echo "== tours"; node tours.cjs | grep -E "end url|ERRS|soon|boom|empty|hs" ; exit $fail

@@ -11,10 +11,10 @@ import { isPilot } from '../auth.js';
 const daysBetween = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
 
 // Advisor drill-down: the student's map as the advisor may see it, notes and a meeting agenda.
-export default function AdvisorStudent({ studentId, version, toast, go, persona }) {
+export default function AdvisorStudent({ studentId, version, toast, go, persona, focus }) {
   const map = useMemo(() => getStudentMap(studentId, 'advisor'), [studentId, version]); // eslint-disable-line react-hooks/exhaustive-deps
   const lens = useMemo(() => applyLens(map, null), [map]);
-  const [selected, setSelected] = useState(null);
+  const [selected, setSelected] = useState(focus || null); // a comment notification opens its station
   const [note, setNote] = useState('');
   const [promptText, setPromptText] = useState('');
   const notes = getNotes(studentId);
@@ -49,7 +49,7 @@ export default function AdvisorStudent({ studentId, version, toast, go, persona 
       <div className="as-body">
         <div className="as-map">
           <MetroMap recent map={map} lens={lens} selectedId={selected} onSelect={setSelected} onSignal={(g) => setSelected(g.eventId)} fitKey={studentId} />
-          <StationPanel event={event} map={map} onClose={() => setSelected(null)} readOnly />
+          <StationPanel event={event} map={map} onClose={() => setSelected(null)} readOnly toast={toast} />
         </div>
         <aside className="as-side">
           <section className="card-sec">

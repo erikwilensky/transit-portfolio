@@ -137,6 +137,10 @@ export function scopedSnapshot(user) {
   store.classPrompts = (full.classPrompts || []).flatMap((p) => (askedMine(p) ? [p] : self && p.studentIds.includes(self) ? [{ ...p, studentIds: [self] }] : []));
   const keptAsked = new Set(store.classPrompts.filter(askedMine).map((p) => p.id));
   store.classAnswers = (full.classAnswers || []).filter((a) => keptAsked.has(a.promptId) || (!!self && a.studentId === self));
+  // Moment comments: on stations this person receives, never for families; read marks, only their own.
+  const meKey = self ? 'student' : tid;
+  store.momentComments = parent ? [] : (full.momentComments || []).filter((c) => shown.has(c.eventId));
+  store.commentReads = parent || !meKey ? [] : (full.commentReads || []).filter((r) => shown.has(r.eventId) && r.by === meKey);
   const keys = recipientKeys(user);
   store.notifications = full.notifications.filter((n) => keys.has(n.to));
   // The activity log, without lines that name a station this person does not receive. Families: views and consent only.
@@ -197,6 +201,10 @@ export const TOUCHES = {
   remindClass: (a) => { const p = api.getClassPrompt(a[0]); return T(p ? p.studentIds.filter((sid) => api.getStudent(sid)) : ['?'], [a[1] ?? '?']); },
   answerPrompt: (a) => T([api.getClassPrompt(a[0])?.studentIds.includes(a[1]) ? a[1] : '?']),
   skipPrompt: (a) => T([api.getClassPrompt(a[0])?.studentIds.includes(a[1]) ? a[1] : '?']),
+  addMomentComment: (a) => T([ev(a[0])], [a[1] !== 'student' ? a[1] ?? '?' : null]),
+  markCommentsRead: (a) => T([ev(a[0])], [a[1] !== 'student' ? a[1] ?? '?' : null]),
+  editMomentComment: (a) => T([api.getMomentComment(a[0])?.studentId], [a[1] !== 'student' ? a[1] ?? '?' : null]),
+  deleteMomentComment: (a) => T([api.getMomentComment(a[0])?.studentId], [a[1] !== 'student' ? a[1] ?? '?' : null]),
   addSchoolLine: () => T([]), setSubjectLine: () => T([]), setRollout: () => T([]), setFamily: () => T([]), setLang: () => T([]), markNotificationsRead: () => T([]), recordView: () => T([]),
 };
 // A mutator not listed: any student or station id found in its arguments counts as touched.

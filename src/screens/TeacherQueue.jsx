@@ -9,6 +9,8 @@ import { FileLinks } from '../components/FileAttach.jsx';
 import { isPilot } from '../auth.js';
 import { classAnswerGroups } from '../api.js';
 import '../components/class-answers.css';
+import MomentComments from '../components/MomentComments.jsx';
+import { commentStaff, getEvent, getMomentComments, getStudent } from '../api.js';
 
 export const CHIPS = ['Independent work', 'Beyond the syllabus', 'Strong collaboration', 'Real-world impact', 'Clear progress'];
 
@@ -117,11 +119,14 @@ export default function TeacherQueue({ teacherId, toast, version, focus, go, per
                   <button className="ghost" title="Sends your note to the student as what you need to see" onClick={() => { const snap = snapshot(); declineRequest(r.id, (notes[r.id] || '').trim() || 'Could you add more evidence, such as the code or a photo?'); toast(`Sent back to ${r.student.name.split(' ')[0]} with your request.`, snap); }}>Ask for more</button>
                   <button className="primary" onClick={() => doEndorse([r.id])}>Endorse</button>
                 </div>
+                <MomentComments key={`c-${e.id}`} event={e} collapsible open={focus === `c~${e.id}`} toast={toast} />
               </div>
             </article>
           );
         })}
       </div>
+
+      <Conversations teacherId={teacherId} skip={new Set(pending.map((r) => r.eventId))} focus={focus} toast={toast} />
 
       <SponsorPanel teacherId={teacherId} toast={toast} />
 
@@ -132,5 +137,26 @@ export default function TeacherQueue({ teacherId, toast, version, focus, go, per
         </section>
       )}
     </div>
+  );
+}
+
+// Comment threads on moments this teacher is part of (asked, sponsor, advisor, or wrote in), beyond the cards above.
+// A comment notification links here: #/<persona>/queue/c~<eventId>.
+function Conversations({ teacherId, skip, focus, toast }) {
+  const ids = [...new Set((getStore().momentComments || []).map((c) => c.eventId))].filter((id) => !skip.has(id) && getEvent(id) && commentStaff(id).includes(teacherId));
+  const last = (id) => getMomentComments(id).at(-1)?.at || '';
+  const list = ids.sort((a, b) => last(b).localeCompare(last(a)));
+  useEffect(() => { if (focus?.startsWith('c~')) setTimeout(() => document.getElementById(`talk-${focus.slice(2)}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300); }, [focus]);
+  if (!list.length) return null;
+  return (
+    <section className="q-talk">
+      <h2>Comments on moments</h2>
+      <ul>{list.map((id) => { const e = getEvent(id); const s = getStudent(e.studentId); return (
+        <li key={id} id={`talk-${id}`} className={focus === `c~${id}` ? 'focus' : ''}>
+          <div className="q-talk-top"><b>{e.title}</b><small>{s?.name}</small></div>
+          <MomentComments event={e} collapsible open={focus === `c~${id}`} toast={toast} />
+        </li>
+      ); })}</ul>
+    </section>
   );
 }

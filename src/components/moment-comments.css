@@ -1,0 +1,32 @@
+/* Moment comments (MomentComments.jsx). NIST navy, no gradients or shadows. */
+.mc-thread { margin: 14px 0; padding-top: 12px; border-top: 1px solid var(--rule); }
+.mc-thread h3 { display: flex; align-items: baseline; gap: 10px; margin: 0 0 8px; }
+.mc-thread h3 .linkish { margin-left: auto; font-size: 13px; font-weight: 400; }
+.mc-list { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 8px; }
+.mc-thread .mc-list li { display: block; border: 1px solid var(--rule); border-radius: 12px; padding: 8px 12px; background: var(--surface); max-width: 92%; }
+.mc-thread .mc-list li.mine { margin-left: auto; background: color-mix(in srgb, var(--navy) 6%, var(--surface)); }
+.mc-thread .mc-list li.fresh { border-color: var(--navy); border-width: 2px; }
+:root[data-theme="dark"] .mc-thread .mc-list li.fresh { border-color: var(--b-sky); }
+.mc-thread .mc-list p { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.mc-who { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.mc-who small { color: var(--muted); font-size: 12.5px; }
+.mc-own { display: flex; gap: 12px; margin-top: 4px; font-size: 13px; }
+.mc-write textarea, .mc-edit textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--rule); border-radius: 10px; padding: 8px 10px; font: inherit; background: var(--surface); color: var(--ink); }
+.mc-row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; flex-wrap: wrap; }
+.mc-note { margin-top: 6px; }
+.mc-new { font-style: normal; display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: var(--b-red); color: #fff; font-size: 12px; font-weight: 600; line-height: 1.5; }
+.mc-toggle { display: inline-flex; align-items: center; }
+.mc-thread.simple { text-align: left; }
+.mc-thread.simple .mc-list li { font-size: 17px; padding: 10px 14px; border-radius: 16px; }
+.mc-thread.simple textarea { font-size: 17px; border-radius: 14px; padding: 12px; }
+.mc-thread.simple .primary, .mc-thread.simple .ghost { font-size: 18px; padding: 12px 22px; border-radius: 14px; }
+.mc-reply { display: block; width: 100%; }
+.mc-thread.simple .mc-reply { min-height: 56px; font-size: 20px; }
+.q-card .mc-thread { margin: 10px 0 0; }
+.q-card .mc-toggle { margin-top: 8px; }
+.q-talk { margin: 28px 0; }
+.q-talk ul { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 10px; }
+.q-talk li { border: 1px solid var(--rule); border-radius: var(--radius); padding: 12px 14px; background: var(--surface); }
+.q-talk li.focus { border-color: var(--navy); border-width: 2px; }
+.q-talk .q-talk-top { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.q-talk .q-talk-top small { color: var(--muted); }
