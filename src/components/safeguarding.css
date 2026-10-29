@@ -1,0 +1,45 @@
+/* Safeguarding: Report (Report.jsx) and the moderators' queue (screens/Reports.jsx). NIST navy, no gradients or shadows. */
+.sg-report { font-size: 13.5px; margin-left: 8px; }
+.mc-list .sg-report { margin-left: 0; font-size: 12.5px; color: var(--muted); }
+.sg-report.simple { display: block; margin: 14px auto 0; font-size: 16px; padding: 10px 18px; border-radius: 12px; }
+.sg-sent { display: inline-block; margin-left: 8px; font-size: 13px; color: var(--muted); }
+.sh-moment .sg-sent { display: block; text-align: center; margin: 14px 0 0; font-size: 15px; }
+.sg-dialog h2 { margin: 0 0 4px; font-size: 20px; }
+.sg-reasons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 14px 0; }
+.sg-reasons button { padding: 12px 10px; border-radius: 12px; border: 2px solid var(--rule); background: var(--surface); color: var(--ink); font-weight: 600; font-size: 14px; text-align: left; }
+.sg-reasons button.on { border-color: var(--navy); background: color-mix(in srgb, var(--navy) 7%, var(--surface)); }
+.sg-dialog textarea, .sg-act textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--rule); border-radius: 10px; padding: 10px; font: inherit; background: var(--surface); color: var(--ink); }
+.sg-foot { display: flex; gap: 10px; justify-content: flex-end; margin-top: 12px; }
+.sg-dialog.simple h2 { font-size: 24px; }
+.sg-dialog.simple .sg-reasons { grid-template-columns: 1fr; }
+.sg-dialog.simple .sg-reasons button { font-size: 17px; min-height: 54px; }
+.sg-hidden { margin: 8px 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--b-gold, #FFB81C); background: color-mix(in srgb, #FFB81C 14%, var(--surface)); font-weight: 600; font-size: 14px; }
+.sg-hidden.small { font-size: 13px; padding: 6px 10px; }
+
+.sg-page { max-width: 960px; margin: 0 auto; padding: 20px 16px 40px; }
+.sg-head { display: flex; gap: 16px; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; margin-bottom: 14px; }
+.sg-head h1 { margin: 0 0 4px; color: var(--navy); }
+.sg-tabs { display: flex; gap: 6px; }
+.sg-tabs button { border: 1px solid var(--rule); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 6px 14px; font-weight: 600; }
+.sg-tabs button.on { background: var(--navy); border-color: var(--navy); color: #fff; }
+.sg-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.sg-card { border: 1px solid var(--rule); border-radius: 14px; padding: 14px 16px; background: var(--surface); }
+.sg-card.focus { border: 2px solid var(--navy); }
+.sg-top { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.sg-top .fineprint { margin-left: auto; }
+.sg-status { border-radius: 999px; padding: 2px 10px; font-size: 12.5px; font-weight: 600; background: var(--surface-2); }
+.sg-status.s-open { background: color-mix(in srgb, #E73C3E 14%, var(--surface)); color: #B3261E; }
+:root[data-theme="dark"] .sg-status.s-open { color: #FF7B7D; }
+.sg-item { display: flex; gap: 14px; margin: 10px 0; align-items: flex-start; }
+.sg-item img { width: 120px; height: 90px; object-fit: cover; border-radius: 8px; border: 1px solid var(--rule); flex-shrink: 0; }
+.sg-item h3 { margin: 2px 0 4px; font-size: 16px; }
+.sg-kind { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.sg-text { white-space: pre-wrap; overflow-wrap: anywhere; margin: 4px 0; }
+.sg-meta { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 8px 0; font-size: 14px; }
+.sg-meta dt { color: var(--muted); }
+.sg-meta dd { margin: 0; min-width: 0; }
+.sg-history { margin: 8px 0; padding-left: 20px; font-size: 13.5px; }
+.sg-history .sg-text { display: block; color: var(--muted); }
+.sg-act { border-top: 1px solid var(--rule); padding-top: 10px; margin-top: 10px; }
+.sg-buttons { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+@media (max-width: 560px) { .sg-item { flex-direction: column; } .sg-item img { width: 100%; height: auto; max-height: 220px; } .sg-reasons { grid-template-columns: 1fr; } }

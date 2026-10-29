@@ -105,7 +105,7 @@ export default function Family({ persona, screen, param, go, toast, version }) {
 function FamilyMap({ persona, childId, go, lang, version }) {
   const s = getStudent(childId);
   const say = SAY[lang];
-  const map = useMemo(() => getStudentMap(childId, familyViewer(childId)), [childId, version]); // eslint-disable-line react-hooks/exhaustive-deps
+  const map = useMemo(() => getStudentMap(childId, familyViewer(childId), { family: true }), [childId, version]); // eslint-disable-line react-hooks/exhaustive-deps
   const lens = useMemo(() => applyLens(map, null), [map]);
   const [sel, setSel] = useState(null);
   const f = first(s);
