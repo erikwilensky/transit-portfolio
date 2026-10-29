@@ -29,4 +29,5 @@ echo "== year-handover (starts its own clean pilot server on the real roster)"; 
 echo "== protected-files (starts its own clean pilot server on the real roster)"; node protected-files.cjs || fail=1
 echo "== weekly-summary (starts its own clean pilot server on the real roster)"; node weekly-summary.cjs || fail=1
 echo "== activity-log (starts its own clean pilot server on the real roster)"; node activity-log.cjs || fail=1
+echo "== term-reflection (starts its own clean pilot server on the real roster)"; node term-reflection.cjs || fail=1
 echo "== tours"; node tours.cjs | grep -E "end url|ERRS|soon|boom|empty|hs" ; exit $fail

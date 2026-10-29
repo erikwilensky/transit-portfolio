@@ -36,6 +36,7 @@ import Onboarding from './screens/Onboarding.jsx';
 import Pdpa from './screens/Pdpa.jsx';
 import { FeedbackDialog } from './components/Feedback.jsx';
 import { NudgeBanner } from './components/Nudges.jsx';
+import { TermReflectionCard } from './components/TermReflection.jsx';
 import Applications from './screens/Applications.jsx';
 import SignalBoard from './screens/SignalBoard.jsx';
 import SchoolLine from './screens/SchoolLine.jsx';
@@ -390,7 +391,8 @@ function StudentScreens({ screen, param, studentId, drafts, setDrafts, audience,
   // A nudge (banner or notification, #/<persona>/map/add) opens the add flow.
   const [addReq, setAddReq] = useState(0);
   useEffect(() => { if (param === 'add' && screen === 'map') setAddReq((n) => n + 1); }, [param, screen]);
-  const nudge = <><NudgeBanner studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} onAdd={() => setAddReq((n) => n + 1)} /><CarryOverGoals studentId={studentId} version={version} toast={toast} simple={getIntensity(studentId) === 'simple'} /></>;
+  const nudge = <><NudgeBanner studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} onAdd={() => setAddReq((n) => n + 1)} /><CarryOverGoals studentId={studentId} version={version} toast={toast} simple={getIntensity(studentId) === 'simple'} />
+    <TermReflectionCard studentId={studentId} version={version} toast={toast} simple={getIntensity(studentId) === 'simple'} auto={screen === 'map' && param === 'reflect'} /></>;
   // N11: stations a presentation would show but a link cannot, because they are not publishable.
   const [gapFor, setGapFor] = useState(null);
   const gapsOf = (pres) => { const l = applyLens(map, pres, { hiddenLines: pres.filters.hiddenLines }); return map.events.filter((e) => l.visible.has(e.id) && e.type !== 'goal' && e.visibility !== 'publishable'); };

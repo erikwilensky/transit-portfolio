@@ -59,6 +59,7 @@ const ABOUT = {
   momentComments: 'Comments on your moments, yours and your teachers\', with who wrote each and when.',
   commentReads: 'When you and your teachers last read the comments on each moment.',
   spotted: 'Moments a teacher spotted and suggested for your journey, and whether you added them.',
+  termReflections: 'Your end-of-term reflections: the moments you picked, your answers and goal, finished or still a draft.',
 };
 const README = (s, files, accounts, when) => [
   `Everything NIST Transit Portfolio holds about ${s.name} (student id ${s.id})`,
