@@ -844,3 +844,32 @@ counsellor's draft comments (`store.comments`, `addComment`, `DraftComments.jsx`
 - Tests: `server/test/moment-comments.test.mjs`; browser: `node scripts/checks/moment-comments.cjs` (the real roster
   from `TP_ROSTER`; Aaron Torres, Mr David Coultas, Ms Jane Altemen, a linked parent, a teacher out of reach;
   screenshots to the temp folder as `tp-comments-*.png`).
+
+## Simple level: goals (`src/screens/SimpleHome.jsx`, `src/screens/simple-goals.css`)
+
+- **Something I want to do**: a third big card on the Simple home, next to "Add something I did". "Answer a question"
+  now shows only when there is a question (it used to sit there disabled). On a phone the cards stack, smaller.
+- **The flow** (`GoalFlow`), one question per screen: 1) what, with up to six example chips from the student's lines
+  (by line name: science, music, art, sport, design, languages, maths, service; a chip also picks its line); 2) which
+  colour (big line buttons); 3) when: "In a few weeks" (+21 days), "By the end of this term", "This year", or "Pick a
+  date" (terms are taken to end 11 Dec, 26 Mar and 11 Jun; near enough for a target); 4) "Want a teacher to help you
+  with it?": the same choices as asking a teacher to check a moment (`endorserChoices(studentId, [], [lineId])`, the
+  teacher of their class on that line first, "Someone else", "Not now"); skipped when there is nobody to ask. Saves with
+  the existing `addGoal(studentId, { title, date, lineId, checkIn: true, sponsor })`: a sponsor gets the existing
+  invitation in their queue's "Planned work you sponsor" (`SponsorPanel`), the advisor a check-in notice.
+- **On the journey**: a goal is a dashed, tinted stop ahead of Today on its line, joined to Today by a dashed track (the
+  track widens its time range to fit the latest goal). Tapping it opens the goal card. **Coming up** lists the
+  student's goals (not school requirements) with the sponsor's state ("Waiting for Mr Surname to say yes", "… is
+  helping you" plus their expectations, "… can't help this time").
+- **I did it!** runs the existing `completeGoal(id)` (a moment dated today; an accepted sponsor gets an endorsement
+  request with `source: 'sponsor'`, "Finished project you sponsored" in their queue), then offers a photo (the same
+  photo step as adding a moment, `PhotoPick`; saved with `editStation(id, { evidence })`) and one sentence
+  (`addReflection`). Both can be skipped.
+- **Not doing this any more**: asks once, then the existing `deleteStation(id)` (a student may delete their own
+  student-added stations; goals are). No new mutator.
+- The advisor already sees goals on their student page (dashed on the map; within 120 days in the meeting agenda).
+- Tests: `server/test/simple-goals.test.mjs` (who may plan, answer, complete, drop; the sponsor's download and request);
+  browser: `node scripts/checks/simple-goals.cjs` (the real roster from `TP_ROSTER`; Aaron Torres on a phone plans
+  "Enter the science fair" on Science and asks Mr David Coultas; Coultas accepts; Ms Jane Altemen sees it in the
+  agenda; Aaron marks it done with a photo and a sentence; Coultas endorses it in one click and the stop is solid;
+  a second goal is dropped. Screenshots to the temp folder as `tp-goals-*.png`).
