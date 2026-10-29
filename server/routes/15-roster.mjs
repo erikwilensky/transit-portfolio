@@ -39,7 +39,7 @@ export default (app) => {
     if (b.dryRun) {
       const { todo, skipped } = newAccountsFor(roster);
       const summary = api.previewRoster(roster);
-      return send(res, 200, { summary, warnings, newAccounts: { toCreate: todo.length, skipped: skipped.length }, leavers: leaversOf(summary).map(who), returning: returning(roster).map(who), counts: Object.fromEntries(['teachers', 'students', 'classes', 'enrolments'].map((k) => [k, roster[k].length])) });
+      return send(res, 200, { summary, warnings, newAccounts: { toCreate: todo.length, skipped: skipped.length }, leavers: leaversOf(summary).map(who), returning: returning(roster).map(who), handover: api.handoverPreview(roster), counts: Object.fromEntries(['teachers', 'students', 'classes', 'enrolments'].map((k) => [k, roster[k].length])) });
     }
     const summary = api.importRoster(roster);
     changed({ fn: 'importRoster', by: 'admin' });

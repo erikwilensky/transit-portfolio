@@ -58,6 +58,7 @@ export default function Accounts({ toast, persona }) {
         <div><h1>Accounts</h1><p className="auth-lede">Everyone in the pilot signs in with their own account and sees only their own role’s screens. Each account is linked to a student, staff or family record.</p></div>
         <div className="auth-row">
           {!roster && <button className="ghost" onClick={() => { setLink(null); setForm(null); setRoster(true); }}>Import class lists</button>}
+          {!roster && <button className="ghost" onClick={() => { setLink(null); setForm(null); setRoster('year'); }}>Start of year</button>}
           {!cards && <button className="ghost" onClick={() => { setLink(null); setCards(true); }}>Print sign-in cards</button>}
           {!letters && <button className="ghost" onClick={() => { setLink(null); setLetters(true); }}>Print family letters</button>}
           {!form && <button className="auth-btn" onClick={() => { setLink(null); setRoster(false); setForm({ ...blank }); }}>Add an account</button>}
@@ -82,7 +83,7 @@ export default function Accounts({ toast, persona }) {
           <button className="linkish" onClick={() => setLink(null)}>Done</button>
         </section>
       )}
-      {roster && <RosterImport onClose={() => setRoster(false)} onDone={(j) => { setData(j); toast('Class lists imported'); }} />}
+      {roster && <RosterImport key={String(roster)} startOfYear={roster === 'year'} onClose={() => setRoster(false)} onDone={(j) => { setData(j); toast('Class lists imported'); }} />}
       {cards && <AdminCards toast={toast} onClose={() => setCards(false)} onMade={() => admin.list().then(setData, () => {})} />}
       {letters && <AdminFamily toast={toast} onClose={() => setLetters(false)} onChange={() => admin.list().then(setData, () => {})} />}
       {form && <AccountForm form={form} setForm={setForm} data={data} onSubmit={save} />}

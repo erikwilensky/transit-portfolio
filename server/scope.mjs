@@ -16,20 +16,26 @@ const st = () => api.getStore();
 export function teacherReach(tid) {
   const s = st(), out = new Set();
   if (!tid) return out;
-  const add = (id) => { if (id) out.add(id); };
+  // Year handover: a student handed over from this teacher (their latest handover) is reached only by links made after it,
+  // and an ended class place (a later class list without it) no longer counts.
+  const cut = new Map();
+  for (const h of s.handovers || []) cut.set(h.studentId, h);
+  for (const [sid, h] of cut) if (h.from !== tid) cut.delete(sid); else cut.set(sid, h.date);
+  const NOW = '9999';
+  const add = (id, date) => { if (id && !(cut.has(id) && !(String(date ?? '') > cut.get(id)))) out.add(id); };
   const evStudent = new Map(s.events.map((e) => [e.id, e.studentId]));
-  for (const x of s.students) if (x.advisorId === tid) add(x.id);
+  for (const x of s.students) if (x.advisorId === tid) add(x.id, NOW);
   const classes = new Set((s.classes || []).filter((c) => (c.teacherIds || []).includes(tid) || c.teacherId === tid).map((c) => c.id));
-  for (const n of s.enrolments || []) if (classes.has(n.classId)) add(n.studentId);
-  for (const r of s.requests || []) if (r.teacherId === tid) add(r.studentId);
-  for (const r of s.evidenceRequests || []) if (r.teacherId === tid || r.from === tid) add(r.studentId);
-  for (const e of s.events) if (e.sponsor?.teacherId === tid) add(e.studentId);
-  for (const n of s.endorsements || []) if (n.teacherId === tid) add(evStudent.get(n.eventId));
-  for (const p of s.prompts || []) if (p.from === tid) add(p.studentId);
-  for (const c of s.comments || []) if ([c.by, c.to, c.teacherId].includes(tid) || (Array.isArray(c.asked) && c.asked.includes(tid))) add(c.studentId);
-  for (const t of s.classTasks || []) if (t.teacherId === tid) [...(t.submitted || []), ...(t.late || [])].forEach(add);
-  for (const e of [...(s.inbox || []), ...(s.dismissed || [])]) if (e.classEndorsement?.teacherId === tid) add(e.studentId);
-  try { for (const r of api.getDpCore()) if (r.supervisor?.id === tid) add(r.student.id); } catch { /* partial record */ }
+  for (const n of s.enrolments || []) if (classes.has(n.classId) && !(n.to && n.to < api.TODAY)) add(n.studentId, NOW);
+  for (const r of s.requests || []) if (r.teacherId === tid) add(r.studentId, r.date);
+  for (const r of s.evidenceRequests || []) if (r.teacherId === tid || r.from === tid) add(r.studentId, r.date);
+  for (const e of s.events) if (e.sponsor?.teacherId === tid) add(e.studentId, e.sponsor.answeredOn || e.sponsor.invitedOn);
+  for (const n of s.endorsements || []) if (n.teacherId === tid) add(evStudent.get(n.eventId), n.date);
+  for (const p of s.prompts || []) if (p.from === tid) add(p.studentId, p.date);
+  for (const c of s.comments || []) if ([c.by, c.to, c.teacherId].includes(tid) || (Array.isArray(c.asked) && c.asked.includes(tid))) add(c.studentId, c.date);
+  for (const t of s.classTasks || []) if (t.teacherId === tid) [...(t.submitted || []), ...(t.late || [])].forEach((sid) => add(sid, t.date || t.due));
+  for (const e of [...(s.inbox || []), ...(s.dismissed || [])]) if (e.classEndorsement?.teacherId === tid) add(e.studentId, e.classEndorsement.date);
+  try { for (const r of api.getDpCore()) if (r.supervisor?.id === tid) add(r.student.id, NOW); } catch { /* partial record */ }
   return new Set([...out].filter((id) => api.getStudent(id)));
 }
 
@@ -159,6 +165,11 @@ export function scopedSnapshot(user) {
     if (e && inReach(e.studentId) && !sent.has(e.id)) (hidden.get(e.studentId) || hidden.set(e.studentId, []).get(e.studentId)).push(`“${e.title}”`);
   }
   store.activity = full.activity.filter((a) => inReach(a.studentId) && (!parent || ['view', 'consent'].includes(a.kind)) && !(hidden.get(a.studentId) || []).some((t) => a.text?.includes(t)));
+  // Year handover (api.setHandoverNote): staff only. Notes go to the student's advisor, the note's author and whole-school
+  // roles; the previous advisor also gets a short list of the students they handed over, to finish their notes.
+  store.handovers = staff ? (full.handovers || []).filter((h) => inReach(h.studentId)) : [];
+  store.handoverNotes = staff ? (full.handoverNotes || []).filter((n) => all || (!!tid && (n.by === tid || (inReach(n.studentId) && api.getStudent(n.studentId)?.advisorId === tid)))) : [];
+  store.handedOver = tid ? handedOverBy(tid).filter((h) => !inReach(h.studentId)) : [];
   // Everything else (school lines' settings, integrations, rollout, family language, classes, keys other features add).
   for (const [k, v] of Object.entries(full)) if (!(k in store)) store[k] = generic(v, inReach);
   // Counts the whole-school screens show for what they may not open.
@@ -231,3 +242,11 @@ function scan(args) {
   return T(found);
 }
 export const touchedBy = (fn, args = []) => (Object.hasOwn(TOUCHES, fn) ? TOUCHES[fn](args) : scan(args));
+
+// ── Year handover ──
+// The students whose latest handover was from this teacher: who they went to, for the "Write handover notes" view.
+export function handedOverBy(tid) {
+  const latest = new Map(); for (const h of st().handovers || []) latest.set(h.studentId, h);
+  return [...latest.values()].filter((h) => h.from === tid).map((h) => { const s = api.getStudent(h.studentId); return s && { studentId: s.id, name: s.name, grade: s.grade, homeroom: s.homeroom, to: api.getTeacher(h.to)?.name || h.to, date: h.date }; }).filter(Boolean);
+}
+Object.assign(TOUCHES, { carryOverGoal: (a) => T([ev(a[0])]), closeGoal: (a) => T([ev(a[0])]), setHandoverNote: (a) => T([a[0]], [a[2] ?? '?']) });
