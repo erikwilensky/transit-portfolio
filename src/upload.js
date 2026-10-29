@@ -5,6 +5,8 @@
 //   uploadFile(file, { onProgress }) → Promise<{ url, name, size, type, local? }>
 //   evidenceFor(result, caption?) → an evidence item for the record ({ kind, url, caption, name, size, type })
 
+import { holdUpload, serverMode } from './sync.js';
+
 export const MAX_BYTES = 25 * 1024 * 1024;
 // Without the server everything sits in browser storage, so keep it small.
 export const MAX_LOCAL_BYTES = 4 * 1024 * 1024;
@@ -41,6 +43,9 @@ export async function uploadFile(file, { onProgress } = {}) {
     if (r.error) fail(r.error);
     // Nothing answered. If the server is there after all, say so rather than filling the shared record.
     if (!r.none && await serverIsUp()) fail('The file could not reach the school server. Check the connection and try again.');
+    // Offline with the school server (src/outbox.js): kept on this device and uploaded when the connection is back.
+    const held = !r.none && serverMode() && holdUpload(body, body.name || file.name || 'photo', body.type || file.type);
+    if (held) { onProgress?.(1); return { url: held, name: body.name || file.name || 'file', size: body.size, type: body.type || file.type || 'application/octet-stream', pending: true }; }
     noServer = true;
   }
   // No server: keep it in the browser.

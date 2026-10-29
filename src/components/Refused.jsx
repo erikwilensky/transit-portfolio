@@ -7,11 +7,11 @@ export function RefusedBar() {
   const [msg, setMsg] = useState(null);
   useEffect(() => {
     const on = async (ev) => {
-      const { status, error } = ev.detail || {};
+      const { status, error, kept } = ev.detail || {};
       const me = getAuth().user;
       if (me && (status === 401 || status === 403)) {
         const now = await fetch('/api/auth/me', { cache: 'no-store' }).then((r) => r.json()).catch(() => null);
-        if (now && now.user?.id !== me.id) return setMsg({ reload: true, who: now.user?.name || null });
+        if (now && now.user?.id !== me.id) return setMsg({ reload: true, kept, who: now.user?.name || null });
       }
       setMsg({ text: error || 'the server did not accept it' });
     };
@@ -29,7 +29,7 @@ export function RefusedBar() {
   return (
     <div className="pa-update rf-bar" role="alert">
       {msg.reload
-        ? <span>{msg.who ? `This browser is now signed in as ${msg.who}, from another window.` : 'This browser was signed out in another window.'} {msg.early ? 'Reload before changing anything.' : 'Your last change was not saved.'}</span>
+        ? <span>{msg.who ? `This browser is now signed in as ${msg.who}, from another window.` : 'This browser was signed out in another window.'} {msg.early ? 'Reload before changing anything.' : msg.kept ? 'Your changes wait on this device until you sign in again.' : 'Your last change was not saved.'}</span>
         : <span>That change was not saved: {msg.text}.</span>}
       {msg.reload ? <button onClick={() => location.reload()}>Reload</button> : <button onClick={() => setMsg(null)}>OK</button>}
     </div>
