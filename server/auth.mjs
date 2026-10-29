@@ -199,6 +199,7 @@ export function canAct(user, fn, args = []) {
   if (isAdmin(user)) return true;
   if (ADMIN_ONLY.has(fn)) return false;
   if (ANYONE.has(fn)) return true;
+  if (COMMENT_FNS.has(fn)) { try { return commentOk(user, fn, args); } catch { return false; } }
   // Only your own bell: every key must be one of yours (st:…, t:…, fam:…, role:…, or your record's demo persona id).
   if (fn === 'markNotificationsRead') { const mine = new Set(api.notifyKeys({ kind: user.kind, studentId: user.studentId, teacherId: user.teacherId, children: user.children })); return [].concat(args[0] ?? []).every((k) => mine.has(k)); }
   try {
@@ -223,4 +224,25 @@ export function canAct(user, fn, args = []) {
     }
   } catch { /* malformed arguments */ }
   return false;
+}
+
+// ── Moment comments (api.addMomentComment, editMomentComment, deleteMomentComment, markCommentsRead) ──
+// As yourself only ('student' for a student; your teacherId for staff), never on a private station. A student: their
+// own stations. Whole-school staff: any. An advisor or teacher: a student in reach, and to write, only as that student's
+// advisor, a teacher they asked about the station, or its sponsor (api.commentsAsked); reading marks need only reach.
+// Editing: within api.COMMENT_EDIT_MIN minutes by the server's clock too.
+const COMMENT_FNS = new Set(['addMomentComment', 'editMomentComment', 'deleteMomentComment', 'markCommentsRead']);
+for (const f of COMMENT_FNS) STUDENT_FNS.add(f);
+function commentOk(user, fn, [target, by]) {
+  const c = fn === 'editMomentComment' || fn === 'deleteMomentComment' ? api.getMomentComment(target) : null;
+  const e = api.getEvent(c ? c.eventId : target);
+  if (!e || (c === null && fn !== 'addMomentComment' && fn !== 'markCommentsRead') || e.visibility === 'private') return false;
+  if (c && c.by !== by) return false;
+  if (fn === 'editMomentComment' && Date.now() - Date.parse(c.at) > (api.COMMENT_EDIT_MIN + 1) * 60000) return false;
+  if (user.kind === 'student') return by === 'student' && e.studentId === user.studentId;
+  if (!STAFF.includes(user.kind) || !user.teacherId || by !== user.teacherId) return false;
+  const reach = reachOf(user);
+  if (reach === null) return true;
+  if (!reach.has(e.studentId)) return false;
+  return fn === 'markCommentsRead' || fn === 'deleteMomentComment' || api.commentsAsked(e.id, user.teacherId);
 }

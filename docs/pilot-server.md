@@ -738,3 +738,35 @@ The site installs on a phone's home screen, in demo and pilot alike.
   reading, done, PDPA copy and erasure), `server/test/nudges.test.mjs` (quiet rules); browser:
   `node scripts/checks/feedback-nudges.cjs` (the real roster from `TP_ROSTER`, skipped without it; screenshots to
   `SCRATCH` or the temp folder).
+
+## Comments on a moment (`src/api.js`, `src/components/MomentComments.jsx`)
+
+A conversation on one station between the student and the staff who can see it. Demo and pilot. Separate from the
+counsellor's draft comments (`store.comments`, `addComment`, `DraftComments.jsx`), which stay as they were.
+
+- **Record**: `store.momentComments = [{ id, eventId, studentId, by ('student' | teacher id), text, at, edited? }]` and
+  `store.commentReads = [{ studentId, eventId, by, at }]` (when each person last read a thread), both made on first use.
+- **Mutators** (deterministic, `uid()`/`nowIso()`): `addMomentComment(eventId, by, text)` (text trimmed to 2,000
+  characters; 400 empty or private station, 404 unknown station); `editMomentComment(id, by, text)` (the author, within
+  `COMMENT_EDIT_MIN` = 15 minutes, else 409); `deleteMomentComment(id, by)` (the author, any time);
+  `markCommentsRead(eventId, by)`. Reads: `getMomentComments(eventId)`, `unreadComments(eventId, me)` (by others since
+  `me` last read or wrote), `commentStaff(eventId)` (advisor, teachers asked about it, sponsor, staff who wrote),
+  `commentsAsked(eventId, tid)`, `commentWho(c, me)` (students read "Mr Coultas", staff full names, "You" for your own).
+- **Notifications**: a staff comment → the student ("Mr Coultas wrote on “…”: …", `go: map/<eventId>`; at Simple
+  level the moment opens). A student comment → every `commentStaff`: the advisor to `student/<sid>~<eventId>` (their map
+  with the station open), anyone else to `queue/c~<eventId>` (that thread in Endorsements).
+- **canAct** (`server/auth.mjs`, before the role rules): as yourself only (`'student'` / your `teacherId`), never on a
+  private station. Students: their own stations (also listed in `STUDENT_FNS`). Whole-school staff and admins: any.
+  Advisors and teachers: a student in reach; to write, only as the advisor, a teacher the student asked about that
+  station (`requests`), or its sponsor; `markCommentsRead` needs only reach. Edit is refused after 15 minutes by the
+  server's clock too. Families: never.
+- **Scope** (`server/scope.mjs`): `momentComments` only for stations the viewer receives, none for parents;
+  `commentReads` only the viewer's own.
+- **PDPA**: both are in the copy (`momentComments.json`, `commentReads.json`) and go with erasure.
+- **Screens**: a "Comments" section in the station panel (student map, advisor's student map, My classes read view),
+  collapsed under each Endorsements card ("Comments (n)" with "n new"), and "Comments on moments" on the queue for
+  threads beyond the waiting cards. Simple: the moment card shows "n new" in My moments, and the moment has the thread
+  with a big "Reply". Not on share links, public pages, the family view, previews ("See as") or the studio.
+- Tests: `server/test/moment-comments.test.mjs`; browser: `node scripts/checks/moment-comments.cjs` (the real roster
+  from `TP_ROSTER`; Aaron Torres, Mr David Coultas, Ms Jane Altemen, a linked parent, a teacher out of reach;
+  screenshots to the temp folder as `tp-comments-*.png`).

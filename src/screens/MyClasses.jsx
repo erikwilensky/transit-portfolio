@@ -10,7 +10,7 @@ import './classes.css';
 // /classes/<classId>~<studentId> (that student's map, read only).
 export default function MyClasses({ teacherId, param, go, persona, version, toast }) {
   const [classId, studentId] = String(param || '').split('~');
-  if (classId && studentId) return <StudentRead classId={classId} studentId={studentId} teacherId={teacherId} go={go} persona={persona} version={version} />;
+  if (classId && studentId) return <StudentRead classId={classId} studentId={studentId} teacherId={teacherId} go={go} persona={persona} version={version} toast={toast} />;
   if (classId) return <ClassPage classId={classId} teacherId={teacherId} go={go} persona={persona} version={version} toast={toast} />;
   return <ClassList teacherId={teacherId} go={go} persona={persona} version={version} toast={toast} />;
 }
@@ -108,7 +108,7 @@ function ClassPage({ classId, teacherId, go, persona, version, toast }) {
 
 // A student's map as a teacher reads it: school-level stations, plus any the student asked this teacher about or
 // that they sponsor (their advisor also sees advisor-level ones).
-function StudentRead({ classId, studentId, teacherId, go, persona, version }) {
+function StudentRead({ classId, studentId, teacherId, go, persona, version, toast }) {
   const s = getStudent(studentId);
   const viewer = s?.advisorId === teacherId ? 'advisor' : 'school';
   const map = useMemo(() => {
@@ -134,7 +134,7 @@ function StudentRead({ classId, studentId, teacherId, go, persona, version }) {
         <div className="as-body">
           <div className="as-map">
             <MetroMap recent map={map} lens={lens} selectedId={sel} onSelect={setSel} fitKey={`mc-${studentId}`} />
-            <StationPanel event={map.events.find((e) => e.id === sel)} map={map} onClose={() => setSel(null)} readOnly />
+            <StationPanel event={map.events.find((e) => e.id === sel)} map={map} onClose={() => setSel(null)} readOnly toast={toast} />
           </div>
         </div>
       ) : <div className="page"><div className="empty-state"><b>Nothing on {s.name.split(' ')[0]}’s map that you can see yet.</b></div></div>}

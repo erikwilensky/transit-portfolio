@@ -6,6 +6,7 @@ import { evidenceFor } from '../upload.js';
 import { UploadStatus, useUpload } from '../components/FileAttach.jsx';
 import { SUGGEST } from '../components/AddStation.jsx';
 import { OpenPrompts } from '../components/ClassPrompts.jsx';
+import MomentComments, { NewBadge, useUnread } from '../components/MomentComments.jsx';
 
 // Simple: the student interface for Years 7 and 8 (and anyone who picks it). Not the full app with parts hidden,
 // but its own calmer design: one question per screen, big buttons, plain words, and a map drawn as a few
@@ -39,11 +40,11 @@ function checkers(studentId, lineId) {
   return (s ? [s, ...all.filter((t) => t !== s)] : all).map((t) => ({ t, why: t.role }));
 }
 
-export default function SimpleHome({ map, studentId, toast, version, addRequest }) {
+export default function SimpleHome({ map, studentId, toast, version, addRequest, focusId }) {
   const [adding, setAdding] = useState(false);
   useEffect(() => { if (addRequest) setAdding(true); }, [addRequest]); // a nudge's "Add something"
   const [asking, setAsking] = useState(null); // { event, prompt, signal }
-  const [open, setOpen] = useState(null);
+  const [open, setOpen] = useState(focusId?.startsWith('ev-') ? focusId : null); // a notification's moment
   const first = map.student.name.split(' ')[0];
   const moments = map.events.filter((e) => e.type !== 'goal' && e.type !== 'reflection').sort((a, b) => b.date.localeCompare(a.date));
   const signals = map.signals.filter((g) => g.open && g.eventId);
@@ -82,7 +83,7 @@ export default function SimpleHome({ map, studentId, toast, version, addRequest 
           <ul>{moments.slice(0, 6).map((e) => { const l = lineOf(map, e.lineIds[0]); return (
             <li key={e.id}><button onClick={() => setOpen(e.id)} style={{ '--c': l?.colour }}>
               {e.evidence.find((v) => v.kind === 'image') ? <img src={e.evidence.find((v) => v.kind === 'image').url} alt="" /> : <span className="sh-ph" aria-hidden="true" />}
-              <span><b>{e.title}</b><small>{fmtDate(e.date)} · {l?.name}</small><Badge e={e} /></span>
+              <span><b>{e.title}</b><small>{fmtDate(e.date)} · {l?.name}</small><Badge e={e} /><Unread e={e} /></span>
             </button></li>
           ); })}</ul>
         </section>
@@ -90,7 +91,7 @@ export default function SimpleHome({ map, studentId, toast, version, addRequest 
 
       {adding && <QuickAdd map={map} studentId={studentId} toast={toast} onClose={() => setAdding(false)} />}
       {asking && <AskFlow q={asking} studentId={studentId} onClose={() => setAsking(null)} onDone={() => { setAsking(null); toast('Saved. Your advisor can read it.'); }} />}
-      {openEvent && <Moment e={openEvent} map={map} onClose={() => setOpen(null)} onReflect={() => { setOpen(null); setAsking({ event: openEvent, prompt: `What did “${openEvent.title}” teach you?` }); }} />}
+      {openEvent && <Moment e={openEvent} map={map} toast={toast} onClose={() => setOpen(null)} onReflect={() => { setOpen(null); setAsking({ event: openEvent, prompt: `What did “${openEvent.title}” teach you?` }); }} />}
     </div>
   );
 }
@@ -222,7 +223,8 @@ function AskFlow({ q, studentId, onClose, onDone }) {
   );
 }
 
-function Moment({ e, map, onClose, onReflect }) {
+const Unread = ({ e }) => <NewBadge n={useUnread(e)} />;
+function Moment({ e, map, onClose, onReflect, toast }) {
   const img = e.evidence.find((v) => v.kind === 'image');
   const l = lineOf(map, e.lineIds[0]);
   return (
@@ -236,6 +238,7 @@ function Moment({ e, map, onClose, onReflect }) {
         {e.summary && <p>{e.summary}</p>}
         {e.reflections?.map((r) => <blockquote key={r.id}>{r.text}</blockquote>)}
         <div className="sh-next"><button className="primary" onClick={onReflect}>{e.reflections?.length ? 'Add another thought' : 'What did I learn?'}</button></div>
+        <MomentComments key={`c-${e.id}`} event={e} simple toast={toast} />
       </div>
     </div>
   );
