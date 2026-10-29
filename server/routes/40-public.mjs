@@ -65,7 +65,7 @@ export function publicSnapshot(token, { gate = false } = {}) {
 // What the verification page needs for one station, looked up by its printed code.
 export function publicVerify(code) {
   const want = String(code || '').toUpperCase();
-  const e = api.getStore().events.find((x) => x.visibility === 'publishable' && api.verifyCode(x.id) === want);
+  const e = api.getStore().events.find((x) => x.visibility === 'publishable' && !x.hidden && api.verifyCode(x.id) === want);
   if (!e) throw fail(404, 'No public record for this code. The code may be mistyped, or the student has not made this item publishable.');
   const s = api.getStudent(e.studentId);
   return {

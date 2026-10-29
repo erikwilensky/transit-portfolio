@@ -921,3 +921,44 @@ Each person reads the app in English or Thai, and the choice belongs to them, no
   missing): two parents of different students in separate browsers, one Thai and one English, each keeps theirs after a
   reload and on a second device; the Thai parent's family view, bell and menu are in Thai; the sign-in page remembers ไทย;
   bilingual letters fit two to a page (PDF page count). Screenshots and a PDF go to `SCRATCH` or the temp folder.
+## Safeguarding: reports and the moderators' queue (`src/api.js`, `src/components/Report.jsx`, `src/screens/Reports.jsx`)
+
+Anyone signed in can report a moment or a moment comment they can see; the school's moderators decide what happens to it.
+Demo and pilot (the Reports screen is in the pilot nav only). No automatic filter.
+
+- **Record**: `store.reports = [{ id, kind: 'station' | 'comment', eventId, commentId?, studentId (the owner), reason, note, at,
+  from: { key, name, role }, status: open | hidden | shown | photo-removed | no-action, history: [{ action, note, at, by }] }]`,
+  made on first use. Reasons (`REPORT_REASONS`): `inappropriate`, `personal`, `unkind`, `other`. A hidden item carries
+  `hidden: { at, by }` (the station in `events`, or the comment in `momentComments`).
+- **Mutators** (deterministic, so they replay and undo like any change): `reportItem({ eventId } | { commentId }, reason, note,
+  from)`; `from.key` is `'student'` (the owner), a teacher id, `'fam:<studentId>'` or `'admin'` (`from.name` for the last two).
+  One open report per person per item (a second returns the first); at most 20 per person per hour (429). Never on a private
+  moment; families never on a comment. `moderateReport(id, action, note, by)` (`by`: the moderator's teacher id, or null for
+  an admin without one); `action`: `hide`, `unhide`, `photo` (takes every image off the station's evidence), `none`. The
+  answer goes into the history of every report on the same item. `editStation` ignores `hidden`.
+- **Notifications**: a new report → `role:coordinator`, `role:counsellor`, `role:leadership` ("New report: “…” (Student).
+  Reason.", `go: reports/<id>`), never naming the reporter. Hide → the student: "A teacher has hidden “…” while they look at
+  it." (a comment: "… hidden a comment on “…” …"); unhide and photo removal also tell the student.
+- **canAct** (`server/auth.mjs`, `SAFE_FNS`): reporting as yourself only, on what you can see: a student their own moment and
+  comments on it; staff a student in reach; a parent a child's moment that the family view shows and that is not hidden, with
+  their own account name. Moderating: `MODERATOR_KINDS` (coordinator, counsellor, leadership) and admins, as themselves.
+- **Who sees what** (`server/scope.mjs`): moderators and admins get `reports` whole (reporter included). Anyone else gets only
+  the reports they made, without names, notes or history; the student reported never learns who reported. A hidden moment
+  leaves the family's copy (and its activity lines), the family view (`getStudentMap(id, viewer, { family: true })`, also
+  the digest), every `'school'` and `'public'` view (share links, posters, reference letters, `schoolEvents()` lists) and the
+  verify page; the student and staff keep it, with a notice. A hidden comment stays with staff and, when they wrote it, the
+  student.
+- **Remove photo**: the images leave the station, and `server/routes/70-reports.mjs` deletes the uploaded file (and its
+  `.json`) from `DATA_DIR/uploads` unless the record still uses it elsewhere. Undo of that change cannot bring the file back.
+- **PDPA**: the copy has `reports.json` with reasons, notes and outcomes, never `from`; erasure removes reports about the student.
+- **Screens**: "Report" in the station panel (any view with a signed-in viewer who may report; not on share links or previews)
+  and under each comment; Simple level: "Something wrong? Tell a teacher" on the moment. Reports (`#/<persona>/reports`):
+  Open and Done tabs; each card has the item (title, photo thumbnail, text), student, reporter (name and role), reason, note,
+  time, history, a note box and "Hide from everyone but the student and staff" / "Show it again", "Remove photo", "No action
+  needed".
+- **Uploads** (unchanged): `POST /api/upload` already accepts only images (jpeg, png, gif, webp, heic, heif, avif), PDF, office
+  documents, txt/csv, audio and video, by declared type or else by extension (415 otherwise; SVG and HTML refused), at most
+  25 MB; files are served with `nosniff` and a type fixed by the extension. Content is not sniffed.
+- Tests: `server/test/safeguarding.test.mjs`; browser: `node scripts/checks/safeguarding.cjs` (the real roster from
+  `TP_ROSTER`, skipped without it): Aaron Torres adds a moment with a photo, a parent joins by the family letter and sees it,
+  Mr David Coultas reports it, a coordinator hides it from Reports, Aaron sees the notice, the parent no longer sees it.

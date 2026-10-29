@@ -7,6 +7,8 @@ import { ensureEndorsed } from './tourStory.js';
 import { PERSONAS, KIND_LABEL, NAV, personaById, home, navOf, pilotPersona } from './personas.js';
 import Accounts from './screens/Accounts.jsx';
 import Usage from './screens/Usage.jsx';
+import Reports from './screens/Reports.jsx';
+import { isModerator } from './api.js';
 import { AccountMenu, PasswordDialog } from './screens/SignIn.jsx';
 import { ago, appUrl, inkOn } from './format.js';
 import Studio from './components/Studio.jsx';
@@ -332,7 +334,8 @@ export default function App() {
           {persona.kind === 'external' && <ShareLanding token={persona.token} drafts={drafts} version={version} embedded />}
           {persona.admin && route.screen === 'accounts' && <Accounts {...ctx} />}
           {pilot && route.screen === 'usage' && (persona.admin || persona.kind === 'leadership') && <Usage {...ctx} />}
-          {route.screen !== 'accounts' && route.screen !== 'usage' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} persona={persona} />}
+          {isModerator(persona) && route.screen === 'reports' && <Reports {...ctx} focus={route.param} />}
+          {route.screen !== 'accounts' && route.screen !== 'usage' && route.screen !== 'reports' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} persona={persona} />}
           </ErrorBoundary>
           {pilot && level === 'simple' && <div className="fb-simple"><button onClick={() => setFbOpen(true)}>Something not working? Tell us</button></div>}
         </main>

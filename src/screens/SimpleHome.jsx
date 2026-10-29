@@ -8,6 +8,7 @@ import { SUGGEST } from '../components/AddStation.jsx';
 import { OpenPrompts } from '../components/ClassPrompts.jsx';
 import MomentComments, { NewBadge, useUnread } from '../components/MomentComments.jsx';
 import './simple-goals.css';
+import { HiddenNotice, ReportButton } from '../components/Report.jsx';
 
 // Simple: the student interface for Years 7 and 8 (and anyone who picks it). Not the full app with parts hidden,
 // but its own calmer design: one question per screen, big buttons, plain words, and a map drawn as a few
@@ -405,11 +406,13 @@ function Moment({ e, map, onClose, onReflect, toast }) {
         {img && <img src={img.url} alt={img.caption} />}
         <span className="sh-line">{l?.name}</span>
         <h2>{e.title}</h2>
+        <HiddenNotice item={e} />
         <p className="sh-sub">{fmtDate(e.date)} · <Badge e={e} /></p>
         {e.summary && <p>{e.summary}</p>}
         {e.reflections?.map((r) => <blockquote key={r.id}>{r.text}</blockquote>)}
         <div className="sh-next"><button className="primary" onClick={onReflect}>{e.reflections?.length ? 'Add another thought' : 'What did I learn?'}</button></div>
         <MomentComments key={`c-${e.id}`} event={e} simple toast={toast} />
+        <ReportButton event={e} simple toast={toast} />
       </div>
     </div>
   );

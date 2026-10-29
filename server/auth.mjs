@@ -203,6 +203,7 @@ export function canAct(user, fn, args = []) {
   if (ADMIN_ONLY.has(fn)) return false;
   if (ANYONE.has(fn)) return true;
   if (COMMENT_FNS.has(fn)) { try { return commentOk(user, fn, args); } catch { return false; } }
+  if (SAFE_FNS.has(fn)) { try { return safeOk(user, fn, args); } catch { return false; } }
   // Only your own bell: every key must be one of yours (st:…, t:…, fam:…, role:…, or your record's demo persona id).
   if (fn === 'markNotificationsRead') { const mine = new Set(api.notifyKeys({ kind: user.kind, studentId: user.studentId, teacherId: user.teacherId, children: user.children })); return [].concat(args[0] ?? []).every((k) => mine.has(k)); }
   try {
@@ -259,3 +260,21 @@ export function setPrefs(a, { lang }) {
 }
 // The demo's one shared family language (api.setLang) would change it for everybody: in a pilot only an admin may.
 ADMIN_ONLY.add('setLang');
+// ── Safeguarding (api.reportItem, api.moderateReport) ──
+// Reporting: as yourself only (from.key: 'student', your teacherId, 'fam:<child>' with your name, or admin), on what you
+// can see: a student their own moment or a comment on it; staff a student in reach; a family a child's moment as the
+// family view shows it (never a comment, never a hidden one). Moderating: coordinators, counsellors, leadership and
+// admins, as themselves.
+const SAFE_FNS = new Set(['reportItem', 'moderateReport']);
+function safeOk(user, fn, args) {
+  if (fn === 'moderateReport') return api.MODERATOR_KINDS.includes(user.kind) && (user.teacherId ? args[3] === user.teacherId : !args[3]);
+  const [target, , , from] = args;
+  const c = target?.commentId ? api.getMomentComment(target.commentId) : null;
+  const e = api.getEvent(c ? c.eventId : target?.eventId);
+  if (!e || e.visibility === 'private' || (target?.commentId && !c)) return false;
+  const key = from?.key;
+  if (user.kind === 'student') return key === 'student' && e.studentId === user.studentId;
+  if (STAFF.includes(user.kind)) { const reach = reachOf(user); return !!user.teacherId && key === user.teacherId && (reach === null || reach.has(e.studentId)); }
+  if (user.kind === 'parent') return !c && !e.hidden && key === `fam:${e.studentId}` && (user.children || []).includes(e.studentId) && from?.name === user.name && api.VISIBLE_TO[api.familyViewer(e.studentId)].includes(e.visibility);
+  return false;
+}

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { addMomentComment, COMMENT_EDIT_MIN, commentsAsked, commentStaff, commentWho, deleteMomentComment, editMomentComment, getMomentComments, getStudent, getTeacher, hasPublicCopy, markCommentsRead, shortName, TODAY, unreadComments } from '../api.js';
+import { addMomentComment, COMMENT_EDIT_MIN, commentShown, commentsAsked, commentStaff, commentWho, deleteMomentComment, editMomentComment, getMomentComments, getStudent, getTeacher, hasPublicCopy, markCommentsRead, shortName, TODAY, unreadComments } from '../api.js';
 import { personaById } from '../personas.js';
 import { fmtDate } from '../format.js';
 import './moment-comments.css';
+import { HiddenNotice, ReportButton } from './Report.jsx';
 
 // Comments on one moment (api.addMomentComment): the student and the staff who can see it. In the station panel,
 // the Simple moment card and the Endorsements queue. Families, readers and public pages never get it.
@@ -26,7 +27,7 @@ export const NewBadge = ({ n }) => (n ? <em className="mc-new" aria-label={`${n}
 
 export default function MomentComments({ event, simple = false, collapsible = false, open: openAtStart = false, toast = () => {} }) {
   const v = commentViewer(event);
-  const list = event ? getMomentComments(event.id) : [];
+  const list = event ? getMomentComments(event.id).filter((c) => commentShown(c, !!v && v.me !== 'student')) : []; // a hidden one: staff and its student writer
   const unread = v?.me ? unreadComments(event.id, v.me) : 0;
   const [since] = useState(() => (unread ? list.filter((c) => c.by !== v.me).slice(-unread).map((c) => c.id) : []));
   const [open, setOpen] = useState(openAtStart || !collapsible);
@@ -60,6 +61,7 @@ export default function MomentComments({ event, simple = false, collapsible = fa
                     <button className="primary small-btn" disabled={!editing.text.trim()} onClick={() => run(() => editMomentComment(c.id, v.me, editing.text), () => setEditing(null))}>Save</button></div>
                 </div>
               ) : <p>{c.text}</p>}
+              <HiddenNotice item={c} comment />{c.by !== v.me && <ReportButton event={event} comment={c} simple={simple} toast={toast} />}
               {c.by === v.me && editing?.id !== c.id && (
                 <div className="mc-own">
                   {editable(c) && <button className="linkish" onClick={() => setEditing({ id: c.id, text: c.text })}>Edit</button>}

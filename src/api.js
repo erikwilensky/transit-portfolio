@@ -180,11 +180,14 @@ export const VISIBLE_TO = {
   public: ['publishable'],
 };
 
-export function getStudentMap(studentId, viewer = 'student') {
+// opts.family: a family's view. A moment a teacher hid after a report (moderateReport) stays only with the student and
+// staff: families, the school-wide and public views leave it out.
+export function getStudentMap(studentId, viewer = 'student', opts = {}) {
   const student = getStudent(studentId);
   const allowed = VISIBLE_TO[viewer];
+  const noHidden = opts.family || viewer === 'school' || viewer === 'public';
   const events = store.events
-    .filter((e) => e.studentId === studentId && allowed.includes(e.visibility))
+    .filter((e) => e.studentId === studentId && allowed.includes(e.visibility) && !(noHidden && e.hidden))
     .map((e) => ({
       ...e,
       // Reflections carry their own visibility (private by default).
@@ -914,6 +917,8 @@ export function studentData(sid, alsoTo = []) {
     const m = Object.entries(v).filter(([key, x]) => !ownsKey(key, r) && mentions(x, sid)).map(([key, x]) => [key, onlyMine(x, sid, others)]);
     if (m.length) mentioned[k] = Object.fromEntries(m);
   }
+  // Reports about them: reasons and outcomes, never who reported (moderateReport).
+  if (own.reports) own.reports = own.reports.map(({ from, ...x }) => x);
   return { format: 'nist-transit-portfolio/pdpa-copy/v1', studentId: sid, recordDate: TODAY, student: structuredClone(student), own, mentioned, activity: getActivity(sid) };
 }
 // Removes the student and everything above from the record. Admin only (server/auth.mjs ADMIN_ONLY); the
@@ -937,7 +942,7 @@ export function eraseStudent(sid, alsoTo = []) {
 }
 
 // ── Whole-school reads (school viewer: school and publishable items only) ─
-export const schoolEvents = () => store.events.filter((e) => VISIBLE_TO.school.includes(e.visibility) && e.type !== 'goal' && e.date <= TODAY);
+export const schoolEvents = () => store.events.filter((e) => VISIBLE_TO.school.includes(e.visibility) && !e.hidden && e.type !== 'goal' && e.date <= TODAY);
 export function linePairs() {
   const pairs = {};
   for (const e of schoolEvents()) {
@@ -1274,7 +1279,8 @@ export function loadPublic(snap) { publicCopy = true; clearTimeout(saveTimer); a
 // ── F5: students act on their own stations ────────────────────────────
 export function editStation(id, patch) {
   const e = getEvent(id); if (!e || e.verification !== 'student-added') return;
-  Object.assign(e, patch);
+  const { hidden, ...rest } = patch || {}; // only moderateReport hides or shows a moment
+  Object.assign(e, rest);
   log(e.studentId, getStudent(e.studentId).name, 'station', `Edited “${e.title}”`);
   emit();
 }
@@ -1335,7 +1341,7 @@ export function setFamily(patch) { Object.assign(store.family, patch); emit(); }
 // A week of one child's record, as a family would see it.
 export function getDigest(studentId, days = 7) {
   const from = new Date(new Date(`${TODAY}T12:00:00`).getTime() - days * 86400000).toISOString().slice(0, 10);
-  const map = getStudentMap(studentId, familyViewer(studentId));
+  const map = getStudentMap(studentId, familyViewer(studentId), { family: true });
   const inWeek = (d) => d > from && d <= TODAY;
   const stations = map.events.filter((e) => inWeek(e.date) && e.type !== 'goal' && e.type !== 'reflection');
   const reflections = map.events.filter((e) => inWeek(e.date) && e.type === 'reflection').length + map.events.flatMap((e) => e.reflections).filter((r) => r.date && inWeek(r.date)).length;
@@ -1790,6 +1796,75 @@ export function markCommentsRead(eventId, by) {
   emit();
 }
 
+// ── Safeguarding: reporting a moment or a comment, and the moderators' queue ──
+// store.reports [{ id, kind: 'station' | 'comment', eventId, commentId?, studentId (the owner), reason, note, at,
+// from: { key, name, role }, status, history: [{ action, note, at, by }] }], made on first use. Who reported (from)
+// reaches only moderators (server/scope.mjs); everyone else gets only the reports they made, without the history. The
+// PDPA copy keeps reasons and outcomes, never who reported. Reporter keys: 'student' (the owner), a teacher id,
+// 'fam:<studentId>' (a family member) or 'admin'. server/auth.mjs checks the key is the signed-in person's.
+export const REPORT_REASONS = { inappropriate: 'Inappropriate content', personal: 'Personal information shown', unkind: 'Unkind or bullying', other: 'Something else' };
+export const MODERATOR_KINDS = ['coordinator', 'counsellor', 'leadership'];
+export const isModerator = (p) => !!p && (p.kind === 'admin' || !!p.admin || MODERATOR_KINDS.includes(p.kind));
+export const REPORT_LIMIT = 20; // reports per person per hour
+const REPORT_STATUS = { hide: 'hidden', unhide: 'shown', photo: 'photo-removed', none: 'no-action' };
+export const getReports = () => [...(store.reports || [])].sort((a, b) => b.at.localeCompare(a.at));
+export const getReport = (id) => (store.reports || []).find((r) => r.id === id);
+const sameTarget = (a, b) => a.kind === b.kind && a.eventId === b.eventId && (a.commentId || null) === (b.commentId || null);
+// The photos a moment carries (what "Remove photo" takes away).
+export const isPhoto = (ev) => ev?.kind === 'image' || /^image\//.test(ev?.type || '');
+// Who sees a hidden comment: staff, and the student when they wrote it.
+export const commentShown = (c, staff) => !c.hidden || staff || c.by === 'student';
+function reporter(from, e) {
+  const key = String(from?.key ?? '');
+  const name = String(from?.name ?? '').trim().slice(0, 80);
+  if (key === 'student') return { key, name: getStudent(e.studentId)?.name || 'The student', role: 'Student' };
+  if (key === `fam:${e.studentId}`) return { key, name: name || 'A family member', role: 'Family' };
+  if (key === 'admin') return { key, name: name || 'Pilot admin', role: 'Pilot admin' };
+  if (teacherById[key]) return { key, name: teacherById[key].name, role: teacherById[key].role || 'Staff' };
+  throw cmErr('Who is reporting this?');
+}
+export function reportItem(target, reason, note, from) {
+  const c = target?.commentId ? getMomentComment(target.commentId) : null;
+  if (target?.commentId && !c) throw cmErr('That comment is gone.', 404);
+  const e = getEvent(c ? c.eventId : target?.eventId); if (!e) throw cmErr('No such moment.', 404);
+  if (e.visibility === 'private') throw cmErr('Only the student can see this moment.');
+  if (!REPORT_REASONS[reason]) throw cmErr('Pick a reason.');
+  const who = reporter(from, e);
+  if (c && who.role === 'Family') throw cmErr('Families do not see comments.');
+  const at = nowIso(), list = (store.reports ||= []);
+  const t = { kind: c ? 'comment' : 'station', eventId: e.id, ...(c ? { commentId: c.id } : {}) };
+  const open = list.find((r) => r.from.key === who.key && r.status === 'open' && sameTarget(r, t));
+  if (open) return open;
+  if (list.filter((r) => r.from.key === who.key && Date.parse(at) - Date.parse(r.at) < 3600e3).length >= REPORT_LIMIT) throw cmErr('You have sent a lot of reports. Try again later, or speak to a teacher.', 429);
+  const r = { id: uid('rp-'), ...t, studentId: e.studentId, reason, note: String(note ?? '').trim().slice(0, 1000), at, from: who, status: 'open', history: [] };
+  list.push(r);
+  const s = getStudent(e.studentId);
+  for (const k of MODERATOR_KINDS) notify(toRole(k), `New report: ${c ? 'a comment on ' : ''}“${e.title}” (${s.name}). ${REPORT_REASONS[reason]}.`, { persona: toRole(k), screen: 'reports', param: r.id });
+  emit();
+  return r;
+}
+// A moderator's answer: 'hide' (only the student and staff see it), 'unhide', 'photo' (the station's photos are taken
+// off; nothing keeps their address), 'none'. Every report on the same item gets the answer in its history.
+export function moderateReport(id, action, note, by) {
+  const r = getReport(id); if (!r) throw cmErr('No such report.', 404);
+  if (!REPORT_STATUS[action]) throw cmErr('Pick what to do.');
+  if (by && !teacherById[by]) throw cmErr('No such teacher.');
+  const name = by ? teacherById[by].name : 'Pilot admin';
+  const e = getEvent(r.eventId), c = r.commentId ? getMomentComment(r.commentId) : null;
+  const target = r.commentId ? c : e;
+  if (action !== 'none' && !target) throw cmErr(r.commentId ? 'That comment is gone.' : 'That moment is gone.', 404);
+  const at = nowIso(), to = toStudent(r.studentId), go = e ? { persona: to, screen: 'map', param: e.id } : undefined;
+  const what = c ? `a comment on “${e.title}”` : `“${e?.title}”`;
+  if (action === 'photo' && (c || !e.evidence.some(isPhoto))) throw cmErr(c ? 'A comment has no photo.' : 'This moment has no photo.');
+  if (action === 'hide') { target.hidden = { at, by: name }; notify(to, `A teacher has hidden ${what} while they look at it.`, go); }
+  if (action === 'unhide') { delete target.hidden; notify(to, `A teacher has finished looking at ${what}. It is shown again.`, go); }
+  if (action === 'photo') { e.evidence = e.evidence.filter((x) => !isPhoto(x)); notify(to, `A teacher has removed the photo from “${e.title}”.`, go); }
+  const entry = { action, note: String(note ?? '').trim().slice(0, 1000), at, by: name };
+  for (const x of store.reports) if (sameTarget(x, r)) { x.history.push({ ...entry }); x.status = REPORT_STATUS[action]; }
+  emit();
+  return r;
+}
+
 // ── Shared record: with the pilot server, every change is replayed there ──
 // A screen calls a change below; it runs here at once (instant UI) while recording the ids and
 // times it made. The hook (src/sync.js) posts { fn, args, rec } to /api/action, and the server runs
@@ -1843,6 +1918,7 @@ setSubjectLine = act('setSubjectLine', setSubjectLine);
 askClass = act('askClass', askClass); remindClass = act('remindClass', remindClass); answerPrompt = act('answerPrompt', answerPrompt); skipPrompt = act('skipPrompt', skipPrompt);
 nudgeStudent = act('nudgeStudent', nudgeStudent);
 addMomentComment = act('addMomentComment', addMomentComment); editMomentComment = act('editMomentComment', editMomentComment); deleteMomentComment = act('deleteMomentComment', deleteMomentComment); markCommentsRead = act('markCommentsRead', markCommentsRead);
+reportItem = act('reportItem', reportItem); moderateReport = act('moderateReport', moderateReport);
 // Undo puts a whole earlier copy back, and reset goes back to the seed (sync.js sends it to /api/reset).
 restore = act('restore', restore); resetDemo = act('resetDemo', resetDemo);
 export const MUTATORS = Object.keys(ACTIONS);
