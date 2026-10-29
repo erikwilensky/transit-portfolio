@@ -28,3 +28,17 @@
   .fl-page:last-child { break-after: auto; }
   .fl-letter { height: 148.5mm; min-height: 0; overflow: hidden; }
 }
+
+/* Thai and English on one letter (the default): smaller type, Thai first, a thin rule between, still two to a page. */
+.fl-lang { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
+.fl-dear span, .fl-exp span { display: block; }
+.fl-part + .fl-part { border-top: 0.3mm solid #cfd6e2; padding-top: 2mm; margin-top: 1mm; }
+.fl-letter [lang="th"] p, .fl-letter span[lang="th"] { line-height: 1.5; }
+.fl-both { padding: 9mm 12mm 8mm; gap: 2.5mm; font-size: 9pt; line-height: 1.32; }
+.fl-both .fl-dear { font-size: 12.5pt; margin: 0; }
+.fl-both .fl-dear span[lang="en"] { font-size: 11pt; }
+.fl-both .fl-text p { margin: 0 0 1.4mm; }
+.fl-both .fl-body { gap: 6mm; }
+.fl-both .fl-code { width: 38mm; }
+.fl-both .fl-code .fl-qr { width: 37mm !important; height: 37mm !important; }
+.fl-both .fl-exp { font-size: 8.5pt; padding-top: 1.5mm; }

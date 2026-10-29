@@ -39,6 +39,8 @@ const TH = {
   'Nothing yet. Things other people do with this record will show up here.': 'ยังไม่มี สิ่งที่ผู้อื่นทำกับบันทึกนี้จะแสดงที่นี่',
   Students: 'นักเรียน', Advisor: 'ครูที่ปรึกษา', 'Subject teacher': 'ครูประจำวิชา', Counsellor: 'ครูแนะแนว', Coordinator: 'ผู้ประสานงาน', Leadership: 'ผู้บริหาร', Family: 'ครอบครัว', 'External viewer': 'ผู้ชมภายนอก',
   'Family view': 'มุมมองครอบครัว', Consent: 'การให้ความยินยอม', 'Weekly digest': 'สรุปประจำสัปดาห์',
+  // the header, for a signed-in family
+  'Signed in': 'เข้าสู่ระบบแล้ว', 'Seeing as': 'กำลังดูในฐานะ', 'Display settings': 'การแสดงผล', Language: 'ภาษา', Theme: 'ธีม', Light: 'สว่าง', Dark: 'มืด',
 };
 
 // Line names, translated part by part ("Science · Biology").
@@ -57,4 +59,70 @@ export const daysIn = (lang, days) => (lang === 'th' ? (days >= 0 ? `อีก $
 export function useT() {
   const lang = useLang();
   return (s) => tr(lang, s);
+}
+
+// ── Per person: the language chosen before signing in (sign-in page, family letter link), remembered on this device.
+// Not a `tp-` key, so signing out keeps it: it says nothing about anyone.
+const LANG_KEY = 'transit-lang';
+export function savedLang() { try { const l = localStorage.getItem(LANG_KEY); return l === 'th' || l === 'en' ? l : null; } catch { return null; } }
+export function saveLang(l) { try { localStorage.setItem(LANG_KEY, l); } catch { /* storage blocked */ } }
+
+// Notifications are stored in English; the ones a family gets are rendered in Thai from their known templates.
+// Names and quoted titles (people's own words) stay as they are.
+const NOTE_TH = [
+  [/^(.+) asked you to look at a consent request$/, (m) => `${m[1]} ขอให้คุณดูคำขอความยินยอม`],
+  [/^(.+)’s family answered a consent request$/, (m) => `ครอบครัวของ ${m[1]} ตอบคำขอความยินยอมแล้ว`],
+  [/^Your parent said yes: (.+)$/, (m) => `ผู้ปกครองของคุณยินยอมแล้ว: ${m[1]}`],
+  [/^Your parent said no for now: (.+)$/, (m) => `ผู้ปกครองของคุณยังไม่ยินยอม: ${m[1]}`],
+];
+export function noteText(lang, text) {
+  if (lang !== 'th' || typeof text !== 'string') return text;
+  for (const [re, f] of NOTE_TH) { const m = text.match(re); if (m) return f(m); }
+  return text;
+}
+export function agoIn(lang, iso, now = Date.now()) {
+  const m = Math.round((now - new Date(iso).getTime()) / 60000);
+  if (lang !== 'th') return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`;
+  return m < 1 ? 'เมื่อสักครู่' : m < 60 ? `${m} นาทีที่แล้ว` : m < 1440 ? `${Math.round(m / 60)} ชั่วโมงที่แล้ว` : `${Math.round(m / 1440)} วันที่แล้ว`;
+}
+
+// The server's answers on the sign-in and family letter pages, in Thai.
+const ERR_TH = {
+  'That email and password do not match.': 'อีเมลและรหัสผ่านไม่ตรงกัน',
+  'Too many tries. Wait 15 minutes or ask your teacher.': 'ลองหลายครั้งเกินไป โปรดรอ 15 นาที หรือติดต่อโรงเรียน',
+  'Too many tries. Wait a few minutes.': 'ลองหลายครั้งเกินไป โปรดรอสักครู่',
+  'Something went wrong. Try again.': 'เกิดข้อผิดพลาด โปรดลองอีกครั้ง',
+  'Your account is paused. Ask your teacher.': 'บัญชีของคุณถูกระงับชั่วคราว โปรดติดต่อโรงเรียน',
+  'Use at least 8 characters.': 'ใช้อย่างน้อย 8 ตัวอักษร',
+  'That password is too long.': 'รหัสผ่านยาวเกินไป',
+  'The two passwords are not the same.': 'รหัสผ่านทั้งสองช่องไม่ตรงกัน',
+  'The two new passwords are not the same.': 'รหัสผ่านใหม่ทั้งสองช่องไม่ตรงกัน',
+  'Your current password is not right.': 'รหัสผ่านปัจจุบันไม่ถูกต้อง',
+  'Password changed. Other devices are signed out.': 'เปลี่ยนรหัสผ่านแล้ว อุปกรณ์อื่นออกจากระบบแล้ว',
+  'Add your name.': 'โปรดกรอกชื่อของคุณ',
+  'Add a valid email address.': 'โปรดกรอกอีเมลให้ถูกต้อง',
+  'Sign in first.': 'โปรดเข้าสู่ระบบก่อน',
+  'This setup link has expired or was already used. Ask an admin for a new one.': 'ลิงก์นี้หมดอายุหรือถูกใช้ไปแล้ว โปรดขอลิงก์ใหม่จากผู้ดูแลระบบ',
+  'This letter has already been used by two family members. Ask your child’s advisor for a new one.': 'จดหมายฉบับนี้ถูกใช้โดยสมาชิกครอบครัวครบสองคนแล้ว โปรดขอฉบับใหม่จากครูที่ปรึกษาของบุตรหลาน',
+  'This letter’s link has expired or was replaced by a newer letter. Ask your child’s advisor for a new one.': 'ลิงก์ในจดหมายนี้หมดอายุ หรือมีจดหมายฉบับใหม่มาแทนแล้ว โปรดขอฉบับใหม่จากครูที่ปรึกษาของบุตรหลาน',
+  'This student’s account is paused. Ask the school.': 'บัญชีของนักเรียนคนนี้ถูกระงับชั่วคราว โปรดติดต่อโรงเรียน',
+  'There is already a school account with that email. Use another email for your family account.': 'อีเมลนี้เป็นบัญชีของโรงเรียนอยู่แล้ว โปรดใช้อีเมลอื่นสำหรับบัญชีครอบครัว',
+  'There is already a family account with that email, and that is not its password. Sign in first, then open the link again.': 'มีบัญชีครอบครัวที่ใช้อีเมลนี้อยู่แล้ว แต่รหัสผ่านไม่ถูกต้อง โปรดเข้าสู่ระบบก่อน แล้วเปิดลิงก์อีกครั้ง',
+  'You are signed in with a school account. Sign out first, then open the link again.': 'คุณเข้าสู่ระบบด้วยบัญชีของโรงเรียนอยู่ โปรดออกจากระบบก่อน แล้วเปิดลิงก์อีกครั้ง',
+};
+export const errText = (lang, msg) => (lang === 'th' && ERR_TH[msg]) || msg;
+
+// Consent requests written from the school's templates (the seeds in src/api.js), in Thai. Other wording stays as written.
+const CONSENT = {
+  join: { en: (f) => [`${f}’s record in Transit Portfolio`, `Keep ${f}’s school activities in one record. ${f}, her advisor and you can see it; nothing leaves the school.`], th: (f) => [`บันทึกของ ${f} ใน Transit Portfolio`, `เก็บกิจกรรมที่โรงเรียนของ ${f} ไว้ในบันทึกเดียว ${f} ครูที่ปรึกษา และคุณเห็นได้ ไม่มีข้อมูลใดออกนอกโรงเรียน`] },
+  share: { en: (f) => ['Share links outside the school', `Let ${f} make share links, for example for a summer camp application. Every link expires, and each one appears in your weekly digest.`], th: (f) => ['ลิงก์แบ่งปันนอกโรงเรียน', `อนุญาตให้ ${f} สร้างลิงก์แบ่งปัน เช่น สำหรับสมัครค่ายภาคฤดูร้อน ทุกลิงก์มีวันหมดอายุ และจะแสดงในสรุปประจำสัปดาห์ของคุณ`] },
+  photos: { en: (f) => [`Photos where ${f} can be recognised`, `Allow photos of ${f} to appear as evidence on her stations. Off unless you say yes.`], th: (f) => [`รูปถ่ายที่เห็นหน้า ${f} ได้ชัดเจน`, `อนุญาตให้ใช้รูปถ่ายของ ${f} เป็นหลักฐานในรายการต่าง ๆ บนแผนที่ จะไม่แสดงจนกว่าคุณจะยินยอม`] },
+};
+// → [title, detail, lang of the text]
+export function consentText(lang, r, first) {
+  const c = CONSENT[r.kind];
+  if (lang !== 'th' || !c) return [r.title, r.detail, 'en'];
+  const [t, d] = c.en(first);
+  if (r.title !== t || r.detail !== d) return [r.title, r.detail, 'en'];
+  return [...c.th(first), 'th'];
 }

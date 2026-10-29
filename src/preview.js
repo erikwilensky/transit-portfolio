@@ -3,7 +3,7 @@
 // GET /api/admin/preview/:id (server/routes/18-preview.mjs) and shows that copy of the record with that person's
 // persona. Sync never starts (no /api/stream, nothing posted), the record is never saved in this browser, and
 // every change is refused before it runs: "Preview only: nothing is saved". Exit goes back to Accounts.
-import { getStudent, loadPreview, setActionGuard } from './api.js';
+import { getStudent, loadPreview, setActionGuard, setOwnLang } from './api.js';
 import { personaFor, yearOf } from './auth.js';
 import { home, setPilotPersona } from './personas.js';
 
@@ -64,6 +64,7 @@ export async function startPreview(id) {
   loadPreview(j.snapshot);
   const persona = personaFor(j.user);
   setPilotPersona(persona);
+  setOwnLang(j.user.lang || 'en'); // their language, as they see it
   blockWrites();
   info = { user: j.user, persona, label: labelOf(j.user, persona) };
   if (fromHash()) history.replaceState(null, '', `#/${persona.id}/${home(persona)}`);

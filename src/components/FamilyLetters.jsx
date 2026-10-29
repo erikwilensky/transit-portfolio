@@ -12,9 +12,35 @@ const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const day = (iso) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 const shortLink = (u) => u.replace(/^https?:\/\//, '');
 const own = (n) => (/s$/i.test(n) ? `${n}’` : `${n}’s`);
+const dayTh = (iso) => new Date(iso).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+
+// Each letter in Thai and English (the default), English only or Thai only. Many NIST families read Thai.
+export const LETTER_LANGS = [['both', 'Thai and English'], ['en', 'English only'], ['th', 'Thai only']];
+const TEXT = {
+  en: (f, room) => ({
+    dear: `Dear family of ${f}${room ? ` (${room})` : ''},`,
+    body: [
+      `${f} keeps a Transit Portfolio at school: an online record of what ${f} does and learns, drawn as a metro map. Each coloured line is something ${f} follows through school, such as a subject, a sport or a club, and each stop is something that happened along it.`,
+      `With a family account you see only what ${f} chooses to share with family. Anything ${f} keeps private stays private.`,
+      `To join, scan the code or type the link, then choose your own email and password. Two family members can each use this letter. Already have a family account for a brother or sister? Sign in with it and ${f} is added to it.`,
+    ],
+    exp: (iso) => `This letter works until ${day(iso)}. Lost it? Ask ${own(f)} advisor for a new one.`,
+  }),
+  th: (f, room) => ({
+    dear: `ถึงครอบครัวของ ${f}${room ? ` (${room})` : ''}`,
+    body: [
+      `${f} มี Transit Portfolio ที่โรงเรียน เป็นบันทึกออนไลน์ของสิ่งที่ ${f} ทำและเรียนรู้ ในรูปแบบแผนที่รถไฟฟ้า เส้นแต่ละสีคือสิ่งที่ ${f} ทำต่อเนื่องตลอดช่วงที่เรียน เช่น รายวิชา กีฬา หรือชมรม และแต่ละสถานีคือสิ่งที่เกิดขึ้นบนเส้นนั้น`,
+      `บัญชีครอบครัวจะเห็นเฉพาะสิ่งที่ ${f} เลือกแบ่งปันกับครอบครัว สิ่งที่ ${f} เก็บไว้เป็นส่วนตัวจะยังคงเป็นส่วนตัว`,
+      `วิธีเข้าร่วม: สแกนคิวอาร์โค้ดหรือพิมพ์ลิงก์ แล้วตั้งอีเมลและรหัสผ่านของคุณเอง (เลือกภาษาไทยได้ที่มุมขวาบนของหน้า) สมาชิกครอบครัวใช้จดหมายฉบับนี้ได้สองคน หากมีบัญชีครอบครัวสำหรับพี่หรือน้องอยู่แล้ว ให้เข้าสู่ระบบด้วยบัญชีนั้น แล้ว ${f} จะถูกเพิ่มเข้าไป`,
+    ],
+    exp: (iso) => `จดหมายฉบับนี้ใช้ได้ถึงวันที่ ${dayTh(iso)} หากทำหาย โปรดขอฉบับใหม่จากครูที่ปรึกษาของ ${f}`,
+  }),
+};
 
 export function LetterSheet({ school, letters, onClose }) {
   usePrintTitle('Family letters');
+  const [lang, setLang] = useState('both');
+  const langs = lang === 'both' ? ['th', 'en'] : [lang];
   useEffect(() => { const k = (e) => e.key === 'Escape' && onClose(); addEventListener('keydown', k); return () => removeEventListener('keydown', k); }, [onClose]);
   const pages = [];
   for (let i = 0; i < letters.length; i += 2) pages.push(letters.slice(i, i + 2));
@@ -22,28 +48,32 @@ export function LetterSheet({ school, letters, onClose }) {
     <div className="sc-overlay fl-overlay" role="dialog" aria-modal="true" aria-label="Family letters">
       <div className="sc-bar">
         <div><b>{plural(letters.length, 'family letter')}</b><small>{plural(pages.length, 'A4 page')}, two letters a page: cut along the dashed line. Each letter belongs to one student. The links are shown only now.</small></div>
-        <div className="auth-row"><button className="auth-btn" onClick={() => print()}>Print</button><button className="ghost" onClick={onClose}>Close</button></div>
+        <div className="auth-row">
+          <label className="fl-lang">Language <select value={lang} onChange={(e) => setLang(e.target.value)}>{LETTER_LANGS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
+          <button className="auth-btn" onClick={() => print()}>Print</button><button className="ghost" onClick={onClose}>Close</button>
+        </div>
       </div>
       {pages.map((page, p) => (
         <section className="fl-page" key={p}>
-          {page.map((l) => (
-            <article className="fl-letter" key={l.url}>
-              <header className="fl-school">{school} · Transit Portfolio</header>
-              <h2 className="fl-dear">Dear family of {l.firstName}{l.homeroom ? ` (${l.homeroom})` : ''},</h2>
-              <div className="fl-body">
-                <div className="fl-text">
-                  <p>{l.firstName} keeps a Transit Portfolio at school: an online record of what {l.firstName} does and learns, drawn as a metro map. Each coloured line is something {l.firstName} follows through school, such as a subject, a sport or a club, and each stop is something that happened along it.</p>
-                  <p>With a family account you see only what {l.firstName} chooses to share with family. Anything {l.firstName} keeps private stays private.</p>
-                  <p>To join, scan the code or type the link, then choose your own email and password. Two family members can each use this letter. Already have a family account for a brother or sister? Sign in with it and {l.firstName} is added to it.</p>
+          {page.map((l) => {
+            const t = langs.map((k) => [k, TEXT[k](l.firstName, l.homeroom)]);
+            return (
+              <article className={`fl-letter fl-${lang}`} key={l.url} lang={langs[0]}>
+                <header className="fl-school" lang="en">{school} · Transit Portfolio</header>
+                <h2 className="fl-dear">{t.map(([k, x]) => <span key={k} lang={k}>{x.dear}</span>)}</h2>
+                <div className="fl-body">
+                  <div className="fl-text">
+                    {t.map(([k, x]) => <div key={k} className="fl-part" lang={k}>{x.body.map((p, i) => <p key={i}>{p}</p>)}</div>)}
+                  </div>
+                  <div className="fl-code">
+                    <Qr text={l.url} size={150} className="fl-qr" />
+                    <span className="fl-link">{shortLink(l.url)}</span>
+                  </div>
                 </div>
-                <div className="fl-code">
-                  <Qr text={l.url} size={150} className="fl-qr" />
-                  <span className="fl-link">{shortLink(l.url)}</span>
-                </div>
-              </div>
-              <footer className="fl-exp">This letter works until {day(l.expiresAt)}. Lost it? Ask {own(l.firstName)} advisor for a new one.</footer>
-            </article>
-          ))}
+                <footer className="fl-exp">{t.map(([k, x]) => <span key={k} lang={k}>{x.exp(l.expiresAt)}</span>)}</footer>
+              </article>
+            );
+          })}
         </section>
       ))}
     </div>,

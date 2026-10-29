@@ -1325,7 +1325,11 @@ export function remindParent(studentId) {
 }
 export const getFamily = () => store.family;
 // N2: one language setting for the app shell and the family screens.
-export const getLang = () => store.family.lang;
+// Thai for families: in a pilot each person has their own language (their account's `lang`, set by setOwnLang from
+// src/auth.js); the demo keeps the one shared setting, store.family.lang.
+let ownLang = null;
+export const getLang = () => ownLang || store.family.lang;
+export function setOwnLang(lang) { const l = lang === 'th' || lang === 'en' ? lang : null; if (l !== ownLang) { ownLang = l; listeners.forEach((fn) => fn()); } }
 export function setLang(lang) { store.family.lang = lang; emit(); }
 export function setFamily(patch) { Object.assign(store.family, patch); emit(); }
 // A week of one child's record, as a family would see it.

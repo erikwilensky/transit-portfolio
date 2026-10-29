@@ -1,7 +1,8 @@
 // Pilot sign-in, browser side. The server says which mode it runs in (GET /api/auth/me).
 // Demo mode (the default, and whenever there is no server): the persona switcher, tours and reset, no sign-in.
 // Pilot mode: each person signs in and sees only their own role's screens, built as a persona.
-import { addStudent, addTeacher, getStudent, getTeacher } from './api.js';
+import { addStudent, addTeacher, getStudent, getTeacher, setLang, setOwnLang } from './api.js';
+import { savedLang, saveLang } from './i18n.js';
 import { PERSONAS, NAV, setPilotPersona } from './personas.js';
 import { clearCaches } from './pwa.js';
 
@@ -32,9 +33,9 @@ export async function loadAuth() {
   return state;
 }
 
-export const signIn = async (email, password) => { const j = await call('POST', '/api/auth/login', { email, password }); set({ ...state, user: j.user }); return j.user; };
+export const signIn = async (email, password) => { const j = await call('POST', '/api/auth/login', { email, password }); set({ ...state, user: await adoptLang(j.user) }); return j.user; };
 export const getSetup = (token) => call('GET', `/api/auth/setup/${encodeURIComponent(token)}`);
-export const finishSetup = async (body) => { const j = await call('POST', '/api/auth/setup', body); set({ ...state, user: j.user }); return j.user; };
+export const finishSetup = async (body) => { const j = await call('POST', '/api/auth/setup', body); set({ ...state, user: await adoptLang(j.user) }); return j.user; };
 export const changePassword = (current, password) => call('POST', '/api/auth/password', { current, password });
 // "Forgot your password?": the same answer whether or not the email has an account. → { ok, emailed }
 export const forgotPassword = (email) => call('POST', '/api/auth/forgot', { email });
@@ -78,7 +79,7 @@ export const signinCards = {
 // Family sign-in letters (server/routes/17-family.mjs): printed invitations, joining as family, removing a family member.
 export const family = {
   invite: (token) => call('GET', `/api/family/invite/${encodeURIComponent(token)}`),
-  join: async (body) => { const j = await call('POST', '/api/family/join', body); set({ ...state, user: j.user }); return j; },
+  join: async (body) => { const j = await call('POST', '/api/family/join', body); set({ ...state, user: await adoptLang(j.user) }); return j; },
   advisees: () => call('GET', '/api/advisor/family').then((j) => j.students),
   forAdvisees: (body) => call('POST', '/api/advisor/family/letters', body),
   groups: (homeroom) => call('GET', `/api/admin/family${homeroom ? `?homeroom=${encodeURIComponent(homeroom)}` : ''}`),
@@ -139,4 +140,22 @@ export function personaFor(user) {
   if (kind === 'leadership' || user.admin) p.nav = [...(p.nav || NAV[kind]), ['usage', 'Pilot usage']];
   return p;
 }
-function applyPersona() { setPilotPersona(state.mode === 'pilot' && state.user ? personaFor(state.user) : null); }
+function applyPersona() {
+  setPilotPersona(state.mode === 'pilot' && state.user ? personaFor(state.user) : null);
+  setOwnLang(state.mode === 'pilot' && state.user ? state.user.lang || 'en' : null);
+}
+
+// ── Language, per person (POST /api/auth/prefs): a pilot account keeps its own; the demo has one shared setting ──
+export async function chooseLang(lang) {
+  saveLang(lang);
+  if (state.mode !== 'pilot' || !state.user) return setLang(lang);
+  state = { ...state, user: { ...state.user, lang } };
+  setOwnLang(lang);
+  try { await call('POST', '/api/auth/prefs', { lang }); } catch { /* offline or preview: this device still shows it */ }
+}
+// A family member who chose Thai before signing in (sign-in page, letter link) and has no choice on the account yet keeps it.
+async function adoptLang(user) {
+  const l = savedLang();
+  if (!user || user.lang || user.kind !== 'parent' || !l || l === 'en') return user;
+  try { await call('POST', '/api/auth/prefs', { lang: l }); return { ...user, lang: l }; } catch { return user; }
+}
