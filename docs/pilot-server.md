@@ -1076,3 +1076,32 @@ not confirmed). Demo mode is unchanged: anyone with the address, cached for a ye
   index cache, the route's 404s and headers, demo mode); browser: `node scripts/checks/protected-files.cjs` (real roster
   from `TP_ROSTER`): Aaron Torres, Mr David Coultas, a teacher with no reach, a parent (family letter) and a signed-out
   browser, each in its own context.
+
+## This week: a summary for teachers and advisors (`src/weekly.js`, `src/week.js`, `src/screens/ThisWeek.jsx`)
+One page for anyone who teaches or advises (pilot only), made in the browser from the part of the record they already
+hold (`scopedSnapshot`). No new route, no mutator, no email.
+- **Where**: "This week" in the top bar, right after their home (`personaFor` in `src/auth.js`, for teachers, advisors and
+  anyone wearing either hat). On a Monday (Bangkok) `#/<persona>` with no screen opens it instead of the home (`parse` in
+  `App.jsx`). `#/<persona>/week` is this week, `#/<persona>/week/last` the week before.
+- **Week** (`src/week.js`, pure): Monday to Sunday in Asia/Bangkok. `weekOf(today, back)` → `{ from, to, upto }` (`upto`:
+  today in the current week, Sunday in a past one); `inWeek(day, w)`, `atInWeek(isoTime, w)` (by its Bangkok day),
+  `dayIn`, `isMonday`, `weekLabel` ("26 Oct to 1 Nov").
+- **Moments added in a week**: non-goal moments dated in it, or that the log says the student added in it (a back-dated
+  moment added this week counts). A class question's answer is a station, so it counts too.
+- **`weeklySummary(persona, back)`** → `{ week, teaches, advises, waiting, classes, advisory, celebrate }`:
+  - `waiting` (what waits now, whichever week is shown): pending endorsement requests (`getRequests`, minus those in
+    `classAnswerGroups`, which show per question and open Review answers), open reports for moderators, the teacher's
+    spotted moments still waiting (`spottedBy`), and threads with unread comments (`unreadComments`), each a link to
+    its screen.
+  - `classes` (`classesOf`): moments added on the class's line, students who added something there, and the answer
+    rate of class questions asked that week (answered of asked, over all its questions).
+  - `advisory`: new moments, how many advisees added something, the latest six, and the existing "Quiet for 3 weeks"
+    group with its nudges (`QuietGroup`).
+  - `celebrate`: up to 5 moments from their students (advisees and class students) added in the week, visible to the
+    school (`school`, `publishable`, not hidden): photos first, then endorsed or reflected on, then newest.
+- **Sign-ups and families this week**: `GET /api/advisor/progress` now also gives each advisee `signedUpAt` (set once,
+  the first time a password is set: `setPassword` in `server/auth.mjs`; accounts that set one before this have none)
+  and `familyAt` (when each family account linked to them was made). `weekSignups(progress, back)` counts them.
+- Tests: `server/test/weekly-summary.test.mjs` (weeks, Bangkok midnight, the progress dates); browser:
+  `node scripts/checks/weekly-summary.cjs` (the real roster from `TP_ROSTER`, skipped without it; screenshots to `SCRATCH`
+  or the temp folder as `tp-week-*.png`).

@@ -83,7 +83,7 @@ export function updateAccount(a, patch) {
   Object.assign(a, patch); saveAccounts();
 }
 export function removeAccount(id) { accounts = accounts.filter((a) => a.id !== id); endSessionsOf(id); saveAccounts(); }
-export async function setPassword(a, password) { a.password = await hashPassword(password); delete a.setup; delete a.resetRequest; saveAccounts(); }
+export async function setPassword(a, password) { a.password = await hashPassword(password); a.signedUpAt ||= new Date().toISOString(); delete a.setup; delete a.resetRequest; saveAccounts(); }
 
 // ── One-time setup links ──
 // First run (no accounts yet): a setup token held in memory only, printed to the log.

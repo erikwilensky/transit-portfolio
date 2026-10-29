@@ -68,6 +68,9 @@ import { serverMode, undoSince } from './sync.js';
 import { inPreview } from './preview.js'; // admin "See as": no account menu for the person shown
 import { VerifyProvider } from './components/VerifyModal.jsx';
 import { TOURS, tourMinutes, stopCount } from './tour.js';
+import ThisWeek from './screens/ThisWeek.jsx';
+import { TODAY } from './api.js';
+import { isMonday } from './week.js';
 import { QADrawer, TourCard, TourRoute } from './components/TourCards.jsx';
 
 // Routes: #/<persona>/<screen>/<param>, plus public #/s/<token>, #/v/<code> and #/p/<student>[/th] (parent link).
@@ -78,7 +81,8 @@ const parse = () => {
   if (a === 's' || a === 'v' || a === 'p') return { publicKind: a, param: b, lang: c };
   const p = personaById(a);
   const screens = navOf(p).map(([id]) => id).concat(p.kind === 'advisor' ? ['student'] : p.kind === 'student' ? ['poster', 'add', 'snap'] : []);
-  return { persona: p.id, screen: screens.includes(b) ? b : home(p), param: c || null };
+  // Staff with "This week" land on it on Mondays (Bangkok) when the address names no screen.
+  return { persona: p.id, screen: screens.includes(b) ? b : !b && screens.includes('week') && isMonday(TODAY) ? 'week' : home(p), param: c || null };
 };
 
 // Presentations (drafts, letters, custom pages, share links) live in the record, in api.js.
@@ -337,8 +341,9 @@ export default function App() {
           {persona.admin && route.screen === 'accounts' && <Accounts {...ctx} />}
           {pilot && route.screen === 'usage' && (persona.admin || persona.kind === 'leadership') && <Usage {...ctx} />}
           {isModerator(persona) && route.screen === 'reports' && <Reports {...ctx} focus={route.param} />}
+          {pilot && route.screen === 'week' && (acts(persona, 'teacher') || acts(persona, 'advisor')) && <ThisWeek {...ctx} param={route.param} />}
           {pilot && route.screen === 'overview' && (persona.admin || persona.kind === 'leadership' || persona.kind === 'coordinator') && <Overview {...ctx} />}
-          {route.screen !== 'accounts' && route.screen !== 'usage' && route.screen !== 'reports' && route.screen !== 'overview' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} persona={persona} />}
+          {route.screen !== 'accounts' && route.screen !== 'usage' && route.screen !== 'reports' && route.screen !== 'overview' && route.screen !== 'week' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} persona={persona} />}
           </ErrorBoundary>
           {pilot && level === 'simple' && <div className="fb-simple"><button onClick={() => setFbOpen(true)}>Something not working? Tell us</button></div>}
         </main>

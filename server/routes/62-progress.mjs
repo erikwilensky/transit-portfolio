@@ -3,7 +3,7 @@
 // and usage.json; nothing anyone wrote.
 //   GET /api/admin/progress?homeroom= (admin or leadership) → { today, homerooms: [row], totals: row, staff: { rows: [{ kind, total, signedUp, active }], total },
 //       students?: [student] }   row = { name, year, students, signedUp, waiting (account, no password), active, moments, families }
-//   GET /api/advisor/progress (their own advisees: advisorId = their teacherId) → { total, signedUp, active, families, students: [student] }
+//   GET /api/advisor/progress (their own advisees: advisorId = their teacherId) → { total, signedUp, active, families, students: [student & { signedUpAt, familyAt: [iso] }] }
 // student = { id, name, homeroom, year, hasAccount, signedUp, active, moment, families, lastSignIn }
 // Active = signed up and signed in or here (any request) in the last 7 days. Paused accounts (leavers) are left out.
 import { send } from '../lib.mjs';
@@ -20,10 +20,11 @@ const blank = (name, year) => ({ name, year, students: 0, signedUp: 0, waiting: 
 export function context(now = new Date()) {
   const accounts = A.allAccounts(), seen = lastSeenAll();
   const since = new Date(now.getTime() - 7 * 864e5).toISOString();
-  const student = new Map(), families = new Map();
+  const student = new Map(), families = new Map(), joined = new Map();
   for (const a of accounts) {
     if (a.kind === 'student' && a.studentId) student.set(a.studentId, a);
     if (a.kind === 'parent') for (const c of a.children || []) families.set(c, (families.get(c) || 0) + 1);
+    if (a.kind === 'parent' && a.createdAt) for (const c of a.children || []) (joined.get(c) || joined.set(c, []).get(c)).push(a.createdAt);
   }
   const moments = new Set(api.getStore().events.filter((e) => e.type !== 'goal').map((e) => e.studentId));
   const last = (a) => later(a.lastSignInAt, seen[a.id]);
@@ -33,7 +34,7 @@ export function context(now = new Date()) {
     return { id: s.id, name: s.name, homeroom: s.homeroom || '', year: s.grade + 1, hasAccount: !!a, signedUp: !!a?.password, active: isActive(a), moment: moments.has(s.id), families: families.get(s.id) || 0, lastSignIn: a ? last(a) : null };
   };
   const students = api.getStudents({ includeCohort: true }).filter((s) => !student.get(s.id)?.paused);
-  return { accounts, students, rowOf, isActive };
+  return { accounts, students, rowOf, isActive, joined };
 }
 const tally = (r, s) => { r.students++; r.signedUp += +s.signedUp; r.waiting += +(s.hasAccount && !s.signedUp); r.active += +s.active; r.moments += +s.moment; r.families += +(s.families > 0); return r; };
 
@@ -57,8 +58,11 @@ export function adminProgress(homeroom, now = new Date()) {
 }
 
 export function advisorProgress(teacherId, now = new Date()) {
-  const { students, rowOf } = context(now);
+  const { students, rowOf, accounts, joined } = context(now);
   const list = students.filter((s) => s.advisorId === teacherId).map(rowOf).sort((x, y) => x.name.localeCompare(y.name));
+  // The weekly summary (src/weekly.js) counts sign-ups and families joined in a week: when each happened, for advisees only.
+  const own = new Map(accounts.filter((a) => a.kind === 'student' && a.studentId).map((a) => [a.studentId, a]));
+  for (const s of list) { s.signedUpAt = (s.signedUp && own.get(s.id)?.signedUpAt) || null; s.familyAt = joined.get(s.id) || []; }
   const n = (f) => list.filter(f).length;
   return { total: list.length, signedUp: n((s) => s.signedUp), active: n((s) => s.active), families: n((s) => s.families > 0), students: list };
 }

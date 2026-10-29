@@ -147,6 +147,8 @@ export function personaFor(user) {
   if (isModerator(user)) p.nav = [...(p.nav || NAV[kind]), ['reports', 'Reports']];
   // School overview (src/screens/Overview.jsx): leadership, coordinators and admins.
   if (kind === 'leadership' || kind === 'coordinator' || user.admin) p.nav = [...(p.nav || NAV[kind]), ['overview', 'School overview']];
+  // This week (src/screens/ThisWeek.jsx): anyone who teaches or advises, right after their home; their landing on Mondays.
+  if (kind === 'teacher' || kind === 'advisor' || also.length) { p.nav = [...(p.nav || NAV[kind])]; p.nav.splice(1, 0, ['week', 'This week']); }
   return p;
 }
 function applyPersona() {

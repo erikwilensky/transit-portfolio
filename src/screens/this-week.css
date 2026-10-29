@@ -1,0 +1,42 @@
+/* This week (ThisWeek.jsx): what waits, classes, advisory and moments to celebrate. */
+.tw { max-width: 980px; }
+.tw-tabs { display: flex; gap: 6px; }
+.tw-tabs a { font-size: 14px; padding: 6px 14px; border: 1px solid var(--rule); border-radius: 999px; background: var(--surface); color: var(--ink); text-decoration: none; }
+.tw-tabs a.on { background: var(--navy); border-color: var(--navy); color: #fff; font-weight: 600; }
+.tw-sec { margin: 0 0 26px; }
+.tw-sec h2 { font-size: 18px; margin: 0 0 10px; }
+.tw-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.tw-none { margin: 0; padding: 12px 16px; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); color: var(--muted); }
+.tw-wait, .tw-moments, .tw-cel { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.tw-wait a, .tw-wait li > div { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 12px; align-items: center; background: var(--surface); border: 1px solid var(--rule); border-left: 4px solid var(--navy); border-radius: var(--radius); padding: 10px 14px; color: var(--ink); text-decoration: none; }
+.tw-wait a:hover, .tw-moments a:hover, .tw-cel a:hover { border-color: var(--navy); }
+.tw-wait b { font-size: 24px; font-weight: 600; text-align: center; font-variant-numeric: tabular-nums; }
+.tw-wait span, .tw-cel a > span, .tw-cel li > div > span { display: grid; gap: 2px; min-width: 0; }
+.tw-wait strong { font-weight: 600; overflow-wrap: anywhere; }
+.tw-wait small, .tw-moments small, .tw-cel small, .tw-classes small { color: var(--muted); font-size: 12.5px; }
+.tw-wait i { font-style: normal; font-size: 20px; color: var(--muted); }
+.tw-classes .tw-line { display: block; margin-top: 4px; }
+.tw-classes b { font-weight: 600; font-size: 16px; }
+.tw-k { display: none; }
+.tw-tiles { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.tw-moments { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); margin-bottom: 14px; }
+.tw-moments a { display: grid; gap: 2px; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); padding: 8px 12px; color: var(--ink); text-decoration: none; }
+.tw-moments b { font-weight: 600; overflow-wrap: anywhere; }
+.tw-cel { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); margin-bottom: 8px; }
+.tw-cel a, .tw-cel li > div { display: flex; gap: 12px; align-items: center; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); padding: 10px; color: var(--ink); text-decoration: none; height: 100%; box-sizing: border-box; }
+.tw-cel img, .tw-av { flex: none; width: 64px; height: 64px; border-radius: 10px; object-fit: cover; }
+.tw-av { display: grid; place-items: center; font-weight: 600; }
+.tw-cel b { font-weight: 600; overflow-wrap: anywhere; }
+.tw-cel .line-chip { justify-self: start; margin-top: 2px; }
+:root[data-theme="dark"] .tw-wait a, :root[data-theme="dark"] .tw-wait li > div { border-left-color: var(--b-sky); }
+:root[data-theme="dark"] .tw-tabs a.on { background: var(--b-sky); border-color: var(--b-sky); color: #00152e; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .tw-wait a, :root:not([data-theme="light"]) .tw-wait li > div { border-left-color: var(--b-sky); }
+}
+@media (max-width: 700px) {
+  .tw-classes td { display: flex; justify-content: space-between; gap: 10px; }
+  .tw-classes td:first-child { display: block; }
+  .tw-k { display: inline; color: var(--muted); font-size: 12.5px; margin-right: auto; }
+  .tw-classes td > span:last-child { text-align: right; }
+  .tw-moments, .tw-cel { grid-template-columns: 1fr; }
+}
