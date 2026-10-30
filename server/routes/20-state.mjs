@@ -19,7 +19,7 @@ const userId = (req) => req.user?.id ?? null;
 const json = (v) => (v === undefined ? null : JSON.parse(JSON.stringify(v)));
 // Activity log (server/audit.mjs): the change's main student, teacher and item ids, never its text.
 // An item id only when the record has an item by that id (a note's text is never taken for one).
-const KNOWN = ['getEvent', 'getReport', 'getMomentComment', 'getSpotted', 'getClassPrompt', 'getLine', 'getPresentation'];
+const KNOWN = ['getEvent', 'getReport', 'getMomentComment', 'getSpotted', 'getClassPrompt', 'getLine', 'getPresentation', 'getExhibition'];
 const known = (x) => typeof x === 'string' && x.length <= 64 && KNOWN.some((g) => { try { return !!api[g]?.(x); } catch { return false; } });
 function targetOf(fn, args) {
   let t = {}; try { const x = touchedBy(fn, args); t = { ...L.studentsTarget(x.students), ...(x.as?.[0] && x.as[0] !== '?' ? { teacherId: x.as[0] } : {}) }; } catch { /* malformed */ }

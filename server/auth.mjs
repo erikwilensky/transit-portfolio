@@ -204,6 +204,7 @@ export function canAct(user, fn, args = []) {
   if (TR_FNS.has(fn)) { try { return termReflectionOk(user, fn, args); } catch { return false; } }
   if (PF_FNS.has(fn) || (fn === 'reportItem' && args[0]?.feedbackId)) { try { return peerOk(user, fn, args); } catch { return false; } }
   if (fn === 'markMilestonesSeen') return milestonesOk(user, args); // only the student, never staff, admins or families
+  if (EX_FNS.has(fn)) { try { return exhibitionOk(user, fn, args); } catch { return false; } }
   if (isAdmin(user)) return true;
   if (ADMIN_ONLY.has(fn)) return false;
   if (ANYONE.has(fn)) return true;
@@ -340,3 +341,30 @@ function peerOk(user, fn, args) {
 }
 // ── Milestones (api.markMilestonesSeen): a student marks their own celebrations seen; nobody does it for them. ──
 const milestonesOk = (user, args) => user.kind === 'student' && !!user.studentId && args[0] === user.studentId;
+// ── Exhibition screens (api.createExhibition, removeExhibitionSlide, pauseExhibition, revokeExhibition) ──
+// Staff and admins only, as themselves (an admin with no staff record: by null). Making one: whole-school staff and admins
+// for any Years, classes and lines; an advisor or subject teacher only from classes they teach and their own advisory (at
+// least one of those, never whole Years). Pausing and turning off: whoever made it, and admins. Removing a slide: those,
+// the moderators (coordinators, counsellors, leadership), and a teacher of a class the moment's student is in now.
+const EX_FNS = new Set(['createExhibition', 'removeExhibitionSlide', 'pauseExhibition', 'revokeExhibition']);
+function exhibitionOk(user, fn, args) {
+  const admin = isAdmin(user);
+  if (!admin && !(STAFF.includes(user.kind) && user.teacherId)) return false;
+  const by = fn === 'createExhibition' || fn === 'revokeExhibition' ? args[1] : args[2];
+  if (admin ? !!by && by !== user.teacherId : by !== user.teacherId) return false;
+  if (fn === 'createExhibition') {
+    const spec = args[0] || {};
+    if (typeof args[2] !== 'string' || !api.EXHIBIT_TOKEN.test(args[2])) return false;
+    if (admin || reachOf(user) === null) return true;
+    const classes = [].concat(spec.classIds || []);
+    if ([].concat(spec.years || []).length || (!classes.length && !spec.advisory)) return false;
+    return classes.every((c) => teachesClass(user, c));
+  }
+  const x = api.getExhibition(args[0]);
+  if (!x) return false;
+  if (admin || (!!x.by && x.by === user.teacherId)) return true;
+  if (fn !== 'removeExhibitionSlide') return false;
+  if (api.MODERATOR_KINDS.includes(user.kind)) return true;
+  const e = api.getEvent(args[1]);
+  return !!e && (st().enrolments || []).some((n) => n.studentId === e.studentId && !(n.to && n.to < api.TODAY) && teachesClass(user, n.classId));
+}

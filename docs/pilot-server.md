@@ -1346,3 +1346,49 @@ family. Demo and pilot. No new route, no email, no leaderboard: nothing compares
   not on a second device, which gets "5 moments" live and still under reduced motion); a classmate at Standard gets the
   toast and the station badge; refusals for advisor, admin and classmate; Ms Jane Altemen sees it on My advisory, his
   page and This week; his family sees milestones but none from a private moment. Screenshots `tp-ms-*.png`.
+
+## School screens: an exhibition for open evenings, the library or a lobby TV (`src/api.js`, `server/routes/45-exhibition.mjs`, `src/screens/Kiosk.jsx`, pilot)
+
+- **Record**: `store.exhibitions` `[{ id: 'ex-…', title, token, by (teacherId | null), at, from, to, seconds, years,
+  classIds, advisory, lineIds, paused, revoked, removed: [{ eventId, by, at }] }]`, made on first use. `token` is 32
+  random bytes (base64url, 43 characters) made in the browser (`crypto.getRandomValues`) and passed as an argument, so the
+  replay stays deterministic. Mutators: `createExhibition(spec, by, token)`, `removeExhibitionSlide(id, eventId, by)`,
+  `pauseExhibition(id, paused, by)`, `revokeExhibition(id, by)` (turn off: for good).
+- **Slides** (`api.exhibitionSlides`): moments of the chosen students (Years, current class places, the maker's
+  advisory; none chosen: the whole school), `visibility === 'publishable'` (the public share link rule), not hidden by
+  safeguarding, not a goal, dated within `from`–`to` and up to today, on a chosen school line (or a branch of one; none
+  chosen: every line), never removed from this screen (a removed slide never comes back, whatever happens to the moment),
+  and whose student has not turned school screens off: `privacy.screens === false` (`setPrivacy`, Privacy → "Don't show
+  my moments on school screens", allowed by default). Newest first, at most 200. Each slide: title, first name, Year, the
+  line's name and colour, the first photo, one line (first sentence, at most 140 characters) of a publishable
+  reflection. Never surnames, comments or student ids.
+- **canAct** (`exhibitionOk` in `server/auth.mjs`): staff and admins, as themselves. Making one: whole-school staff and
+  admins for anything; an advisor or subject teacher only from classes they teach and their own advisory, never Years or
+  the whole school; the token must look like one. Pause and turn off: the maker and admins. Remove a slide: the maker,
+  admins, moderators (coordinators, counsellors, leadership) and a teacher of a class the moment's student is in now.
+- **Scope**: the maker and admins get their screens whole; other staff get every screen without its token and with only
+  the removed slides of students in reach; students and families get none.
+- **Routes**: `GET /api/public/exhibition/:token` (no sign-in) → `{ title, seconds, paused, refresh, slides }`; paused:
+  no slides; turned off or unknown: 404. `GET /api/exhibitions/:id/slides` (signed in) → `{ slides, removed }` for the
+  panel: everything for the maker, admins and moderators, only their class students' slides for another teacher.
+  `refresh` is `TP_EXHIBIT_REFRESH_S` (default 300 seconds; the browser check uses 3).
+- **Photos**: `/api/files/<name>?ex=<token>`. `canSeeFile(user, name, meta, exToken)` (`server/files.mjs`) opens a file
+  for anyone with the token only while it is on one of that screen's current slides (not paused, not turned off),
+  cached until the next change. Without the token the usual rules apply.
+- **The screen** (`#/x/<token>`, `src/screens/Kiosk.jsx`, loaded on its own from `src/main.jsx`, never the record):
+  full screen on the first tap or key, a navy NIST frame, one slide at a time (photo left and words right on a TV, photo
+  above on an upright tablet), moving on every `seconds`, no links or buttons, the pointer hidden when still, the screen
+  kept awake where the browser allows. It fetches the list again every `refresh` seconds; a removed slide goes at that
+  point. No connection: it keeps showing what it has (photos as blobs in memory and in IndexedDB `tp-exhibit`, so a
+  reload works too) for up to 24 hours, with "Offline · showing saved slides". The service worker still never caches
+  `/api`. Turned off (404): "This screen has been turned off", and it deletes what it kept.
+- **Panel** (School screens, every member of staff and admins, `src/screens/Exhibitions.jsx`): make a screen (title,
+  Years for whole-school staff, own classes, own advisory, lines, dates, 6–30 seconds a slide), copy or open its
+  address, pause, start again, turn off, the queue of slides with Remove, and the removed ones. Other staff's screens
+  show your class students' slides, to remove.
+- **Activity log**: create, remove and turn off (and pause) go through `/api/action`, so each is a `change` entry with
+  the screen's id (`getExhibition` is a known item); a removal names the student. The token is never logged.
+- Tests: `server/test/exhibition.test.mjs` (only publishable, opted out and hidden left out, removed never back, paused,
+  file token, canAct, scope, and through the server: the signed-out feed, photos by token, the panel's queue, 404 once
+  turned off, the activity log); browser: `node scripts/checks/exhibition.cjs` (real roster, in `run.sh`). Screenshots
+  `tp-exhibit-*.png`.

@@ -67,7 +67,7 @@ export default (app) => {
     let st; try { st = fs.statSync(f); } catch { throw fail(404, 'Not found'); }
     let meta = {}; try { meta = JSON.parse(fs.readFileSync(`${f}.json`, 'utf8')); } catch { /* serve without the original name */ }
     const pilot = MODE === 'pilot';
-    if (pilot && !canSeeFile(req.user, name, meta)) { fileRefused(req, name); throw fail(404, 'Not found'); }
+    if (pilot && !canSeeFile(req.user, name, meta, req.query?.get('ex'))) { fileRefused(req, name); throw fail(404, 'Not found'); }
     const ext = name.split('.').pop();
     const type = SERVE[ext] || 'application/octet-stream';
     const fname = (meta.name || name).replace(/["\r\n]/g, '');
