@@ -2365,6 +2365,139 @@ export function revokeExhibition(id, by) {
   if (!x.revoked) x.revoked = { at: nowIso(), by: by || null };
   emit();
 }
+// ── Leaver portfolio (src/components/Leaver.jsx, server/routes/41-leaver.mjs) ──
+// A Year 12 or 13 student (Year 11 as practice) builds one portfolio from their own record for applications.
+// store.leaver { [studentId]: { profile: { name, statement, email, photo }, moments: [{ eventId, evidence: [index],
+//   reflectionId, sentences: [index] | null }], skillsOff: [tag], endorsements: [endorsementId], template,
+//   links: [{ token, at, expiresAt, revoked, label }], comments: [{ id, by, text, at, done? }], updatedAt } }
+// Only the student changes it; their advisor (and whole-school staff) may comment. leaverView() is what any copy shows:
+// it checks every item again, so a moment made private or hidden by a moderator later drops out by itself.
+import { verifyCode as codeOf } from './format.js';
+export const LEAVER_MAX = 8;
+export const LEAVER_TEMPLATES = { classic: 'NIST navy classic', minimal: 'Minimal', 'two-column': 'Two columns' };
+export const LEAVER_LINK_DAYS = [30, 90, 180, 365];
+const LV_TEXT = { name: 80, statement: 1500, email: 120, label: 80, comment: 1000 };
+const lvErr = (m, status = 400) => Object.assign(new Error(m), { status });
+export const leaverAllowed = (sid) => { const s = getStudent(sid); return !!s && !s.cohortOnly && s.grade >= 10; };
+export const leaverPractice = (sid) => getStudent(sid)?.grade === 10;
+export const getLeaver = (sid) => store.leaver?.[sid] || null;
+export const sentencesOf = (text = '') => (String(text).match(/[^.!?]+(?:[.!?]+["”’)]*|$)/g) || []).map((x) => x.trim()).filter(Boolean);
+export const leaverMomentOk = (e, sid) => !!e && e.studentId === sid && e.type !== 'goal' && e.visibility !== 'private' && !e.hidden;
+export const leaverReflectionOk = (r, e) => !!r && !!e && r.eventId === e.id && (r.visibility || 'private') !== 'private' && !r.hidden;
+// Endorsements on moments the student shows the school or beyond (school, publishable); never on a hidden moment.
+const LV_ENDORSE_VIS = ['school', 'publishable'];
+export const leaverEndorsementOk = (n, sid) => { const e = n && getEvent(n.eventId); return !!e && e.studentId === sid && !e.hidden && LV_ENDORSE_VIS.includes(e.visibility) && (!n.visibility || LV_ENDORSE_VIS.includes(n.visibility)); };
+export function leaverChoices(sid) {
+  const moments = store.events.filter((e) => leaverMomentOk(e, sid)).sort((a, b) => b.date.localeCompare(a.date) || a.id.localeCompare(b.id))
+    .map((e) => ({ ...e, reflections: store.reflections.filter((r) => leaverReflectionOk(r, e)), tags: getTags(e) }));
+  const endorsements = store.endorsements.filter((n) => leaverEndorsementOk(n, sid)).map((n) => ({ ...n, teacher: teacherById[n.teacherId], moment: getEvent(n.eventId) }));
+  const blocked = store.events.filter((e) => e.studentId === sid && e.type !== 'goal' && (e.visibility === 'private' || e.hidden)).length;
+  return { moments, endorsements, blocked };
+}
+const blankLeaver = (sid) => ({ profile: { name: getStudent(sid).name, statement: '', email: '', photo: null }, moments: [], skillsOff: [], endorsements: [], template: 'classic', links: [], comments: [], updatedAt: null });
+const lvStr = (v, max) => String(v ?? '').replace(/\s+$/g, '').slice(0, max);
+const LV_PHOTO = /^(\/?api\/files\/[a-f0-9]{32}\.[a-z0-9]{2,5}|data:image\/(png|jpeg|gif|webp);base64,[A-Za-z0-9+/=]+|evidence\/[\w.-]+)$/;
+const ints = (a, n) => [...new Set((Array.isArray(a) ? a : []).filter((i) => Number.isInteger(i) && i >= 0 && i < n))].sort((x, y) => x - y);
+export function saveLeaver(studentId, patch = {}) {
+  if (!leaverAllowed(studentId)) throw lvErr('The leaver portfolio is for Years 11 to 13.', 403);
+  const p = ((store.leaver ||= {})[studentId] ||= blankLeaver(studentId));
+  if (patch.profile) {
+    const f = { ...p.profile, ...patch.profile };
+    const email = lvStr(f.email, LV_TEXT.email).trim();
+    if (email && !/^\S+@\S+\.\S+$/.test(email)) throw lvErr('That email does not look right.');
+    if (f.photo && !LV_PHOTO.test(String(f.photo))) throw lvErr('Use a photo you uploaded.');
+    p.profile = { name: lvStr(f.name, LV_TEXT.name).trim() || getStudent(studentId).name, statement: lvStr(f.statement, LV_TEXT.statement), email, photo: f.photo || null };
+  }
+  if (patch.moments) {
+    if (!Array.isArray(patch.moments)) throw lvErr('Pick moments from your map.');
+    const seen = new Set(), out = [];
+    for (const m of patch.moments) {
+      const e = getEvent(m?.eventId);
+      if (!leaverMomentOk(e, studentId)) throw lvErr(e?.studentId === studentId && e.visibility === 'private' ? 'Private moments cannot go in a portfolio.' : 'That moment cannot go in a portfolio.');
+      if (seen.has(e.id)) continue; seen.add(e.id);
+      const r = m.reflectionId ? store.reflections.find((x) => x.id === m.reflectionId) : null;
+      if (m.reflectionId && !leaverReflectionOk(r, e)) throw lvErr('Private reflections cannot go in a portfolio.');
+      out.push({ eventId: e.id, evidence: ints(m.evidence, e.evidence?.length || 0), reflectionId: r?.id || null, sentences: r && Array.isArray(m.sentences) ? ints(m.sentences, sentencesOf(r.text).length) : null });
+    }
+    if (out.length > LEAVER_MAX) throw lvErr(`Pick up to ${LEAVER_MAX} moments.`);
+    p.moments = out;
+  }
+  if (patch.skillsOff) p.skillsOff = [...new Set([].concat(patch.skillsOff).filter((k) => LEARNER_PROFILE.includes(k) || ATL.includes(k)))];
+  if (patch.endorsements) {
+    const ids = [...new Set([].concat(patch.endorsements))];
+    if (ids.some((id) => !leaverEndorsementOk(store.endorsements.find((n) => n.id === id), studentId))) throw lvErr('Only endorsements on moments your school can see can go in.');
+    p.endorsements = ids;
+  }
+  if (patch.template) { if (!LEAVER_TEMPLATES[patch.template]) throw lvErr('Pick a template.'); p.template = patch.template; }
+  p.updatedAt = nowIso();
+  emit();
+  return p;
+}
+// A share link: the token comes from the browser (crypto, unguessable), never from uid().
+export function shareLeaver(studentId, { token, days = 90, label = '' } = {}) {
+  const p = getLeaver(studentId);
+  if (!leaverAllowed(studentId) || !p) throw lvErr('Make your portfolio first.', 404);
+  if (!leaverView(studentId).moments.length) throw lvErr('Pick at least one moment first.');
+  if (!/^[A-Za-z0-9_-]{22,64}$/.test(String(token || ''))) throw lvErr('That link could not be made.');
+  const taken = Object.values(store.leaver).some((x) => x.links?.some((l) => l.token === token)) || Object.values(store.drafts || {}).flat().some((d) => d?.shareLinks?.some((l) => l.token === token));
+  if (taken) throw lvErr('That link could not be made.', 409);
+  if (!LEAVER_LINK_DAYS.includes(Number(days))) throw lvErr('Pick how long the link works.');
+  const link = { token, at: nowIso(), expiresAt: daysBefore(-Number(days)), revoked: false, label: lvStr(label, LV_TEXT.label).trim() };
+  (p.links ||= []).push(link);
+  log(studentId, getStudent(studentId).name, 'link', `Made a leaver portfolio link${link.label ? ` for ${link.label}` : ''}, until ${link.expiresAt}`);
+  emit();
+  return link;
+}
+export function revokeLeaver(studentId, token) {
+  const l = getLeaver(studentId)?.links?.find((x) => x.token === token);
+  if (!l) throw lvErr('No such link.', 404);
+  if (!l.revoked) { l.revoked = true; l.revokedAt = nowIso(); log(studentId, getStudent(studentId).name, 'link', `Withdrew a leaver portfolio link${l.label ? ` for ${l.label}` : ''}`); }
+  emit();
+  return l;
+}
+export function commentLeaver(studentId, by, text) {
+  const p = getLeaver(studentId), t = teacherById[by], body = lvStr(text, LV_TEXT.comment).trim();
+  if (!p) throw lvErr('There is no portfolio yet.', 404);
+  if (!t) throw lvErr('No such teacher.');
+  if (body.length < 2) throw lvErr('Write a comment first.');
+  const c = { id: uid('lc-'), by, text: body, at: nowIso() };
+  (p.comments ||= []).push(c);
+  notify(toStudent(studentId), `${shortName(t.name)} left a comment on your leaver portfolio`, { persona: toStudent(studentId), screen: 'leaver' });
+  emit();
+  return c;
+}
+export function doneLeaverComment(studentId, id) {
+  const c = getLeaver(studentId)?.comments?.find((x) => x.id === id);
+  if (!c) throw lvErr('No such comment.', 404);
+  c.done = c.done ? null : nowIso();
+  emit();
+  return c;
+}
+// What a portfolio shows, checked item by item: the draft view, the PDF and the public page all use it.
+export function leaverView(sid) {
+  const s = getStudent(sid), p = getLeaver(sid);
+  if (!s || !p) return null;
+  const lineOf = (id) => { const l = lineById(id); return l && { id, name: s.lineLabels?.[id] || l.name, colour: l.colour }; };
+  const moments = (p.moments || []).flatMap((m) => {
+    const e = getEvent(m.eventId);
+    if (!leaverMomentOk(e, sid)) return [];
+    const r = m.reflectionId && store.reflections.find((x) => x.id === m.reflectionId);
+    const ok = leaverReflectionOk(r, e) ? r : null, parts = ok ? sentencesOf(ok.text) : [];
+    const text = ok ? (Array.isArray(m.sentences) ? m.sentences.filter((i) => parts[i]).map((i) => parts[i]).join(' ') : ok.text) : '';
+    const verified = e.verification && e.verification !== 'student-added';
+    return [{ id: e.id, title: e.title, date: e.date, type: e.type, summary: e.summary || e.about || '', lines: (e.lineIds || []).map(lineOf).filter(Boolean),
+      verification: e.verification, code: verified && e.visibility === 'publishable' ? codeOf(e.id) : null,
+      evidence: (m.evidence || []).map((i) => e.evidence?.[i]).filter(Boolean).map(({ kind, url, caption }) => ({ kind, url: url || null, caption: caption || '' })),
+      reflection: text ? { prompt: ok.prompt || '', text } : null, tags: getTags(e) }];
+  }).slice(0, LEAVER_MAX);
+  const off = new Set(p.skillsOff || []);
+  const tally = (field, list) => list.map((k) => ({ k, n: moments.filter((m) => m.tags?.[field]?.includes(k)).length })).filter((x) => x.n && !off.has(x.k));
+  const endorsements = (p.endorsements || []).map((id) => store.endorsements.find((n) => n.id === id)).filter((n) => leaverEndorsementOk(n, sid))
+    .map((n) => ({ id: n.id, teacher: teacherById[n.teacherId]?.name || 'A teacher', role: teacherById[n.teacherId]?.role || '', note: n.note, date: n.date, moment: getEvent(n.eventId).title }));
+  return { name: p.profile?.name || s.name, year: s.grade + 1, programme: s.programme || '', statement: p.profile?.statement || '', email: p.profile?.email || '', photo: p.profile?.photo || null,
+    template: LEAVER_TEMPLATES[p.template] ? p.template : 'classic', moments: moments.map(({ tags, ...m }) => m), skills: { lp: tally('lp', LEARNER_PROFILE), atl: tally('atl', ATL) }, endorsements, practice: s.grade === 10 };
+}
+export const leaverLinkOpen = (l) => !!l && !l.revoked && l.expiresAt >= TODAY;
 
 // ── Shared record: with the pilot server, every change is replayed there ──
 // A screen calls a change below; it runs here at once (instant UI) while recording the ids and
@@ -2426,6 +2559,7 @@ setPeerFeedback = act('setPeerFeedback', setPeerFeedback); givePeerFeedback = ac
 openReflectionWindow = act('openReflectionWindow', openReflectionWindow); closeReflectionWindow = act('closeReflectionWindow', closeReflectionWindow); saveTermReflection = act('saveTermReflection', saveTermReflection); finishTermReflection = act('finishTermReflection', finishTermReflection);
 markMilestonesSeen = act('markMilestonesSeen', markMilestonesSeen);
 createExhibition = act('createExhibition', createExhibition); removeExhibitionSlide = act('removeExhibitionSlide', removeExhibitionSlide); pauseExhibition = act('pauseExhibition', pauseExhibition); revokeExhibition = act('revokeExhibition', revokeExhibition);
+saveLeaver = act('saveLeaver', saveLeaver); shareLeaver = act('shareLeaver', shareLeaver); revokeLeaver = act('revokeLeaver', revokeLeaver); commentLeaver = act('commentLeaver', commentLeaver); doneLeaverComment = act('doneLeaverComment', doneLeaverComment);
 // Undo puts a whole earlier copy back, and reset goes back to the seed (sync.js sends it to /api/reset).
 restore = act('restore', restore); resetDemo = act('resetDemo', resetDemo);
 export const MUTATORS = Object.keys(ACTIONS);

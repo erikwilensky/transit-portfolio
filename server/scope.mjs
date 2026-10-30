@@ -196,6 +196,10 @@ export function scopedSnapshot(user) {
   // Exhibition screens (api.createExhibition): whoever made one and admins get it whole; other staff without its address
   // (the token) and with only the removed slides of students in reach; students and families never.
   store.exhibitions = !user || !staff ? [] : (full.exhibitions || []).map((x) => (isAdmin(user) || (!!tid && x.by === tid) ? x : { ...x, token: null, removed: (x.removed || []).filter((r) => inReach(ev(r.eventId))) }));
+  // Leaver portfolio (api.saveLeaver): the student's own whole; staff in reach without the share links' tokens; never families
+  // (they read it only through a link the student gives them).
+  store.leaver = parent ? {} : Object.fromEntries(Object.entries(full.leaver || {}).filter(([sid]) => inReach(sid))
+    .map(([sid, p]) => [sid, sid === self ? p : { ...p, links: (p.links || []).map(({ token, ...l }) => l) }]));
   // Everything else (school lines' settings, integrations, rollout, family language, classes, keys other features add).
   for (const [k, v] of Object.entries(full)) if (!(k in store)) store[k] = generic(v, inReach);
   // Counts the whole-school screens show for what they may not open.
@@ -286,3 +290,4 @@ Object.assign(TOUCHES, {
   createExhibition: (a) => T([], [a[1]]), removeExhibitionSlide: (a) => T([ev(a[1])].filter(Boolean), [a[2]]),
   pauseExhibition: (a) => T([], [a[2]]), revokeExhibition: (a) => T([], [a[1]]),
 });
+Object.assign(TOUCHES, { saveLeaver: own0, shareLeaver: own0, revokeLeaver: own0, doneLeaverComment: own0, commentLeaver: (a) => T([a[0]], [a[1] ?? '?']) });

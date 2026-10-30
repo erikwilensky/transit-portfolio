@@ -7,6 +7,7 @@
 import { api, rev } from './store.mjs';
 import { reachOf, scopedSnapshot } from './scope.mjs';
 import { publicSnapshot } from './routes/40-public.mjs';
+import { leaverPublicFiles } from './routes/41-leaver.mjs';
 import * as A from './auth.mjs';
 import * as F from './feedback.mjs';
 
@@ -41,6 +42,7 @@ function publicFiles() {
     if (l.revoked || l.expiresAt < api.TODAY) continue;
     try { for (const n of namesIn(publicSnapshot(l.token).store)) c.pub.add(n); } catch { /* a link that no longer opens */ }
   }
+  for (const s of leaverPublicFiles()) for (const n of namesIn(s)) c.pub.add(n); // leaver portfolio links
   return c.pub;
 }
 

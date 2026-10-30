@@ -77,15 +77,17 @@ import ThisWeek from './screens/ThisWeek.jsx';
 import { TODAY } from './api.js';
 import { isMonday } from './week.js';
 import { QADrawer, TourCard, TourRoute } from './components/TourCards.jsx';
+import { LeaverBuilder, PublicLeaver } from './components/Leaver.jsx';
+import { leaverAllowed } from './api.js';
 
 // Routes: #/<persona>/<screen>/<param>, plus public #/s/<token>, #/v/<code> and #/p/<student>[/th] (parent link).
 // A screen set this persona uses: their own kind, or another hat they wear in the pilot (persona.also).
 const acts = (p, kind) => p.kind === kind || !!p.also?.includes(kind);
 const parse = () => {
   const [a, b, c] = location.hash.replace(/^#\/?/, '').split('/');
-  if (a === 's' || a === 'v' || a === 'p') return { publicKind: a, param: b, lang: c };
+  if (a === 's' || a === 'v' || a === 'p' || a === 'l') return { publicKind: a, param: b, lang: c };
   const p = personaById(a);
-  const screens = navOf(p).map(([id]) => id).concat(p.kind === 'advisor' ? ['student'] : p.kind === 'student' ? ['poster', 'add', 'snap'] : []);
+  const screens = navOf(p).map(([id]) => id).concat(p.kind === 'advisor' ? ['student'] : p.kind === 'student' ? ['poster', 'add', 'snap', 'leaver'] : []);
   // Staff with "This week" land on it on Mondays (Bangkok) when the address names no screen.
   return { persona: p.id, screen: screens.includes(b) ? b : !b && screens.includes('week') && isMonday(TODAY) ? 'week' : home(p), param: c || null };
 };
@@ -191,6 +193,7 @@ export default function App() {
   if (route.publicKind === 's') return <PublicShare key={route.param} token={route.param} version={version} />;
   if (route.publicKind === 'v') return <PublicVerify key={route.param || ''} code={route.param} />;
   if (route.publicKind === 'p') return <VerifyProvider><ParentView studentId={route.param} lang={route.lang} /></VerifyProvider>;
+  if (route.publicKind === 'l') return <PublicLeaver key={route.param} token={route.param} />;
 
   const persona = personaById(route.persona);
   const studentId = persona.studentId;
@@ -201,6 +204,7 @@ export default function App() {
   const level = persona.kind === 'student' ? getIntensity(persona.studentId) : null;
   const changeLevel = (v) => { setIntensity(persona.studentId, v); if (INTENSITY_NAV[v] && !INTENSITY_NAV[v].includes(route.screen)) go(persona.id, 'map'); toast(`Interface set to ${v}. Your map and everything on it stay the same.`); };
   const nav = navOf(persona).filter(([id]) => !level || !INTENSITY_NAV[level] || INTENSITY_NAV[level].includes(id)).map(([id, l]) => [id, T(INTENSITY_LABEL[level]?.[id] || l)]);
+  if (persona.kind === 'student' && leaverAllowed(studentId)) nav.push(['leaver', 'Leaver portfolio']); // Years 11 to 13
   const keys = notifyKeys(persona);
   const notes = getNotifications(keys);
   const unread = notes.filter((n) => !n.read).length;
@@ -351,7 +355,7 @@ export default function App() {
           {pilot && route.screen === 'overview' && (persona.admin || persona.kind === 'leadership' || persona.kind === 'coordinator') && <Overview {...ctx} />}
           {pilot && route.screen === 'activitylog' && (persona.admin || persona.kind === 'leadership') && <ActivityLog {...ctx} />}
           {pilot && route.screen === 'screens' && (persona.admin || ['advisor', 'teacher', 'counsellor', 'coordinator', 'leadership'].includes(persona.kind)) && <Exhibitions {...ctx} />}
-          {route.screen !== 'screens' && route.screen !== 'accounts' && route.screen !== 'usage' && route.screen !== 'reports' && route.screen !== 'overview' && route.screen !== 'week' && route.screen !== 'activitylog' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} persona={persona} />}
+          {route.screen !== 'screens' && route.screen !== 'accounts' && route.screen !== 'usage' && route.screen !== 'reports' && route.screen !== 'overview' && route.screen !== 'week' && route.screen !== 'activitylog' && route.screen !== 'leaver' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} persona={persona} />}
           </ErrorBoundary>
           {pilot && level === 'simple' && <div className="fb-simple"><button onClick={() => setFbOpen(true)}>Something not working? Tell us</button></div>}
         </main>
@@ -424,7 +428,9 @@ function StudentScreens({ screen, param, studentId, drafts, setDrafts, audience,
   }
   if (map.student.onboarding) return <Onboarding map={map} studentId={studentId} onDone={() => { toast('Your map is ready.'); go(persona.id, 'map'); }} />;
   const level = getIntensity(studentId);
+  if (screen === 'leaver' && !leaverAllowed(studentId)) screen = 'map'; // under Year 11: no leaver portfolio
   if (level === 'simple' && screen === 'map') return <>{nudge}<SimpleHome map={map} studentId={studentId} toast={toast} version={version} addRequest={addReq} focusId={param} /></>;
+  if (screen === 'leaver' && leaverAllowed(studentId)) return <LeaverBuilder studentId={studentId} version={version} toast={toast} />;
   if (screen === 'poster') return <Poster map={map} publicMap={publicMap} drafts={myDrafts} toast={toast} />;
   if (screen === 'family') return <ShowFamily map={map} toast={toast} version={version} />;
   if (screen === 'links') return <ShareLinks studentId={studentId} drafts={myDrafts} updateDraft={updateDraft} toast={toast} version={version} />;

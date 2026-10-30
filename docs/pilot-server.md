@@ -1440,3 +1440,41 @@ feed and the mapping file: `docs/roster-format.md`, "SIS sync".
   file token, canAct, scope, and through the server: the signed-out feed, photos by token, the panel's queue, 404 once
   turned off, the activity log); browser: `node scripts/checks/exhibition.cjs` (real roster, in `run.sh`). Screenshots
   `tp-exhibit-*.png`.
+## Leaver portfolio (`src/api.js`, `src/components/Leaver.jsx`, `server/routes/41-leaver.mjs`)
+
+A Year 12 or 13 student (`grade` 11–12; Year 11 as a "Practice" run) builds one portfolio from their own record for
+university, scholarship or job applications. Students under Year 11 never see it (no navigation item; `#/me/leaver` shows
+their map; the server refuses the mutators).
+
+- **Student** (`#/<me>/leaver`, "Leaver portfolio" in the navigation at every level): five steps beside a live A4 preview.
+  1 Profile (name, one-paragraph statement up to 1,500 characters, optional contact email, optional photo uploaded as any
+  evidence); 2 up to 8 best moments, reordered, and for each which evidence and which reflection to show, and which of its
+  sentences (`sentencesOf`); 3 Skills and qualities: the IB learner profile and ATL tags on the picked moments (`getTags`),
+  each can be unticked; 4 Endorsements: teacher name and note, only on moments the student shows the school or beyond
+  (`school`, `publishable`; an endorsement carrying its own `visibility` must be one of those too); 5 Template (NIST navy
+  classic, Minimal, Two columns) and share links. "Download PDF" prints through `src/print.js` / `PrintKit` (A4, running
+  footer, QR to an open link). Comments from staff show at the top with "Done".
+- **Record**: `store.leaver[studentId] = { profile: { name, statement, email, photo }, moments: [{ eventId, evidence: [index],
+  reflectionId, sentences: [index] | null }], skillsOff, endorsements: [id], template, links: [{ token, at, expiresAt, revoked,
+  revokedAt?, label }], comments: [{ id, by, text, at, done? }], updatedAt }`.
+- **Mutators** (replayed like the rest): `saveLeaver(studentId, patch)` (any of profile, moments, skillsOff, endorsements,
+  template; 400 for a private moment or reflection, a goal, a hidden moment, more than 8, a photo that is not an upload, a bad
+  email; 403 under Year 11), `shareLeaver(studentId, { token, days, label })` (the token is made in the browser with
+  `crypto.getRandomValues`, 22–64 url-safe characters, never by `uid()`; `days` one of 30, 90, 180, 365; needs a moment),
+  `revokeLeaver(studentId, token)`, `commentLeaver(studentId, teacherId, text)` (notifies the student),
+  `doneLeaverComment(studentId, commentId)`. Reads: `getLeaver`, `leaverChoices` (what may go in, and how many private or
+  hidden moments were left out), `leaverView(studentId)`: what every copy shows, checked item by item at read time, so a
+  moment made private or hidden by a moderator later drops out of the draft, the PDF and the link by itself.
+- **canAct** (`LV_FNS`, before the admin rule): building, sharing, withdrawing and ticking comments: only the student, on their
+  own; never staff, admins or families. Commenting: the student's advisor or whole-school staff, as themselves, once a portfolio
+  exists. **Scope**: the student gets theirs whole; staff in reach get it without the links' tokens (subject teachers read it,
+  only the advisor and whole-school roles comment); families and everyone else nothing: a family reads it only through a link.
+- **Public**: `GET /api/public/leaver/:token` (no sign-in) → `{ portfolio: leaverView, expiresAt }` (no record ids, no comments);
+  404 unknown or withdrawn, 410 expired. The page is `#/l/<token>` (`PUBLIC_KINDS` in `src/publicRoute.js`; never syncs the
+  record); without a server it reads the browser's own copy. `server/files.mjs` opens the photo and chosen evidence to anyone
+  while a link is open (`leaverPublicFiles`), and stops when it is withdrawn or expires.
+- **Advisor**: "Leaver portfolio" on the advisor's student page (Year 11 and up): counts, "Read the draft" (read only) and comments.
+- **PDPA**: `leaver` is keyed by student, so it is in their copy and their erasure.
+- Tests: `server/test/leaver-portfolio.test.mjs`; browser: `node scripts/checks/leaver-portfolio.cjs` (real roster, skipped
+  without it): a Year 13 student and their advisor picked at runtime, 3 moments, PDF in each template (A4, ≤ 3 pages, nothing
+  wider than the page), a link opened signed out (only the chosen items), withdrawn → 404; Aaron Torres (Year 8) has no feature.
