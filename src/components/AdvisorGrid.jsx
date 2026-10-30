@@ -11,6 +11,7 @@ import { AdvisoryConference } from './ConferenceSheets.jsx';
 import { HandoverNotes, NewToYou, isNewTo } from './YearHandover.jsx';
 import { AdvisoryReflection } from './TermReflection.jsx';
 import { AdvisoryMilestones } from './Milestones.jsx';
+import { StuckFlags } from './GoalCheckins.jsx';
 
 export default function AdvisorGrid({ advisorId, onOpen, toast, version }) {
   const cohort = useMemo(() => getCohort(advisorId), [advisorId, version]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -39,6 +40,7 @@ export default function AdvisorGrid({ advisorId, onOpen, toast, version }) {
       {isPilot() && <AdvisorFamily toast={toast} />}
       <AdvisoryConference advisorId={advisorId} cohort={cohort} group={group.name} />
       <AdvisoryReflection advisorId={advisorId} toast={toast} version={version} />
+      <StuckFlags teacherId={advisorId} toast={toast} version={version} onOpen={onOpen} />
       <QuietGroup advisorId={advisorId} toast={toast} version={version} />
       <AdvisoryMilestones studentIds={cohort.map((c) => c.student.id)} version={version} onOpen={(sid, eid) => onOpen(`${sid}~${eid}`)} />
       <p className="fineprint">Advisor view shows advisor, school and publishable items. Students are listed alphabetically; the grid never ranks or compares them. Each card compares a student only with their own last term.</p>

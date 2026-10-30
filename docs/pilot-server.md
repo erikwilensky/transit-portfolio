@@ -1525,3 +1525,31 @@ their map; the server refuses the mutators).
   rely on the CSS colour fix in `a11y.css` rather than their own markup. axe cannot judge everything, and nothing has
   been tried yet with a real screen reader (VoiceOver, NVDA, TalkBack). The Thai words for the new
   options are in `src/i18n.js`; the sign-in page has no display menu (it uses this device's last choice).
+
+## Weekly goal check-ins (`src/api.js`, `src/components/GoalCheckins.jsx`, pilot only)
+
+- **When**: once a week (Monday to Sunday, Asia/Bangkok, `weekOf` in `src/week.js`) for each open goal (`isOpenGoal`: a
+  goal, not a school requirement, not closed). Due from Monday, or the first time the student opens the app that week
+  (`checkinsDue(studentId)`), until they answer or snooze. No streaks, no scores, no email.
+- **Student**: Simple: one big "How is your goal going?" card per goal on the home, then one question per screen: Going
+  well / Stuck / Not started (or "Ask me again in 2 weeks"), an optional sentence (with "Say it", `SayIt` from
+  `Voice.jsx`), and "What's one next step?". Standard and Full: a compact card per goal on the home (`MicButton` beside
+  each box). Answers show as a small timeline (`CheckinTimeline`) on the goal's station panel and the Simple goal card.
+- **Stored on the goal**: `e.checkins [{ id, week (its Monday), date, status: 'well'|'stuck'|'none', note ≤300, next ≤200,
+  at }]` (one per week; answering again that week replaces it), `e.checkinSnooze` (a day; nothing asked before it),
+  `e.encouragements [{ id, by, line, text, at }]`. `addCheckIn` (the sponsor's thread) is left as it is.
+- **Stuck twice in a row** (`stuckTwice(e)`: the last two check-ins "Stuck", the latest this week or last): a notification
+  to the advisor and an accepted sponsor ("Aaron is stuck on 'Run 5k'", opens This week), and a "Stuck on a goal" list
+  (`StuckFlags`, `stuckFlags(teacherId)`) on My advisory and This week. **Send encouragement**: one of
+  `ENCOURAGE_LINES` plus an optional sentence; the student gets an in-app notification and it shows on the goal.
+- **Mutators**: `checkInGoal(goalId, { status, note, next })`, `snoozeCheckins(goalId)` (14 days): only the student, on
+  their own open goal. `sendEncouragement(goalId, by, line, text)`: the student's advisor or the goal's accepted sponsor,
+  as themselves (`canEncourage`; never on a private goal). `canAct` in `server/auth.mjs` (`GC_FNS`), `TOUCHES` in scope.
+- **Who reads it**: whoever receives the goal (the student, staff in reach at the advisor level, the sponsor); families
+  never (`scopedSnapshot` strips the three fields). Private goals never reach staff, so they never flag. Part of the
+  student's record for a PDPA copy and erasure (it lives on the goal).
+- Tests: `server/test/goal-checkins.test.mjs` (once a week, snooze, stuck twice, who may act and download; earlier weeks
+  seeded by moving check-ins back); browser: `node scripts/checks/goal-checkins.cjs` (the real roster from `TP_ROSTER`:
+  Aaron Torres checks in Stuck, the server is stopped and his check-in moved back a week in `state.json`, he is stuck
+  again; Ms Jane Altemen sees the flag on My advisory and This week and sends encouragement; Aaron sees it; the Standard
+  card; axe over the new parts; screenshots as `tp-checkins-*.png`).

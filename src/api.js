@@ -12,6 +12,7 @@ import schoolData from '../data/school.json';
 // Re-exported so the server bundle carries it (public verify codes); the server never loads src/.
 export { verifyCode } from './format.js';
 import { planRoster, parseRoster } from './imports/roster.js';
+import { weekOf } from './week.js';
 // The server reads roster files with the same code (POST /api/admin/roster).
 export { parseRoster, kindOfRoles } from './imports/roster.js';
 
@@ -2499,6 +2500,70 @@ export function leaverView(sid) {
 }
 export const leaverLinkOpen = (l) => !!l && !l.revoked && l.expiresAt >= TODAY;
 
+// ── Weekly goal check-ins (src/components/GoalCheckins.jsx) ──
+// Once a week (Monday to Sunday, Bangkok) a student with an open goal is asked how it is going. Stored on the goal:
+// e.checkins [{ id, week (its Monday), date, status, note, next, at }] (one per week: answering again replaces it),
+// e.checkinSnooze (no questions before that day), e.encouragements [{ id, by, line, text, at }]. Stuck twice in a row
+// flags the goal to the advisor and an accepted sponsor, who can send encouragement. No streaks, no scores.
+export const CHECKIN_STATUS = { well: 'Going well', stuck: 'Stuck', none: 'Not started' };
+export const ENCOURAGE_LINES = ['You’ve got this. Small steps still count.', 'Being stuck is part of it. Come and find me if you want to talk it through.', 'I’m proud of you for keeping at it.', 'Try one tiny step this week. I’m here to help.'];
+export const CHECKIN_SNOOZE_DAYS = 14;
+const ciClip = (v, n) => String(v ?? '').trim().slice(0, n);
+const ciDays = (d, n) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 864e5).toISOString().slice(0, 10);
+export const isOpenGoal = (e) => e?.type === 'goal' && !e.requirement && !e.closedOn;
+export const goalCheckins = (e) => e?.checkins || [];
+export const checkinSnoozed = (e) => !!e?.checkinSnooze && e.checkinSnooze > TODAY;
+export const checkedInThisWeek = (e) => goalCheckins(e).some((c) => c.week === weekOf(TODAY).from);
+export const checkinsDue = (studentId) => store.events.filter((e) => e.studentId === studentId && isOpenGoal(e) && !checkinSnoozed(e) && !checkedInThisWeek(e)).sort((a, b) => a.date.localeCompare(b.date));
+// The last two check-ins both "Stuck", the latest one this week or last.
+export function stuckTwice(e) {
+  const c = goalCheckins(e).slice(-2);
+  return isOpenGoal(e) && c.length === 2 && c.every((x) => x.status === 'stuck') && c[1].week >= weekOf(TODAY, 1).from;
+}
+// Who may send encouragement on a goal: the student's advisor or the goal's accepted sponsor. Never a private goal.
+export const canEncourage = (eventId, tid) => { const e = getEvent(eventId); return isOpenGoal(e) && !!tid && e.visibility !== 'private' && (getStudent(e.studentId)?.advisorId === tid || (e.sponsor?.teacherId === tid && e.sponsor.status === 'accepted')); };
+// The stuck goals a teacher sees on My advisory and This week, from the part of the record they hold.
+export const stuckFlags = (tid) => store.events.filter((e) => stuckTwice(e) && canEncourage(e.id, tid)).map((e) => {
+  const last = goalCheckins(e).at(-1);
+  return { event: e, student: getStudent(e.studentId), last, sent: (e.encouragements || []).find((x) => x.by === tid && x.at >= last.at) || null };
+});
+export function checkInGoal(goalId, f = {}) {
+  const e = getEvent(goalId);
+  if (!isOpenGoal(e)) throw cmErr('No such goal.', 404);
+  if (!Object.hasOwn(CHECKIN_STATUS, f.status)) throw cmErr('Pick how it is going.');
+  const week = weekOf(TODAY).from;
+  const c = { id: uid('ci-'), week, date: TODAY, status: f.status, note: ciClip(f.note, 300), next: ciClip(f.next, 200), at: nowIso() };
+  e.checkins = [...goalCheckins(e).filter((x) => x.week !== week), c];
+  const s = getStudent(e.studentId);
+  log(e.studentId, s?.name, 'goal', `Checked in on “${e.title}”: ${CHECKIN_STATUS[c.status]}`);
+  if (stuckTwice(e) && e.visibility !== 'private') {
+    const to = [s?.advisorId, e.sponsor?.status === 'accepted' ? e.sponsor.teacherId : null].filter((t, i, a) => t && a.indexOf(t) === i);
+    for (const t of to) notify(toTeacher(t), `${s.name.split(' ')[0]} is stuck on “${e.title}”`, { persona: toTeacher(t), screen: 'week' });
+  }
+  emit();
+  return c;
+}
+export function snoozeCheckins(goalId) {
+  const e = getEvent(goalId);
+  if (!isOpenGoal(e)) throw cmErr('No such goal.', 404);
+  e.checkinSnooze = ciDays(TODAY, CHECKIN_SNOOZE_DAYS);
+  log(e.studentId, getStudent(e.studentId)?.name, 'goal', `Paused check-ins on “${e.title}” until ${e.checkinSnooze}`);
+  emit();
+  return e.checkinSnooze;
+}
+export function sendEncouragement(goalId, by, line, text) {
+  const e = getEvent(goalId);
+  if (!isOpenGoal(e)) throw cmErr('No such goal.', 404);
+  if (!ENCOURAGE_LINES.includes(line) && !ciClip(text, 300)) throw cmErr('Pick a line or write one.');
+  const n = { id: uid('en-'), by, line: ENCOURAGE_LINES.includes(line) ? line : '', text: ciClip(text, 300), at: nowIso() };
+  e.encouragements = [...(e.encouragements || []), n];
+  const who = shortName(teacherName(by));
+  notify(toStudent(e.studentId), `${who} sent you encouragement for “${e.title}”: ${[n.line, n.text].filter(Boolean).join(' ')}`, { persona: toStudent(e.studentId), screen: 'map', param: e.id });
+  log(e.studentId, teacherName(by), 'goal', `Sent encouragement on “${e.title}”`);
+  emit();
+  return n;
+}
+
 // ── Shared record: with the pilot server, every change is replayed there ──
 // A screen calls a change below; it runs here at once (instant UI) while recording the ids and
 // times it made. The hook (src/sync.js) posts { fn, args, rec } to /api/action, and the server runs
@@ -2560,6 +2625,7 @@ openReflectionWindow = act('openReflectionWindow', openReflectionWindow); closeR
 markMilestonesSeen = act('markMilestonesSeen', markMilestonesSeen);
 createExhibition = act('createExhibition', createExhibition); removeExhibitionSlide = act('removeExhibitionSlide', removeExhibitionSlide); pauseExhibition = act('pauseExhibition', pauseExhibition); revokeExhibition = act('revokeExhibition', revokeExhibition);
 saveLeaver = act('saveLeaver', saveLeaver); shareLeaver = act('shareLeaver', shareLeaver); revokeLeaver = act('revokeLeaver', revokeLeaver); commentLeaver = act('commentLeaver', commentLeaver); doneLeaverComment = act('doneLeaverComment', doneLeaverComment);
+checkInGoal = act('checkInGoal', checkInGoal); snoozeCheckins = act('snoozeCheckins', snoozeCheckins); sendEncouragement = act('sendEncouragement', sendEncouragement);
 // Undo puts a whole earlier copy back, and reset goes back to the seed (sync.js sends it to /api/reset).
 restore = act('restore', restore); resetDemo = act('resetDemo', resetDemo);
 export const MUTATORS = Object.keys(ACTIONS);

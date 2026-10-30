@@ -206,6 +206,7 @@ export function canAct(user, fn, args = []) {
   if (fn === 'markMilestonesSeen') return milestonesOk(user, args); // only the student, never staff, admins or families
   if (EX_FNS.has(fn)) { try { return exhibitionOk(user, fn, args); } catch { return false; } }
   if (LV_FNS.has(fn)) { try { return leaverOk(user, fn, args); } catch { return false; } }
+  if (GC_FNS.has(fn)) { try { return checkinOk(user, fn, args); } catch { return false; } }
   if (isAdmin(user)) return true;
   if (ADMIN_ONLY.has(fn)) return false;
   if (ANYONE.has(fn)) return true;
@@ -380,4 +381,15 @@ function leaverOk(user, fn, [sid, by]) {
   if (!STAFF.includes(user.kind) || !user.teacherId || by !== user.teacherId || !api.getLeaver(sid)) return false;
   const reach = reachOf(user);
   return reach === null || (reach.has(sid) && api.getStudent(sid)?.advisorId === user.teacherId);
+}
+// ── Weekly goal check-ins (api.checkInGoal, snoozeCheckins, sendEncouragement) ──
+// Checking in and snoozing: only the student, on their own open goals (never staff, admins or families on their behalf).
+// Encouragement: the student's advisor or the goal's accepted sponsor, as themselves (admins too, only when they are one).
+const GC_FNS = new Set(['checkInGoal', 'snoozeCheckins', 'sendEncouragement']);
+function checkinOk(user, fn, [goalId, by]) {
+  const e = api.getEvent(goalId);
+  if (!api.isOpenGoal(e)) return false;
+  if (fn !== 'sendEncouragement') return user.kind === 'student' && !!user.studentId && e.studentId === user.studentId;
+  if (!(STAFF.includes(user.kind) || isAdmin(user)) || !user.teacherId || by !== user.teacherId) return false;
+  return api.canEncourage(e.id, user.teacherId);
 }

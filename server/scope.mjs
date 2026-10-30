@@ -200,6 +200,8 @@ export function scopedSnapshot(user) {
   // (they read it only through a link the student gives them).
   store.leaver = parent ? {} : Object.fromEntries(Object.entries(full.leaver || {}).filter(([sid]) => inReach(sid))
     .map(([sid, p]) => [sid, sid === self ? p : { ...p, links: (p.links || []).map(({ token, ...l }) => l) }]));
+  // Weekly goal check-ins (api.checkInGoal): on the goal for the student and staff who receive it; never for families.
+  if (parent) store.events = store.events.map((e) => (e.checkins || e.encouragements || e.checkinSnooze ? (({ checkins, encouragements, checkinSnooze, ...x }) => x)(e) : e));
   // Everything else (school lines' settings, integrations, rollout, family language, classes, keys other features add).
   for (const [k, v] of Object.entries(full)) if (!(k in store)) store[k] = generic(v, inReach);
   // Counts the whole-school screens show for what they may not open.
@@ -291,3 +293,4 @@ Object.assign(TOUCHES, {
   pauseExhibition: (a) => T([], [a[2]]), revokeExhibition: (a) => T([], [a[1]]),
 });
 Object.assign(TOUCHES, { saveLeaver: own0, shareLeaver: own0, revokeLeaver: own0, doneLeaverComment: own0, commentLeaver: (a) => T([a[0]], [a[1] ?? '?']) });
+Object.assign(TOUCHES, { checkInGoal: (a) => T([ev(a[0])]), snoozeCheckins: (a) => T([ev(a[0])]), sendEncouragement: (a) => T([ev(a[0])], [a[1] ?? '?']) });

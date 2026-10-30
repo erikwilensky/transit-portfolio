@@ -12,6 +12,7 @@ import MomentComments, { NewBadge, useUnread } from '../components/MomentComment
 import './simple-goals.css';
 import { HiddenNotice, ReportButton } from '../components/Report.jsx';
 import { Said, SayIt, VoiceNotes, VoiceRecorder } from '../components/Voice.jsx';
+import { CheckinTimeline, GoalCheckins } from '../components/GoalCheckins.jsx';
 import { canRecord } from '../voice.js';
 import { photoAlt } from '../a11y.js';
 
@@ -75,6 +76,7 @@ export default function SimpleHome({ map, studentId, toast, version, addRequest,
       <OpenPrompts studentId={studentId} simple toast={toast} version={version} />
       <SpottedForMe studentId={studentId} simple toast={toast} version={version} />
       <PeerFromClasses studentId={studentId} simple toast={toast} version={version} />
+      <GoalCheckins studentId={studentId} simple toast={toast} version={version} />
 
       <div className="sh-actions">
         <button className="sh-card add" onClick={() => setAdding(true)}><span className="sh-ic" aria-hidden="true">＋</span><b>Add something I did</b><small>A club, a project, a match, anything</small></button>
@@ -344,6 +346,7 @@ function GoalCard({ e, map, toast, onDone }) {
       <b>{e.title}</b>
       <small>{e.date < TODAY ? `You planned it for ${fmtDate(e.date)}` : `By ${fmtDate(e.date)}`}{sp ? ` · ${sp}` : ''}</small>
       {e.sponsor?.status === 'accepted' && e.sponsor.expectations && <p className="sh-tip">{callOf(e.sponsor.teacherId)}: “{e.sponsor.expectations}”</p>}
+      <CheckinTimeline event={e} limit={3} />
       {drop
         ? <div className="sh-goal-do"><span>Take it off your journey?</span><button className="ghost" onClick={() => { deleteStation(e.id); toast(`“${e.title}” is off your journey.`); }}>Yes, take it off</button><button className="ghost" onClick={() => setDrop(false)}>Keep it</button></div>
         : <div className="sh-goal-do"><button className="primary" onClick={() => { completeGoal(e.id); onDone(e.id); }}>I did it!</button><button className="ghost" onClick={() => setDrop(true)}>Not doing this any more</button></div>}

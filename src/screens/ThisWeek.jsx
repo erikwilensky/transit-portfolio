@@ -5,6 +5,7 @@ import { progress } from '../auth.js';
 import { fmtDate, inkOn } from '../format.js';
 import { QuietGroup } from '../components/Nudges.jsx';
 import { WeekMilestones } from '../components/Milestones.jsx';
+import { StuckFlags } from '../components/GoalCheckins.jsx';
 import './classes.css';
 import './this-week.css';
 
@@ -56,6 +57,8 @@ export default function ThisWeek({ persona, go, version, toast, param }) {
         )}
         {threads.length > 5 && <p className="fineprint">And {plural(threads.length - 5, 'more thread')} with new comments.</p>}
       </section>
+
+      {!back && <StuckFlags teacherId={persona.teacherId} toast={toast} version={version} />}
 
       {s.teaches && (
         <section className="tw-sec" aria-labelledby="tw-classes">

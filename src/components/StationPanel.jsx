@@ -4,6 +4,7 @@ import RecordInspector from './RecordInspector.jsx';
 import MomentComments, { commentViewer } from './MomentComments.jsx';
 import { HiddenNotice, ReportButton } from './Report.jsx';
 import { PeerOnMoment } from './PeerFeedback.jsx';
+import { CheckinTimeline } from './GoalCheckins.jsx';
 import { ATL, LEARNER_PROFILE, setTags, addCheckIn, addReflection, completeGoal, deleteStation, editStation, getTeacher, requestEndorsement, getEvent, requestFor, resubmit, setVisibility, snapshot, TODAY, endorserChoices } from '../api.js';
 import { createPortal } from 'react-dom';
 import { photoAlt } from '../a11y.js';
@@ -159,6 +160,7 @@ function GoalBox({ event, readOnly, lang = 'en' }) {
           )}
         </div>
       )}
+      <CheckinTimeline event={event} me={readOnly ? 'staff' : 'student'} />
       {!readOnly && !event.requirement && <button className="primary small-btn" onClick={() => completeGoal(event.id)}>It happened: make it a station</button>}
       {!readOnly && sp?.status === 'accepted' && <p className="fineprint">Marking it done sends it to {t.name} to endorse in one click.</p>}
     </section>
