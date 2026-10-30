@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { addGoal, addReflection, addStation, completeGoal, deleteStation, editStation, endorserChoices, getEvent, getPromptsFor, getStudent, getTeacher, getTeachers, requestFor, setVisibility, snapshot, teachersOf, TODAY } from '../api.js';
+import { addGoal, addReflection, addStation, completeGoal, deleteStation, editStation, endorserChoices, getEvent, getPromptsFor, getStudent, getTeacher, getTeachers, requestFor, setPrivacy, setVisibility, snapshot, teachersOf, TODAY } from '../api.js';
 import { fmtDate } from '../format.js';
 import { isPilot } from '../auth.js';
 import { evidenceFor } from '../upload.js';
@@ -10,6 +10,7 @@ import { MyTasks } from '../components/ClassTasks.jsx';
 import { ExampleAsks, Examples, promptsFrom } from '../components/SubjectPrompts.jsx';
 import { SpottedForMe } from '../components/Spotted.jsx';
 import { PeerFromClasses, PeerOnMoment } from '../components/PeerFeedback.jsx';
+import { FamilyNotesHome, FamilyNotesOn, FamilyNotesSwitch } from '../components/FamilyNotes.jsx';
 import MomentComments, { NewBadge, useUnread } from '../components/MomentComments.jsx';
 import './simple-goals.css';
 import { HiddenNotice, ReportButton } from '../components/Report.jsx';
@@ -77,6 +78,7 @@ export default function SimpleHome({ map, studentId, toast, version, addRequest,
         <p>{moments.length ? `Your journey has ${moments.length} moment${moments.length > 1 ? 's' : ''} so far.` : 'Your journey starts here.'} What have you been up to?</p>
       </section>
 
+      <FamilyNotesHome studentId={studentId} toast={toast} version={version} onOpen={setOpen} />
       <MyTasks studentId={studentId} simple toast={toast} version={version} />
       <OpenPrompts studentId={studentId} simple toast={toast} version={version} />
       <ExampleAsks studentId={studentId} simple toast={toast} version={version} />
@@ -478,6 +480,7 @@ function Moment({ e, map, onClose, onReflect, toast }) {
         <div className="sh-next"><button className="primary" onClick={onReflect}>{e.reflections?.length ? 'Add another thought' : 'What did I learn?'}</button></div>
         <MomentComments key={`c-${e.id}`} event={e} simple toast={toast} />
         <PeerOnMoment key={`pf-${e.id}`} event={e} simple toast={toast} />
+        <FamilyNotesOn key={`fn-${e.id}`} event={e} simple toast={toast} />
         <ReportButton event={e} simple toast={toast} />
       </div>
     </div>
@@ -504,6 +507,7 @@ export function ShowFamily({ map, toast }) {
         </li>
       ); })}</ul>
       {!moments.length && <p className="sh-empty">When you add moments, you can choose here who sees them.</p>}
+      <div className="sh-fam-notes"><FamilyNotesSwitch studentId={map.student.id} onChange={(on) => { setPrivacy(map.student.id, { familyNotes: on }); toast(on ? 'Your family can leave notes again.' : 'Notes from family are off. You can turn them on again here.'); }} /></div>
     </div>
   );
 }

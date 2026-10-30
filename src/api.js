@@ -3348,6 +3348,120 @@ export function casCohort({ advisorId = '' } = {}) {
   });
 }
 
+// ── Family encouragement: a short kind note from a family member on a moment the family view shows (src/components/FamilyNotes.jsx) ──
+// store.familyNotes [{ id: 'fn-…', eventId, studentId, by ('u:<accountId>' in a pilot, the demo persona id), name, text,
+// reaction, at, edited?, thanked?, studentHidden? (the student's own view), hidden? (a moderator) }], made on first use.
+// One note per family member per moment, edited or deleted by its writer. The student turns notes off with
+// setPrivacy(sid, { familyNotes: false }). Readers: the student, their family, the advisor, the teachers of their current
+// classes and whole-school roles (familyNoteReader); server/scope.mjs sends nothing to anyone else.
+export const FAMILY_REACTIONS = { proud: 'Proud of you', welldone: 'Well done', dinner: 'Tell me more at dinner', keepgoing: 'Keep going' };
+export const FAMILY_NOTE_MAX = 280;
+const fnErr = (message, status = 400) => Object.assign(new Error(message), { status });
+export const familyNotesOn = (sid) => getPrivacy(sid).familyNotes !== false;
+// A moment the family view shows: never private for that family's level, never hidden after a report, never a goal.
+export const familyShows = (e) => !!e && e.type !== 'goal' && !e.hidden && !!getStudent(e.studentId) && VISIBLE_TO[familyViewer(e.studentId)].includes(e.visibility);
+export const getFamilyNote = (id) => (store.familyNotes || []).find((n) => n.id === id);
+export const familyNotesFor = (eventId) => (store.familyNotes || []).filter((n) => n.eventId === eventId).sort((a, b) => a.at.localeCompare(b.at));
+export const familyNotesOf = (sid) => (store.familyNotes || []).filter((n) => n.studentId === sid).sort((a, b) => b.at.localeCompare(a.at));
+// Staff who read a student's family notes besides whole-school roles: the advisor and the teachers of a current class.
+export function familyNoteReader(tid, sid) {
+  const s = getStudent(sid); if (!s || !tid) return false;
+  if (s.advisorId === tid) return true;
+  const mine = new Set(getEnrolments().filter((n) => n.studentId === sid && !(n.to && n.to < TODAY)).map((n) => n.classId));
+  return getClasses().some((c) => mine.has(c.id) && (c.teacherIds || []).includes(tid));
+}
+const noteBody = (text, reaction) => {
+  const t = String(text ?? '').replace(/\s+/g, ' ').trim();
+  if (t.length > FAMILY_NOTE_MAX) throw fnErr(`Keep it to ${FAMILY_NOTE_MAX} characters.`);
+  if (reaction != null && reaction !== '' && !FAMILY_REACTIONS[reaction]) throw fnErr('Pick one of the reactions.');
+  if (!t && !reaction) throw fnErr('Write a few words or pick a reaction.');
+  return { text: t, reaction: reaction || null };
+};
+export const familyNoteWords = (n) => [n.reaction && FAMILY_REACTIONS[n.reaction], n.text].filter(Boolean).join('. ');
+export function addFamilyNote(eventId, from, text, reaction) {
+  const e = getEvent(eventId); if (!e) throw fnErr('No such moment.', 404);
+  if (!familyShows(e)) throw fnErr('This moment is not shared with the family.', 403);
+  if (!familyNotesOn(e.studentId)) throw fnErr('Notes from family are turned off for now.', 409);
+  const by = String(from?.key ?? ''), name = String(from?.name ?? '').trim().slice(0, 80);
+  if (!by || !name) throw fnErr('Who is writing this?');
+  if (familyNotesFor(eventId).some((n) => n.by === by)) throw fnErr('You already left a note on this moment. You can change it.', 409);
+  const n = { id: uid('fn-'), eventId, studentId: e.studentId, by, name, ...noteBody(text, reaction), at: nowIso() };
+  (store.familyNotes ||= []).push(n);
+  const words = n.text || FAMILY_REACTIONS[n.reaction]; // one or the other, so a reaction alone reads in Thai too
+  notify(toStudent(e.studentId), `${name} sent you encouragement for “${e.title}”: ${words.length > 60 ? `${words.slice(0, 57)}…` : words}`, { persona: toStudent(e.studentId), screen: 'map', param: e.id }, 'encourage');
+  log(e.studentId, name, 'family', `Left a note on “${e.title}”`);
+  emit();
+  return n;
+}
+const ownFamilyNote = (id, by) => {
+  const n = getFamilyNote(id); if (!n) throw fnErr('That note is gone.', 404);
+  if (n.by !== by) throw fnErr('Only the person who wrote a note can change it.', 403);
+  return n;
+};
+export function editFamilyNote(id, by, text, reaction) {
+  const n = ownFamilyNote(id, by);
+  Object.assign(n, noteBody(text, reaction), { edited: nowIso() });
+  emit();
+  return n;
+}
+export function deleteFamilyNote(id, by) {
+  ownFamilyNote(id, by);
+  store.familyNotes = store.familyNotes.filter((x) => x.id !== id);
+  emit();
+}
+export function thankFamilyNote(id) {
+  const n = getFamilyNote(id); if (!n) throw fnErr('That note is gone.', 404);
+  if (n.thanked) return n;
+  n.thanked = nowIso();
+  const e = getEvent(n.eventId);
+  notify(toFamily(n.studentId), `${getStudent(n.studentId)?.name.split(' ')[0] || 'Your child'} said thank you for your note on “${e?.title || 'a moment'}”.`, { persona: toFamily(n.studentId), screen: 'family', param: n.studentId }, 'encourage');
+  emit();
+  return n;
+}
+// The student hides a note from their own view (or shows it again). Nobody else is told.
+export function setFamilyNoteHidden(id, hidden) {
+  const n = getFamilyNote(id); if (!n) throw fnErr('That note is gone.', 404);
+  if (hidden) n.studentHidden = nowIso(); else delete n.studentHidden;
+  emit();
+  return n;
+}
+// Safeguarding: reportItem({ familyNoteId }, …) by the student, staff who read it or an admin; moderateReport on such a
+// report: hide (then only staff and its writer see it), unhide, none.
+const reportItemFam = reportItem, moderateReportFam = moderateReport;
+reportItem = function reportItem(target, reason, note, from) {
+  if (!target?.familyNoteId) return reportItemFam(target, reason, note, from);
+  const n = getFamilyNote(target.familyNoteId); if (!n) throw fnErr('That note is gone.', 404);
+  const e = getEvent(n.eventId); if (!e) throw fnErr('No such moment.', 404);
+  if (!REPORT_REASONS[reason]) throw fnErr('Pick a reason.');
+  const who = reporter(from, e);
+  if (who.role === 'Family') throw fnErr('Speak to the school about a family note.');
+  const at = nowIso(), list = (store.reports ||= []);
+  const open = list.find((r) => r.from.key === who.key && r.status === 'open' && r.familyNoteId === n.id);
+  if (open) return open;
+  if (list.filter((r) => r.from.key === who.key && Date.parse(at) - Date.parse(r.at) < 3600e3).length >= REPORT_LIMIT) throw fnErr('You have sent a lot of reports. Try again later, or speak to a teacher.', 429);
+  const r = { id: uid('rp-'), kind: 'familyNote', eventId: e.id, familyNoteId: n.id, studentId: e.studentId, reason, note: String(note ?? '').trim().slice(0, 1000), at, from: who, status: 'open', history: [] };
+  list.push(r);
+  for (const k of MODERATOR_KINDS) notify(toRole(k), `New report: a family note on “${e.title}” (${getStudent(e.studentId).name}). ${REPORT_REASONS[reason]}.`, { persona: toRole(k), screen: 'reports', param: r.id });
+  emit();
+  return r;
+};
+moderateReport = function moderateReport(id, action, note, by) {
+  const r = getReport(id);
+  if (!r?.familyNoteId) return moderateReportFam(id, action, note, by);
+  if (!REPORT_STATUS[action]) throw fnErr('Pick what to do.');
+  if (action === 'photo') throw fnErr('A note has no photo.');
+  if (by && !teacherById[by]) throw fnErr('No such teacher.');
+  const n = getFamilyNote(r.familyNoteId);
+  if (action !== 'none' && !n) throw fnErr('That note is gone.', 404);
+  const at = nowIso(), name = by ? teacherById[by].name : 'Pilot admin', e = getEvent(r.eventId), to = toStudent(r.studentId), go = e ? { persona: to, screen: 'map', param: e.id } : undefined;
+  if (action === 'hide') { n.hidden = { at, by: name }; notify(to, `A teacher has hidden a note from your family on “${e?.title}”.`, go); }
+  if (action === 'unhide') { delete n.hidden; notify(to, `A teacher has finished looking at a note from your family on “${e?.title}”. It is shown again.`, go); }
+  const entry = { action, note: String(note ?? '').trim().slice(0, 1000), at, by: name };
+  for (const x of store.reports) if (x.familyNoteId === r.familyNoteId) { x.history.push({ ...entry }); x.status = REPORT_STATUS[action]; }
+  emit();
+  return r;
+};
+
 // ── Shared record: with the pilot server, every change is replayed there ──
 // A screen calls a change below; it runs here at once (instant UI) while recording the ids and
 // times it made. The hook (src/sync.js) posts { fn, args, rec } to /api/action, and the server runs
@@ -3415,6 +3529,7 @@ checkInGoal = act('checkInGoal', checkInGoal); snoozeCheckins = act('snoozeCheck
 openConferenceRound = act('openConferenceRound', openConferenceRound); editConferenceRound = act('editConferenceRound', editConferenceRound); closeConferenceRound = act('closeConferenceRound', closeConferenceRound); bookConference = act('bookConference', bookConference); cancelConference = act('cancelConference', cancelConference); blockConferenceSlot = act('blockConferenceSlot', blockConferenceSlot); sendConferenceReminders = act('sendConferenceReminders', sendConferenceReminders);
 setSubjectPrompts = act('setSubjectPrompts', setSubjectPrompts); clearSubjectPrompts = act('clearSubjectPrompts', clearSubjectPrompts); answerExampleAsk = act('answerExampleAsk', answerExampleAsk);
 logCasExperience = act('logCasExperience', logCasExperience); logCasHours = act('logCasHours', logCasHours); withdrawCasHours = act('withdrawCasHours', withdrawCasHours); confirmCasHours = act('confirmCasHours', confirmCasHours); returnCasHours = act('returnCasHours', returnCasHours); setCasCode = act('setCasCode', setCasCode); setCasCoordinator = act('setCasCoordinator', setCasCoordinator);
+addFamilyNote = act('addFamilyNote', addFamilyNote); editFamilyNote = act('editFamilyNote', editFamilyNote); deleteFamilyNote = act('deleteFamilyNote', deleteFamilyNote); thankFamilyNote = act('thankFamilyNote', thankFamilyNote); setFamilyNoteHidden = act('setFamilyNoteHidden', setFamilyNoteHidden);
 // Undo puts a whole earlier copy back, and reset goes back to the seed (sync.js sends it to /api/reset).
 restore = act('restore', restore); resetDemo = act('resetDemo', resetDemo);
 export const MUTATORS = Object.keys(ACTIONS);

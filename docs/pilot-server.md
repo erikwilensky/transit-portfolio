@@ -2019,3 +2019,46 @@ the school's report system. This tool sends nothing anywhere, and writes nothing
   writes Aaron's advisor comment for 8C. Another teacher, Aaron, a coordinator and the admin get neither draft and cannot
   write them; the coordinator's progress shows counts only; the admin sets 15 words and Mr Coultas sees 2 over; the export
   is in the activity log; axe; phone width).
+## Family encouragement (`src/api.js`, `src/components/FamilyNotes.jsx`, pilot only)
+
+A signed-in family member leaves a short kind note on a moment the family view shows them. Pilot only (the screens check
+`isPilot()`); no route of its own: it runs on `/api/action` like any change. No email.
+
+- **Record** (made on first use): `store.familyNotes = [{ id: 'fn-…', eventId, studentId, by ('u:<accountId>'), name (the
+  account's name), text, reaction, at, edited?, thanked?, studentHidden?, hidden?: { at, by } }]`. Reactions
+  (`FAMILY_REACTIONS`): `proud` "Proud of you", `welldone` "Well done", `dinner` "Tell me more at dinner", `keepgoing` "Keep
+  going". Text up to `FAMILY_NOTE_MAX` = 280 characters (spaces collapsed); a reaction, words, or both. The student's switch is
+  `privacy[sid].familyNotes` (`false` = off; `familyNotesOn(sid)`).
+- **Which moments**: `familyShows(e)`: not a goal, not hidden after a report, and at a level the family view reads
+  (`VISIBLE_TO[familyViewer(sid)]`: the advisor level for Years 7 to 9, the school level from Year 10). Never private ones.
+- **Mutators**: `addFamilyNote(eventId, { key, name }, text, reaction)` (403 not shown to the family, 409 notes off, 409 a second
+  note by the same person on the same moment; notifies the student "Maria Torres sent you encouragement for “…”: …", kind
+  `encourage`, `go: map/<eventId>`; activity line "Left a note on “…”"); `editFamilyNote(id, by, text, reaction)` and
+  `deleteFamilyNote(id, by)` (the writer, any time; 403 otherwise); `thankFamilyNote(id)` (notifies `fam:<sid>`: "Aaron said
+  thank you for your note on “…”.", kind `encourage`; in Thai through `noteText`); `setFamilyNoteHidden(id, hidden)` (the
+  student's own view; nobody is told). Reads: `getFamilyNote`, `familyNotesFor(eventId)`, `familyNotesOf(sid)`,
+  `familyNoteReader(tid, sid)` (advisor or a teacher of a current class), `familyNoteWords(n)`.
+- **Safeguarding**: `reportItem({ familyNoteId }, reason, note, from)` makes a `kind: 'familyNote'` report (families cannot
+  report notes; same limits and moderator notifications, "New report: a family note on “…”"). `moderateReport` on it: `hide`
+  (only staff and its writer see it, with "A teacher is looking at this note"), `unhide`, `none`; `photo` is refused. The
+  student is told "A teacher has hidden a note from your family on “…”." Reports shows "A note from family (name)" and the words.
+- **canAct** (`FN_FNS` and `familyNoteOk` in `server/auth.mjs`, before the admin rule): writing only as a parent's own account
+  (`key` = `u:<their id>`, `name` = their account name) on their child's moment that `familyShows`, while notes are on; editing
+  and deleting only the writer; thanking and hiding only the student (not a hidden note). Reporting: the student, staff who read
+  it (advisor, a current class's teacher, whole-school roles) as themselves, admins. Staff and admins never write a note.
+- **Scope** (`familyNotesScope` in `server/scope.mjs`): notes go only with moments the person receives. A family: notes on their
+  children's moments (a hidden one only to its writer), without `studentHidden`, plus `privacy[child] = { familyNotes: false }`
+  when a child turned them off. The student: their own, not hidden, without `by`. Staff: the advisor, a current class's teachers
+  and whole-school roles; any other teacher gets none. A non-moderator's own report keeps its `familyNoteId`.
+- **PDPA**: `familyNotes.json` in the student's copy (and their family's copy); erasure removes them (by `studentId`).
+- **Activity log**: each change is a `change` line with its `fn` (`addFamilyNote`, …) and the student, never the words.
+- **Screens**: the station panel and the Simple moment card: "Notes from family" (ข้อความจากครอบครัว). A family member:
+  everyone's notes, theirs with Change and Delete, and the box (reactions, a 280-character count, "Send note") while they have
+  none there; the family view says "Open any moment to leave Aaron a kind note." (or that notes are off). The student: each note
+  with "Say thank you", "Hide" (hidden ones behind "Show n hidden notes", "Show again") and "Report". Simple home: "From your
+  family", big cards, notes not thanked first, with "Open the moment". Staff: read only, "(family)", thanked, hidden, Report.
+  The student's switch: Privacy ("Notes from family") and, at Simple, "Show my family". Family words are English or Thai in the
+  component; the student's in `src/i18n.js` (its own block). Notes are people's own words and never translated.
+- Tests: `server/test/family-notes.test.mjs`; browser: `node scripts/checks/family-notes.cjs` (the real roster from `TP_ROSTER`;
+  Aaron Torres at Simple on a phone, a parent joined by the family letter in Thai, Ms Jane Altemen, a coordinator, an unrelated
+  teacher, each in its own context; screenshots `tp-fn-*.png`); `thai-students.cjs` sweeps the note on his home, moment and report.

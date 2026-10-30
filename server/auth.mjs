@@ -212,6 +212,7 @@ export function canAct(user, fn, args = []) {
   if (SP_FNS.has(fn)) { try { return subjectPromptOk(user, fn, args); } catch { return false; } }
   if (CAS_FNS.has(fn)) { try { return casOk(user, fn, args); } catch { return false; } }
   if (PH_FNS.has(fn)) { try { return phraseOk(user, fn, args); } catch { return false; } }
+  if (FN_FNS.has(fn) || (fn === 'reportItem' && args[0]?.familyNoteId)) { try { return familyNoteOk(user, fn, args); } catch { return false; } }
   if (isAdmin(user)) return true;
   if (ADMIN_ONLY.has(fn)) return false;
   if (ANYONE.has(fn)) return true;
@@ -515,4 +516,25 @@ function phraseOk(user, fn, args) {
 export function liveSessions() {
   const now = Date.now(), live = Object.values(sessions).filter((s) => s.expiresAt >= now && accountById(s.userId));
   return { sessions: live.length, people: new Set(live.map((s) => s.userId)).size };
+}
+
+// ── Family encouragement (api.addFamilyNote, editFamilyNote, deleteFamilyNote, thankFamilyNote, setFamilyNoteHidden;
+// reportItem on { familyNoteId }) ──
+// Writing: only a family member, as their own account (`u:<id>`, their own name), on their child's moment that the family
+// view shows (not hidden), while the student has notes on. Changing or deleting: only its writer. Thanking and hiding it
+// from their own view: only the student. Reporting: the student, staff who read it (advisor, a current class's teacher,
+// whole-school roles) as themselves, admins. Never staff or admins writing as a family.
+const FN_FNS = new Set(['addFamilyNote', 'editFamilyNote', 'deleteFamilyNote', 'thankFamilyNote', 'setFamilyNoteHidden']);
+function familyNoteOk(user, fn, args) {
+  const me = user.kind === 'student' && user.studentId, fam = user.kind === 'parent' && !!user.id, key = `u:${user.id}`, kids = user.children || [];
+  if (fn === 'addFamilyNote') { const e = api.getEvent(args[0]); return fam && !!e && kids.includes(e.studentId) && api.familyShows(e) && api.familyNotesOn(e.studentId) && args[1]?.key === key && args[1]?.name === user.name; }
+  const n = api.getFamilyNote(fn === 'reportItem' ? args[0].familyNoteId : args[0]);
+  if (!n) return false;
+  if (fn === 'editFamilyNote' || fn === 'deleteFamilyNote') return fam && args[1] === key && n.by === key && kids.includes(n.studentId);
+  if (fn !== 'reportItem') return !!me && n.studentId === me && !n.hidden;
+  const k = args[3]?.key;
+  if (isAdmin(user)) return k === 'admin' || (!!user.teacherId && k === user.teacherId);
+  if (me) return k === 'student' && n.studentId === me && !n.hidden;
+  if (!STAFF.includes(user.kind) || !user.teacherId || k !== user.teacherId) return false;
+  return reachOf(user) === null || api.familyNoteReader(user.teacherId, n.studentId);
 }
