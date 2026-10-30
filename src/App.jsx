@@ -24,6 +24,7 @@ import AdvisorGrid from './components/AdvisorGrid.jsx';
 import StudentMap from './screens/StudentMap.jsx';
 import { CarryOverGoals } from './components/YearHandover.jsx';
 import AdvisorStudent from './screens/AdvisorStudent.jsx';
+import MySkills from './components/SkillsGrowth.jsx';
 import TeacherQueue from './screens/TeacherQueue.jsx';
 import MyClasses from './screens/MyClasses.jsx';
 import CasDashboard from './screens/CasDashboard.jsx';
@@ -413,7 +414,7 @@ export default function App() {
           {pilot && route.screen === 'phrases' && phraseWriter() && <PhrasesScreen {...ctx} />}
           {pilot && route.screen === 'reportcomments' && (persona.teacherId || persona.admin || persona.kind === 'coordinator' || persona.kind === 'leadership') && <ReportComments {...ctx} param={route.param} />}
           {pilot && route.screen === 'events' && persona.kind !== 'student' && persona.kind !== 'parent' && <SchoolEventsScreen {...ctx} />}
-          {route.screen !== 'phrases' && route.screen !== 'events' && route.screen !== 'reportcomments' && route.screen !== 'prompts' && route.screen !== 'health' && route.screen !== 'screens' && route.screen !== 'accounts' && route.screen !== 'usage' && route.screen !== 'reports' && route.screen !== 'overview' && route.screen !== 'week' && route.screen !== 'activitylog' && route.screen !== 'leaver' && route.screen !== 'cas' && route.screen !== 'casconfirm' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} persona={persona} />}
+          {route.screen !== 'skills' && route.screen !== 'phrases' && route.screen !== 'events' && route.screen !== 'reportcomments' && route.screen !== 'prompts' && route.screen !== 'health' && route.screen !== 'screens' && route.screen !== 'accounts' && route.screen !== 'usage' && route.screen !== 'reports' && route.screen !== 'overview' && route.screen !== 'week' && route.screen !== 'activitylog' && route.screen !== 'leaver' && route.screen !== 'cas' && route.screen !== 'casconfirm' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} persona={persona} />}
           {pilot && route.screen === 'health' && persona.admin && <SystemHealth {...ctx} />}
           </ErrorBoundary>
           {pilot && level === 'simple' && <div className="fb-simple"><button onClick={() => setFbOpen(true)}>Something not working? Tell us</button></div>}
@@ -492,6 +493,7 @@ function StudentScreens({ screen, param, studentId, drafts, setDrafts, audience,
   if (screen === 'leaver' && !leaverAllowed(studentId)) screen = 'map'; // under Year 11: no leaver portfolio
   if (screen === 'cas' && !casAllowed(studentId)) screen = 'map'; // CAS: Years 12 and 13
   if (level === 'simple' && screen === 'map') return <>{nudge}<SimpleFind big persona={persona} go={go} version={version} /><SimpleHome map={map} studentId={studentId} toast={toast} version={version} addRequest={addReq} focusId={param} /></>;
+  if (screen === 'skills') return <MySkills studentId={studentId} version={version} go={go} persona={persona} toast={toast} />;
   if (screen === 'leaver' && leaverAllowed(studentId)) return <LeaverBuilder studentId={studentId} version={version} toast={toast} />;
   if (screen === 'poster') return <Poster map={map} publicMap={publicMap} drafts={myDrafts} toast={toast} />;
   if (screen === 'family') return <ShowFamily map={map} toast={toast} version={version} />;

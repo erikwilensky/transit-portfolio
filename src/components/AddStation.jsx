@@ -4,6 +4,7 @@ import { IdeasPanel } from './SubjectPrompts.jsx';
 import { TYPE_LABEL, VIS_LABEL } from '../format.js';
 import { AttachButton, PendingFiles, UploadStatus, useUpload } from './FileAttach.jsx';
 import { evidenceFor } from '../upload.js';
+import { SkillsStep, saveSkills } from './SkillsGrowth.jsx';
 
 export const SUGGEST = { computing: 't-01', science: 't-02', music: 't-03', design: 't-04', languages: 't-05', art: 't-06', service: 't-08', environment: 't-08', 'maya-datasci': 't-01', 'arun-musictech': 't-03' };
 const PHOTOS = [['hackathon-1st', 'Results board'], ['stem-club', 'Club session'], ['aq-dashboard', 'Screenshot'], ['mural', 'Finished work']];
@@ -14,7 +15,7 @@ export default function AddStation({ map, studentId, onClose, onAdded, prefill =
   const open = map.lines.filter((l) => l.status !== 'ended');
   // A school event's suggested line that is not on the map yet (addStation adds it).
   const lines = [...open, ...(prefill.lineIds || []).filter((id) => !open.some((l) => l.id === id)).map(getLine).filter(Boolean)];
-  const [f, setF] = useState({ title: '', date: TODAY, type: 'project', lineIds: [], summary: '', reflection: '', visibility: 'advisor', image: null, imageCaption: '', files: [], requestFrom: '', requestNote: '', cas: null, ...prefill });
+  const [f, setF] = useState({ title: '', date: TODAY, type: 'project', lineIds: [], summary: '', reflection: '', visibility: 'advisor', image: null, imageCaption: '', files: [], requestFrom: '', requestNote: '', cas: null, skills: [], ...prefill });
   const set = (patch) => setF((x) => ({ ...x, ...patch }));
   const mine = teachersOf(studentId); // from the class lists; the demo has none and keeps its own list
   const teachers = mine.length ? endorserChoices(studentId) : getTeachers().filter((t) => !['t-07', 't-09', 't-10'].includes(t.id));
@@ -32,7 +33,7 @@ export default function AddStation({ map, studentId, onClose, onAdded, prefill =
   const [usedIdeas, setUsedIdeas] = useState(null);
   const promptId = prompts && (prompts.source !== 'default' || usedIdeas === prompts.id) ? prompts.id : null;
   const starter = (s) => { setUsedIdeas(prompts.id); set({ reflection: `${f.reflection ? `${f.reflection.trimEnd()} ` : ''}${s.replace(/…$/, ' ')}` }); };
-  const save = () => { const e = addStation(studentId, { ...f, requestFrom: f.requestFrom || null, promptId }); onAdded?.(e); };
+  const save = () => { const e = addStation(studentId, { ...f, requestFrom: f.requestFrom || null, promptId }); saveSkills(e, f.skills); onAdded?.(e); };
   const pickPhoto = (file) => photo.run(file, (r) => { const ev = evidenceFor(r, file.name); if (ev.kind === 'image') set({ image: ev.url, imageCaption: file.name }); else set({ files: [...f.files, ev] }); });
   return (
     <div className="modal-back" onClick={onClose}>
@@ -62,6 +63,7 @@ export default function AddStation({ map, studentId, onClose, onAdded, prefill =
             <AttachButton label={f.files.length ? 'Attach another file' : 'Attach a file'} onAdded={(ev) => setF((x) => ({ ...x, files: [...x.files, ev] }))} />
           </div>
           <label className="span2">{f.question ? `${f.question} (optional)` : simple ? 'What did you learn? (optional)' : 'Quick reflection (optional)'}<textarea rows={2} value={f.reflection} onChange={(e) => set({ reflection: e.target.value })} placeholder="What did you learn?" /></label>
+          <div className="span2 field"><SkillsStep value={f.skills} onChange={(skills) => set({ skills })} simple={simple} /></div>
           {dp && !simple && (
             <div className="span2 field cas-field"><span>Counts for CAS?</span>
               <div className="seg small">{[[null, 'No'], ['C', 'Creativity'], ['A', 'Activity'], ['S', 'Service']].map(([v, l]) => <button type="button" key={l} className={(f.cas?.strand || null) === v ? 'on' : ''} onClick={() => set({ cas: v ? { strand: v, outcomes: f.cas?.outcomes || [] } : null })}>{l}</button>)}</div>

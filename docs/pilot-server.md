@@ -2238,3 +2238,41 @@ spotted moments (the student's card and inbox are the same; see "Spotted moments
   second reports her photo; the teacher sees Added / Not for me / Waiting; a coordinator removes the photo from Reports and
   the file is deleted. Axe on each screen. Thai: `scripts/checks/thai-students.cjs` walks Aaron's card and report dialog.
 - Not done: a teacher cannot edit a batch after sending it (add students or photos); faces are not detected.
+
+## Skills growth (`src/api.js`, `src/components/SkillsGrowth.jsx`)
+
+Each student sees which IB learner profile attributes and ATL skills their moments show, building up by term over this
+school year. A picture, never a score: no totals across skills, no ranking (always the IB order), no comparison with
+anyone. Demo and pilot. No route of its own, no notifications, no messages: tagging runs on `/api/action` like any change.
+
+- **Data**: the existing N6 tags, `store.tags[eventId] = { lp, atl, auto: false }`. Only tags the student picked or
+  confirmed count; the app's own suggestions (`getTags` with `auto: true`, guessed from the title) never do, and My skills
+  says so. `setTags` now keeps only known names (`LEARNER_PROFILE`, `ATL`). The leaver portfolio still reads `getTags`.
+- **Reads** (not mutators): `SKILLS` (the 10 + 5, IB order), `SKILL_WORDS` (plain words: Inquirer "Asking questions",
+  Social "Working with others"…; Thai `SKILL_WORDS_TH` in `src/i18n.js`), `SKILL_MAX` = 3, `skillField(k)`,
+  `chosenSkills(e)`, `chooseSkills(eventId, keys)` (calls `setTags`, so the change sent is `setTags`),
+  `schoolYearOf(d)` (1 August to 31 July), `termIndex(d)` (Term 1 Aug–Nov, 2 Dec–Mar, 3 Apr–Jul, as the map counts them),
+  `skillsGrowth(events, today)` → `{ year, term, rows: [{ k, field, terms: [t1, t2, t3], ids, n }], moments, tagged,
+  untagged }` (goals and earlier years left out), `skillsReader(persona, sid)` (advisor, a teacher of a current class, or
+  a whole-school role).
+- **Scope, permissions**: nothing new. `skillsGrowth` reads only the events it is given: the student's own map; the advisor
+  page's `getStudentMap(sid, 'advisor')`; a teacher's class page (its usual filter: school-level moments and what they were
+  asked about); the family view's map (`familyViewer`, hidden ones out). In a pilot the scoped snapshot already holds only
+  those events and their tags, so private moments never count for anyone but the student. Tagging is `setTags` (students:
+  their own moments, `STUDENT_FNS`; families never).
+- **Screens**: students get "My skills" (`#/<persona>/skills`, second in the nav at every level). Simple: "Skills I’ve
+  used", big picture chips in plain words, no numbers; tap one for "When I used it" (opens the moment); "Add skills to a
+  moment" (up to 4 untagged moments, picker in place); "Skills to look out for". Standard and Full: "How my skills are
+  growing", a row per skill with a bar split by term (one-hue ramp `--sk-t1..3`, light and dark validated as an ordinal
+  ramp on each surface; legend; per-segment tooltips; a screen-reader sentence per row; "Show as a table"), tap a row for
+  its moments; "Moments with no skills yet". Picking (≤ 3, optional): the Simple add flow's "What did you learn?" step
+  ("Which skills did I use? (optional)"), the Standard/Full add dialog ("Add skills (optional)"), the Simple moment card
+  ("Change skills"), and My skills. The station panel's existing tag editor still works. Staff: "Skills growth" card on the
+  advisor's student page (only for `skillsReader`) and under a pupil's map in My classes. Families: the same card in the
+  family view, English or Thai. Student text in Thai through `src/thai.js` (its own block at the end of `src/i18n.js`).
+- Tests: `server/test/skills-growth.test.mjs`; browser: `node scripts/checks/skills-growth.cjs` (the real roster, skipped
+  without it; separate contexts: Aaron Torres at Simple on a phone tags two moments, one while adding it and one from My
+  skills, keeps a private one; Ms Jane Altemen sees it on his page with the table and in dark mode; Mr David Coultas only
+  the moment shared with the school; a teacher who does not teach him gets nothing and is refused; a parent through the
+  family letter, in Thai; axe on each). `thai-students.cjs` sweeps My skills at Simple and Standard and the picker.
+- Not done: earlier school years (the view is this year only); teachers do not suggest skills for a student.

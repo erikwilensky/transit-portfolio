@@ -11,6 +11,7 @@ import { ClassTaskList, SetTaskDialog, TaskGrid } from '../components/ClassTasks
 import { ClassPromptsCard } from '../components/SubjectPrompts.jsx';
 import { PhotoDropDialog, PhotoDropList } from '../components/PhotoDrop.jsx';
 import './classes.css';
+import { SkillsGrowthCard } from '../components/SkillsGrowth.jsx';
 
 // Pilot: a teacher's classes from the class lists. #/<persona>/classes, /classes/<classId>,
 // /classes/<classId>~<studentId> (that student's map, read only), /classes/<classId>~answers~<promptId> (Review answers).
@@ -168,6 +169,7 @@ function StudentRead({ classId, studentId, teacherId, go, persona, version, toas
             <MetroMap recent map={map} lens={lens} selectedId={sel} onSelect={setSel} fitKey={`mc-${studentId}`} />
             <StationPanel event={map.events.find((e) => e.id === sel)} map={map} onClose={() => setSel(null)} readOnly toast={toast} />
           </div>
+          <div className="mc-skills"><SkillsGrowthCard events={map.events} first={s.name.split(' ')[0]} onOpen={setSel} /></div>
         </div>
       ) : <div className="page"><div className="empty-state"><b>Nothing on {s.name.split(' ')[0]}’s map that you can see yet.</b></div></div>}
     </div>

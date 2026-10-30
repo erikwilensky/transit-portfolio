@@ -1429,8 +1429,8 @@ function autoTags(e) {
 export function getTags(e) { return store.tags[e.id] || autoTags(e); }
 export function setTags(eventId, tags) {
   const e = getEvent(eventId); if (!e) return;
-  store.tags[eventId] = { lp: tags.lp, atl: tags.atl, auto: false };
-  log(e.studentId, getStudent(e.studentId).name, 'station', `Tagged “${e.title}”: ${[...tags.lp, ...tags.atl].join(', ') || 'no tags'}`);
+  store.tags[eventId] = { lp: [...new Set(tags.lp || [])].filter((k) => LEARNER_PROFILE.includes(k)), atl: [...new Set(tags.atl || [])].filter((k) => ATL.includes(k)), auto: false };
+  const t = store.tags[eventId]; log(e.studentId, getStudent(e.studentId).name, 'station', `Tagged “${e.title}”: ${[...t.lp, ...t.atl].join(', ') || 'no tags'}`);
   emit();
 }
 // Leadership sees counts only: how many students have at least one station showing each attribute.
@@ -4003,3 +4003,33 @@ export function recordWords() {
   for (const k in store) if (!NOT_WORDS.has(k)) walk(store[k]);
   return out;
 }
+
+// ── Skills growth (src/components/SkillsGrowth.jsx) ──
+// Which learner profile attributes and ATL skills a student's moments show, by term of this school year. Only the skills
+// the student chose or confirmed count (store.tags with auto: false); the app's own suggestions never do. Reads only the
+// events it is given, so each viewer sees it from the moments they can already see. No scores, no comparisons.
+export const SKILLS = [...LEARNER_PROFILE, ...ATL];
+export const SKILL_MAX = 3;
+export const SKILL_WORDS = { Inquirer: 'Asking questions', Knowledgeable: 'Learning new things', Thinker: 'Solving problems', Communicator: 'Sharing my ideas',
+  Principled: 'Doing the right thing', 'Open-minded': 'Seeing other points of view', Caring: 'Helping others', 'Risk-taker': 'Trying something new',
+  Balanced: 'Looking after myself', Reflective: 'Looking back and learning', Thinking: 'Coming up with ideas', Communication: 'Speaking and writing',
+  Social: 'Working with others', 'Self-management': 'Organising myself', Research: 'Finding things out' };
+export const skillField = (k) => (LEARNER_PROFILE.includes(k) ? 'lp' : ATL.includes(k) ? 'atl' : null);
+export const chosenSkills = (e) => { const t = e && (e.tags || store.tags[e.id]); return t && !t.auto ? SKILLS.filter((k) => (t.lp || []).includes(k) || (t.atl || []).includes(k)) : []; };
+export const chooseSkills = (eventId, keys) => { const ks = SKILLS.filter((k) => keys.includes(k)); return setTags(eventId, { lp: ks.filter((k) => skillField(k) === 'lp'), atl: ks.filter((k) => skillField(k) === 'atl') }); };
+// Terms as the map counts them: Term 1 August to November, Term 2 December to March, Term 3 April to July.
+export const schoolYearOf = (d = TODAY) => { const [y, m] = d.split('-').map(Number); const from = m >= 8 ? y : y - 1; return { from: `${from}-08-01`, to: `${from + 1}-07-31`, label: `${from}–${String(from + 1).slice(2)}` }; };
+export const termIndex = (d) => { const m = +d.slice(5, 7); return m >= 8 && m <= 11 ? 0 : m === 12 || m <= 3 ? 1 : 2; };
+export function skillsGrowth(events, today = TODAY) {
+  const yr = schoolYearOf(today);
+  const moments = events.filter((e) => e.type !== 'goal' && e.date >= yr.from && e.date <= today);
+  const rows = SKILLS.map((k) => ({ k, field: skillField(k), terms: [0, 0, 0], ids: [] }));
+  const at = Object.fromEntries(rows.map((r) => [r.k, r]));
+  for (const e of moments) for (const k of chosenSkills(e)) { at[k].terms[termIndex(e.date)]++; at[k].ids.push(e.id); }
+  for (const r of rows) r.n = r.ids.length;
+  return { year: yr, term: termIndex(today), rows, moments: moments.length, tagged: moments.filter((e) => chosenSkills(e).length).length,
+    untagged: moments.filter((e) => !chosenSkills(e).length).sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id)).map((e) => e.id) };
+}
+// Who on the staff gets an advisee's or a pupil's skills: their advisor, a teacher of a current class, whole-school roles.
+export const skillsReader = (persona, sid) => !!persona && (['leadership', 'coordinator', 'counsellor'].includes(persona.kind) || familyNoteReader(persona.teacherId, sid));
+for (const l of Object.keys(INTENSITY_NAV)) INTENSITY_NAV[l].push('skills'); // "My skills" at every level
