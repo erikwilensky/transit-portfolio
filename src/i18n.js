@@ -511,11 +511,47 @@ const STU = {
   // subject prompts a student meets (src/components/SubjectPrompts.jsx)
   'Ideas for this line': 'ไอเดียสำหรับสายนี้', 'Ideas for every student': 'ไอเดียสำหรับนักเรียนทุกคน', 'See an example': 'ดูตัวอย่าง', 'Written by a teacher': 'เขียนโดยครู', 'Starters:': 'ประโยคเริ่มต้น:',
   'They would see its title, what you wrote about it and your Year, never your name. You can say no.': 'นักเรียนคนอื่นจะเห็นชื่อเรื่อง สิ่งที่คุณเขียน และ Year ของคุณ แต่ไม่เห็นชื่อคุณ คุณปฏิเสธได้', 'Yes, show it': 'ได้ แสดงเลย', 'No thanks': 'ไม่เป็นไร',
+  // the archive download on Privacy (src/screens/Privacy.jsx)
+  'Download my archive: my journey as a PDF, my files and my data (ZIP)': 'ดาวน์โหลดคลังของฉัน: เส้นทางของฉันเป็น PDF ไฟล์ของฉัน และข้อมูลของฉัน (ZIP)',
+  'Saved: a ZIP with my-journey.pdf (every moment and reflection, by line and date), your photos, documents and voice notes, your leaver portfolio if you made one, a copy of your data and a README.': 'บันทึกแล้ว: ไฟล์ ZIP ที่มี my-journey.pdf (ทุกเรื่องราวและการสะท้อนคิด เรียงตามสายและวันที่) รูปภาพ เอกสาร และบันทึกเสียงของคุณ แฟ้มผลงานก่อนจบถ้าคุณทำไว้ สำเนาข้อมูลของคุณ และไฟล์ README',
+  // CAS hours, Years 12 and 13 (src/components/Cas.jsx); LO stays as the IB writes it
+  'CAS · Creativity, Activity, Service': 'CAS · ความคิดสร้างสรรค์ กิจกรรม การบริการ', 'My CAS': 'CAS ของฉัน',
+  'Log each experience once, then add hours as you go. Name who supervised, so they can confirm your hours. Each experience is a station on your CAS line.': 'บันทึกแต่ละประสบการณ์ครั้งเดียว แล้วเพิ่มชั่วโมงไปเรื่อย ๆ ระบุผู้ดูแล เพื่อให้เขายืนยันชั่วโมงของคุณได้ แต่ละประสบการณ์เป็นสถานีหนึ่งบนสาย CAS ของคุณ',
+  'hours confirmed': 'ชั่วโมงที่ยืนยันแล้ว', 'hours waiting': 'ชั่วโมงที่รอยืนยัน', 'What you have covered': 'สิ่งที่คุณทำครบแล้ว', ': not yet': ': ยังไม่ครบ', ': covered': ': ครบแล้ว',
+  'Creativity (C)': 'ความคิดสร้างสรรค์ (C)', 'Activity (A)': 'กิจกรรม (A)', 'Service (S)': 'การบริการ (S)',
+  'Log a new experience': 'บันทึกประสบการณ์ใหม่', 'Nothing yet. Log your first experience: a club, a sport, a project, or helping in the community.': 'ยังไม่มีอะไร บันทึกประสบการณ์แรกของคุณ: ชมรม กีฬา โครงงาน หรือการช่วยเหลือชุมชน',
+  'A new CAS experience': 'ประสบการณ์ CAS ใหม่', Name: 'ชื่อ', Strand: 'ด้าน', Started: 'เริ่ม', Ends: 'สิ้นสุด', optional: 'ไม่บังคับ', 'Learning outcomes it shows': 'ผลการเรียนรู้ที่แสดง', 'pick any': 'เลือกได้หลายข้อ',
+  'What is it?': 'คืออะไร', 'what did you learn or notice?': 'คุณได้เรียนรู้หรือสังเกตเห็นอะไร', Evidence: 'หลักฐาน', 'Add a photo or file': 'เพิ่มรูปภาพหรือไฟล์',   'A link': 'ลิงก์', 'Log hours now': 'บันทึกชั่วโมงตอนนี้', 'Save experience': 'บันทึกประสบการณ์',   'Your advisor, your CAS coordinator and the supervisor you name can see this. It is never private.': 'ครูที่ปรึกษา ผู้ประสานงาน CAS และผู้ดูแลที่คุณระบุจะเห็นสิ่งนี้ ไม่เป็นส่วนตัว',
+  'e.g. Coaching junior football': 'เช่น สอนฟุตบอลให้น้อง ๆ', 'e.g. Coached the Under-11s on Saturday': 'เช่น ฝึกทีมรุ่นอายุไม่เกิน 11 ปีเมื่อวันเสาร์', 'e.g. Khun Somchai Dee': 'เช่น คุณสมชาย ดี',
+  Hours: 'ชั่วโมง', 'Who supervised?': 'ใครเป็นผู้ดูแล', 'A member of staff': 'บุคลากรของโรงเรียน', 'Someone outside school': 'บุคคลภายนอกโรงเรียน',
+  'Nobody to name': 'ไม่มีผู้ให้ระบุ', 'Member of staff': 'บุคลากร', 'Choose a person': 'เลือกบุคคล', 'Their name': 'ชื่อของเขา', 'Their email': 'อีเมลของเขา',
+  'They get no email. When you meet them, show them your confirmation code (or print it). They confirm with this email address.': 'เขาจะไม่ได้รับอีเมล เมื่อพบกัน ให้แสดงรหัสยืนยันของคุณ (หรือพิมพ์ออกมา) เขายืนยันด้วยอีเมลนี้',
+  'Your CAS coordinator will check and confirm these hours.': 'ผู้ประสานงาน CAS จะตรวจและยืนยันชั่วโมงเหล่านี้',
+  'No supervisor named: your CAS coordinator confirms': 'ไม่ได้ระบุผู้ดูแล: ผู้ประสานงาน CAS เป็นผู้ยืนยัน', Waiting: 'รอยืนยัน', Confirmed: 'ยืนยันแล้ว', 'Sent back': 'ส่งกลับ',
+  'On my map': 'บนแผนที่ของฉัน', 'Show code': 'แสดงรหัส', 'Take back': 'ถอนคืน', 'Hours taken back': 'ถอนชั่วโมงคืนแล้ว', 'Log more hours': 'บันทึกชั่วโมงเพิ่ม',
+  'Log hours': 'บันทึกชั่วโมง', 'Add reflection': 'เพิ่มการสะท้อนคิด', 'Reflection added': 'เพิ่มการสะท้อนคิดแล้ว', 'Reflection on': 'การสะท้อนคิดเรื่อง',
+  'Last reflection': 'การสะท้อนคิดล่าสุด', 'CAS reflection': 'การสะท้อนคิด CAS', Print: 'พิมพ์', Close: 'ปิด', 'Making a code…': 'กำลังสร้างรหัส…',
+  // search (src/components/Search.jsx)
+  'Search your portfolio': 'ค้นหาในแฟ้มผลงานของฉัน', 'Find something I did': 'หาสิ่งที่ฉันเคยทำ', 'Find something I did (/)': 'หาสิ่งที่ฉันเคยทำ (/)',
+  'Nothing matches': 'ไม่พบสิ่งที่ค้นหา', Goals: 'เป้าหมาย', "Teachers' notes": 'บันทึกจากครู',   'Any type': 'ทุกประเภท', 'Any line': 'ทุกสาย', 'Any time': 'ทุกช่วงเวลา', Lately: 'ช่วงนี้', 'My lines': 'สายของฉัน',
+  'Nothing on your map yet. Add your first thing and it will show up here.': 'ยังไม่มีอะไรบนแผนที่ของคุณ เพิ่มเรื่องแรกแล้วจะแสดงที่นี่',
+  'Type a word instead': 'พิมพ์คำแทน', '‹ All my things': '‹ ทุกอย่างของฉัน', 'Nothing on this line yet.': 'สายนี้ยังไม่มีอะไร', 'Type a word': 'พิมพ์คำ',
+  'Type a word to find': 'พิมพ์คำที่จะค้นหา', '‹ Back to my recent things': '‹ กลับไปที่เรื่องล่าสุดของฉัน', 'Add a word or a filter to narrow it.': 'เพิ่มคำหรือตัวกรองเพื่อให้แคบลง',
   'OK, it stays as it was.': 'ได้เลย ยังเหมือนเดิม', 'Can your moment be an example?': 'ขอใช้เรื่องราวของคุณเป็นตัวอย่างได้ไหม', 'would like to show your moment “': 'อยากแสดงเรื่องราว “', '” to other students': '” ของคุณให้นักเรียนคนอื่นดู', 'as an example.': 'เป็นตัวอย่าง',
 };
 const D = (s) => thaiDates(s);
+const CAS_TH = { Creativity: 'ความคิดสร้างสรรค์', Activity: 'กิจกรรม', Service: 'การบริการ' }; // the CAS strands (not the Activity page)
 // [pattern, (match, t) => Thai]; t() gives the Thai of a part that is itself interface text, else the part as written.
 const STU_RE = [
+  [/^([\d.]+) hours?$/, (m) => `${m[1]} ชั่วโมง`],
+  [/^([\d.]+) hours? logged, waiting to be confirmed$/, (m) => `บันทึก ${m[1]} ชั่วโมงแล้ว รอการยืนยัน`],
+  [/^Added “(.+)” to your CAS line(?:, with ([\d.]+) hours? waiting to be confirmed)?$/, (m) => `เพิ่ม “${m[1]}” ในสาย CAS แล้ว${m[2] ? ` มี ${m[2]} ชั่วโมงรอการยืนยัน` : ''}`],
+  [/^(Creativity|Activity|Service) · (.+?)(?: to (.+?))? · ([\d.]+) hours confirmed(?:, ([\d.]+) waiting)?$/, (m) => `${CAS_TH[m[1]]} · ${D(m[2])}${m[3] ? ` ถึง ${D(m[3])}` : ''} · ยืนยันแล้ว ${m[4]} ชั่วโมง${m[5] ? ` รอ ${m[5]} ชั่วโมง` : ''}`],
+  [/^(Creativity|Activity|Service): (\d+)$/, (m) => `${CAS_TH[m[1]]}: ${m[2]}`],
+  [/^LO\d .+( · LO\d .+)*$/, (m, t) => m[0].split(' · ').map((x) => { const [, n, o] = x.match(/^(LO\d) (.+)$/); return `${n} ${t(o)}`; }).join(' · ')],
+  [/^Show this to (.+), or print it\.$/, (m) => `แสดงสิ่งนี้ให้ ${m[1]} ดู หรือพิมพ์ออกมา`],
+  [/^More hours for (.+)$/, (m) => `ชั่วโมงเพิ่มสำหรับ ${m[1]}`],
+  [/^Showing the best (\d+) of (\d+)\. Add a word or a filter to narrow it\.$/, (m) => `แสดง ${m[1]} รายการที่ตรงที่สุดจาก ${m[2]} รายการ เพิ่มคำหรือตัวกรองเพื่อให้แคบลง`],
   [/^Your journey has (\d+) moments? so far\.$/, (m) => `ตอนนี้เส้นทางของคุณมี ${m[1]} เรื่องราวแล้ว`],
   [/^What was the best part of “(.+)”\?$/, (m) => `ส่วนที่ดีที่สุดของ “${m[1]}” คืออะไร`],
   [/^What did “(.+)” teach you\?$/, (m) => `“${m[1]}” สอนอะไรคุณบ้าง`],

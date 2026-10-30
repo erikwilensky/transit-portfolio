@@ -49,7 +49,7 @@ function recordWords(store) {
   return out;
 }
 // Words that stay English in Thai: the product, the school's systems and programmes, file kinds.
-const KEEP = ['Transit Portfolio', 'Transit', 'Portfolio', 'NIST', 'ManageBac', 'Toddle', 'PowerSchool', 'GitHub', 'Google', 'IB', 'MYP', 'DP', 'CAS', 'TOK', 'EE', 'PDPA', 'PDF', 'QR', 'CSV', 'JSON', 'HTML', 'CSS', 'API', 'URL', 'ID', 'SIS', 'English', 'Diploma', 'IB Diploma', 'IB MYP', 'Year', 'Ctrl', 'K', 'AM', 'PM', 'km', 'kg', 'OK', 'ZIP', 'A3', 'A4', 'UCL',
+const KEEP = ['Transit Portfolio', 'Transit', 'Portfolio', 'NIST', 'ManageBac', 'Toddle', 'PowerSchool', 'GitHub', 'Google', 'IB', 'MYP', 'DP', 'CAS', 'LO', 'TOK', 'EE', 'PDPA', 'PDF', 'QR', 'CSV', 'JSON', 'HTML', 'CSS', 'API', 'URL', 'ID', 'SIS', 'English', 'Diploma', 'IB Diploma', 'IB MYP', 'Year', 'Ctrl', 'K', 'AM', 'PM', 'km', 'kg', 'OK', 'ZIP', 'A3', 'A4', 'UCL',
   'Metro', 'Ivy', 'Slate', 'Night', 'LMS', 'CLB', 'GH', 'EXM', 'index.html', 'style.css', 'data.json', 'endpoint', 'pull request', 'commit', 'README', 'Enter', 'Esc']; // theme names, system codes, file names
 
 // Visible text and labels on the page, outside people's own words and form fields.
@@ -114,13 +114,13 @@ let srv;
         let r = v;
         for (const w of own) if (r.includes(w)) r = r.split(w).join(' ');
         for (const w of keep) r = r.replace(new RegExp(`(^|[^A-Za-z])${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![A-Za-z])`, 'gi'), '$1 ');
-        r = r.replace(/https?:\/\/\S+|\S+@\S+|#\/\S*|\/s\/\S+|\S+\.(png|jpe?g|svg|pdf|webm|m4a)\b/gi, ' ');
+        r = r.replace(/https?:\/\/\S*|\S+@\S+|#\/\S*|\/s\/\S+|\S+\.(png|jpe?g|svg|pdf|webm|m4a)\b/gi, ' ');
         r = r.split(/[^A-Za-z’'-]+/).filter((w) => /[A-Za-z]{2}/.test(w) && !names.has(w.replace(/’s$/, ''))).join(' ');
         if (r) left.push(`${v}   [${at}]${block && block !== v ? `   « ${block.replace(/\s+/g, ' ')} »` : ''}`);
       }
       const uniq = [...new Set(left)];
       if (uniq.length) leftovers[label] = uniq;
-      ok(!uniq.length, `${label}: no English interface text${uniq.length ? ` (${uniq.length}: ${uniq.slice(0, 4).map((x) => x.split('   ')[0]).join(' | ')})` : ''}`);
+      ok(!uniq.length, `${label}: no English interface text${uniq.length ? ` (${uniq.length}: ${uniq.slice(0, +(process.env.TH_ALL || 4)).map((x) => x.split('   ')[0]).join(' | ')})` : ''}`);
     };
     const audit = async (p, label, include = ['main']) => {
       if (!await p.evaluate(() => !!window.axe)) await p.addScriptTag({ path: AXE });
@@ -280,7 +280,7 @@ let srv;
       if (k === 'studio') for (const i of [1, 2, 3, 4]) { const au = s.locator('.studio [role=radiogroup] button, .studio .seg button').nth(i); if (await au.count()) { await au.click(); await sweep(s, Y10.id, `Year 10: studio, choice ${i}`); } }
       if (k === 'inbox') { await s.click('.integrations button.ghost:has-text("จำลองสัปดาห์หน้า"), button:has-text("จำลองสัปดาห์หน้า")').catch(() => {}); await s.waitForTimeout(1500); await sweep(s, Y10.id, 'Year 10: inbox after a week'); }
       if (k === 'links') {
-        const sel = s.locator('select').first(); if (await sel.count()) { const v = await sel.locator('option').nth(1).getAttribute('value'); await sel.selectOption(v); }
+        const sel = s.locator('select:visible').first(); if (await sel.count()) { const v = await sel.locator('option').nth(1).getAttribute('value'); await sel.selectOption(v); }
         await s.locator('button:has-text("สร้างลิงก์")').last().click().catch(() => {}); await s.waitForTimeout(600); await sweep(s, Y10.id, 'Year 10: a new share link');
         await close(s);
       }
@@ -305,13 +305,22 @@ let srv;
     await sweep(f, Y12.id, 'Year 12: map');
     const seg = f.locator('.map-bar .seg.small[role=group] button'); if (await seg.count()) { await seg.last().click(); await sweep(f, Y12.id, 'Year 12: list view'); await seg.first().click(); }
     const q = f.locator('.map-q'); if (await q.count()) { await q.fill('beach'); await sweep(f, Y12.id, 'Year 12: map search'); await q.fill('zzzz'); await sweep(f, Y12.id, 'Year 12: map search, nothing found'); await q.fill(''); }
-    for (const k of ['studio', 'shared', 'inbox', 'links', 'activity', 'privacy', 'poster']) {
+    for (const k of ['studio', 'shared', 'inbox', 'links', 'activity', 'privacy', 'poster', 'cas']) {
       await f.goto(`${U}/#/me/${k}`); await f.waitForTimeout(900); await sweep(f, Y12.id, `Year 12: ${k}`);
       if (k === 'studio') {
         const code = f.locator('.tier-toggle button').nth(2); if (await code.count()) { await code.click(); await f.waitForTimeout(500); await sweep(f, Y12.id, 'Year 12: studio, code tier'); }
         const cmp = f.locator('.compare-btn'); if (await cmp.count()) { await cmp.click(); await sweep(f, Y12.id, 'Year 12: compare two audiences'); await cmp.click(); }
       }
     }
+    // CAS: an experience with hours waiting, the hours form, the supervisor choices and a new experience
+    const today = new Date().toISOString().slice(0, 10);
+    await act(zT, 'logCasExperience', [Y12.id, { title: 'Coaching junior football', strand: 'A', from: today, outcomes: [1, 5], reflection: 'Patience matters more than drills.', hours: { date: today, hours: 2, note: '', supervisor: { kind: 'none' } } }]);
+    await f.goto(`${U}/#/me/cas`); await f.waitForSelector('.cas-exp'); await sweep(f, Y12.id, 'Year 12: CAS with an experience');
+    await f.locator('.cas-row-btns button').first().click(); await f.waitForSelector('.cas-inline'); await sweep(f, Y12.id, 'Year 12: CAS, log more hours');
+    await f.locator('.cas-sup input[type=radio]').nth(1).check(); await sweep(f, Y12.id, 'Year 12: CAS, someone outside school');
+    await f.locator('.cas-inline .ghost').first().click();
+    await f.locator('.cas-log > .primary').click(); await f.waitForSelector('.cas-form-card'); await sweep(f, Y12.id, 'Year 12: CAS, a new experience');
+    await audit(f, 'Year 12, CAS in Thai');
     await f.goto(`${U}/#/me/leaver`); await f.waitForSelector('.lv-start'); await sweep(f, Y12.id, 'Year 12: leaver portfolio, start');
     await f.click('.lv-start .primary'); await f.waitForSelector('.lv-steps'); await sweep(f, Y12.id, 'Year 12: leaver portfolio builder');
     for (let i = 1; i < 5; i++) { await f.locator('.lv-steps button').nth(i).click(); await sweep(f, Y12.id, `Year 12: leaver portfolio, step ${i + 1}`); if (i === 1) { const add = f.locator('.lv-step button:has-text("เพิ่ม")').first(); if (await add.count()) { await add.click(); await sweep(f, Y12.id, 'Year 12: leaver portfolio, a moment picked'); } } }

@@ -83,7 +83,7 @@ export function CasLog({ studentId, version, toast, go, persona }) {
         </div>
       </header>
       <section className="cas-cover" aria-label="What you have covered">
-        <div className="cas-strands">{strands.map(([k, n]) => <span key={k} className={`cas-strand${n ? ' on' : ''}`}><b>{k}</b>{CAS_STRANDS[k]}: {n}</span>)}</div>
+        <div className="cas-strands">{strands.map(([k, n]) => <span key={k} className={`cas-strand${n ? ' on' : ''}`}><b>{k}</b>{`${CAS_STRANDS[k]}: ${n}`}</span>)}</div>
         <ul className="cas-los">{CAS_OUTCOMES.map((o, i) => <li key={o} className={covered[i] ? 'on' : ''}><b>LO{i + 1}</b> {o}<span className="sr-only">{covered[i] ? ': covered' : ': not yet'}</span></li>)}</ul>
       </section>
       {!adding && <button className="primary" onClick={() => setAdding(true)}>Log a new experience</button>}
@@ -117,14 +117,14 @@ function NewExperience({ studentId, toast, onDone }) {
       <h2 id="cas-new-h">A new CAS experience</h2>
       <label>Name<input autoFocus value={f.title} maxLength={120} onChange={(e) => set({ title: e.target.value })} placeholder="e.g. Coaching junior football" /></label>
       <fieldset className="cas-radios-set"><legend>Strand</legend>
-        <div className="cas-radios">{Object.entries(CAS_STRANDS).map(([k, l]) => <label key={k}><input type="radio" name="cas-strand" checked={f.strand === k} onChange={() => set({ strand: k })} /> {l}</label>)}</div>
+        <div className="cas-radios">{Object.entries(CAS_STRANDS).map(([k, l]) => <label key={k}><input type="radio" name="cas-strand" checked={f.strand === k} onChange={() => set({ strand: k })} /> {`${l} (${k})`}</label>)}</div>
       </fieldset>
       <div className="cas-grid">
         <label>Started<input type="date" value={f.from} onChange={(e) => set({ from: e.target.value })} /></label>
         <label>Ends <small>optional</small><input type="date" value={f.to} min={f.from} onChange={(e) => set({ to: e.target.value })} /></label>
       </div>
       <fieldset className="cas-outcomes"><legend>Learning outcomes it shows <small>pick any</small></legend>
-        {CAS_OUTCOMES.map((o, i) => <label key={o}><input type="checkbox" checked={f.outcomes.includes(i + 1)} onChange={() => toggle(i + 1)} /> LO{i + 1} {o}</label>)}
+        {CAS_OUTCOMES.map((o, i) => <label key={o}><input type="checkbox" checked={f.outcomes.includes(i + 1)} onChange={() => toggle(i + 1)} /> <b>{`LO${i + 1}`}</b> {o}</label>)}
       </fieldset>
       <label>What is it? <small>optional</small><textarea rows={2} value={f.summary} maxLength={1000} onChange={(e) => set({ summary: e.target.value })} /></label>
       <label>Reflection <small>what did you learn or notice?</small><textarea rows={3} value={f.reflection} maxLength={4000} onChange={(e) => set({ reflection: e.target.value })} /></label>
@@ -164,7 +164,7 @@ function Experience({ e, hours, studentId, toast, onCode, onMap }) {
       <div className="cas-exp-head">
         <span className={`cas-badge s-${e.cas.strand}`} aria-hidden="true">{e.cas.strand}</span>
         <div><h2 id={`cx-${e.id}`}>{e.title}</h2>
-          <small>{CAS_STRANDS[e.cas.strand]} · {fmtDate(e.cas.from || e.date)}{e.cas.to ? ` to ${fmtDate(e.cas.to)}` : ''} · {casSum(hours, 'confirmed')} hours confirmed{casSum(hours, 'pending') ? `, ${casSum(hours, 'pending')} waiting` : ''}</small></div>
+          <small>{`${CAS_STRANDS[e.cas.strand]} · ${fmtDate(e.cas.from || e.date)}${e.cas.to ? ` to ${fmtDate(e.cas.to)}` : ''} · ${casSum(hours, 'confirmed')} hours confirmed${casSum(hours, 'pending') ? `, ${casSum(hours, 'pending')} waiting` : ''}`}</small></div>
         <button className="ghost small-btn" onClick={onMap}>On my map</button>
       </div>
       {(e.cas.outcomes || []).length > 0 && <p className="cas-exp-los">{e.cas.outcomes.map((n) => `LO${n} ${CAS_OUTCOMES[n - 1]}`).join(' · ')}</p>}
@@ -223,7 +223,7 @@ export function CasCodeCard({ entry, onClose }) {
   const url = c && appUrl(`c/${c.code}`);
   return createPortal(
     <div className="cas-code-overlay" role="dialog" aria-modal="true" aria-labelledby="cas-code-h">
-      <div className="cas-code-bar"><span>Show this to {entry.supervisor.name}, or print it.</span><div className="auth-row"><button className="primary" disabled={!c} onClick={() => print()}>Print</button><button className="ghost" onClick={onClose}>Close</button></div></div>
+      <div className="cas-code-bar"><span>{`Show this to ${entry.supervisor.name}, or print it.`}</span><div className="auth-row"><button className="primary" disabled={!c} onClick={() => print()}>Print</button><button className="ghost" onClick={onClose}>Close</button></div></div>
       <article className="cas-code">
         <div className="kicker">NIST · CAS hours to confirm</div>
         <h1 id="cas-code-h">{a.name}</h1>

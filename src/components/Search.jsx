@@ -177,7 +177,7 @@ export function TopSearch({ persona, go, toast, version, lang, simple }) {
           {page && <button className="linkish ts-page" onClick={() => { close(); go(persona.id, page[0], page[1]); }}>Open {api.getStudent(f.studentId)?.name}’s page ›</button>}
           {res && <Results id="tsearch" res={res} at={at} setAt={setAt} pick={pick} lang={lang} persona={persona} />}
           {res && !res.total && <p className="ts-none">{say(lang, 'Nothing matches')}{q.trim() ? ` “${q.trim()}”` : ''}.</p>}
-          {res && res.total > res.results.length && <p className="ts-more">Showing the best {res.results.length} of {res.total}. Add a word or a filter to narrow it.</p>}
+          {res && res.total > res.results.length && <p className="ts-more">{`Showing the best ${res.results.length} of ${res.total}. Add a word or a filter to narrow it.`}</p>}
         </div>
         <div className="sr-only" role="status" aria-live="polite">{expanded && res ? `${res.total} result${res.total === 1 ? '' : 's'}` : ''}</div>
       </div>
