@@ -1792,8 +1792,14 @@ student (`buildArchive(sid)`):
   `leaver-portfolio.pdf` (from `api.leaverView`, only when they made one), `photos/`, `documents/`, `voice-notes/` (their
   uploads by original name, by type) and `data/` (the PDPA copy, `buildCopy` in `routes/50-pdpa.mjs`, without its `files/`;
   `data/manifest.json` gives each upload's `inArchive` path).
-- **PDF** (`server/pdf.mjs`, no dependency): Helvetica in WinAnsi, so Western letters only. Other letters (Thai) show as
-  `[?]`; the README then says so and points to `my-journey.html`. To put Thai in the PDF, embed a TTF there.
+- **PDF** (`server/pdf.mjs`, `server/ttf.mjs`, no dependency): set in Sarabun Regular and SemiBold (`server/fonts/`, SIL Open
+  Font License 1.1, `server/fonts/OFL.txt`; read from disk once, never fetched), Thai and English alike. Each PDF embeds a
+  subset (`subset()`: only the glyphs drawn, ids kept; `CIDFontType2`, `Identity-H`, a `ToUnicode` map so text can be
+  copied and searched). Thai is shaped by the font's own rules (`shape()`: its `ccmp` substitutions and `mark`/`mkmk`
+  positioning: ำ split, tone marks in their high form over a vowel, narrow marks by ป ฝ ฟ, ญ ฐ without their tail over a
+  vowel below) and broken into lines between words (`Intl.Segmenter('th')`; a word longer than a line breaks between
+  letters, never inside a cluster). Characters Sarabun has no letters for (emoji, Chinese) show as `[?]`; only then does
+  the README point to `my-journey.html`. `pdfText(buf)` reads a PDF's text back (tests and checks).
 - **Streaming** (`zipStream(res)` in `server/zip.mjs`): stored entries written as they come, waiting for the socket, so a
   combined download holds one student's archive in memory at a time. No ZIP64: one download stays under 4 GB and 65,535 entries.
 - **Who is leaving** (`leavers()`): Year 13 (`grade === 12`); students in `store.rosterImport.summary.missingFromFile` (the last
@@ -1817,7 +1823,7 @@ student (`buildArchive(sid)`):
   with `unzip -t` when present, permissions, a combined ZIP, erasure only on the day); `node scripts/checks/leaver-archive.cjs`
   (real roster, separate contexts: the admin downloads two Year 13 archives, schedules, confirms on the day; the student
   downloads their own from Privacy; a teacher gets 403; axe on the panel and Privacy).
-- Not done: Thai letters inside the PDF (see above); photos are listed in the PDF, not drawn.
+- Not done: photos are listed in the PDF, not drawn; Thai in the PDF is not justified (lines are ragged right).
 
 ## Notification settings and quiet hours (`src/notify-kinds.js`, `src/notify-prefs.js`, `src/components/NotificationSettings.jsx`)
 

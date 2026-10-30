@@ -8,7 +8,8 @@ import { spawn, spawnSync } from 'node:child_process';
 import net from 'node:net';
 import { Writable } from 'node:stream';
 import { zipStream, unzip } from '../zip.mjs';
-import { pdf, lost } from '../pdf.mjs';
+import { pdf, lost, pdfText } from '../pdf.mjs';
+import { loadFont, shape } from '../ttf.mjs';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..');
 const ROSTER = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/imports/fixtures/roster/roster.json'), 'utf8'));
@@ -47,14 +48,39 @@ test('the streaming ZIP writer waits for a slow reader and writes a valid ZIP', 
   assert.ok(unzipOk(buf));
 });
 
-test('the PDF writer: pages, A4, text, letters it cannot show', () => {
+test('the PDF writer: pages, A4, text, Thai with an embedded font, letters it cannot show', () => {
   const blocks = [{ t: 'h1', text: 'Fern (Gale)' }, ...Array.from({ length: 120 }, (_, i) => ({ t: 'p', text: `Moment ${i}: a long paragraph about the sea. `.repeat(3) }))];
-  const b = pdf({ title: 'T', footer: 'F', blocks }).toString('latin1');
+  const buf = pdf({ title: 'T', footer: 'F', blocks }), b = buf.toString('latin1'), text = pdfText(buf);
   assert.ok(b.startsWith('%PDF-1.4') && b.trimEnd().endsWith('%%EOF'));
   assert.ok((b.match(/\/Type \/Page\b/g) || []).length > 2 && /\/MediaBox \[0 0 595\.28 841\.89\]/.test(b));
-  assert.ok(b.includes('(Fern \\(Gale\\)) Tj') && /Page 1 of \d+/.test(b));
+  assert.ok(text.startsWith('Fern (Gale)\n') && /Page 1 of \d+/.test(text) && text.includes('Moment 119: a long paragraph'));
   assert.equal(lost(blocks), false);
-  assert.equal(lost([{ t: 'p', text: 'ฉันชอบทะเล' }]), true);
+  assert.equal(lost([{ t: 'p', text: 'ฉันชอบทะเล ที่นี่ น้ำ' }]), false, 'Thai is in the font');
+  assert.equal(lost([{ t: 'p', text: 'I liked it 😀' }]), true);
+
+  // Thai: a subset of Sarabun embedded (with its ToUnicode map), shaped, and broken between words.
+  const thai = 'ฉันเรียนรู้การวางแผนและการทำงานร่วมกับผู้อื่นที่ชายหาด น้ำใจ ปั้น ญุ ';
+  const tb = pdf({ title: 'เส้นทางของฉัน', footer: 'ฟ้า · 2026', blocks: [{ t: 'h1', text: 'เส้นทางของฉัน' }, { t: 'p', text: thai.repeat(8) }, { t: 'small', text: 'Emoji 😀 here' }] });
+  const ts = tb.toString('latin1'), tt = pdfText(tb);
+  assert.ok(/\/BaseFont \/[A-Z]{6}\+Sarabun-Regular/.test(ts) && /\/FontFile2 \d+ 0 R/.test(ts) && /\/CIDToGIDMap \/Identity/.test(ts) && !/Helvetica/.test(ts));
+  assert.ok(tb.length < 120000, `a subset, not the whole font (${tb.length} bytes)`);
+  const lines = tt.split('\n');
+  assert.equal(lines[0], 'เส้นทางของฉัน'.normalize('NFKC'));
+  const para = lines.slice(1, -3);
+  assert.ok(para.length >= 4, 'wrapped over several lines');
+  assert.equal(para.join('').replace(/ /g, ''), thai.repeat(8).normalize('NFKC').replace(/ /g, ''));
+  const words = [...new Intl.Segmenter('th', { granularity: 'word' }).segment(thai.repeat(8))].map((x) => x.segment.normalize('NFKC'));
+  for (const l of para) assert.ok(words.some((w) => l.startsWith(w)) && words.some((w) => l.trimEnd().endsWith(w)), `each line starts and ends on a whole word: ${l}`);
+  assert.ok(lines.includes('Emoji [?] here') && tt.includes('ฟ้า · 2026'));
+  // Shaped by the font's own rules: a tone mark over a vowel is its high form, placed on the consonant, marks beside
+  // ป move left (a narrow form), ญ loses its tail over a vowel below, ำ is split (and its circle joins a tone mark).
+  const f = loadFont(new URL('../fonts/Sarabun-Regular.ttf', import.meta.url)), gid = (c) => f.cmap.get(c.codePointAt(0));
+  const tone = (s) => shape(f, s).find((g) => g.u === '่');
+  assert.ok(tone('ที่').g !== tone('ท่').g && tone('ที่').at && tone('ที่').x > 0);
+  assert.notEqual(shape(f, 'ป้')[1].g, gid('้'));
+  assert.notEqual(shape(f, 'ญุ')[0].g, gid('ญ'));
+  assert.deepEqual(shape(f, 'กำ').map((g) => g.u), ['ก', 'ํ', 'า']);
+  assert.equal(shape(f, 'ค่ำ').length, 3, 'tone mark and nikhahit as one glyph');
 });
 
 test('leaver archive: who is leaving, the ZIP, permissions, many at once, erasure on the day', async () => {
@@ -105,12 +131,13 @@ test('leaver archive: who is leaving, the ZIP, permissions, many at once, erasur
     assert.ok(!Object.keys(z).some((n) => n.startsWith('data/files/')), 'files are not repeated in data/');
     assert.equal(z['photos/beach.png'].toString(), 'PNGDATA');
     const readme = z['README.txt'].toString();
-    assert.ok(readme.includes('my-journey.pdf') && readme.includes('ในโฟลเดอร์นี้มีอะไรบ้าง') && readme.includes('[?]') && readme.includes('leaver-portfolio.pdf'));
-    const jp = z['my-journey.pdf'].toString('latin1');
-    assert.ok(jp.startsWith('%PDF') && ['FERN-BEACH-CLEANUP', 'FERN-ESSAY', 'FERN-PRIVATE-NOTE', 'photos/beach.png', 'Service', 'Science'].every((t) => jp.includes(t)), 'the journey PDF has every moment (private too), by line, with where each file is');
+    assert.ok(readme.includes('my-journey.pdf') && readme.includes('ในโฟลเดอร์นี้มีอะไรบ้าง') && !readme.includes('[?]') && readme.includes('leaver-portfolio.pdf'), 'Thai is in the PDF, so the README does not send them to the HTML for it');
+    const jp = pdfText(z['my-journey.pdf']);
+    assert.ok(jp.includes('ฉันเรียนรู้การวางแผน and planning'.normalize('NFKC')), 'the PDF has the Thai reflection');
+    assert.ok(z['my-journey.pdf'].toString('latin1', 0, 5) === '%PDF-' && ['FERN-BEACH-CLEANUP', 'FERN-ESSAY', 'FERN-PRIVATE-NOTE', 'photos/beach.png', 'Service', 'Science'].every((t) => jp.includes(t)), 'the journey PDF has every moment (private too), by line, with where each file is');
     assert.ok(jp.indexOf('FERN-ESSAY') < jp.indexOf('FERN-PRIVATE-NOTE'), 'by date within a line');
     assert.ok(z['my-journey.html'].toString().includes('ฉันเรียนรู้การวางแผน and planning'), 'the HTML has the Thai reflection exactly');
-    const lp = z['leaver-portfolio.pdf'].toString('latin1');
+    const lp = pdfText(z['leaver-portfolio.pdf']);
     assert.ok(lp.includes('FERN-STATEMENT') && lp.includes('FERN-ESSAY') && !lp.includes('FERN-PRIVATE-NOTE') && !lp.includes('FERN-BEACH'));
     assert.ok(JSON.parse(z['data/manifest.json']).uploads.some((u) => u.inArchive === 'photos/beach.png'));
 
