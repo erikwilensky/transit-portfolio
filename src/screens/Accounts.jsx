@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { admin, exportUrl, signinCards } from '../auth.js';
 import { AdminCards } from '../components/SignInCards.jsx';
 import { AdminFamily } from '../components/FamilyLetters.jsx';
+import { ConsentRow } from '../components/FamilyConsent.jsx';
 import RosterImport from './RosterImport.jsx';
 import SubjectLines from './SubjectLines.jsx';
 import SisSync from '../components/SisSync.jsx';
@@ -117,7 +118,7 @@ export default function Accounts({ toast, persona }) {
         </tbody>
       </table>
       <p className="fineprint">Removing an account stops that person signing in. Their record and map stay. A paused account (someone no longer in the class lists) cannot sign in until you unpause it, or a later import has them again. A new setup link signs them out everywhere and ends their old password.</p>
-      <StudentData data={data} toast={toast} reload={() => admin.list().then(setData, (x) => setErr(x.message))} />
+      <StudentData data={data} toast={toast} by={persona.teacherId || null} reload={() => admin.list().then(setData, (x) => setErr(x.message))} />
       <SubjectLines toast={toast} />
       <CasCoordinators toast={toast} />
     </div>
@@ -125,7 +126,7 @@ export default function Accounts({ toast, persona }) {
 }
 
 // PDPA: a copy of everything about a student, and removing it (Thailand's PDPA: the rights to a copy and to erasure).
-function StudentData({ data, toast, reload }) {
+function StudentData({ data, toast, reload, by }) {
   const [sid, setSid] = useState('');
   const [step, setStep] = useState(0); // 0 nothing, 1 confirm open
   const [typed, setTyped] = useState('');
@@ -150,7 +151,8 @@ function StudentData({ data, toast, reload }) {
         <a className="auth-btn as-link" href={exportUrl(s.id, true)} download>Download their data (ZIP)</a>
         {step === 0 && <button className="ghost danger" onClick={() => setStep(1)}>Remove this student…</button>}
       </div>}
-      {s && <p className="fineprint">The ZIP holds their record, stations, reflections (private ones too), endorsements, presentations and share links, inbox, activity log, requests, comments, consent requests, notifications, accounts and uploaded files, with a README.txt explaining each file.</p>}
+      {s && <ConsentRow studentId={s.id} by={by} toast={toast} />}
+      {s && <p className="fineprint">The ZIP holds their record, stations, reflections (private ones too), endorsements, presentations and share links, inbox, activity log, requests, comments, consent requests and the family consent the school recorded, notifications, accounts and uploaded files, with a README.txt explaining each file.</p>}
       {s && step === 1 && (
         <div className="acc-erase" role="group" aria-labelledby="acce-h">
           <h3 id="acce-h">Remove {s.name} and everything about them</h3>

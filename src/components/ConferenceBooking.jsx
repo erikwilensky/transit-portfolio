@@ -1,14 +1,14 @@
 // Conference booking (api.openConferenceRound … sendConferenceReminders): the advisor's round and day grid on My advisory,
-// the printed day schedule, the whole-Year panel on the school overview, the family's card (Thai or English, children side
-// by side) and the student's "Your conference" line. Times are Bangkok time.
+// the printed day schedule, the whole-Year panel on the school overview and the student's "Your conference" line. Families
+// no longer book in the app (removed on 30 October 2026): the advisor arranges times by email. Times are Bangkok time.
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { advisorConfRounds, advisoryOf, blockConferenceSlot, bookConference, cancelConference, closeConferenceRound, confBookingOf, confClash, confGrid,
-  confProgress, confTooSoon, CONF_SLOTS, editConferenceRound, familyConfRounds, getConferenceRounds, getStudent, getTeacher, openConferenceRound, roundLive,
+import { advisorConfRounds, advisoryOf, blockConferenceSlot, bookConference, cancelConference, closeConferenceRound, confBookingOf, confGrid,
+  confProgress, CONF_SLOTS, editConferenceRound, getConferenceRounds, getStudent, getTeacher, openConferenceRound, roundLive,
   shortName, snapshot, studentConferences, TODAY } from '../api.js';
 import { fmtDate } from '../format.js';
 import { printDate, printDocument, usePrintTitle } from '../print.js';
-import { confDay, confSlotText, confWords, errText } from '../i18n.js';
+import { confDay, confSlotText } from '../i18n.js';
 import { conferenceSheetLink } from '../conference.js';
 import Logo from './Logo.jsx';
 import { ConferenceMode, prepMark, RoundPrep, StudentLedCard } from './StudentLed.jsx';
@@ -74,15 +74,15 @@ export function AdvisoryBooking({ advisorId, persona, version, toast, focus }) {
   if (!group.size && !rounds.length) return null;
   const open = (f) => {
     const snap = snapshot();
-    try { const r = openConferenceRound({ ...f, advisorId }, advisorId); setOpening(false); toast(`Conference booking is open for ${plural(r.studentIds.length, 'family', 'families')}`, snap); } catch (e) { toast(e.message); }
+    try { const r = openConferenceRound({ ...f, advisorId }, advisorId); setOpening(false); toast(`Conference times are open for ${plural(r.studentIds.length, 'student')}`, snap); } catch (e) { toast(e.message); }
   };
   const live = rounds.some(roundLive);
   return (
     <section className="card-sec cb-adv" aria-labelledby="cb-adv-h">
       <div className="nd-head"><div><h2 id="cb-adv-h">Conference booking</h2>
-        <small className="fineprint">Families pick a time in the app (no email). They can change or cancel until 24 hours before; you can book for a family and block times.</small></div>
+        <small className="fineprint">Arrange each time with the family by email, then book it here. The student sees their time; families are not told in the app. You can also block times.</small></div>
         {!opening && !live && <button className="ghost" onClick={() => setOpening(true)}>Open conference booking</button>}</div>
-      {opening && <RoundForm idp="cb-new" label={`Open for ${plural(group.size, 'family', 'families')}`} onSave={open} onCancel={() => setOpening(false)} />}
+      {opening && <RoundForm idp="cb-new" label={`Open for ${plural(group.size, 'student')}`} onSave={open} onCancel={() => setOpening(false)} />}
       {rounds.map((r) => <AdvisorRound key={r.id} r={r} advisorId={advisorId} persona={persona} version={version} toast={toast} startDay={r.id === fr ? fd : null} />)}
     </section>
   );
@@ -146,10 +146,10 @@ function DayGrid({ r, advisorId, date, students, version, toast, onMode }) {
           return (
             <li key={x.time} className={`cb-slot ${x.state}`}>
               <span className="cb-time">{x.time}<small>–{x.end}</small></span>
-              {x.state === 'booked' && <><span className="cb-who"><b>{s?.name || 'Booked'}</b><small>{x.booking.by === 'family' ? 'Booked by the family' : x.booking.by === advisorId ? 'Booked by you' : `Booked by ${getTeacher(x.booking.by)?.name || 'staff'}`}</small>{s && <small className={`cb-prep${prepMark(r.id, s.id) === 'Prepared' ? ' ready' : ''}`}>{prepMark(r.id, s.id)}</small>}</span>
+              {x.state === 'booked' && <><span className="cb-who"><b>{s?.name || 'Booked'}</b><small>{x.booking.by === 'family' ? 'Booked earlier by the family' : x.booking.by === advisorId ? 'Booked by you' : `Booked by ${getTeacher(x.booking.by)?.name || 'staff'}`}</small>{s && <small className={`cb-prep${prepMark(r.id, s.id) === 'Prepared' ? ' ready' : ''}`}>{prepMark(r.id, s.id)}</small>}</span>
                 {s && onMode && <button className="ghost small-btn" onClick={() => onMode(s.id)}>Conference mode<span className="sr-only"> for {s.name}</span></button>}
-                {!passed && <button className="linkish" onClick={() => run(() => cancelConference(x.booking.id, advisorId), `Cancelled ${first(s)}’s conference. The family is told.`)}>Cancel<span className="sr-only"> {s?.name}’s booking at {x.time}</span></button>}</>}
-              {x.state === 'blocked' && <><span className="cb-who"><b>Blocked</b><small>Families cannot book it</small></span>
+                {!passed && <button className="linkish" onClick={() => run(() => cancelConference(x.booking.id, advisorId), `Cancelled ${first(s)}’s conference. Let the family know by email.`)}>Cancel<span className="sr-only"> {s?.name}’s booking at {x.time}</span></button>}</>}
+              {x.state === 'blocked' && <><span className="cb-who"><b>Blocked</b><small>Nobody can be booked in it</small></span>
                 <button className="linkish" onClick={() => run(() => blockConferenceSlot(r.id, advisorId, date, x.time, false, advisorId), `${x.time} is free again`)}>Unblock<span className="sr-only"> {x.time}</span></button></>}
               {x.state === 'free' && <><span className="cb-who"><b>Free</b></span>
                 {!passed && !r.closedOn && <span className="cb-book">
@@ -158,7 +158,7 @@ function DayGrid({ r, advisorId, date, students, version, toast, onMode }) {
                     <option value="">Book for…</option>
                     {free.map((st) => <option key={st.id} value={st.id}>{st.name}{confBookingOf(r.id, st.id) ? ' (moves their time)' : ''}</option>)}
                   </select>
-                  <button className="ghost small-btn" disabled={!pick[x.time]} onClick={() => run(() => { bookConference(r.id, pick[x.time], { date, time: x.time }, advisorId); setPick({ ...pick, [x.time]: '' }); }, `Booked ${first(getStudent(pick[x.time]))} at ${x.time}. The family is told.`)}>Book<span className="sr-only"> {x.time}</span></button>
+                  <button className="ghost small-btn" disabled={!pick[x.time]} onClick={() => run(() => { bookConference(r.id, pick[x.time], { date, time: x.time }, advisorId); setPick({ ...pick, [x.time]: '' }); }, `Booked ${first(getStudent(pick[x.time]))} at ${x.time}. Let the family know by email.`)}>Book<span className="sr-only"> {x.time}</span></button>
                   <button className="linkish" onClick={() => run(() => blockConferenceSlot(r.id, advisorId, date, x.time, true, advisorId), `${x.time} is blocked`)}>Block<span className="sr-only"> {x.time}</span></button>
                 </span>}</>}
             </li>
@@ -212,12 +212,12 @@ export function YearBooking({ persona, version, toast }) {
   const tid = persona?.teacherId || null;
   const open = (f) => {
     const snap = snapshot();
-    try { const r = openConferenceRound({ ...f, year }, tid); setOpening(false); toast?.(`Conference booking is open for ${plural(r.studentIds.length, 'family', 'families')} in Year ${year}, with ${plural(r.advisorIds.length, 'advisor')}`, snap); } catch (e) { toast?.(e.message); }
+    try { const r = openConferenceRound({ ...f, year }, tid); setOpening(false); toast?.(`Conference times are open for ${plural(r.studentIds.length, 'student')} in Year ${year}, with ${plural(r.advisorIds.length, 'advisor')}`, snap); } catch (e) { toast?.(e.message); }
   };
   return (
     <section className="card-sec cb-adv cb-year" aria-labelledby="cb-year-h">
       <div className="nd-head"><div><h2 id="cb-year-h">Conference booking</h2>
-        <small className="fineprint">Open booking for a whole Year: each family books with their child’s advisor, at the same days and hours. Students already in an open round are left out.</small></div>
+        <small className="fineprint">Open conference times for a whole Year: each advisor books their own advisees, at the same days and hours, after arranging them with families by email. Students already in an open round are left out.</small></div>
         {!opening && <button className="ghost" onClick={() => setOpening(true)}>Open for a Year</button>}</div>
       {opening && <RoundForm idp="cb-year" label="Open it" onSave={open} onCancel={() => setOpening(false)}>
         <label>Year<select value={year} onChange={(e) => setYear(Number(e.target.value))}>{[7, 8, 9, 10, 11, 12, 13].map((y) => <option key={y} value={y}>Year {y}</option>)}</select></label>
@@ -228,72 +228,6 @@ export function YearBooking({ persona, version, toast }) {
           {!r.closedOn && <button className="ghost" onClick={() => { const snap = snapshot(); closeConferenceRound(r.id, tid); toast?.(`Booking for ${r.title} is closed`, snap); }}>Close</button>}
         </li>); })}</ul>}
     </section>
-  );
-}
-
-// ── The family's card: one column per child, side by side, so brothers' and sisters' times never clash ──
-export function FamilyBooking({ persona, lang, version, toast }) {
-  const list = useMemo(() => familyConfRounds(persona.children), [persona.children, version]); // eslint-disable-line react-hooks/exhaustive-deps
-  const w = confWords(lang);
-  if (!list.length) return null;
-  return list.map(({ round: r, children }) => (
-    <section key={r.id} className="card-sec cb-fam" aria-labelledby={`cb-fam-${r.id}`}>
-      <h2 id={`cb-fam-${r.id}`}>{w.head}: <span lang="en">{r.title}</span></h2>
-      <p>{w.intro}</p>
-      <p className="cb-where-line"><b>{r.online ? w.online : <span lang="en">{r.location}</span>}</b>{r.online && <> · <a href={r.link} target="_blank" rel="noreferrer">{w.join}</a></>} · {w.mins(r.slot)} · <small>{w.tz}</small></p>
-      <div className="cb-kids">{children.map((c) => <ChildPicker key={c.student.id} r={r} c={c} siblings={persona.children.filter((x) => x !== c.student.id)} lang={lang} toast={toast} version={version} />)}</div>
-    </section>
-  ));
-}
-
-function ChildPicker({ r, c, siblings, lang, toast, version }) {
-  const w = confWords(lang);
-  const [changing, setChanging] = useState(false);
-  const [sure, setSure] = useState(false);
-  const g = useMemo(() => confGrid(r.id, c.advisorId), [r, c.advisorId, version]); // eslint-disable-line react-hooks/exhaustive-deps
-  const f = first(c.student), b = c.booking;
-  const adv = shortName(c.advisor?.name || '');
-  const locked = b && confTooSoon(b.date, b.time);
-  const run = (fn, msg) => { try { fn(); toast(msg); setChanging(false); setSure(false); } catch (e) { toast(errText(lang, e.message)); } };
-  const days = g.days.filter((d) => d.date >= TODAY);
-  return (
-    <div className="cb-kid">
-      <h3>{c.student.name} <small>{w.with(adv)}</small></h3>
-      {b && !changing ? (
-        <div className="cb-mine">
-          <span className="status s-ok"><i>✓</i>{w.booked}</span>
-          <b className="cb-when">{confSlotText(lang, b.date, b.time)}</b>
-          {b.by !== 'family' && <small>{w.by(adv)}</small>}
-          {locked ? <p className="fineprint">{w.locked}</p> : sure ? (
-            <div className="cb-btns"><span>{w.sure}</span><button className="primary" onClick={() => run(() => cancelConference(b.id, 'family'), w.gone(f))}>{w.yes}</button><button className="ghost" onClick={() => setSure(false)}>{w.keep}</button></div>
-          ) : (
-            <div className="cb-btns"><button className="ghost" onClick={() => setChanging(true)}>{w.change}</button><button className="ghost" onClick={() => setSure(true)}>{w.cancel}</button></div>
-          )}
-        </div>
-      ) : (
-        <>
-          <p className="cb-pick-h">{w.pick(f)}</p>
-          {days.map((d) => (
-            <div key={d.date} className="cb-day">
-              <h4>{confDay(lang, d.date)}</h4>
-              <ul className="cb-times" aria-label={w.times(f, confDay(lang, d.date))}>
-                {d.slots.map((x) => {
-                  const own = x.booking?.studentId === c.student.id;
-                  const clash = !own && x.state === 'free' && confClash(c.student.id, d.date, x.time, r.slot, siblings);
-                  const soon = confTooSoon(d.date, x.time);
-                  const why = own ? w.booked : x.state !== 'free' ? w.taken : clash ? w.clash(first(getStudent(clash.studentId))) : soon ? w.soon : null;
-                  return <li key={x.time}>{why
-                    ? <span className={`cb-t off${own ? ' own' : ''}`}>{x.time}<small>{why}</small></span>
-                    : <button className="cb-t" aria-label={`${w.book(x.time)} · ${confDay(lang, d.date)} · ${f}`} onClick={() => run(() => bookConference(r.id, c.student.id, { date: d.date, time: x.time }, 'family'), w.saved(f, confSlotText(lang, d.date, x.time)))}>{x.time}</button>}</li>;
-                })}
-              </ul>
-            </div>
-          ))}
-          {!days.some((d) => d.slots.some((x) => x.state === 'free')) && <p className="fineprint">{w.none}</p>}
-          {b && <button className="linkish" onClick={() => setChanging(false)}>{w.keep}: {confSlotText(lang, b.date, b.time)}</button>}
-        </>
-      )}
-    </div>
   );
 }
 

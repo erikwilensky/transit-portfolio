@@ -215,11 +215,12 @@ export function scopedSnapshot(user) {
   const keptTasks = new Set(store.teacherTasks.filter(taskMine).map((t) => t.id));
   store.handIns = parent ? [] : (full.handIns || []).filter((r) => (self ? r.studentId === self : keptTasks.has(r.taskId) && inReach(r.studentId)));
   Object.assign(store, confScope(full, { user, all, self, parent, tid, inReach }));
-  // Student-led conferences (api.saveConfPrep, writeConfNote): the prep goes to the student, their advisor and whole-school
-  // roles; the conference note (the family's and the student's lines) to those and the family. No other staff.
-  const confMine = (sid) => inReach(sid) && (all || sid === self || (!!tid && api.getStudent(sid)?.advisorId === tid));
+  // Student-led conferences (api.saveConfPrep, writeConfNote): the prep and the conference note (the student's line) go to
+  // the student, their advisor and whole-school roles. No other staff, and no family (since 30 October 2026). An old family
+  // line (`family`) goes to nobody.
+  const confMine = (sid) => !parent && inReach(sid) && (all || sid === self || (!!tid && api.getStudent(sid)?.advisorId === tid));
   store.confPreps = (full.confPreps || []).filter((p) => confMine(p.studentId));
-  store.confNotes = (full.confNotes || []).filter((n) => confMine(n.studentId) || (parent && inReach(n.studentId)));
+  store.confNotes = (full.confNotes || []).filter((n) => n.student && confMine(n.studentId)).map((n) => ({ ...n, family: null }));
   // Subject prompts (api.setSubjectPrompts): school guidance every student and member of staff receives, families never. An
   // example from a student's moment goes whole (ids, status) to that student and to staff who reach them; anyone else gets
   // it only once the student said yes and while it is still publishable, as its title, a line of it and the Year.
@@ -233,7 +234,7 @@ export function scopedSnapshot(user) {
   const casCoord = isAdmin(user) || (staff && api.isCasCoordinator({ kind: user?.kind, teacherId: tid }));
   const casOut = ({ code, ...x }) => ({ ...x, ...(code ? { code: { expires: code.expires } } : {}), ...(self ? {} : { about: api.casAbout(x) }) });
   store.casHours = parent ? [] : (full.casHours || []).filter((x) => (self ? x.studentId === self : casCoord || (!!tid && x.supervisor?.kind === 'staff' && x.supervisor.teacherId === tid))).map(casOut);
-  Object.assign(store, familyNotesScope(full, store, { user, all, self, parent, tid, shown, moderator }));
+  Object.assign(store, familyWrittenScope(full, store, parent));
   Object.assign(store, schoolEventScope(full, { all, self, parent, staff, tid, inReach, shown }));
   // Moment templates (api.saveMomentTemplate): school guidance every student and member of staff receives, families never.
   store.momentTemplates = parent ? [] : full.momentTemplates || [];
@@ -356,7 +357,9 @@ Object.assign(TOUCHES, {
 // when they cover a student in reach (only those ids). Bookings and blocks: whole-school roles and admins all; an advisor
 // their own grid; a student their own bookings; a family their children's bookings in full, and every other booking or block
 // in their children's advisors' grids only as a taken time (no student, no id, nobody's name). ──
+// Families get no conference rounds, bookings or blocks (they no longer book in the app, since 30 October 2026).
 function confScope(full, { user, all, self, parent, tid, inReach }) {
+  if (parent) return { confRounds: [], confBookings: [], confBlocks: [] };
   const rounds = (full.confRounds || []).flatMap((r) => { const ids = r.studentIds.filter((x) => (self ? x === self : inReach(x))); return all ? [r] : ids.length ? [{ ...r, studentIds: ids }] : []; });
   const kids = new Set(parent ? user.children || [] : []);
   const grids = new Set([...kids].flatMap((sid) => { const a = api.getStudent(sid)?.advisorId; return rounds.filter((r) => r.studentIds.includes(sid)).map((r) => `${r.id}|${a}`); }));
@@ -373,7 +376,8 @@ Object.assign(TOUCHES, {
   bookConference: (a) => T([a[1]], [a[3] !== 'family' ? a[3] ?? '?' : null]), cancelConference: (a) => T([api.getConfBooking(a[0])?.studentId ?? '?'], [a[1] !== 'family' ? a[1] ?? '?' : null]),
   blockConferenceSlot: (a) => T([], [a[5]]), sendConferenceReminders: () => T([]),
 });
-Object.assign(TOUCHES, { saveConfPrep: (a) => T([a[1]]), writeConfNote: (a) => T([a[1]], [a[4] !== 'family' && a[4] !== 'student' ? a[4] ?? '?' : null]) });
+Object.assign(TOUCHES, { saveConfPrep: (a) => T([a[1]]), writeConfNote: (a) => T([a[1]], [a[4] !== 'student' ? a[4] ?? '?' : null]) });
+Object.assign(TOUCHES, { recordFamilyConsent: (a) => T([a[0]], [a[2]]) });
 Object.assign(TOUCHES, {
   setSubjectPrompts: (a) => T([].concat(a[1]?.examples || []).filter((x) => x?.eventId).map((x) => ev(x.eventId) ?? '?'), [a[2]]),
   clearSubjectPrompts: (a) => T([], [a[1]]), answerExampleAsk: (a) => T([a[2]]),
@@ -388,27 +392,19 @@ Object.assign(TOUCHES, { clearReadNotifications: () => T([]) });
 // Comment bank (canAct's own rules are phraseOk in auth.mjs): no student, acting as the writer.
 Object.assign(TOUCHES, Object.fromEntries(['addPhrase', 'editPhrase', 'deletePhrase', 'movePhrase', 'usePhrase'].map((f) => [f, (a) => T([], [a[1]])])));
 
-// ── Family encouragement (api.addFamilyNote): notes go only with the moments the person receives. A family: notes on their
-// children's moments (a note a moderator hid only to its writer, with the notice), never whether the student hid one from
-// their own view; and which children turned notes off. The student: notes on their own moments that are not hidden, without
-// the writer's account id. Staff: the advisor, a current class's teachers and whole-school roles; other staff nothing. ──
-function familyNotesScope(full, store, { user, all, self, parent, tid, shown, moderator }) {
-  const kids = new Set(parent ? user.children || [] : []), me = parent ? `u:${user.id}` : null;
-  const notes = (full.familyNotes || []).filter((n) => shown.has(n.eventId));
-  const out = {
-    familyNotes: parent ? notes.filter((n) => kids.has(n.studentId) && (!n.hidden || n.by === me)).map(({ studentHidden, ...n }) => n)
-      : self ? notes.filter((n) => n.studentId === self && !n.hidden).map(({ by, ...n }) => n)
-        : notes.filter((n) => all || (!!tid && api.familyNoteReader(tid, n.studentId))),
+// ── Removed on 30 October 2026 (no new family–school paths): what families wrote before stays in the record only for the
+// student's PDPA copy and erasure, and goes to nobody: no family notes, no report on one (moderators included), and no
+// notification that quoted a note or told of a family's conference line (api.familyWrittenNotice). A family's old report on a
+// moment reaches moderators without the family's words (the outcome still matters) and the family not at all. ──
+function familyWrittenScope(full, store, parent) {
+  const famNote = new Set((full.reports || []).filter((r) => r.familyNoteId).map((r) => r.id));
+  return {
+    familyNotes: [],
+    reports: parent ? [] : store.reports.filter((r) => !r.familyNoteId && !famNote.has(r.id))
+      .map((r) => (/^fam:/.test(r.from?.key || '') ? { ...r, note: '' } : r)),
+    notifications: store.notifications.filter((n) => !api.familyWrittenNotice(n)),
   };
-  if (parent) out.privacy = Object.fromEntries([...kids].filter((sid) => full.privacy?.[sid]?.familyNotes === false).map((sid) => [sid, { familyNotes: false }]));
-  if (!moderator) { const fn = new Map((full.reports || []).filter((r) => r.familyNoteId).map((r) => [r.id, r.familyNoteId])); out.reports = store.reports.map((r) => (fn.has(r.id) ? { ...r, familyNoteId: fn.get(r.id) } : r)); }
-  return out;
 }
-const famNote = (id) => api.getFamilyNote(id)?.studentId ?? '?';
-Object.assign(TOUCHES, {
-  addFamilyNote: (a) => T([ev(a[0])]), editFamilyNote: (a) => T([famNote(a[0])]), deleteFamilyNote: (a) => T([famNote(a[0])]),
-  thankFamilyNote: (a) => T([famNote(a[0])]), setFamilyNoteHidden: (a) => T([famNote(a[0])]),
-});
 
 // ── School events (api.addSchoolEvent, dismissSchoolEvent): whole-school roles get every event and row whole. A student
 // gets the events for them (studentIds: just themselves) and their own rows; a family their children's events (only

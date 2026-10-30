@@ -62,10 +62,9 @@ export const GROUPS = {
     ['encourage', 'Encouragement', ['encourage']],
     ['conference', 'Conferences', ['conference']],
   ],
+  // Families: no consent requests or conference times in the app since 30 October 2026 (the school uses email).
   family: [
     ['digest', 'Weekly digest', ['digest']],
-    ['consent', 'Consent requests', ['consent']],
-    ['conference', 'Conferences', ['conference']],
     ['milestones', 'Your child’s milestones', ['milestone']],
   ],
 };

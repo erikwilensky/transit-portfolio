@@ -61,7 +61,8 @@ test('groups per audience: staff fall back to System, others always get what is 
   assert.equal(groupOf('consent', 'staff')[0], 'system');
   assert.equal(groupOf('spotted', 'student')[0], 'teacher');
   assert.equal(groupOf('system', 'student'), null);
-  assert.equal(groupOf('conference', 'family')[0], 'conference');
+  assert.equal(groupOf('conference', 'family'), null, 'families get no conference notices any more');
+  assert.equal(groupOf('milestone', 'family')[0], 'milestones');
 });
 
 test('settings filter the bell and the count, never the record', () => {
@@ -85,7 +86,8 @@ test('settings filter the bell and the count, never the record', () => {
   assert.equal(notes.length, 6, 'nothing removed');
   // Students and families have On and Off only: a 'week' there means off.
   assert.equal(settingOf({ text: 'Ms Nair: hi' }, { kinds: { teacher: 'week' } }, 'student'), 'off');
-  assert.equal(settingOf({ text: 'Aaron asked you to look at a consent request' }, cleanNotify({ kinds: { consent: 'off' } }), 'family'), 'off');
+  assert.equal(settingOf({ text: 'Aaron reached a milestone' }, cleanNotify({ kinds: { milestones: 'off' } }), 'family'), 'off');
+  assert.ok(notifyProblem({ kinds: { consent: 'off' } }, 'family'), 'no consent group for families any more');
   assert.equal(settingOf({ text: 'A teacher has hidden “x” while they look at it.' }, { kinds: { teacher: 'off', comments: 'off' } }, 'student'), 'on');
 });
 

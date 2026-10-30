@@ -1,20 +1,18 @@
 import { inkOn } from '../format.js';
 import { useMemo, useState } from 'react';
-import { answerConsent, applyLens, consentOnFile, familyViewer, getConsentReqs, getDigest, getFamily, getLang, getStudent, getStudentMap, setFamily, TERM_START, TODAY, youngStudent } from '../api.js';
+import { applyLens, consentOnFile, familyConsentOf, familyViewer, getConsentReqs, getDigest, getLang, getStudent, getStudentMap, TERM_START, TODAY, youngStudent } from '../api.js';
 import MetroMap from '../components/MetroMap.jsx';
 import { FamilyMilestones } from '../components/Milestones.jsx';
 import StationPanel from '../components/StationPanel.jsx';
 import { consentText, dateIn, LangContext, lineName, tr } from '../i18n.js';
 import { chooseLang, exportUrl, isPilot } from '../auth.js';
-import { FamilyBooking } from '../components/ConferenceBooking.jsx';
-import { FamilyNotesHint } from '../components/FamilyNotes.jsx';
 import { schoolEventName } from '../api.js';
-import { FamilyConfNotes } from '../components/StudentLed.jsx';
 import { SkillsGrowthCard } from '../components/SkillsGrowth.jsx';
 import { FamilyMovingUp } from '../components/MovingUp.jsx';
 
 // N1: a parent's own screens, in English or Thai. One parent, two children:
-// Ploy (Year 11) decides what her family sees; Pim (Year 7) needs her parent's consent first.
+// Ploy (Year 11) decides what her family sees; Pim (Year 7) needs her parent's consent first. Read only: since 30 October
+// 2026 a family writes nothing to the school in the app (no consent answers, bookings, notes or reports); they use email.
 const SAY = {
   en: {
     kicker: 'Family',
@@ -22,22 +20,23 @@ const SAY = {
     homeYoung: (f) => `${f} is in Years 7 to 9, so you see what ${f}’s advisor sees. Private reflections stay private.`,
     homeOld: (f) => `${f} decides what the family sees: everything ${f} shares with the school community.`,
     empty: (f) => `${f}’s map starts when ${f} picks a few interests in Transit Portfolio. The first stations then arrive from school systems.`,
-    emptyConsent: (f) => `First, ${f} needs your consent to join.`,
-    toConsent: 'Go to consent',
+    emptyConsent: (f) => `First, the school needs your consent for ${f} to join. Email ${f}’s advisor.`,
+    toConsent: 'See consent',
     thisTerm: 'This term', none: 'Nothing new this term yet.', ask: 'Questions you might ask',
-    consentT: 'Consent', consentP: 'Under Thailand’s PDPA, students in Years 7 to 9 need a parent’s consent before their record is kept or shared. You can change any answer later.',
-    asked: (d) => `Asked ${d}`, yes: 'Yes, I agree', no: 'Not now', change: 'Change my answer',
-    st: { pending: 'Waiting for you', approved: 'You agreed', declined: 'You said not now' },
+    consentT: 'Consent', consentP: 'Under Thailand’s PDPA, students in Years 7 to 9 need a parent’s consent before their record is kept or shared. The school records it.',
+    asked: (d) => `Asked ${d}`, howTo: (f) => `To give, change or withdraw consent, email ${f}’s advisor. The school records it here.`,
+    recorded: (d, h) => `Recorded by the school on ${d} (${h})`, how: { email: 'by email', paper: 'on paper', person: 'in person', other: 'other' },
+    st: { pending: 'Waiting for consent', approved: 'Consent given', declined: 'Not given', withdrawn: 'Withdrawn' },
     olderT: (f) => `${f} manages sharing`,
     olderP: (f) => `Consent was recorded when ${f} joined in Year 7. From Year 10, ${f} decides what is shared and with whom; you can still ask the school for a copy of the record at any time.`,
     onFile: 'Consent on file', waiting: 'Waiting for consent',
     digestT: 'Weekly digest', digestP: 'A short summary each Friday of what changed in each child’s record, in the language you choose.',
-    email: 'Email me this every Friday', lang: 'Language', child: 'Child', saved: (f) => `Saved. ${f} has been told.`, savedNo: 'Saved.',
+    lang: 'Language', child: 'Child',
     week: (a, b) => `Your week · ${a} to ${b}`,
     newSt: 'New on the map', endorsed: (t, x) => `${t} endorsed “${x}”`, views: (n) => `${n} view${n === 1 ? '' : 's'} of a shared link`,
     refl: (n) => `${n} new reflection${n === 1 ? '' : 's'} (you see the shared ones only)`, coming: 'Coming up', nothing: (f) => `A quiet week for ${f}.`,
     starter: 'A question for the dinner table', open: 'Open the map',
-    notJoined: (f) => `${f} has not joined yet. Answer the consent request to get started.`,
+    notJoined: (f) => `${f} has not joined yet: the school needs your consent first. Email ${f}’s advisor.`,
     copyT: (f) => `A copy of ${f}’s record`, copyP: 'Everything the school holds about your child in Transit Portfolio, as one ZIP file with a README. To have the record removed, ask the school’s pilot admin.', copyBtn: 'Download the copy (ZIP)',
   },
   th: {
@@ -46,22 +45,23 @@ const SAY = {
     homeYoung: (f) => `${f} อยู่ระดับ Year 7 ถึง 9 คุณจึงเห็นสิ่งเดียวกับที่ครูที่ปรึกษาของ ${f} เห็น บทสะท้อนคิดที่เป็นส่วนตัวจะไม่แสดง`,
     homeOld: (f) => `${f} เป็นผู้เลือกว่าครอบครัวจะเห็นอะไร คือทุกอย่างที่ ${f} เปิดให้ชุมชนโรงเรียนเห็น`,
     empty: (f) => `แผนที่ของ ${f} จะเริ่มเมื่อ ${f} เลือกความสนใจใน Transit Portfolio จากนั้นรายการแรกจะมาจากระบบของโรงเรียน`,
-    emptyConsent: (f) => `ก่อนอื่น ${f} ต้องได้รับความยินยอมจากคุณ`,
-    toConsent: 'ไปที่การให้ความยินยอม',
+    emptyConsent: (f) => `ก่อนอื่น โรงเรียนต้องได้รับความยินยอมจากคุณให้ ${f} เข้าร่วม โปรดส่งอีเมลถึงครูที่ปรึกษาของ ${f}`,
+    toConsent: 'ดูการให้ความยินยอม',
     thisTerm: 'ภาคเรียนนี้', none: 'ภาคเรียนนี้ยังไม่มีรายการใหม่', ask: 'คำถามที่อาจลองชวนคุย',
-    consentT: 'การให้ความยินยอม', consentP: 'ตาม พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล นักเรียน Year 7 ถึง 9 ต้องได้รับความยินยอมจากผู้ปกครองก่อนจัดเก็บหรือแบ่งปันข้อมูล คุณเปลี่ยนคำตอบได้ทุกเมื่อ',
-    asked: (d) => `ขอเมื่อ ${d}`, yes: 'ยินยอม', no: 'ยังไม่ยินยอม', change: 'เปลี่ยนคำตอบ',
-    st: { pending: 'รอคำตอบจากคุณ', approved: 'คุณยินยอมแล้ว', declined: 'คุณยังไม่ยินยอม' },
+    consentT: 'การให้ความยินยอม', consentP: 'ตาม พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล นักเรียน Year 7 ถึง 9 ต้องได้รับความยินยอมจากผู้ปกครองก่อนจัดเก็บหรือแบ่งปันข้อมูล โรงเรียนเป็นผู้บันทึก',
+    asked: (d) => `ขอเมื่อ ${d}`, howTo: (f) => `หากต้องการให้ เปลี่ยน หรือถอนความยินยอม โปรดส่งอีเมลถึงครูที่ปรึกษาของ ${f} โรงเรียนจะบันทึกไว้ที่นี่`,
+    recorded: (d, h) => `โรงเรียนบันทึกไว้เมื่อ ${d} (${h})`, how: { email: 'ทางอีเมล', paper: 'ทางเอกสาร', person: 'ด้วยตนเอง', other: 'อื่น ๆ' },
+    st: { pending: 'รอความยินยอม', approved: 'ให้ความยินยอมแล้ว', declined: 'ยังไม่ให้ความยินยอม', withdrawn: 'ถอนความยินยอมแล้ว' },
     olderT: (f) => `${f} ดูแลการแบ่งปันเอง`,
     olderP: (f) => `บันทึกความยินยอมไว้แล้วตั้งแต่ ${f} เข้าเรียน Year 7 ตั้งแต่ Year 10 ${f} เป็นผู้ตัดสินใจว่าจะแบ่งปันอะไรกับใคร คุณยังขอสำเนาข้อมูลจากโรงเรียนได้ทุกเมื่อ`,
     onFile: 'มีความยินยอมแล้ว', waiting: 'รอความยินยอม',
     digestT: 'สรุปประจำสัปดาห์', digestP: 'สรุปสั้น ๆ ทุกวันศุกร์ว่ามีอะไรเปลี่ยนแปลงในบันทึกของลูกแต่ละคน ในภาษาที่คุณเลือก',
-    email: 'ส่งอีเมลสรุปให้ฉันทุกวันศุกร์', lang: 'ภาษา', child: 'บุตรหลาน', saved: (f) => `บันทึกแล้ว ${f} จะได้รับแจ้ง`, savedNo: 'บันทึกแล้ว',
+    lang: 'ภาษา', child: 'บุตรหลาน',
     week: (a, b) => `สัปดาห์ของคุณ · ${a} ถึง ${b}`,
     newSt: 'รายการใหม่บนแผนที่', endorsed: (t, x) => `${t} รับรอง “${x}”`, views: (n) => `มีผู้เปิดดูลิงก์ที่แบ่งปัน ${n} ครั้ง`,
     refl: (n) => `บทสะท้อนคิดใหม่ ${n} รายการ (คุณเห็นเฉพาะที่แบ่งปัน)`, coming: 'สิ่งที่กำลังจะมาถึง', nothing: (f) => `สัปดาห์นี้ ${f} ยังไม่มีอะไรใหม่`,
     starter: 'คำถามชวนคุยบนโต๊ะอาหาร', open: 'เปิดแผนที่',
-    notJoined: (f) => `${f} ยังไม่ได้เริ่มใช้ ตอบคำขอความยินยอมเพื่อเริ่มต้น`,
+    notJoined: (f) => `${f} ยังไม่ได้เริ่มใช้ โรงเรียนต้องได้รับความยินยอมจากคุณก่อน โปรดส่งอีเมลถึงครูที่ปรึกษาของ ${f}`,
     copyT: (f) => `สำเนาบันทึกของ ${f}`, copyP: 'ข้อมูลทั้งหมดที่โรงเรียนเก็บเกี่ยวกับบุตรหลานของคุณใน Transit Portfolio เป็นไฟล์ ZIP ไฟล์เดียวพร้อมคำอธิบาย หากต้องการให้ลบบันทึก โปรดติดต่อผู้ดูแลโครงการนำร่องของโรงเรียน', copyBtn: 'ดาวน์โหลดสำเนา (ZIP)',
   },
 };
@@ -109,7 +109,7 @@ export default function Family({ persona, screen, param, go, toast, version }) {
   );
 }
 
-function FamilyMap({ persona, childId, go, lang, version, toast }) {
+function FamilyMap({ persona, childId, go, lang, version }) {
   const s = getStudent(childId);
   const say = SAY[lang];
   const map = useMemo(() => getStudentMap(childId, familyViewer(childId), { family: true }), [childId, version]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -121,8 +121,6 @@ function FamilyMap({ persona, childId, go, lang, version, toast }) {
   return (
     <>
       <Head persona={persona} childId={childId} screen="family" go={go} lang={lang} title={say.homeT(s.name)} lede={youngStudent(s) ? say.homeYoung(f) : say.homeOld(f)} />
-      <FamilyBooking persona={persona} lang={lang} version={version} toast={toast} />
-      <FamilyConfNotes persona={persona} lang={lang} version={version} toast={toast} />
       <FamilyMovingUp childId={childId} lang={lang} version={version} />
       {empty ? (
         <div className="card-sec fam-empty">
@@ -134,7 +132,6 @@ function FamilyMap({ persona, childId, go, lang, version, toast }) {
           <section className="pv-intro">
             <h2>{say.thisTerm}</h2>
             {term.length ? <ul>{term.map((e) => <li key={e.id}><button className="linkish" lang="en" onClick={() => setSel(e.id)}>{e.title}</button> <small>{dateIn(lang, e.date)} · {e.lineIds.map((id) => lineName(lang, map.lines.find((l) => l.id === id)?.name || id)).join(', ')}</small>{schoolEventName(e) && <small className="se-on"> · <span>{tr(lang, 'School event')}</span> <b lang="en">{schoolEventName(e)}</b></small>}</li>)}</ul> : <p className="fineprint">{say.none}</p>}
-            <FamilyNotesHint childId={childId} lang={lang} />
             <FamilyMilestones childId={childId} lang={lang} version={version} onOpen={setSel} />
             <SkillsGrowthCard events={map.events} first={f} onOpen={setSel} lang={lang} />
             <h2>{say.ask}</h2>
@@ -150,37 +147,36 @@ function FamilyMap({ persona, childId, go, lang, version, toast }) {
   );
 }
 
-function Consent({ persona, childId, go, toast, lang }) {
+function Consent({ persona, childId, go, lang }) {
   const s = getStudent(childId);
   const say = SAY[lang];
   const f = first(s);
+  const rec = familyConsentOf(childId);
   const reqs = getConsentReqs(childId);
-  const [editing, setEditing] = useState(null);
+  const on = consentOnFile(childId);
   return (
     <>
       <Head persona={persona} childId={childId} screen="consent" go={go} lang={lang} title={say.consentT} lede={say.consentP} />
       {!youngStudent(s) ? (
         <div className="card-sec fam-older"><span className="status s-ok"><i>✓</i>{say.onFile}</span><h3>{say.olderT(f)}</h3><p>{say.olderP(f)}</p></div>
       ) : (
-        <ul className="consent-list">
-          {reqs.map((r) => {
-            const open = r.status === 'pending' || editing === r.id;
-            const [title, detail, textLang] = consentText(lang, r, f);
-            return (
-              <li key={r.id} className={`consent-req st-${r.status}`}>
-                <div className="cr-top"><span className={`status ${r.status === 'approved' ? 's-ok' : r.status === 'declined' ? 's-off' : 's-warn'}`}><i>{r.status === 'approved' ? '✓' : r.status === 'declined' ? '–' : '!'}</i>{say.st[r.status]}</span><small>{say.asked(dateIn(lang, r.asked))}</small></div>
-                <h3 lang={textLang}>{title}</h3>
-                {detail && <p lang={textLang}>{detail}</p>}
-                {open ? (
-                  <div className="cr-btns">
-                    <button className="primary" onClick={() => { answerConsent(r.id, 'approved', persona.name); setEditing(null); toast(say.saved(f)); }}>{say.yes}</button>
-                    <button className="ghost" onClick={() => { answerConsent(r.id, 'declined', persona.name); setEditing(null); toast(say.savedNo); }}>{say.no}</button>
-                  </div>
-                ) : <button className="linkish" onClick={() => setEditing(r.id)}>{say.change}</button>}
-              </li>
-            );
-          })}
-        </ul>
+        <div className="card-sec fam-older">
+          <span className={`status ${on ? 's-ok' : 's-warn'}`}><i>{on ? '✓' : '!'}</i>{on ? say.onFile : say.waiting}</span>
+          {rec && <p>{rec.on ? say.recorded(dateIn(lang, rec.date), say.how[rec.how] || rec.how) : say.recorded(dateIn(lang, rec.date), say.st.withdrawn)}</p>}
+          <p>{say.howTo(f)}</p>
+          {reqs.length > 0 && <ul className="consent-list">
+            {reqs.map((r) => {
+              const [title, detail, textLang] = consentText(lang, r, f);
+              return (
+                <li key={r.id} className={`consent-req st-${r.status}`}>
+                  <div className="cr-top"><span className={`status ${r.status === 'approved' ? 's-ok' : r.status === 'declined' ? 's-off' : 's-warn'}`}><i>{r.status === 'approved' ? '✓' : r.status === 'declined' ? '–' : '!'}</i>{say.st[r.status] || r.status}</span><small>{say.asked(dateIn(lang, r.asked))}</small></div>
+                  <h3 lang={textLang}>{title}</h3>
+                  {detail && <p lang={textLang}>{detail}</p>}
+                </li>
+              );
+            })}
+          </ul>}
+        </div>
       )}
       {isPilot() && <div className="card-sec fam-older"><h3>{say.copyT(f)}</h3><p>{say.copyP}</p><button className="ghost" onClick={() => { location.href = exportUrl(childId); }}>{say.copyBtn}</button></div>}
     </>
@@ -189,7 +185,6 @@ function Consent({ persona, childId, go, toast, lang }) {
 
 function Digest({ persona, go, lang }) {
   const say = SAY[lang];
-  const fam = getFamily();
   const kids = persona.children.map((id) => ({ s: getStudent(id), d: getDigest(id), joined: consentOnFile(id) }));
   const from = kids[0].d.from;
   return (
@@ -222,9 +217,6 @@ function Digest({ persona, go, lang }) {
             );
           })}
         </article>
-        <aside className="card-sec dg-set">
-          <label className="cb-check"><input type="checkbox" checked={fam.email} onChange={() => setFamily({ email: !fam.email })} /> {say.email}</label>
-        </aside>
       </div>
     </>
   );

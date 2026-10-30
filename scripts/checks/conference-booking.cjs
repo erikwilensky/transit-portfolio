@@ -1,9 +1,10 @@
 // Conference booking on the real class lists: starts a clean pilot (TP_START=empty; needs `npm run build` first) and
-// imports the real roster. Ms Jane Altemen (T25948) opens conference booking for Advisory 8C on My advisory. A parent
-// joins from Aaron Torres's family letter on a phone, in Thai, and books a time. A second 8C family (another letter) sees
-// that time taken with no name, and cannot book it. Aaron sees when his conference is. The advisor sees the day grid,
-// blocks a time, books for a third family, and prints the day's schedule (one A4 page, names and conference sheet links;
-// a link opens that student's sheet). axe over every new screen. Each account has its own browser context.
+// imports the real roster. Ms Jane Altemen (T25948) opens conference times for Advisory 8C on My advisory. Families do not
+// book in the app (since 30 October 2026): the advisor arranges times by email and places each student on the day grid.
+// A parent joins from Aaron Torres's family letter on a phone, in Thai: no booking card, nothing to book (403), no rounds in
+// their copy. Aaron sees when his conference is. The advisor blocks a time, books two more students and prints the day's
+// schedule (one A4 page, names and conference sheet links; a link opens that student's sheet). axe over every new screen.
+// Each account has its own browser context.
 // TP_ROSTER=/path/to/transit-roster.json (default: the project mount). Screenshots and a PDF: tp-confbook-* in SCRATCH or tmp.
 const { chromium } = require('playwright');
 const { spawn } = require('child_process');
@@ -83,15 +84,21 @@ let srv;
     await form.locator('fieldset:has-text("Breaks") label:has-text("To") input').fill('16:15');
     await form.getByRole('textbox', { name: 'Room' }).fill('Room 8C');
     await audit(t, 'advisor: the round form');
-    await t.click('.cb-form button[type=submit]:has-text("Open for 23 families")');
+    await t.click('.cb-form button[type=submit]:has-text("Open for 23 students")');
     const r = await until(async () => saved().confRounds?.[0]);
     ok(r && r.studentIds.length === 23 && r.advisorId === TID && r.by === TID && r.slot === 15 && r.days.length === 2 && r.breaks[0]?.from === '16:00' && r.location === 'Room 8C', 'saved: a round for the 23 advisees, two days, a break, Room 8C');
-    ok(saved().notifications.filter((n) => /opened conference booking/.test(n.text) && n.to.startsWith('fam:')).length === 23, 'each family is told in the app');
+    ok(!saved().notifications.some((n) => n.to.startsWith('fam:')), 'no family is told in the app');
     await t.waitForSelector('.cb-count');
     ok((await t.locator('.cb-count').innerText()) === 'Booked: 0 of 23', 'advisory: "Booked: 0 of 23"');
+    ok(/by email/.test(await t.locator('.cb-adv .fineprint').first().innerText()), 'the advisor is told to arrange times by email');
     ok(await t.locator('.cb-grid .cb-slot').count() === 7, 'day grid: 15:00 to 17:00 in 15 minutes, less the break: 7 times');
+    const g = t.locator('.cb-grid');
+    const at = (hm) => g.locator('.cb-slot').filter({ has: t.locator('.cb-time', { hasText: new RegExp(`^${hm}`) }) });
+    const book = async (hm, sid) => { await at(hm).locator('select').selectOption(sid); await at(hm).locator('button:has-text("Book")').click(); return until(async () => saved().confBookings?.find((x) => x.studentId === sid)); };
+    const bk = await book('15:30', AARON);
+    ok(bk && bk.date === D1 && bk.time === '15:30' && bk.by === TID && bk.advisorId === TID, `the advisor books Aaron: ${bk?.date} 15:30, by her`);
 
-    // ── Family letters: Aaron's parent joins on a phone, in Thai ──
+    // ── Aaron's parent joins on a phone, in Thai: nothing to book ──
     const lt = await (await post('/api/advisor/family/letters', { studentIds: [AARON, other.id, third.id] }, tTok)).json();
     const letter = (sid) => lt.letters.find((l) => l.studentId === sid).url;
     const cP = await ctx(null, { width: 390, height: 820 }, { hasTouch: true, isMobile: true }); const p = await cP.newPage(); watch(p, 'parent A');
@@ -99,38 +106,15 @@ let srv;
     await p.click('.auth-lang button[lang="th"]');
     await p.fill('input[autocomplete=name]', 'Torres Family'); await p.fill('input[type=email]', 'torres@family.example');
     await p.fill('input[autocomplete=new-password] >> nth=0', 'family-pass-1'); await p.fill('input[autocomplete=new-password] >> nth=1', 'family-pass-1');
-    await p.click('form.auth-card button[type=submit]'); await p.waitForSelector('.cb-fam', { timeout: 15000 });
+    await p.click('form.auth-card button[type=submit]'); await p.waitForSelector('.fam-head', { timeout: 15000 }); await p.waitForTimeout(600);
     const pTok = (await cP.cookies()).find((k) => k.name === 'tp_session').value;
-    const card = await p.locator('.cb-fam').innerText();
-    ok(/จองเวลาประชุมผู้ปกครอง/.test(card) && /เลือกเวลาสำหรับ Aaron/.test(card) && /เวลาประเทศไทย/.test(card) && /15 นาที/.test(card), 'the family card is in Thai: book, pick a time for Aaron, Bangkok time, 15 minutes');
-    ok(await noScroll(p), 'no sideways scroll at phone width (family card)');
-    await audit(p, 'family: the booking card (Thai, phone)');
-    await p.screenshot({ path: SH + 'family-pick.png', fullPage: true });
-    await p.locator('.cb-day').first().locator('button.cb-t', { hasText: '15:30' }).click();
-    const bk = await until(async () => saved().confBookings?.find((x) => x.studentId === AARON));
-    ok(bk && bk.date === D1 && bk.time === '15:30' && bk.by === 'family' && bk.advisorId === TID, `booked on the server: Aaron, ${bk?.date} 15:30, by the family`);
-    await p.waitForSelector('.cb-mine');
-    ok(/จองแล้ว/.test(await p.locator('.cb-mine').innerText()) && /15:30 น\./.test(await p.locator('.cb-mine').innerText()), 'the card shows the booking, in Thai with Bangkok time');
-    ok(await p.locator('.cb-mine button', { hasText: 'เปลี่ยนเวลา' }).count() === 1 && await p.locator('.cb-mine button', { hasText: 'ยกเลิกการจอง' }).count() === 1, 'change and cancel are offered (more than 24 hours ahead)');
-    await p.screenshot({ path: SH + 'family-booked.png', fullPage: true });
-    ok(saved().notifications.some((n) => n.to === `t:${TID}` && n.text.startsWith(`${aaron.name}’s family booked a conference:`)), 'the advisor is told in the app');
-
-    // ── A second 8C family: Aaron's time is taken, with no name ──
-    const j = await post('/api/family/join', { token: letter(other.id).split('/family/')[1], name: 'Second Family', email: 'second@family.example', password: 'family-pass-1' });
-    const qTok = tokOf(j);
-    const qs = await state(qTok);
-    ok(qs.confBookings.length === 1 && qs.confBookings[0].taken && !('studentId' in qs.confBookings[0]) && !JSON.stringify(qs).includes(AARON) && !JSON.stringify(qs).includes('Torres'), 'their copy: one taken time, no student, no name');
-    const cQ = await ctx(qTok); const q = await cQ.newPage(); watch(q, 'parent B');
-    await q.goto(`${U}/#/me/family`); await q.waitForSelector('.cb-fam');
-    const slot = q.locator('.cb-day').first().locator('.cb-times li', { hasText: '15:30' });
-    ok(/Taken/.test(await slot.innerText()) && await slot.locator('button').count() === 0, 'the second family sees 15:30 as "Taken", not bookable');
-    ok(!/Aaron|Torres/.test(await q.locator('main').innerText()), 'and never Aaron’s name');
-    const dbl = await act(qTok, 'bookConference', [r.id, other.id, { date: D1, time: '15:30' }, 'family']);
-    ok(dbl.status === 409 && /just taken/.test((await dbl.json()).error), 'booking it anyway is refused (409)');
-    ok((await act(qTok, 'bookConference', [r.id, AARON, { date: D1, time: '15:45' }, 'family'])).status === 403, 'and nobody books for another family’s child (403)');
-    await audit(q, 'family: the booking card (English)');
-    await q.locator('.cb-day').first().locator('button.cb-t', { hasText: '15:00' }).click();
-    ok(await until(async () => saved().confBookings?.some((x) => x.studentId === other.id && x.time === '15:00')), 'the second family books 15:00');
+    ok(await p.locator('.cb-fam, .cb-t, .slc-fam').count() === 0 && !/จองเวลา/.test(await p.locator('main').innerText()), 'the family page has no booking card');
+    const ps = await state(pTok);
+    ok(!ps.confRounds.length && !ps.confBookings.length && !ps.confBlocks.length, 'their copy: no rounds, bookings or blocks');
+    ok((await act(pTok, 'bookConference', [r.id, AARON, { date: D1, time: '15:45' }, 'family'])).status === 403, 'booking from a family account is refused (403)');
+    ok((await act(pTok, 'cancelConference', [bk.id, 'family'])).status === 403, 'and cancelling (403)');
+    ok(await noScroll(p), 'no sideways scroll at phone width (family page)');
+    await audit(p, 'family: the family page (Thai, phone)');
 
     // ── Aaron sees when his conference is ──
     const cA = await ctx(aTok, { width: 390, height: 820 }, { hasTouch: true, isMobile: true }); const a = await cA.newPage(); watch(a, 'Aaron');
@@ -141,26 +125,21 @@ let srv;
     await audit(a, 'student: your conference');
     await a.screenshot({ path: SH + 'student.png' });
 
-    // ── The advisor: day grid, block, book for a family, print ──
+    // ── The advisor: block, book two more, print ──
     await t.reload(); await t.waitForSelector('.cb-grid');
-    const g = t.locator('.cb-grid');
-    const at = (hm) => g.locator('.cb-slot').filter({ has: t.locator('.cb-time', { hasText: new RegExp(`^${hm}`) }) });
-    ok(/Aaron Torres/.test(await at('15:30').innerText()) && /Booked by the family/.test(await at('15:30').innerText()), 'day grid: Aaron at 15:30, booked by the family');
+    ok(/Aaron Torres/.test(await at('15:30').innerText()) && /Booked by you/.test(await at('15:30').innerText()), 'day grid: Aaron at 15:30, booked by you');
     await at('16:15').locator('button:has-text("Block")').click();
     ok(await until(async () => saved().confBlocks?.some((k) => k.time === '16:15' && k.date === D1)), 'she blocks 16:15');
-    const s1645 = at('16:45');
-    await s1645.locator('select').selectOption(third.id);
-    await s1645.locator('button:has-text("Book")').click();
-    const tb = await until(async () => saved().confBookings?.find((x) => x.studentId === third.id));
-    ok(tb && tb.time === '16:45' && tb.by === TID, `she books 16:45 for ${third.name}’s family`);
-    ok(saved().notifications.some((n) => n.to === `fam:${third.id}` && /^Ms Altemen booked .*’s conference:/.test(n.text)), 'that family is told');
+    const ob = await book('15:00', other.id), tb = await book('16:45', third.id);
+    ok(ob?.time === '15:00' && tb?.time === '16:45' && tb.by === TID, `she books ${other.name} at 15:00 and ${third.name} at 16:45`);
+    const dbl = await act(tTok, 'bookConference', [r.id, third.id, { date: D1, time: '15:30' }, TID]);
+    ok(dbl.status === 409 && /just taken/.test((await dbl.json()).error), 'a taken time is refused (409)');
+    ok(!saved().notifications.some((n) => n.to.startsWith('fam:')), 'still no family notification');
     await t.waitForSelector('.cb-legend:has-text("3 booked")');
     ok(/3 booked/.test(await t.locator('.cb-legend').innerText()) && /1 blocked/.test(await t.locator('.cb-legend').innerText()), 'the legend: 3 booked, 1 blocked');
     ok((await t.locator('.cb-count').innerText()) === 'Booked: 3 of 23', '"Booked: 3 of 23"');
     await audit(t, 'advisor: the day grid');
     await t.screenshot({ path: SH + 'advisor-grid.png', fullPage: true });
-    const qs2 = await state(qTok);
-    ok(qs2.confBlocks.length === 1 && qs2.confBlocks[0].taken && !('by' in qs2.confBlocks[0]) && qs2.confBookings.filter((x) => x.taken).length === 2, 'the second family: the block and the others’ bookings, only as taken times');
 
     await t.click('button:has-text("Print the day’s schedule")');
     await t.waitForSelector('.cbp-sheet');
@@ -181,12 +160,6 @@ let srv;
     await t.goto(href.replace(/^https?:\/\/[^#]+/, `${U}/`)); await t.waitForSelector('.cf-overlay');
     ok((await t.locator('.cf-overlay').innerText()).includes(aaron.name), 'the link opens Aaron’s conference sheet');
 
-    // ── The family changes the time; refused clashes and passing times are the server test's ──
-    await p.reload(); await p.waitForSelector('.cb-mine');
-    await p.click('.cb-mine button:has-text("เปลี่ยนเวลา")');
-    await p.locator('.cb-day').nth(1).locator('button.cb-t', { hasText: '15:15' }).click();
-    ok(await until(async () => saved().confBookings?.find((x) => x.studentId === AARON)?.date === D2), 'Aaron’s family moves to the second day, 15:15');
-    ok(saved().confBookings.filter((x) => x.studentId === AARON).length === 1, 'still one booking for Aaron');
     ok(!errs.length, `no page errors${errs.length ? `: ${errs.join(' | ')}` : ''}`);
   } finally {
     await b.close(); srv?.p.kill();

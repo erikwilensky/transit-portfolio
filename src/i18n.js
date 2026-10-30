@@ -164,31 +164,11 @@ export function consentText(lang, r, first) {
   return [...c.th(first), 'th'];
 }
 
-// ── Conference booking, as a family reads it (src/components/ConferenceBooking.jsx). Times are Bangkok time. ──
-const CONF = {
-  en: {
-    head: 'Book a conference', intro: 'Pick one time for each child with their advisor. You can change or cancel until 24 hours before.',
-    tz: 'All times are Bangkok time.', with: (a) => `with ${a}`, online: 'Online', join: 'Join link', mins: (n) => `${n} minutes`,
-    pick: (f) => `Pick a time for ${f}`, booked: 'Booked', change: 'Change time', cancel: 'Cancel booking', keep: 'Keep this time',
-    sure: 'Cancel this booking?', yes: 'Yes, cancel', locked: 'Less than 24 hours to go. To change it, contact the advisor.',
-    taken: 'Taken', clash: (f) => `${f}’s time`, soon: 'Too soon', book: (t) => `Book ${t}`, none: 'No times are free. Contact the advisor.',
-    saved: (f, w) => `Booked ${f}’s conference: ${w}`, gone: (f) => `${f}’s booking is cancelled`, by: (a) => `Booked by ${a}`,
-    at: (d, t) => `${d}, ${t}`, times: (f, d) => `Times for ${f} on ${d}`,
-  },
-  th: {
-    head: 'จองเวลาประชุมผู้ปกครอง', intro: 'เลือกเวลาหนึ่งช่วงสำหรับบุตรหลานแต่ละคนกับครูที่ปรึกษา เปลี่ยนหรือยกเลิกได้จนถึง 24 ชั่วโมงก่อนเวลานัด',
-    tz: 'เวลาทั้งหมดเป็นเวลาประเทศไทย', with: (a) => `กับ ${a}`, online: 'ออนไลน์', join: 'ลิงก์เข้าร่วม', mins: (n) => `${n} นาที`,
-    pick: (f) => `เลือกเวลาสำหรับ ${f}`, booked: 'จองแล้ว', change: 'เปลี่ยนเวลา', cancel: 'ยกเลิกการจอง', keep: 'ใช้เวลาเดิม',
-    sure: 'ต้องการยกเลิกการจองนี้หรือไม่', yes: 'ยืนยันการยกเลิก', locked: 'เหลือเวลาน้อยกว่า 24 ชั่วโมง หากต้องการเปลี่ยน โปรดติดต่อครูที่ปรึกษา',
-    taken: 'ไม่ว่าง', clash: (f) => `ตรงกับเวลาของ ${f}`, soon: 'กระชั้นเกินไป', book: (t) => `จอง ${t} น.`, none: 'ไม่มีเวลาว่าง โปรดติดต่อครูที่ปรึกษา',
-    saved: (f, w) => `จองเวลาประชุมของ ${f} แล้ว: ${w}`, gone: (f) => `ยกเลิกการจองของ ${f} แล้ว`, by: (a) => `จองโดย ${a}`,
-    at: (d, t) => `${d} เวลา ${t} น.`, times: (f, d) => `เวลาสำหรับ ${f} วัน${d}`,
-  },
-};
-export const confWords = (lang) => CONF[lang === 'th' ? 'th' : 'en'];
+// ── Conference times (src/components/ConferenceBooking.jsx, src/components/StudentLed.jsx). Bangkok time. Families no longer
+// book in the app (removed on 30 October 2026); the notifications below stay so old ones in a family's bell read in Thai. ──
 // "Tue 3 Nov" / "อ. 3 พ.ย." for a conference day (Bangkok dates).
 export const confDay = (lang, d) => new Date(`${d}T12:00:00+07:00`).toLocaleDateString(lang === 'th' ? 'th-TH' : 'en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Asia/Bangkok' });
-export const confSlotText = (lang, d, t) => confWords(lang).at(confDay(lang, d), t);
+export const confSlotText = (lang, d, t) => (lang === 'th' ? `${confDay(lang, d)} เวลา ${t} น.` : `${confDay(lang, d)}, ${t}`);
 const MON_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const thWhen = (d, mon, y, t) => `${dateIn('th', `${y}-${String(MON_EN.indexOf(mon) + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`)} เวลา ${t} น.`;
 const WHEN = '(\\d{1,2}) (\\w{3}) (\\d{4}) at (\\d{2}:\\d{2})';
@@ -200,8 +180,6 @@ NOTE_TH.push(
 );
 Object.assign(ERR_TH, {
   'That time was just taken. Pick another': 'มีผู้จองเวลานี้ไปแล้ว โปรดเลือกเวลาอื่น',
-  'Pick a time at least 24 hours ahead': 'โปรดเลือกเวลาที่ห่างจากตอนนี้อย่างน้อย 24 ชั่วโมง',
-  'Less than 24 hours to go: ask the advisor to change it': 'เหลือเวลาน้อยกว่า 24 ชั่วโมง โปรดติดต่อครูที่ปรึกษาเพื่อเปลี่ยนเวลา',
   'That time has passed': 'เลยเวลานี้ไปแล้ว',
   'Booking for this conference is closed': 'ปิดการจองแล้ว',
 });
@@ -760,32 +738,17 @@ Object.assign(STU, {
   'In Year 11 this is a practice run: everything works, so you are ready next year.': 'ใน Year 11 เป็นการฝึกทำ ทุกอย่างใช้ได้จริง ปีหน้าคุณจะพร้อม', 'It is on your': 'ตอนนี้อยู่บนสาย', 'line now, waiting for': 'ของคุณแล้ว รอ', 'to check it.': 'ตรวจ',
   'One or two sentences is plenty.': 'หนึ่งหรือสองประโยคก็พอแล้ว', You: 'คุณ', 'Started, not finished': 'เริ่มแล้ว ยังไม่เสร็จ',
 });
-// ── Family encouragement (src/components/FamilyNotes.jsx): the student's side, and the family's thank-you notice. Only keys
-// not already known are added. The family's own screens carry their Thai in the component. ──
+// ── Generic words first added with family encouragement (removed on 30 October 2026); other screens still use them. ──
 for (const [k, v] of Object.entries({
-  'Notes from your family': 'ข้อความจากครอบครัว', 'From your family': 'จากครอบครัวของคุณ', 'Notes from family': 'ข้อความจากครอบครัว',
-  'Proud of you': 'ภูมิใจในตัวลูกนะ', 'Well done': 'เก่งมาก', 'Tell me more at dinner': 'มื้อเย็นนี้เล่าให้ฟังหน่อยนะ', 'Keep going': 'สู้ต่อไปนะ',
-  'Open the moment': 'เปิดดูเรื่องนี้', 'Show again': 'แสดงอีกครั้ง', 'Show 1 hidden note': 'แสดงข้อความที่ซ่อนไว้ 1 ข้อความ',
-  'Hidden. You will not see it here.': 'ซ่อนแล้ว คุณจะไม่เห็นข้อความนี้ที่นี่', 'Report this note': 'รายงานข้อความนี้', 'Tell a teacher': 'บอกครู',
+  'Open the moment': 'เปิดดูเรื่องนี้', 'Show again': 'แสดงอีกครั้ง', 'Tell a teacher': 'บอกครู',
   'Send report': 'ส่งรายงาน', 'Cancel': 'ยกเลิก', 'What is wrong': 'มีอะไรไม่ถูกต้อง',
-  'Let my family leave kind notes on moments they can see': 'ให้ครอบครัวเขียนข้อความให้กำลังใจในเรื่องที่ครอบครัวเห็นได้',
-  'Your family can leave a short kind note on moments they can see. Your advisor and teachers can read them too.': 'ครอบครัวเขียนข้อความสั้น ๆ ให้กำลังใจในเรื่องที่เห็นได้ ครูที่ปรึกษาและครูผู้สอนอ่านได้ด้วย',
-  'Your family can leave notes again.': 'ครอบครัวเขียนข้อความถึงคุณได้อีกครั้งแล้ว',
-  'Notes from family are off. You can turn them on again here.': 'ปิดข้อความจากครอบครัวแล้ว เปิดอีกครั้งได้ที่นี่',
 })) STU[k] ??= v;
-STU_RE.push(
-  [/^From (.+)$/, (m) => `จาก ${m[1]}`], [/^on “(.+)”$/, (m) => `ในเรื่อง “${m[1]}”`],
-  [/^Show (\d+) hidden notes$/, (m) => `แสดงข้อความที่ซ่อนไว้ ${m[1]} ข้อความ`],
-  [/^A teacher has hidden a note from your family on “(.+)”\.$/, (m) => `ครูซ่อนข้อความจากครอบครัวในเรื่อง “${m[1]}” ไว้ชั่วคราว`],
-  [/^A teacher has finished looking at a note from your family on “(.+)”\. It is shown again\.$/, (m) => `ครูตรวจดูข้อความจากครอบครัวในเรื่อง “${m[1]}” เสร็จแล้ว ข้อความแสดงอีกครั้ง`],
-);
-NOTE_TH.push([/^(.+) said thank you for your note on “(.+)”\.$/, (m) => `${m[1]} ขอบคุณสำหรับข้อความของคุณในเรื่อง “${m[2]}”`]);
-for (const [k, v] of Object.entries({
-  'This moment is not shared with the family.': 'เรื่องนี้ไม่ได้แบ่งปันให้ครอบครัวเห็น', 'Notes from family are turned off for now.': 'ปิดรับข้อความจากครอบครัวไว้ชั่วคราว',
-  'You already left a note on this moment. You can change it.': 'คุณเขียนข้อความในเรื่องนี้แล้ว แก้ไขได้', 'Keep it to 280 characters.': 'เขียนได้ไม่เกิน 280 ตัวอักษร',
-  'Write a few words or pick a reaction.': 'เขียนสักสองสามคำ หรือเลือกคำให้กำลังใจ', 'Only the person who wrote a note can change it.': 'เฉพาะผู้เขียนข้อความเท่านั้นที่แก้ไขได้',
-  'That note is gone.': 'ไม่มีข้อความนี้แล้ว', 'Pick one of the reactions.': 'เลือกคำให้กำลังใจหนึ่งคำ',
-})) ERR_TH[k] ??= v;
+STU_RE.push([/^From (.+)$/, (m) => `จาก ${m[1]}`], [/^on “(.+)”$/, (m) => `ในเรื่อง “${m[1]}”`]);
+// Privacy (a student's consent card): the school records a family's consent (api.recordFamilyConsent).
+Object.assign(STU, {
+  "Students in Years 7 to 9 need a parent's consent before anything can be made publishable. Until then, everything stays inside the school. Your advisor records it when your family gives it to the school.": 'นักเรียน Year 7 ถึง 9 ต้องได้รับความยินยอมจากผู้ปกครองก่อนจึงจะเผยแพร่ได้ จนถึงตอนนั้นทุกอย่างจะอยู่ภายในโรงเรียน ครูที่ปรึกษาจะบันทึกไว้เมื่อครอบครัวของคุณให้ความยินยอมกับโรงเรียน',
+  "Recorded by the school. Under Thailand's PDPA you can ask the school to correct or delete your data at any time": 'โรงเรียนบันทึกไว้แล้ว ตาม PDPA ของประเทศไทย คุณขอให้โรงเรียนแก้ไขหรือลบข้อมูลของคุณได้ทุกเมื่อ',
+});
 // Keys written with the spaces JSX leaves around them: the page is matched without them (src/thai.js keeps the spaces).
 for (const k of Object.keys(STU)) if (k !== k.trim()) { STU[k.trim()] ??= STU[k].trim(); delete STU[k]; }
 const plainTh = (s) => STU[s] ?? (Object.hasOwn(TH, s) && !['Year', 'T'].includes(s) ? TH[s] : null) ?? (ERR_TH[s] || null);
@@ -816,23 +779,9 @@ STU_RE.push(
   [/^(\d{1,2} \w{3} \d{4}) to (\d{1,2} \w{3} \d{4})$/, (m) => `${D(m[1])} ถึง ${D(m[2])}`],
   [/^(.+\?) \(optional\)$/, (m) => `${m[1]} (ไม่บังคับ)`],
 );
-// ── Student-led conferences (src/components/StudentLed.jsx): the family's line in Thai or English, the student's screens and
-// Conference mode in Thai, and the notifications. Keys are written trimmed (this block comes after the trim above).
-const SLC = {
-  en: {
-    head: (f) => `After ${f}’s conference`, intro: (f) => `One line each, kept on ${f}’s conference note. ${f} and the advisor see it too.`,
-    home: 'What we will try at home', next: (f) => `What ${f} will do next`, none: 'Not written yet.', notYet: (f) => `${f} has not written theirs yet.`,
-    by: (a) => `Written by ${a}`, ph: 'e.g. Read together for 20 minutes after dinner', write: 'Write our line', change: 'Change our line',
-    save: 'Save', cancel: 'Cancel', saved: 'Saved on the conference note',
-  },
-  th: {
-    head: (f) => `หลังการประชุมของ ${f}`, intro: (f) => `เขียนคนละหนึ่งบรรทัด เก็บไว้ในบันทึกการประชุมของ ${f} ซึ่ง ${f} และครูที่ปรึกษาจะเห็นด้วย`,
-    home: 'สิ่งที่เราจะลองทำที่บ้าน', next: (f) => `สิ่งที่ ${f} จะทำต่อไป`, none: 'ยังไม่ได้เขียน', notYet: (f) => `${f} ยังไม่ได้เขียน`,
-    by: (a) => `เขียนโดย ${a}`, ph: 'เช่น อ่านหนังสือด้วยกัน 20 นาทีหลังอาหารเย็น', write: 'เขียนบรรทัดของเรา', change: 'แก้ไขบรรทัดของเรา',
-    save: 'บันทึก', cancel: 'ยกเลิก', saved: 'บันทึกในบันทึกการประชุมแล้ว',
-  },
-};
-export const slcWords = (lang) => SLC[lang === 'th' ? 'th' : 'en'];
+// ── Student-led conferences (src/components/StudentLed.jsx): the student's screens and Conference mode in Thai, and the
+// notifications. Keys are written trimmed (this block comes after the trim above). The family's line was removed on 30
+// October 2026; the patterns for it stay so old notifications still read in Thai.
 NOTE_TH.push(
   [/^Your family wrote on your conference note$/, () => 'ครอบครัวของคุณเขียนในบันทึกการประชุมของคุณแล้ว'],
   [/^(.+) wrote on your conference note$/, (m) => `${m[1]} เขียนในบันทึกการประชุมของคุณแล้ว`],
@@ -846,9 +795,9 @@ Object.assign(STU, {
   'Today is your conference': 'วันนี้เป็นวันประชุมของคุณ', 'Get ready for my conference': 'เตรียมตัวสำหรับการประชุมของฉัน',
   'You are ready. You can still change it before the day.': 'คุณพร้อมแล้ว ยังแก้ไขได้ก่อนถึงวันประชุม',
   'Pick a few things to show your family and say what you are proud of. It takes about 5 minutes.': 'เลือกสิ่งที่อยากให้ครอบครัวดูสักสองสามอย่าง และบอกว่าคุณภูมิใจในเรื่องอะไร ใช้เวลาประมาณ 5 นาที',
-  'No time booked yet. Your family picks one.': 'ยังไม่ได้จองเวลา ครอบครัวของคุณจะเป็นคนเลือก', 'Start my conference': 'เริ่มการประชุมของฉัน', 'Change it': 'แก้ไข', 'Get ready': 'เตรียมตัว',
-  'My conference note': 'บันทึกการประชุมของฉัน', 'What we will try at home': 'สิ่งที่เราจะลองทำที่บ้าน', 'What I will do next': 'สิ่งที่ฉันจะทำต่อไป',
-  'Your family adds this on their Family page.': 'ครอบครัวของคุณเขียนส่วนนี้ในหน้าครอบครัวของพวกเขา', 'Not written yet.': 'ยังไม่ได้เขียน', 'What will you do next?': 'คุณจะทำอะไรต่อไป',
+  'No time booked yet. Your advisor will set one with your family.': 'ยังไม่ได้จองเวลา ครูที่ปรึกษาจะนัดเวลากับครอบครัวของคุณ', 'Start my conference': 'เริ่มการประชุมของฉัน', 'Change it': 'แก้ไข', 'Get ready': 'เตรียมตัว',
+  'My conference note': 'บันทึกการประชุมของฉัน', 'What I will do next': 'สิ่งที่ฉันจะทำต่อไป',
+  'Not written yet.': 'ยังไม่ได้เขียน', 'What will you do next?': 'คุณจะทำอะไรต่อไป',
   'Change my line': 'แก้ไขบรรทัดของฉัน', 'Write what I will do next': 'เขียนสิ่งที่ฉันจะทำต่อไป', 'Open my conference': 'เปิดการประชุมของฉัน', 'Saved on your conference note': 'บันทึกในบันทึกการประชุมของคุณแล้ว',
   'This shows…': 'สิ่งนี้แสดงว่า…', 'I am proud of it because…': 'ฉันภูมิใจเพราะ…', 'I learned…': 'ฉันได้เรียนรู้ว่า…', 'I am proud that…': 'ฉันภูมิใจที่…', 'I am proud of how I…': 'ฉันภูมิใจที่ฉัน…',
   'I found it tricky to…': 'ฉันรู้สึกว่ายากที่จะ…', 'I kept going by…': 'ฉันไม่ยอมแพ้โดย…', 'I will try to…': 'ฉันจะพยายาม…', 'Next I will…': 'ต่อไปฉันจะ…',
@@ -867,7 +816,7 @@ Object.assign(STU, {
   'Conference mode': 'โหมดการประชุม', 'Offline: this still works. What you write is kept here and sent when you are back online.': 'ออฟไลน์: ยังใช้งานได้ สิ่งที่เขียนจะเก็บไว้ในเครื่องนี้และส่งเมื่อกลับมาออนไลน์',
   'Full screen': 'เต็มจอ', 'I picked a few things to show you.': 'ฉันเลือกบางอย่างมาให้ดู', 'What I will show you': 'สิ่งที่ฉันจะนำเสนอ', 'Let’s talk about my journey together.': 'มาคุยเรื่องเส้นทางของฉันด้วยกัน',
   'Nothing prepared yet. You can still talk through the journey together.': 'ยังไม่ได้เตรียมอะไร ยังคุยเรื่องเส้นทางด้วยกันได้', 'Our next steps': 'ก้าวต่อไปของเรา',
-  'One line each, to keep on the conference note.': 'คนละหนึ่งบรรทัด เก็บไว้ในบันทึกการประชุม', 'Saved on the conference note': 'บันทึกในบันทึกการประชุมแล้ว',
+  'One line, to keep on the conference note.': 'หนึ่งบรรทัด เก็บไว้ในบันทึกการประชุม', 'Saved on the conference note': 'บันทึกในบันทึกการประชุมแล้ว',
 });
 STU_RE.push(
   [/^Pick up to (\d+) moments to show, say what you are proud of, one thing that was hard and one goal\.$/, (m) => `เลือกช่วงเวลาที่อยากนำเสนอได้สูงสุด ${m[1]} อย่าง บอกว่าคุณภูมิใจในเรื่องอะไร เรื่องหนึ่งที่ยาก และเป้าหมายหนึ่งอย่าง`],

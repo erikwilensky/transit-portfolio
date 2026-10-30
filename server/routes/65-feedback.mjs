@@ -1,5 +1,5 @@
 // Pilot feedback (data in server/feedback.mjs).
-// POST /api/feedback { kind: broken|idea|confusing, message, route, screenshot? }   anyone signed in → 201 { id }
+// POST /api/feedback { kind: broken|idea|confusing, message, route, screenshot? }   anyone signed in but a family account (403) → 201 { id }
 //      At most 10 per account per hour (429). screenshot: an /api/files/ image this account uploaded.
 // GET  /api/admin/feedback                     admin or leadership → { items: newest first }
 // POST /api/admin/feedback/:id { done: bool }  admin or leadership → { item }
@@ -32,6 +32,7 @@ const view = (f) => { const a = A.accountById(f.by); return { ...f, name: a?.nam
 export default (app) => {
   app.post('/api/feedback', async (req, res) => {
     const u = req.user; if (!u) throw fail(401, 'Sign in first.');
+    if (u.kind === 'parent') throw fail(403, 'Families give feedback to the school by email.'); // since 30 October 2026
     const b = await readJson(req);
     if (!Object.hasOwn(F.KINDS, b.kind)) throw fail(400, 'Pick what kind of feedback it is.');
     const message = clip(b.message, 4000);

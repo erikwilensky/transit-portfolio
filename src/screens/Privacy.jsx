@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react';
-import { applyLens, consentOnFile, exportRecord, getPrivacy, remindParent, getStudentMap, setPrivacy, setVisibility, TODAY } from '../api.js';
+import { applyLens, consentOnFile, exportRecord, getPrivacy, getStudentMap, setPrivacy, setVisibility, TODAY } from '../api.js';
 import { VIS_LABEL } from '../format.js';
 import { exportUrl, isPilot, leaverArchive } from '../auth.js';
-import { FamilyNotesSwitch } from '../components/FamilyNotes.jsx';
 
 const VIEWERS = [['advisor', 'My advisor'], ['school', 'School staff'], ['public', 'Anyone with a link']];
 const count = (m) => ({ st: m.events.length, rf: m.events.reduce((n, e) => n + e.reflections.length, 0) + m.events.filter((e) => e.type === 'reflection').length });
@@ -76,8 +75,8 @@ export default function Privacy({ studentId, drafts, toast, go, persona, version
         <div className="card-sec pv-consent">
           <h3>Consent</h3>
           {consent === 'pending'
-            ? <><p><span className="status s-warn"><i>!</i>Waiting for a parent</span></p><p className="fineprint">Students in Years 7 to 9 need a parent's consent before anything can be made publishable. Until then, everything stays inside the school.</p><button className="ghost" onClick={() => { remindParent(s.id); toast('Reminder sent to your parent.'); }}>Send a reminder to my parent</button></>
-            : <><p><span className="status s-ok"><i>✓</i>Parent consent on file</span></p><p className="fineprint">Recorded in the SIS when you joined. Under Thailand's PDPA you can ask the school to correct or delete your data at any time{isPilot() ? ': ask the pilot admin, who can remove your record' : ''}.</p></>}
+            ? <><p><span className="status s-warn"><i>!</i>Waiting for a parent</span></p><p className="fineprint">Students in Years 7 to 9 need a parent's consent before anything can be made publishable. Until then, everything stays inside the school. Your advisor records it when your family gives it to the school.</p></>
+            : <><p><span className="status s-ok"><i>✓</i>Parent consent on file</span></p><p className="fineprint">Recorded by the school. Under Thailand's PDPA you can ask the school to correct or delete your data at any time{isPilot() ? ': ask the pilot admin, who can remove your record' : ''}.</p></>}
         </div>
 
         {isPilot() && <div className="card-sec pv-screens">
@@ -86,12 +85,6 @@ export default function Privacy({ studentId, drafts, toast, go, persona, version
           <label className="pv-row"><span>Don't show my moments on school screens</span>
             <input type="checkbox" checked={p.screens === false} onChange={(e) => { setPrivacy(studentId, { screens: !e.target.checked }); toast(e.target.checked ? 'Your moments will not be shown on school screens.' : 'Your publishable moments may be shown on school screens.'); }} />
           </label>
-        </div>}
-
-        {isPilot() && <div className="card-sec pv-family-notes">
-          <h3>Notes from family</h3>
-          <p className="fineprint">Your family can leave a short kind note on moments they can see. Your advisor and teachers can read them too.</p>
-          <FamilyNotesSwitch studentId={studentId} onChange={(on) => { setPrivacy(studentId, { familyNotes: on }); toast(on ? 'Your family can leave notes again.' : 'Notes from family are off. You can turn them on again here.'); }} />
         </div>}
 
         <div className="card-sec pv-export">

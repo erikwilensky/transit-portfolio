@@ -80,7 +80,6 @@ export function ConferenceSheet({ d, by }) {
       {d.steps && (
         <section className="cf-sec cf-steps">
           <h3>Our next steps<small>{`after the conference · ${d.steps.round}`}</small></h3>
-          {d.steps.family && <p><b>What we will try at home:</b> {clip(d.steps.family, 200)}</p>}
           {d.steps.student && <p><b>What I will do next:</b> {clip(d.steps.student, 200)}</p>}
           {d.steps.staff && <p className="cf-staff"><b>Private staff note</b> <small>(advisor copy only)</small> {clip(d.steps.staff, 200)}</p>}
         </section>

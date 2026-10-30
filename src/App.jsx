@@ -286,7 +286,7 @@ export default function App() {
                 <span className="pb-text"><small>{T(inPreview() ? 'Seeing as' : pilot ? 'Signed in' : 'Viewing as')}</small><b>{persona.name}</b></span><span aria-hidden="true">▾</span>
               </button>
               {menu === 'persona' && pilot && !inPreview() && (
-                <AccountMenu persona={persona} onPassword={() => { setMenu(null); setPwOpen(true); }} onFeedback={() => { setMenu(null); setFbOpen(true); }} onNotifications={() => { setMenu(null); setNsOpen(true); }} />
+                <AccountMenu persona={persona} onPassword={() => { setMenu(null); setPwOpen(true); }} onFeedback={persona.kind === 'parent' ? null : () => { setMenu(null); setFbOpen(true); }} onNotifications={() => { setMenu(null); setNsOpen(true); }} />
               )}
               {menu === 'persona' && !pilot && (
                 <div className="menu persona-menu" role="menu">

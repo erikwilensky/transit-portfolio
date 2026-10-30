@@ -213,12 +213,6 @@ let srv;
       await sweep(a, AARON, 'Aaron: check-in, next step'); await a.click('.gc-flow .sh-next .primary'); await a.waitForTimeout(400);
     }
     await act(alT, 'sendEncouragement', [g1.id, ALTEMEN, 'I’m proud of you for keeping at it.', '']);
-    // Family encouragement: a family member (joined by the family letter) leaves a note on his moment.
-    const famL = await (await fetch(`${U}/api/advisor/family/letters`, { method: 'POST', headers: { ...H, cookie: `tp_session=${alT}` }, body: JSON.stringify({ studentIds: [AARON] }) })).json();
-    const fj = await fetch(`${U}/api/family/join`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: famL.letters[0].url.split('/family/')[1], name: 'Maria Torres', email: 'maria.torres@family.example', password: 'family-pass-1' }) });
-    const fT = fj.headers.get('set-cookie').match(/tp_session=([^;]+)/)[1];
-    const fMe = (await (await fetch(`${U}/api/auth/me`, { headers: { cookie: `tp_session=${fT}` } })).json()).user;
-    await act(fT, 'addFamilyNote', [m1.id, { key: `u:${fMe.id}`, name: fMe.name }, 'So proud of you!', 'proud']);
     if (await openSweep(a, AARON, '.tk-card', 'Aaron: hand in a task')) { await a.click('.tk-flow .sh-next .primary'); await a.click('.tk-flow .sh-next .primary'); await a.waitForSelector('.tk-flow .mt-step'); await sweep(a, AARON, 'Aaron: hand in a task, its guide'); await close(a); }
     if (await openSweep(a, AARON, '.cp-card', 'Aaron: a class question')) await close(a);
     if (await openSweep(a, AARON, '.tr-card .primary', 'Aaron: term reflection, look back')) {
@@ -239,18 +233,13 @@ let srv;
       await audit(a, 'Aaron, Conference mode in Thai', ['.slc-mode']);
       for (const label of ['a moment', 'looking back', 'next steps']) { await a.click('.slc-foot .primary'); await sweep(a, AARON, `Aaron: Conference mode, ${label}`); }
       await close(a);
-      await act(alT, 'writeConfNote', [cr.id, AARON, 'family', 'Read together after dinner', ALTEMEN]);
+      await act(alT, 'writeConfNote', [cr.id, AARON, 'student', 'Enter the bridge contest', ALTEMEN]);
       await a.reload(); await a.waitForSelector('.slc-note'); await sweep(a, AARON, 'Aaron: my conference note');
-      if (await openSweep(a, AARON, '.slc-note .slc-card-btns .primary', 'Aaron: my conference note, what I will do next')) await a.click('.slc-note .sh-next .ghost');
+      if (await openSweep(a, AARON, '.slc-note .slc-card-btns button', 'Aaron: my conference note, change what I will do next')) await a.click('.slc-note .sh-next .ghost');
     }
     await a.reload(); await a.waitForSelector('.simple .sh-actions');
     await a.locator('.sh-goal').first().waitFor({ timeout: 4000 }).catch(() => {});
     await sweep(a, AARON, 'Aaron: Simple home with a goal, an encouragement and a check-in');
-    if (await a.locator('.fn-home .fn-acts .ghost').count()) {
-      await a.locator('.fn-home .fn-acts .ghost').first().click(); await a.waitForSelector('.sh-moment .fn-on');
-      await sweep(a, AARON, 'Aaron: a moment with a note from family');
-      await a.click('.sh-moment .fn-on .sg-report'); await a.waitForSelector('.sg-dialog'); await sweep(a, AARON, 'Aaron: report a note from family'); await close(a); await close(a);
-    } else ok(false, 'Aaron: the Simple home shows the note from family');
     await a.locator('.sh-spot .primary, .spot-me .spot-acts .primary').first().click().catch(() => {}); await sweep(a, AARON, 'Aaron: added a spotted moment');
     if (await a.locator('.pd-offer').count()) {
       await a.locator('.pd-offer .pd-pick').first().click(); await sweep(a, AARON, 'Aaron: class photos, one not kept');

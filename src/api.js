@@ -1321,27 +1321,44 @@ export function resubmit(requestId, evidence, note) {
 // ── N1: families ──────────────────────────────────────────────────────
 // Years 7 to 9 (grades 6 to 8) need a parent's consent; families see what the advisor sees.
 // From Year 10 the student decides, and families see what the student shares with the school.
+// Families no longer answer in the app (removed on 30 October 2026: no new family–school paths). The school records the
+// consent it holds (by email, on paper or in person): recordFamilyConsent, by an admin or the student's advisor.
+// store.familyConsent: { [studentId]: { on, date, how, note, by, at } }, made on first use. A record there decides; without
+// one, an answer a family gave in the app before (consentReqs, kind 'join') still counts.
 export const youngStudent = (s) => s.grade <= 8;
 export const familyViewer = (studentId) => (youngStudent(getStudent(studentId)) ? 'advisor' : 'school');
 export const getConsentReqs = (studentId) => store.consentReqs.filter((r) => r.studentId === studentId);
-export const consentOnFile = (studentId) => !youngStudent(getStudent(studentId)) || store.consentReqs.some((r) => r.studentId === studentId && r.kind === 'join' && r.status === 'approved');
+export const CONSENT_HOW = { email: 'By email', paper: 'On paper', person: 'In person', other: 'Other' };
+export const familyConsentOf = (studentId) => (store.familyConsent || {})[studentId] || null;
+export const consentOnFile = (studentId) => {
+  if (!youngStudent(getStudent(studentId))) return true;
+  const c = familyConsentOf(studentId);
+  return c ? !!c.on : store.consentReqs.some((r) => r.studentId === studentId && r.kind === 'join' && r.status === 'approved');
+};
+export function recordFamilyConsent(studentId, { on = true, date, how, note } = {}, by = null) {
+  const s = getStudent(studentId);
+  if (!s) throw Object.assign(new Error('No such student'), { status: 404 });
+  if (by && !teacherById[by]) throw new Error('No such teacher');
+  if (on && (!isDay(date) || date > TODAY)) throw new Error('Pick the date the family gave consent');
+  if (on && !CONSENT_HOW[how]) throw new Error('Say how the family gave it');
+  const c = { on: !!on, date: on ? date : TODAY, how: on ? how : null, note: String(note ?? '').trim().slice(0, 200), by: by || null, at: nowIso() };
+  (store.familyConsent ||= {})[studentId] = c;
+  const who = by ? teacherById[by].name : 'Pilot admin';
+  log(studentId, who, 'consent', on ? `Recorded family consent (${CONSENT_HOW[how].toLowerCase()}, ${date})` : 'Recorded that family consent is not on file');
+  emit();
+  return c;
+}
+// Old changes, kept so recorded history still replays: answerConsent (a family's answer) and remindParent (a student's
+// reminder to their family, now does nothing). canAct refuses both.
 export function answerConsent(id, status, by) {
   const r = store.consentReqs.find((x) => x.id === id);
   if (!r) return;
   r.status = status; r.answered = TODAY;
-  const s = getStudent(r.studentId);
   log(r.studentId, by, 'consent', `${status === 'approved' ? 'Gave' : status === 'declined' ? 'Declined' : 'Withdrew'} consent: ${r.title}`);
-  notify(toStudent(r.studentId), status === 'approved' ? `Your parent said yes: ${r.title}` : `Your parent said no for now: ${r.title}`, { persona: toStudent(r.studentId), screen: 'privacy' });
-  // The student's advisor hears; the demo's advisor persona also hears about every seeded student, as before.
-  for (const to of new Set([toTeacher(s.advisorId), s.pilot ? null : 'whitfield'])) notify(to, `${s.name.split(' ')[0]}’s family answered a consent request`);
   emit();
 }
-export function remindParent(studentId) {
-  const s = getStudent(studentId);
-  notify(toFamily(studentId), `${s.name.split(' ')[0]} asked you to look at a consent request`, { persona: toFamily(studentId), screen: 'consent', param: studentId });
-  log(studentId, s.name, 'consent', 'Sent a reminder to a parent about consent');
-  emit();
-}
+export function remindParent() { return null; }
+
 export const getFamily = () => store.family;
 // N2: one language setting for the app shell and the family screens.
 // Thai for families: in a pilot each person has their own language (their account's `lang`, set by setOwnLang from
@@ -3348,10 +3365,11 @@ export function sendEncouragement(goalId, by, line, text) {
   emit();
   return n;
 }
-// ── Conference booking: families pick a time with the advisor (src/components/ConferenceBooking.jsx) ──
+// ── Conference booking: the advisor places each student in a time (src/components/ConferenceBooking.jsx) ──
 // An advisor (their advisees) or whole-school staff (a whole Year: each student with their own advisor) open a round:
-// days with hours, a slot length, breaks (every day), a room or an online link. Each family picks one slot per child and can
-// change or cancel it until CONF_CHANGE_H hours before; the advisor sees the day grid, books for a family and blocks slots.
+// days with hours, a slot length, breaks (every day), a room or an online link. The advisor arranges times with families by
+// email and books, moves and cancels them on the day grid, and blocks slots. Families booking for themselves was removed on
+// 30 October 2026 (no new family–school paths): by 'family' is only in old records and replayed history, and canAct refuses it.
 // store.confRounds: { id: 'cr-…', title, days: [{ date, from, to }], slot, breaks: [{ from, to }], online, location, link,
 //   advisorId | null, year | null, advisorIds, studentIds, by, at, closedOn? }
 // store.confBookings: { id: 'cb-…', roundId, advisorId, studentId, date, time, by ('family' | teacher id), at, reminded? }
@@ -3440,10 +3458,6 @@ export function openConferenceRound(spec = {}, by = null) {
   const advisorIds = [...new Set(ids.map((id) => getStudent(id).advisorId))];
   const r = { id: uid('cr-'), ...c, advisorId: advisorId || null, year: year ? Number(year) : null, advisorIds, studentIds: ids, by: by || null, at: nowIso() };
   (store.confRounds ||= []).push(r);
-  for (const sid of ids) {
-    const s = getStudent(sid);
-    notify(toFamily(sid), `${shortName(teacherById[s.advisorId]?.name || '')} opened conference booking: “${r.title}”. Pick a time for ${s.name.split(' ')[0]}`, { persona: toFamily(sid), screen: 'family', param: sid });
-  }
   if (by) for (const aid of advisorIds) if (aid !== by) notify(toTeacher(aid), `${shortName(teacherById[by].name)} opened conference booking for ${r.year ? `Year ${r.year}` : 'your advisory'}: “${r.title}”`, { persona: toTeacher(aid), screen: 'advisory' });
   emit();
   return r;
@@ -3468,8 +3482,8 @@ export function closeConferenceRound(id, by = null) {
   emit();
   return r;
 }
-// One slot per child per round: booking again moves it. by: 'family', or the advisor's teacher id (booking for the family).
-export function bookConference(roundId, studentId, { date, time } = {}, by = 'family') {
+// One slot per student per round: booking again moves it. by: the advisor's teacher id ('family' only in old history).
+export function bookConference(roundId, studentId, { date, time } = {}, by = null) {
   const r = getConferenceRound(roundId), s = getStudent(studentId);
   if (!r || !s || !r.studentIds.includes(studentId)) throw cfErr('This conference is not for this student', 404);
   if (!roundLive(r)) throw cfErr('Booking for this conference is closed', 410);
@@ -3489,23 +3503,18 @@ export function bookConference(roundId, studentId, { date, time } = {}, by = 'fa
   const b = mine || { id: uid('cb-'), roundId, advisorId, studentId };
   Object.assign(b, { date, time, by, at: nowIso() }); delete b.reminded;
   if (!mine) (store.confBookings ||= []).push(b);
-  const f = s.name.split(' ')[0], adv = shortName(teacherById[advisorId]?.name || '');
-  if (fam) notify(toTeacher(advisorId), `${s.name}’s family ${mine ? 'moved their' : 'booked a'} conference: ${confWhen(date, time)}`, { persona: toTeacher(advisorId), screen: 'advisory', param: `conf~${r.id}~${date}` });
-  else notify(toFamily(studentId), `${shortName(teacherById[by].name)} booked ${f}’s conference: ${confWhen(date, time)}`, { persona: toFamily(studentId), screen: 'family', param: studentId });
+  const adv = shortName(teacherById[advisorId]?.name || '');
   notify(toStudent(studentId), `Your conference with ${adv} is on ${confWhen(date, time)}`, { persona: toStudent(studentId), screen: 'map' });
   emit();
   return b;
 }
-export function cancelConference(id, by = 'family') {
+export function cancelConference(id, by = null) {
   const b = getConfBooking(id);
   if (!b) throw cfErr('No such booking', 404);
-  const s = getStudent(b.studentId), fam = by === 'family';
+  const fam = by === 'family';
   if (!fam && !teacherById[by]) throw cfErr('No such teacher');
   if (fam && confTooSoon(b.date, b.time, Date.parse(nowIso()))) throw cfErr(`Less than ${CONF_CHANGE_H} hours to go: ask the advisor to change it`, 409);
   store.confBookings = getConfBookings().filter((x) => x !== b);
-  const f = s?.name.split(' ')[0] || 'the student';
-  if (fam) notify(toTeacher(b.advisorId), `${s?.name || 'A student'}’s family cancelled their conference on ${confWhen(b.date, b.time)}`, { persona: toTeacher(b.advisorId), screen: 'advisory', param: `conf~${b.roundId}~${b.date}` });
-  else notify(toFamily(b.studentId), `${shortName(teacherById[by].name)} cancelled ${f}’s conference on ${confWhen(b.date, b.time)}`, { persona: toFamily(b.studentId), screen: 'family', param: b.studentId });
   notify(toStudent(b.studentId), `Your conference on ${confWhen(b.date, b.time)} was cancelled`, { persona: toStudent(b.studentId), screen: 'map' });
   emit();
   return b;
@@ -3526,14 +3535,12 @@ export function blockConferenceSlot(roundId, advisorId, date, time, on = true, b
 }
 // Bookings tomorrow (Bangkok) that have not had their reminder yet.
 export const confRemindersDue = (today = TODAY) => getConfBookings().filter((b) => b.studentId && b.date === dayAfter(today) && b.reminded !== b.date && getConferenceRound(b.roundId) && !getConferenceRound(b.roundId).closedOn);
-// The day before: a reminder to the family for each booking, and one to each advisor for their day. The server runs it.
+// The day before: one reminder to each advisor for their day (families are not told in the app). The server runs it.
 export function sendConferenceReminders(today = TODAY) {
   const due = confRemindersDue(today), per = new Map();
   for (const b of due) {
-    const r = getConferenceRound(b.roundId), s = getStudent(b.studentId);
     b.reminded = b.date;
-    if (!s) continue;
-    notify(toFamily(b.studentId), `Reminder: ${s.name.split(' ')[0]}’s conference with ${shortName(teacherById[b.advisorId]?.name || '')} is tomorrow, ${confWhen(b.date, b.time)} · ${r.online ? 'online' : r.location}`, { persona: toFamily(b.studentId), screen: 'family', param: b.studentId });
+    if (!getStudent(b.studentId)) continue;
     per.set(b.advisorId, [...(per.get(b.advisorId) || []), b]);
   }
   for (const [aid, list] of per) {
@@ -3546,9 +3553,6 @@ export function sendConferenceReminders(today = TODAY) {
 // The rounds an advisor meets families in: live ones, and ones whose last day was in the past fortnight.
 export const advisorConfRounds = (advisorId) => getConferenceRounds().filter((r) => r.advisorIds.includes(advisorId) && (roundLive(r) || (!r.closedOn && r.days.at(-1).date >= daysBefore(14))))
   .sort((a, b) => a.days[0].date.localeCompare(b.days[0].date) || a.at.localeCompare(b.at));
-// What a family sees: each live round that covers one of their children, with each child's advisor and booking.
-export const familyConfRounds = (childIds) => getConferenceRounds().filter((r) => roundLive(r) && childIds.some((id) => r.studentIds.includes(id)))
-  .map((r) => ({ round: r, children: childIds.filter((id) => r.studentIds.includes(id) && getStudent(id)).map((id) => ({ student: getStudent(id), advisorId: getStudent(id).advisorId, advisor: teacherById[getStudent(id).advisorId] || null, booking: confBookingOf(r.id, id) })) }));
 // A student's own conferences from today on.
 export const studentConferences = (studentId) => getConfBookings().filter((b) => b.studentId === studentId && b.date >= TODAY)
   .map((b) => ({ booking: b, round: getConferenceRound(b.roundId), advisor: teacherById[b.advisorId] || null })).filter((x) => x.round && !x.round.closedOn)
@@ -3564,11 +3568,11 @@ export function confProgress(roundId, advisorId) {
 // While a conference round has a day to come, each student in it prepares: up to SLC_PICKS moments to show (their own, never
 // private ones, so the advisor can see them), a line of their own words on each, what they are proud of, one thing that
 // was hard and one goal (one of their goals, or a few words). On the day they present it in Conference mode. At the end the
-// family and the student each add one line; the advisor may write either for them, and keeps a private note (addNote).
+// student adds one line (the advisor may write it for them) and the advisor keeps a private note (addNote).
 // store.confPreps: { id: 'cp-…', roundId, studentId, picks: [eventId], says: { [eventId]: text }, proud, hard, goal: { goalId } |
 //   { title } | null, step, status: 'draft' | 'ready', startedAt, savedAt, readyAt? }
-// store.confNotes: { id: 'cn-…', roundId, studentId, family: { text, by, at } | null, student: { text, by, at } | null }.
-// Both made on first use. by: 'family' | 'student' | the advisor's teacher id.
+// store.confNotes: { id: 'cn-…', roundId, studentId, family: null (a pilot's old family line, never sent), student: { text, by, at } | null }.
+// Both made on first use. by: 'student' | the advisor's teacher id.
 export const SLC_PICKS = 3;
 export const SLC_MAX = { say: 300, proud: 400, hard: 400, goal: 120, line: 200 };
 const slcErr = (m, status = 400) => Object.assign(new Error(m), { status });
@@ -3576,6 +3580,8 @@ export const getConfPreps = () => store.confPreps || [];
 export const confPrepOf = (roundId, studentId) => getConfPreps().find((p) => p.roundId === roundId && p.studentId === studentId) || null;
 export const getConfNotes = () => store.confNotes || [];
 export const confNoteOf = (roundId, studentId) => getConfNotes().find((n) => n.roundId === roundId && n.studentId === studentId) || null;
+// What screens show: the student's line only (an old family line stays in the record for PDPA, never shown).
+export const studentConfNote = (roundId, studentId) => { const n = confNoteOf(roundId, studentId); return n?.student ? { ...n, family: null } : null; };
 // Prep stays open while the round has a day to come (closing booking does not stop the conferences).
 export const prepOpen = (r, studentId) => !!r && r.studentIds.includes(studentId) && r.days.some((d) => d.date >= TODAY);
 export const youngConf = (studentId) => (getStudent(studentId)?.grade ?? 99) <= 8; // Years 7 to 9: short and warm
@@ -3612,26 +3618,28 @@ export function saveConfPrep(roundId, studentId, draft = {}, ready = false) {
   emit();
   return p;
 }
-// One line each at the end: who is 'family' ("What we will try at home") or 'student' ("What I will do next").
+// The student's line at the end, who: 'student' ("What I will do next"), by the student or their advisor for them.
+// The family's line ('family', "What we will try at home") was removed on 30 October 2026: an old recorded call does
+// nothing on replay, and canAct refuses a new one.
 export function writeConfNote(roundId, studentId, who, text, by) {
+  if (who === 'family' || by === 'family') return confNoteOf(roundId, studentId);
   const r = getConferenceRound(roundId), s = getStudent(studentId);
   if (!r || !s || !r.studentIds.includes(studentId)) throw slcErr('This conference is not for this student', 404);
-  if (who !== 'family' && who !== 'student') throw slcErr('Say whose line it is');
+  if (who !== 'student') throw slcErr('Say whose line it is');
   if (!(by === who || teacherById[by])) throw slcErr('Say who is writing');
   const t = slcClip(text, SLC_MAX.line);
   if (!t) throw slcErr('Write one line first');
   let n = confNoteOf(roundId, studentId);
   if (!n) (store.confNotes ||= []).push(n = { id: uid('cn-'), roundId, studentId, family: null, student: null });
   n[who] = { text: t, by, at: nowIso() };
-  const f = s.name.split(' ')[0], adv = s.advisorId;
-  const writer = teacherById[by] ? shortName(teacherById[by].name) : null;
-  if (by !== 'student') notify(toStudent(studentId), `${writer || 'Your family'} wrote on your conference note`, { persona: toStudent(studentId), screen: 'map' });
-  if (by !== 'family') notify(toFamily(studentId), `${writer || f} wrote on ${f}’s conference note`, { persona: toFamily(studentId), screen: 'family', param: studentId });
-  if (!writer && adv) notify(toTeacher(adv), `${by === 'family' ? `${s.name}’s family` : s.name} wrote on the conference note`, { persona: toTeacher(adv), screen: 'advisory', param: `conf~${r.id}` });
-  log(studentId, by === 'family' ? `${s.name}’s family` : by === 'student' ? s.name : teacherById[by].name, 'reflection', `Wrote on the conference note for “${r.title}”`);
+  const adv = s.advisorId, writer = teacherById[by] ? shortName(teacherById[by].name) : null;
+  if (writer) notify(toStudent(studentId), `${writer} wrote on your conference note`, { persona: toStudent(studentId), screen: 'map' });
+  else if (adv) notify(toTeacher(adv), `${s.name} wrote on the conference note`, { persona: toTeacher(adv), screen: 'advisory', param: `conf~${r.id}` });
+  log(studentId, writer ? teacherById[by].name : s.name, 'reflection', `Wrote on the conference note for “${r.title}”`);
   emit();
   return n;
 }
+
 // What Conference mode shows: the moments with a photo and the student's words, proud, hard, the goal.
 export function conferenceDeck(roundId, studentId, viewer = 'advisor') {
   const r = getConferenceRound(roundId), s = getStudent(studentId), p = confPrepOf(roundId, studentId);
@@ -3645,12 +3653,12 @@ export function conferenceDeck(roundId, studentId, viewer = 'advisor') {
   const g = p?.goal?.goalId ? ev(p.goal.goalId) : null;
   const goal = g ? { title: g.title, date: g.date, own: true } : p?.goal?.title ? { title: p.goal.title } : null;
   return { round: r, student: s, first: s.name.split(' ')[0], young: youngConf(studentId), prep: p, moments, proud: p?.proud || '', hard: p?.hard || '', goal,
-    note: confNoteOf(roundId, studentId), booking: confBookingOf(roundId, studentId), advisor: teacherById[s.advisorId] || null };
+    note: studentConfNote(roundId, studentId), booking: confBookingOf(roundId, studentId), advisor: teacherById[s.advisorId] || null };
 }
 // Who has prepared, for one advisor's students in a round.
 export function prepProgress(roundId, advisorId) {
   const { students } = confProgress(roundId, advisorId);
-  const rows = students.map((s) => { const p = confPrepOf(roundId, s.id); return { student: s, status: p?.status === 'ready' ? 'ready' : p ? 'started' : 'not started', note: !!confNoteOf(roundId, s.id) }; });
+  const rows = students.map((s) => { const p = confPrepOf(roundId, s.id); return { student: s, status: p?.status === 'ready' ? 'ready' : p ? 'started' : 'not started', note: !!studentConfNote(roundId, s.id) }; });
   return { rows, total: rows.length, ready: rows.filter((x) => x.status === 'ready').length, started: rows.filter((x) => x.status === 'started').length };
 }
 // The conference sheet (src/conference.js): the student's prep for their latest round, as the sheet's reader may see it
@@ -3665,8 +3673,7 @@ export function sheetPrep(studentId, viewer = 'advisor') {
   if (!picks.length && !p.proud && !p.hard && !goal) return null;
   return { ready: p.status === 'ready', picks, proud: p.proud, hard: p.hard, goal };
 }
-// The conference sheet, after a student-led conference (the latest round with a line or a staff note): the family's line ("What we will try at
-// home") and the student's ("What I will do next") on both copies; the advisor's private staff note (the advisor
+// The conference sheet, after a student-led conference (the latest round with a line or a staff note): the student's line ("What I will do next") on both copies; the advisor's private staff note (the advisor
 // note "Conference (<round>): …" that Conference mode saves) only on the advisor copy. null when there is nothing to show.
 export function sheetSteps(studentId, family = false) {
   const notes = getNotes(studentId);
@@ -3675,15 +3682,15 @@ export function sheetSteps(studentId, family = false) {
   for (const r of rounds) {
     const n = confNoteOf(r.id, studentId), tag = `Conference (${r.title}): `;
     const note = notes.filter((x) => x.text.startsWith(tag)).pop() || null;
-    if (!n?.family && !n?.student && !note) continue;
-    const out = { round: r.title, family: n?.family?.text || '', student: n?.student?.text || '', note: family ? null : note, staff: family || !note ? '' : note.text.slice(tag.length) };
-    return out.family || out.student || out.staff ? out : null;
+    if (!n?.student && !note) continue;
+    const out = { round: r.title, student: n?.student?.text || '', note: family ? null : note, staff: family || !note ? '' : note.text.slice(tag.length) };
+    return out.student || out.staff ? out : null;
   }
   return null;
 }
-// A student's conference notes (the family's and their own lines), newest round first.
-export const confNotesFor = (studentId) => getConfNotes().filter((n) => n.studentId === studentId && (n.family || n.student) && getConferenceRound(n.roundId))
-  .map((n) => ({ ...n, round: getConferenceRound(n.roundId) })).sort((a, b) => b.round.days[0].date.localeCompare(a.round.days[0].date));
+// A student's conference notes (their own line), newest round first.
+export const confNotesFor = (studentId) => getConfNotes().filter((n) => n.studentId === studentId && n.student && getConferenceRound(n.roundId))
+  .map((n) => ({ ...n, family: null, round: getConferenceRound(n.roundId) })).sort((a, b) => b.round.days[0].date.localeCompare(a.round.days[0].date));
 // ── Subject prompts: what makes a good moment on a line, a few guiding questions, sentence starters and examples ──
 // (src/components/SubjectPrompts.jsx). store.subjectPrompts [{ id: 'sp-…', lineId (a school line), classId (null: the whole
 // line), by (teacherId | null), at, note, questions (3–6), starters, examples }], made on first use. One per class and one per
@@ -4009,119 +4016,28 @@ export function casCohort({ advisorId = '' } = {}) {
   });
 }
 
-// ── Family encouragement: a short kind note from a family member on a moment the family view shows (src/components/FamilyNotes.jsx) ──
-// store.familyNotes [{ id: 'fn-…', eventId, studentId, by ('u:<accountId>' in a pilot, the demo persona id), name, text,
-// reaction, at, edited?, thanked?, studentHidden? (the student's own view), hidden? (a moderator) }], made on first use.
-// One note per family member per moment, edited or deleted by its writer. The student turns notes off with
-// setPrivacy(sid, { familyNotes: false }). Readers: the student, their family, the advisor, the teachers of their current
-// classes and whole-school roles (familyNoteReader); server/scope.mjs sends nothing to anyone else.
-export const FAMILY_REACTIONS = { proud: 'Proud of you', welldone: 'Well done', dinner: 'Tell me more at dinner', keepgoing: 'Keep going' };
-export const FAMILY_NOTE_MAX = 280;
-const fnErr = (message, status = 400) => Object.assign(new Error(message), { status });
-export const familyNotesOn = (sid) => getPrivacy(sid).familyNotes !== false;
-// A moment the family view shows: never private for that family's level, never hidden after a report, never a goal.
-export const familyShows = (e) => !!e && e.type !== 'goal' && !e.hidden && !!getStudent(e.studentId) && VISIBLE_TO[familyViewer(e.studentId)].includes(e.visibility);
+// ── Removed on 30 October 2026 at Erik's request: no new family–school messaging paths (parents use email) ──
+// Family encouragement (notes from a family on a moment) and the family's line on the conference note are gone. Records a
+// pilot already holds (store.familyNotes, confNotes[].family, reports with a familyNoteId) stay only so a student's PDPA
+// copy and erasure still cover them; server/scope.mjs sends them to nobody. docs/pilot-server.md says how to purge them.
+// The old changes stay registered so recorded history still replays (undo); canAct refuses them for everyone.
+// deleteFamilyNote still removes the record on replay (it only ever takes data away); the others do nothing.
 export const getFamilyNote = (id) => (store.familyNotes || []).find((n) => n.id === id);
-export const familyNotesFor = (eventId) => (store.familyNotes || []).filter((n) => n.eventId === eventId).sort((a, b) => a.at.localeCompare(b.at));
-export const familyNotesOf = (sid) => (store.familyNotes || []).filter((n) => n.studentId === sid).sort((a, b) => b.at.localeCompare(a.at));
-// Staff who read a student's family notes besides whole-school roles: the advisor and the teachers of a current class.
-export function familyNoteReader(tid, sid) {
-  const s = getStudent(sid); if (!s || !tid) return false;
-  if (s.advisorId === tid) return true;
-  const mine = new Set(getEnrolments().filter((n) => n.studentId === sid && !(n.to && n.to < TODAY)).map((n) => n.classId));
-  return getClasses().some((c) => mine.has(c.id) && (c.teacherIds || []).includes(tid));
-}
-const noteBody = (text, reaction) => {
-  const t = String(text ?? '').replace(/\s+/g, ' ').trim();
-  if (t.length > FAMILY_NOTE_MAX) throw fnErr(`Keep it to ${FAMILY_NOTE_MAX} characters.`);
-  if (reaction != null && reaction !== '' && !FAMILY_REACTIONS[reaction]) throw fnErr('Pick one of the reactions.');
-  if (!t && !reaction) throw fnErr('Write a few words or pick a reaction.');
-  return { text: t, reaction: reaction || null };
-};
-export const familyNoteWords = (n) => [n.reaction && FAMILY_REACTIONS[n.reaction], n.text].filter(Boolean).join('. ');
-export function addFamilyNote(eventId, from, text, reaction) {
-  const e = getEvent(eventId); if (!e) throw fnErr('No such moment.', 404);
-  if (!familyShows(e)) throw fnErr('This moment is not shared with the family.', 403);
-  if (!familyNotesOn(e.studentId)) throw fnErr('Notes from family are turned off for now.', 409);
-  const by = String(from?.key ?? ''), name = String(from?.name ?? '').trim().slice(0, 80);
-  if (!by || !name) throw fnErr('Who is writing this?');
-  if (familyNotesFor(eventId).some((n) => n.by === by)) throw fnErr('You already left a note on this moment. You can change it.', 409);
-  const n = { id: uid('fn-'), eventId, studentId: e.studentId, by, name, ...noteBody(text, reaction), at: nowIso() };
-  (store.familyNotes ||= []).push(n);
-  const words = n.text || FAMILY_REACTIONS[n.reaction]; // one or the other, so a reaction alone reads in Thai too
-  notify(toStudent(e.studentId), `${name} sent you encouragement for “${e.title}”: ${words.length > 60 ? `${words.slice(0, 57)}…` : words}`, { persona: toStudent(e.studentId), screen: 'map', param: e.id }, 'encourage');
-  log(e.studentId, name, 'family', `Left a note on “${e.title}”`);
-  emit();
-  return n;
-}
-const ownFamilyNote = (id, by) => {
-  const n = getFamilyNote(id); if (!n) throw fnErr('That note is gone.', 404);
-  if (n.by !== by) throw fnErr('Only the person who wrote a note can change it.', 403);
-  return n;
-};
-export function editFamilyNote(id, by, text, reaction) {
-  const n = ownFamilyNote(id, by);
-  Object.assign(n, noteBody(text, reaction), { edited: nowIso() });
-  emit();
-  return n;
-}
-export function deleteFamilyNote(id, by) {
-  ownFamilyNote(id, by);
-  store.familyNotes = store.familyNotes.filter((x) => x.id !== id);
-  emit();
-}
-export function thankFamilyNote(id) {
-  const n = getFamilyNote(id); if (!n) throw fnErr('That note is gone.', 404);
-  if (n.thanked) return n;
-  n.thanked = nowIso();
-  const e = getEvent(n.eventId);
-  notify(toFamily(n.studentId), `${getStudent(n.studentId)?.name.split(' ')[0] || 'Your child'} said thank you for your note on “${e?.title || 'a moment'}”.`, { persona: toFamily(n.studentId), screen: 'family', param: n.studentId }, 'encourage');
-  emit();
-  return n;
-}
-// The student hides a note from their own view (or shows it again). Nobody else is told.
-export function setFamilyNoteHidden(id, hidden) {
-  const n = getFamilyNote(id); if (!n) throw fnErr('That note is gone.', 404);
-  if (hidden) n.studentHidden = nowIso(); else delete n.studentHidden;
-  emit();
-  return n;
-}
-// Safeguarding: reportItem({ familyNoteId }, …) by the student, staff who read it or an admin; moderateReport on such a
-// report: hide (then only staff and its writer see it), unhide, none.
+export function addFamilyNote() { return null; }
+export function editFamilyNote() { return null; }
+export function deleteFamilyNote(id) { if (getFamilyNote(id)) { store.familyNotes = store.familyNotes.filter((x) => x.id !== id); emit(); } }
+export function thankFamilyNote() { return null; }
+export function setFamilyNoteHidden() { return null; }
+// A report on a family note: nothing new is made, and an old one is not acted on (it would hide the moment instead).
 const reportItemFam = reportItem, moderateReportFam = moderateReport;
-reportItem = function reportItem(target, reason, note, from) {
-  if (!target?.familyNoteId) return reportItemFam(target, reason, note, from);
-  const n = getFamilyNote(target.familyNoteId); if (!n) throw fnErr('That note is gone.', 404);
-  const e = getEvent(n.eventId); if (!e) throw fnErr('No such moment.', 404);
-  if (!REPORT_REASONS[reason]) throw fnErr('Pick a reason.');
-  const who = reporter(from, e);
-  if (who.role === 'Family') throw fnErr('Speak to the school about a family note.');
-  const at = nowIso(), list = (store.reports ||= []);
-  const open = list.find((r) => r.from.key === who.key && r.status === 'open' && r.familyNoteId === n.id);
-  if (open) return open;
-  if (list.filter((r) => r.from.key === who.key && Date.parse(at) - Date.parse(r.at) < 3600e3).length >= REPORT_LIMIT) throw fnErr('You have sent a lot of reports. Try again later, or speak to a teacher.', 429);
-  const r = { id: uid('rp-'), kind: 'familyNote', eventId: e.id, familyNoteId: n.id, studentId: e.studentId, reason, note: String(note ?? '').trim().slice(0, 1000), at, from: who, status: 'open', history: [] };
-  list.push(r);
-  for (const k of MODERATOR_KINDS) notify(toRole(k), `New report: a family note on “${e.title}” (${getStudent(e.studentId).name}). ${REPORT_REASONS[reason]}.`, { persona: toRole(k), screen: 'reports', param: r.id });
-  emit();
-  return r;
-};
-moderateReport = function moderateReport(id, action, note, by) {
-  const r = getReport(id);
-  if (!r?.familyNoteId) return moderateReportFam(id, action, note, by);
-  if (!REPORT_STATUS[action]) throw fnErr('Pick what to do.');
-  if (action === 'photo') throw fnErr('A note has no photo.');
-  if (by && !teacherById[by]) throw fnErr('No such teacher.');
-  const n = getFamilyNote(r.familyNoteId);
-  if (action !== 'none' && !n) throw fnErr('That note is gone.', 404);
-  const at = nowIso(), name = by ? teacherById[by].name : 'Pilot admin', e = getEvent(r.eventId), to = toStudent(r.studentId), go = e ? { persona: to, screen: 'map', param: e.id } : undefined;
-  if (action === 'hide') { n.hidden = { at, by: name }; notify(to, `A teacher has hidden a note from your family on “${e?.title}”.`, go); }
-  if (action === 'unhide') { delete n.hidden; notify(to, `A teacher has finished looking at a note from your family on “${e?.title}”. It is shown again.`, go); }
-  const entry = { action, note: String(note ?? '').trim().slice(0, 1000), at, by: name };
-  for (const x of store.reports) if (x.familyNoteId === r.familyNoteId) { x.history.push({ ...entry }); x.status = REPORT_STATUS[action]; }
-  emit();
-  return r;
-};
+reportItem = function reportItem(target, reason, note, from) { return target?.familyNoteId ? null : reportItemFam(target, reason, note, from); };
+moderateReport = function moderateReport(id, action, note, by) { return getReport(id)?.familyNoteId ? null : moderateReportFam(id, action, note, by); };
+// What nobody receives any more (server/scope.mjs): a notification that quoted a family note or told of a family's line.
+export function familyWrittenNotice(n) {
+  if (/^Your family wrote on your conference note$|’s family wrote on the conference note$/.test(n.text || '')) return true;
+  const m = /^(.+) sent you encouragement for “/.exec(n.text || '');
+  return !!m && (store.familyNotes || []).some((x) => x.eventId === n.go?.param && x.name === m[1]);
+}
 
 // ── Advisor year sign-off (src/components/YearSignoff.jsx; docs/pilot-server.md "Advisor year sign-off") ──
 // Near the end of the year an advisor checks each advisee's year against a short checklist and signs it off. The checks
@@ -4486,7 +4402,7 @@ addGoal = act('addGoal', addGoal); completeGoal = act('completeGoal', completeGo
 addComment = act('addComment', addComment); resolveComment = act('resolveComment', resolveComment); askEvidence = act('askEvidence', askEvidence); answerEvidence = act('answerEvidence', answerEvidence);
 answerSponsor = act('answerSponsor', answerSponsor); addCheckIn = act('addCheckIn', addCheckIn);
 editStation = act('editStation', editStation); deleteStation = act('deleteStation', deleteStation); resubmit = act('resubmit', resubmit);
-answerConsent = act('answerConsent', answerConsent); remindParent = act('remindParent', remindParent); setLang = act('setLang', setLang); setFamily = act('setFamily', setFamily);
+answerConsent = act('answerConsent', answerConsent); remindParent = act('remindParent', remindParent); setLang = act('setLang', setLang); setFamily = act('setFamily', setFamily); recordFamilyConsent = act('recordFamilyConsent', recordFamilyConsent);
 endorseClassTask = act('endorseClassTask', endorseClassTask);
 importCandidates = act('importCandidates', importCandidates); eraseStudent = act('eraseStudent', eraseStudent); importRoster = act('importRoster', importRoster); addStudent = act('addStudent', addStudent); addTeacher = act('addTeacher', addTeacher);
 setSubjectLine = act('setSubjectLine', setSubjectLine);
@@ -4670,5 +4586,11 @@ export function skillsGrowth(events, today = TODAY) {
     untagged: moments.filter((e) => !chosenSkills(e).length).sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id)).map((e) => e.id) };
 }
 // Who on the staff gets an advisee's or a pupil's skills: their advisor, a teacher of a current class, whole-school roles.
-export const skillsReader = (persona, sid) => !!persona && (['leadership', 'coordinator', 'counsellor'].includes(persona.kind) || familyNoteReader(persona.teacherId, sid));
+const skillsStaffOf = (tid, sid) => {
+  const s = getStudent(sid); if (!s || !tid) return false;
+  if (s.advisorId === tid) return true;
+  const mine = new Set(getEnrolments().filter((n) => n.studentId === sid && !(n.to && n.to < TODAY)).map((n) => n.classId));
+  return getClasses().some((c) => mine.has(c.id) && (c.teacherIds || []).includes(tid));
+};
+export const skillsReader = (persona, sid) => !!persona && (['leadership', 'coordinator', 'counsellor'].includes(persona.kind) || skillsStaffOf(persona.teacherId, sid));
 for (const l of Object.keys(INTENSITY_NAV)) INTENSITY_NAV[l].push('skills'); // "My skills" at every level

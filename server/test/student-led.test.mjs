@@ -1,5 +1,5 @@
 // Student-led conferences (api.saveConfPrep, writeConfNote, conferenceDeck): who may prepare and write each line, what the
-// prep keeps (own, not private, at most three), the notifications (Thai for families), what each person's copy holds, the
+// prep keeps (own, not private, at most three), the notifications, an old family line hidden (since 30 October 2026), what each person's copy holds, the
 // conference sheet, deterministic replay and PDPA. Run: npm run test:server.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -14,7 +14,7 @@ process.env.TP_MODE = 'pilot'; process.env.TP_START = 'empty';
 const { api } = await import('../store.mjs');
 const { canAct } = await import('../auth.mjs');
 const { scopedSnapshot } = await import('../scope.mjs');
-const { noteText, studentThai } = await import('../../src/i18n.js');
+const { studentThai } = await import('../../src/i18n.js');
 
 const brook = { kind: 'advisor', teacherId: 'T100' };  // advises S2001, S2002 (12B)
 const fong = { kind: 'coordinator', teacherId: 'T104' }; // coordinator, advises S2003 (Year 8)
@@ -80,49 +80,51 @@ test('conferenceDeck: one moment a screen with its photo and words, then proud, 
   assert.deepEqual([d.proud, d.hard, d.goal.title, d.young, d.first], ['I kept going when it was hard', 'Waiting for the paint to dry', 'Learn to code', true, 'Hana']);
 });
 
-test('writeConfNote: the family, the student, the advisor; nobody else', () => {
+test('writeConfNote: the student and the advisor; the family line is gone (since 30 October 2026)', () => {
   const fam = [R.id, 'S2003', 'family', 'Read together after dinner', 'family'];
-  assert.ok(canAct(itoFamily, 'writeConfNote', fam));
-  assert.ok(!canAct(galeFamily, 'writeConfNote', fam), 'not another family');
+  for (const u of [itoFamily, galeFamily, hana, fong, admin]) assert.ok(!canAct(u, 'writeConfNote', fam), `${u.kind}: no family line`);
+  assert.ok(!canAct(fong, 'writeConfNote', [R.id, 'S2003', 'family', 'x', 'T104']), 'not even the advisor');
   assert.ok(!canAct(itoFamily, 'writeConfNote', [R.id, 'S2003', 'student', 'x', 'family']), 'a family never writes the student’s line');
-  assert.ok(!canAct(itoFamily, 'writeConfNote', [R.id, 'S2003', 'family', 'x', 'T104']), 'nor as a teacher');
   assert.ok(canAct(hana, 'writeConfNote', [R.id, 'S2003', 'student', 'x', 'student']));
-  assert.ok(!canAct(hana, 'writeConfNote', [R.id, 'S2003', 'family', 'x', 'student']), 'a student never writes the family’s line');
   assert.ok(!canAct(fern, 'writeConfNote', [R.id, 'S2003', 'student', 'x', 'student']));
-  assert.ok(canAct(fong, 'writeConfNote', [R.id, 'S2003', 'family', 'x', 'T104']), 'the advisor writes either, as herself');
-  assert.ok(!canAct(fong, 'writeConfNote', [R.id, 'S2003', 'family', 'x', 'T100']));
+  assert.ok(canAct(fong, 'writeConfNote', [R.id, 'S2003', 'student', 'x', 'T104']), 'the advisor writes it for them, as herself');
+  assert.ok(!canAct(fong, 'writeConfNote', [R.id, 'S2003', 'student', 'x', 'T100']));
   assert.ok(canAct(brook, 'writeConfNote', [Y.id, 'S2001', 'student', 'x', 'T100']));
   assert.ok(!canAct(brook, 'writeConfNote', [R.id, 'S2003', 'student', 'x', 'T100']), 'not another advisory');
   assert.ok(!canAct(carter, 'writeConfNote', [R.id, 'S2003', 'student', 'x', 'T101']), 'not a subject teacher');
   assert.ok(!canAct(gray, 'writeConfNote', [R.id, 'S2003', 'student', 'x', 'T105']));
-  assert.throws(() => api.writeConfNote(R.id, 'S2003', 'family', '   ', 'family'), /Write one line first/);
-  assert.throws(() => api.writeConfNote(R.id, 'S2003', 'teacher', 'x', 'family'), /whose line/);
+  assert.throws(() => api.writeConfNote(R.id, 'S2003', 'student', '   ', 'student'), /Write one line first/);
+  assert.throws(() => api.writeConfNote(R.id, 'S2003', 'teacher', 'x', 'T104'), /whose line/);
 
+  // An old family line replays as nothing: no note made, nobody told.
   const n0 = api.getStore().notifications.length;
-  api.writeConfNote(R.id, 'S2003', 'family', 'Read together after dinner', 'family');
+  assert.equal(api.runAction('writeConfNote', fam, []), null);
+  assert.equal(api.getStore().notifications.length, n0);
+  assert.equal(api.confNoteOf(R.id, 'S2003'), null);
   api.writeConfNote(R.id, 'S2003', 'student', 'Finish the robot arm', 'student');
   const nt = api.getStore().notifications.slice(0, api.getStore().notifications.length - n0).reverse();
-  assert.deepEqual(nt.map((n) => [n.to, n.text]), [
-    ['st:S2003', 'Your family wrote on your conference note'], ['t:T104', 'Hana Ito’s family wrote on the conference note'],
-    ['fam:S2003', 'Hana wrote on Hana’s conference note'], ['t:T104', 'Hana Ito wrote on the conference note'],
-  ]);
+  assert.deepEqual(nt.map((n) => [n.to, n.text]), [['t:T104', 'Hana Ito wrote on the conference note']]);
   assert.ok(nt.every((n) => n.kind === 'conference'), 'kind: conference (notification settings)');
-  assert.equal(noteText('th', nt[2].text), 'Hana เขียนในบันทึกการประชุมของ Hana แล้ว');
-  assert.equal(studentThai(nt[0].text), 'ครอบครัวของคุณเขียนในบันทึกการประชุมของคุณแล้ว');
-  const n = api.confNoteOf(R.id, 'S2003');
-  assert.deepEqual([n.family.text, n.family.by, n.student.text, n.student.by], ['Read together after dinner', 'family', 'Finish the robot arm', 'student']);
   api.writeConfNote(R.id, 'S2003', 'student', 'Finish the robot arm by December', 'T104');
   assert.equal(api.confNoteOf(R.id, 'S2003').student.by, 'T104', 'the advisor may write it for them; writing again replaces it');
+  assert.equal(studentThai(api.getStore().notifications[0].text), 'Ms Fong เขียนในบันทึกการประชุมของคุณแล้ว');
+  // A pilot's family line written before the change stays in the record (PDPA), and shows nowhere.
+  api.confNoteOf(R.id, 'S2003').family = { text: 'Read together after dinner', by: 'family', at: '2026-10-01T10:00:00.000Z' };
+  api.getStore().notifications.unshift({ id: 'nt-old-fam', to: 'st:S2003', text: 'Your family wrote on your conference note', kind: 'conference', at: '2026-10-01T10:00:00.000Z' });
+  assert.equal(api.studentConfNote(R.id, 'S2003').family, null);
+  assert.equal(api.conferenceDeck(R.id, 'S2003').note.family, null);
+  assert.ok(api.confNotesFor('S2003').every((x) => x.family === null));
   api.addNote('S2003', 'Conference (Term 1 conferences): talk to Mr Carter about robotics club');
   assert.equal(api.getConfNotes().length, 1);
 });
 
-test('scope: the prep to the student, their advisor and whole-school roles; the note to the family too', () => {
+test('scope: the prep and the note to the student, their advisor and whole-school roles; never the family', () => {
   const of = (u) => scopedSnapshot(u).store;
   const s = of(hana), f = of(itoFamily), a = of(fong), c = of(carter), b = of(brook), g = of(galeFamily);
   assert.equal(s.confPreps.length, 1); assert.equal(s.confNotes.length, 1);
   assert.equal(a.confPreps.length, 1); assert.equal(a.confNotes.length, 1);
-  assert.equal(f.confPreps.length, 0, 'the family gets no prep'); assert.equal(f.confNotes.length, 1, 'but the note');
+  assert.equal(f.confPreps.length + f.confNotes.length, 0, 'the family gets neither');
+  for (const x of [s, a]) assert.ok(!JSON.stringify(x).includes('Read together after dinner') && !JSON.stringify(x).includes('Your family wrote'), 'an old family line goes to nobody');
   assert.equal(c.confPreps.length, 0, 'a subject teacher gets neither'); assert.equal(c.confNotes.length, 0);
   assert.equal(b.confPreps.length + b.confNotes.length, 0); assert.equal(g.confPreps.length + g.confNotes.length, 0);
   assert.ok(!JSON.stringify(f).includes('mixed the colours'));
@@ -146,11 +148,12 @@ test('the conference sheet carries the prep; the family copy only what the famil
   assert.deepEqual(scopedSnapshot(carter).store.confPreps, [], 'their subject teacher does not');
 });
 
-test('the conference sheet after the conference: both lines on both copies, the staff note on the advisor copy only', () => {
+test('the conference sheet after the conference: the student\u2019s line on both copies (an old family line never), the staff note on the advisor copy only', () => {
   const adv = api.sheetSteps('S2003'), fam = api.sheetSteps('S2003', true);
-  assert.deepEqual([adv.round, adv.family, adv.student, adv.staff], ['Term 1 conferences', 'Read together after dinner', 'Finish the robot arm by December', 'talk to Mr Carter about robotics club']);
+  assert.ok(!('family' in adv) && !('family' in fam), 'an old family line is not on the sheet');
+  assert.deepEqual([adv.round, adv.student, adv.staff], ['Term 1 conferences', 'Finish the robot arm by December', 'talk to Mr Carter about robotics club']);
   assert.equal(adv.note, api.getNotes('S2003').at(-1), 'the advisor note itself (so the sheet does not show it twice)');
-  assert.deepEqual([fam.family, fam.student, fam.staff, fam.note], ['Read together after dinner', 'Finish the robot arm by December', '', null], 'the family copy: never the staff note');
+  assert.deepEqual([fam.student, fam.staff, fam.note], ['Finish the robot arm by December', '', null], 'the family copy: never the staff note');
   api.addNote('S2003', 'Conference (Another round): not this one');
   assert.equal(api.sheetSteps('S2003').staff, 'talk to Mr Carter about robotics club', 'only the note for that round');
   // Only a staff note so far: the advisor copy shows it, the family copy shows nothing.
@@ -164,6 +167,7 @@ test('the conference sheet after the conference: both lines on both copies, the 
 test('PDPA: the prep and the note are in the student’s copy and go with erasure', () => {
   const d = api.studentData('S2003');
   assert.equal(d.own.confPreps?.length, 1); assert.equal(d.own.confNotes?.length, 1);
+  assert.equal(d.own.confNotes[0].family.text, 'Read together after dinner', 'the old family line is in the copy');
   assert.deepEqual(api.studentData('S2001').own.confPreps.map((p) => p.studentId), ['S2001'], 'another student’s copy has only their own');
   const removed = api.eraseStudent('S2003');
   assert.equal(removed.confPreps, 1); assert.equal(removed.confNotes, 1);
