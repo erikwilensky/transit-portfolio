@@ -13,6 +13,7 @@ const ACTIONS = {
   'roster-import': 'Imported class lists', 'see-as-start': 'Started See as', 'see-as-stop': 'Stopped See as',
   'pdpa-copy': 'Downloaded a data copy', 'pdpa-erase': 'Erased a student',
   'file-refused': 'Files refused', 'family-join': 'Family joined', 'family-remove': 'Family member removed', 'family-letters': 'Made family letters',
+  'cas-code': 'Made a CAS confirmation code', 'cas-confirm': 'Outside supervisor answered CAS hours',
 };
 const KIND = { student: 'Student', advisor: 'Advisor', teacher: 'Teacher', counsellor: 'Counsellor', coordinator: 'Coordinator', leadership: 'Leadership', parent: 'Family', admin: 'Admin' };
 const SIZE = 50;

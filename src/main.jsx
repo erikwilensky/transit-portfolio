@@ -49,7 +49,10 @@ const render = () => createRoot(document.getElementById('root')).render(<><Previ
 // An exhibition screen (#/x/<token>, src/screens/Kiosk.jsx): on its own, signed out, never the record.
 const kioskToken = location.hash.match(/^#\/?x\/([A-Za-z0-9_-]{32,128})$/)?.[1];
 registerServiceWorker(); // the phone app (src/pwa.js)
-if (kioskToken) import('./screens/Kiosk.jsx').then(({ default: Kiosk }) => { keepShell(); createRoot(document.getElementById('root')).render(<Kiosk token={kioskToken} />); });
+// An outside supervisor confirming CAS hours (#/c or #/c/<code>, src/components/Cas.jsx): on its own, signed out, never the record.
+const casCode = location.hash.match(/^#\/?c(?:\/([A-Za-z0-9-]{0,20}))?$/);
+if (casCode) import('./components/Cas.jsx').then(({ CasCodePage }) => { document.documentElement.dataset.theme ||= window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; createRoot(document.getElementById('root')).render(<CasCodePage code={casCode[1] || ''} />); });
+else if (kioskToken) import('./screens/Kiosk.jsx').then(({ default: Kiosk }) => { keepShell(); createRoot(document.getElementById('root')).render(<Kiosk token={kioskToken} />); });
 else loadAuth().then(() => {
   if (getAuth().mode === 'pilot') useLiveDate(); // a pilot runs on the real calendar, like its server
   if (!mayShare()) return render();

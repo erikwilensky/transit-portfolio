@@ -210,6 +210,7 @@ export function canAct(user, fn, args = []) {
   if (TK_FNS.has(fn)) { try { return taskOk(user, fn, args); } catch { return false; } }
   if (CF_FNS.has(fn)) { try { return confOk(user, fn, args); } catch { return false; } }
   if (SP_FNS.has(fn)) { try { return subjectPromptOk(user, fn, args); } catch { return false; } }
+  if (CAS_FNS.has(fn)) { try { return casOk(user, fn, args); } catch { return false; } }
   if (isAdmin(user)) return true;
   if (ADMIN_ONLY.has(fn)) return false;
   if (ANYONE.has(fn)) return true;
@@ -470,4 +471,24 @@ function subjectPromptOk(user, fn, args) {
   if (fn !== 'setSubjectPrompts') return true;
   const reach = reachOf(user);
   return [].concat(args[1]?.examples || []).every((x) => { if (!x?.eventId) return true; const sid = api.getEvent(x.eventId)?.studentId; return !!sid && (reach === null || reach.has(sid)); });
+}
+// ── CAS hours (api.logCasExperience, logCasHours, withdrawCasHours, confirmCasHours, returnCasHours, setCasCode, setCasCoordinator) ──
+// Logging and taking back: only the student (Years 12 and 13), on their own experiences. Confirming or sending back, as
+// yourself: the staff supervisor the entry names ('supervisor'), or a CAS coordinator (role coordinator, or marked on
+// Accounts) or admin on anyone's behalf ('coordinator'). An outside supervisor confirms through their code on the server
+// (server/routes/47-cas.mjs), never through /api/action, and nobody sets a code here. Marking a CAS coordinator: admins.
+const CAS_FNS = new Set(['logCasExperience', 'logCasHours', 'withdrawCasHours', 'confirmCasHours', 'returnCasHours', 'setCasCode', 'setCasCoordinator']);
+function casOk(user, fn, args) {
+  const me = user.kind === 'student' && user.studentId;
+  if (fn === 'logCasExperience') return !!me && args[0] === me && api.casAllowed(me);
+  if (fn === 'logCasHours') { const e = api.getEvent(args[1]); return !!me && args[0] === me && !!e?.cas && e.studentId === me && api.casAllowed(me); }
+  if (fn === 'withdrawCasHours') return !!me && args[1] === me && api.getCasEntry(args[0])?.studentId === me;
+  if (fn === 'setCasCoordinator') return isAdmin(user);
+  if (fn === 'setCasCode') return false;
+  const x = api.getCasEntry(args[0]), via = args[2]?.via;
+  if (!x || me) return false;
+  if (isAdmin(user)) return via === 'coordinator' && (args[1] ?? null) === (user.teacherId ?? null);
+  if (!STAFF.includes(user.kind) || !user.teacherId || args[1] !== user.teacherId) return false;
+  if (via === 'supervisor') return x.supervisor?.kind === 'staff' && x.supervisor.teacherId === user.teacherId;
+  return via === 'coordinator' && api.isCasCoordinator({ kind: user.kind, teacherId: user.teacherId });
 }

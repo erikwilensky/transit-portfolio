@@ -5,6 +5,7 @@ import { AdminFamily } from '../components/FamilyLetters.jsx';
 import RosterImport from './RosterImport.jsx';
 import SubjectLines from './SubjectLines.jsx';
 import SisSync from '../components/SisSync.jsx';
+import { CasCoordinators } from '../components/Cas.jsx';
 import '../auth.css';
 
 const ago = (iso) => { const m = Math.round((Date.now() - new Date(iso)) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`; };
@@ -116,6 +117,7 @@ export default function Accounts({ toast, persona }) {
       <p className="fineprint">Removing an account stops that person signing in. Their record and map stay. A paused account (someone no longer in the class lists) cannot sign in until you unpause it, or a later import has them again. A new setup link signs them out everywhere and ends their old password.</p>
       <StudentData data={data} toast={toast} reload={() => admin.list().then(setData, (x) => setErr(x.message))} />
       <SubjectLines toast={toast} />
+      <CasCoordinators toast={toast} />
     </div>
   );
 }

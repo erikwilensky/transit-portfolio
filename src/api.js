@@ -3108,6 +3108,158 @@ export function answerExampleAsk(promptId, exampleId, studentId, yes) {
   emit();
   return x;
 }
+// ── CAS experiences and hours, Years 12 and 13 (src/components/Cas.jsx, src/screens/CasDashboard.jsx, server/routes/47-cas.mjs) ──
+// An experience is a station on the CAS line (type 'cas', e.cas: { strand, outcomes, from, to }), so the map and the
+// coordinator's grid read it as before. Hours are entries in store.casHours: { id, studentId, eventId, date, hours, note,
+// supervisor: { kind: 'staff', teacherId } | { kind: 'outside', name, email } | null, status: pending | confirmed | returned,
+// at, decided?: { via: supervisor | coordinator | code, by, name, at, comment }, code?: { hash, expires } }. A staff supervisor
+// confirms from "CAS to confirm"; an outside one (no account, never emailed) with a one-time code the student shows; a CAS
+// coordinator (role coordinator, or a teacher marked on Accounts: teacher.casCoordinator) on anyone's behalf.
+export const CAS_STRANDS = { C: 'Creativity', A: 'Activity', S: 'Service' };
+export const CAS_OUTCOMES = ['Strengths and growth', 'New challenges', 'Initiative and planning', 'Commitment', 'Collaboration', 'Global engagement', 'Ethics of choices'];
+export const CAS_LINE = 'cas';
+export const CAS_QUIET_DAYS = 42;
+export const CAS_CODE_DAYS = 30;
+export const CAS_MAX_HOURS = 24;
+export const CAS_FLAGS = { nothing: 'Nothing logged yet', service: 'No Service yet', outcome: 'Outcome missing', reflection: 'No reflection in 6 weeks' };
+const casErr = (m, status = 400) => Object.assign(new Error(m), { status });
+const CAS_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const CAS_VIS = ['advisor', 'school', 'publishable'];
+export const casHoursText = (n) => `${n} hour${n === 1 ? '' : 's'}`;
+export const casAllowed = (sid) => { const s = getStudent(sid); return !!s && !s.cohortOnly && s.grade >= 11; };
+export const isCasCoordinator = (p) => !!p && (p.kind === 'coordinator' || !!(p.teacherId && getTeacher(p.teacherId)?.casCoordinator));
+export const getCasHours = () => store.casHours || [];
+export const getCasEntry = (id) => getCasHours().find((x) => x.id === id) || null;
+export const casHoursOf = (sid, eventId) => getCasHours().filter((x) => x.studentId === sid && (!eventId || x.eventId === eventId));
+export const casExperiences = (sid) => store.events.filter((e) => e.studentId === sid && e.cas).sort((a, b) => b.date.localeCompare(a.date) || a.id.localeCompare(b.id));
+export const casToConfirm = (tid) => getCasHours().filter((x) => x.supervisor?.kind === 'staff' && x.supervisor.teacherId === tid);
+export const casSum = (list, status) => list.filter((x) => !status || x.status === status).reduce((n, x) => n + x.hours, 0);
+export const casSupervisorName = (sup) => (sup?.kind === 'staff' ? getTeacher(sup.teacherId)?.name || 'A member of staff' : sup?.kind === 'outside' ? sup.name : '');
+// What an entry is about. A supervisor's record holds only the entries naming them, so server/scope.mjs adds `about`.
+export function casAbout(x) {
+  const s = getStudent(x.studentId), e = getEvent(x.eventId);
+  return { name: s?.name || x.about?.name || 'A student', year: s ? s.grade + 1 : x.about?.year ?? null, title: e?.title || x.about?.title || 'A CAS experience', strand: e?.cas?.strand || x.about?.strand || null };
+}
+const casDay = (d, what) => { if (!/^\d{4}-\d{2}-\d{2}$/.test(d || '') || Number.isNaN(Date.parse(d))) throw casErr(`Give the ${what}`); return d; };
+function casSupervisor(sup) {
+  if (!sup || !sup.kind || sup.kind === 'none') return null;
+  if (sup.kind === 'staff') { if (!getTeacher(sup.teacherId)) throw casErr('Pick the member of staff who supervised'); return { kind: 'staff', teacherId: sup.teacherId }; }
+  if (sup.kind !== 'outside') throw casErr('Pick who supervised');
+  const name = String(sup.name || '').trim().slice(0, 80), email = String(sup.email || '').trim().toLowerCase().slice(0, 120);
+  if (!name) throw casErr('Give the supervisor’s name');
+  if (!CAS_EMAIL.test(email)) throw casErr('Give the supervisor’s email address');
+  return { kind: 'outside', name, email };
+}
+function casHoursIn(h) {
+  const hours = Math.round(Number(h?.hours) * 4) / 4;
+  if (!(hours > 0) || hours > CAS_MAX_HOURS) throw casErr(`Hours must be more than 0 and at most ${CAS_MAX_HOURS} in one go`);
+  const date = casDay(h.date, 'date of the hours');
+  if (date > TODAY) throw casErr('Hours cannot be in the future');
+  return { date, hours, note: String(h.note || '').trim().slice(0, 500), supervisor: casSupervisor(h.supervisor) };
+}
+function casEntry(s, e, h) {
+  const x = { id: uid('ch-'), studentId: s.id, eventId: e.id, ...h, status: 'pending', at: nowIso() };
+  (store.casHours ||= []).push(x);
+  const sup = h.supervisor;
+  log(s.id, s.name, 'station', `Logged ${casHoursText(h.hours)} of CAS on “${e.title}”${sup?.kind === 'staff' ? `, asked ${casSupervisorName(sup)} to confirm` : sup ? ', for an outside supervisor to confirm' : ''}`);
+  if (sup?.kind === 'staff') notify(toTeacher(sup.teacherId), `${s.name.split(' ')[0]} asked you to confirm ${casHoursText(h.hours)} of CAS: “${e.title}”`, { persona: toTeacher(sup.teacherId), screen: 'casconfirm' });
+  return x;
+}
+// The CAS line: one school line, made the first time anyone logs an experience, and put on that student's map.
+function casLane(s) {
+  if (!lineById(CAS_LINE)) store.lines.push({ id: CAS_LINE, name: 'CAS', colour: '#008A60', parentLineId: null, status: 'active', pattern: 'cased', code: 'CAS' });
+  if (!s.laneOrder.includes(CAS_LINE)) s.laneOrder.push(CAS_LINE);
+}
+export function logCasExperience(studentId, f = {}) {
+  const s = getStudent(studentId);
+  if (!casAllowed(studentId)) throw casErr('CAS is for Years 12 and 13');
+  const title = String(f.title || '').trim().slice(0, 120);
+  if (!title) throw casErr('Give the experience a name');
+  if (!CAS_STRANDS[f.strand]) throw casErr('Pick Creativity, Activity or Service');
+  const from = casDay(f.from, 'start date');
+  const to = f.to ? casDay(f.to, 'end date') : null;
+  if (to && to < from) throw casErr('The end date is before the start date');
+  const outcomes = [...new Set((Array.isArray(f.outcomes) ? f.outcomes : []).filter((n) => Number.isInteger(n) && n >= 1 && n <= 7))].sort((a, b) => a - b);
+  const hours = f.hours ? casHoursIn(f.hours) : null;
+  const evidence = (Array.isArray(f.evidence) ? f.evidence : []).filter((x) => x && typeof x.url === 'string' && x.url).slice(0, 10)
+    .map((x) => ({ kind: ['image', 'file', 'link'].includes(x.kind) ? x.kind : 'link', url: x.url.slice(0, 2000), caption: String(x.caption || x.name || 'Evidence').slice(0, 120), ...(x.name ? { name: String(x.name).slice(0, 200) } : {}), ...(x.size ? { size: Number(x.size) || 0 } : {}), ...(x.type ? { type: String(x.type).slice(0, 100) } : {}) }));
+  casLane(s);
+  const e = addStation(studentId, { title, date: from, lineIds: [CAS_LINE], type: 'cas', summary: String(f.summary || '').trim().slice(0, 1000), evidence,
+    visibility: CAS_VIS.includes(f.visibility) ? f.visibility : 'advisor', via: 'CAS log', cas: { strand: f.strand, outcomes, from, to } });
+  const text = String(f.reflection || '').trim().slice(0, 4000);
+  if (text) store.reflections.push({ id: uid('rf-x'), eventId: e.id, text, prompt: 'CAS reflection', date: TODAY, visibility: e.visibility });
+  const entry = hours ? casEntry(s, e, hours) : null;
+  emit();
+  return { event: e, entry };
+}
+// More hours on an experience: any station of theirs marked for CAS (the CAS log, or "Counts for CAS?" on a station).
+export function logCasHours(studentId, eventId, h = {}) {
+  const s = getStudent(studentId), e = getEvent(eventId);
+  if (!s || !e || e.studentId !== studentId || !e.cas) throw casErr('Pick one of your CAS experiences');
+  if (!casAllowed(studentId)) throw casErr('CAS is for Years 12 and 13');
+  const x = casEntry(s, e, casHoursIn(h));
+  emit();
+  return x;
+}
+export function withdrawCasHours(entryId, studentId) {
+  const x = getCasEntry(entryId);
+  if (!x || x.studentId !== studentId) throw casErr('No such hours');
+  if (x.status === 'confirmed') throw casErr('Confirmed hours stay. Ask your CAS coordinator to change them.');
+  store.casHours = getCasHours().filter((y) => y.id !== entryId);
+  log(studentId, getStudent(studentId)?.name || '', 'station', `Took back ${casHoursText(x.hours)} of CAS on “${casAbout(x).title}”`);
+  emit();
+}
+// Confirming or sending back: the staff supervisor ('supervisor'), a CAS coordinator for anyone ('coordinator'), or an
+// outside supervisor through their one-time code (server only, 'code'; by is null, name is theirs).
+function casDecide(entryId, by, opts, status) {
+  const x = getCasEntry(entryId);
+  if (!x) throw casErr('No such hours', 404);
+  if (x.status !== 'pending') throw casErr('These hours have already been answered', 409);
+  const via = ['supervisor', 'coordinator', 'code'].includes(opts?.via) ? opts.via : 'supervisor';
+  const comment = String(opts?.comment || '').trim().slice(0, 500);
+  if (status === 'returned' && via !== 'code' && !comment) throw casErr('Say what is not right, so the student can fix it');
+  const name = via === 'code' ? String(opts?.name || casSupervisorName(x.supervisor) || 'The supervisor').slice(0, 80) : getTeacher(by)?.name || 'Pilot admin';
+  x.status = status;
+  x.decided = { via, by: by || null, name, at: nowIso(), ...(comment ? { comment } : {}) };
+  delete x.code;
+  const a = casAbout(x), sup = x.supervisor && via === 'coordinator' ? ` for ${casSupervisorName(x.supervisor)}` : '';
+  const what = status === 'confirmed' ? `confirmed${sup} your ${casHoursText(x.hours)} of CAS on “${a.title}”` : `sent back your ${casHoursText(x.hours)} of CAS on “${a.title}”${comment ? `: ${comment}` : ''}`;
+  notify(toStudent(x.studentId), `${shortName(name)} ${what}`, { persona: toStudent(x.studentId), screen: 'cas' });
+  log(x.studentId, name, status === 'confirmed' ? 'endorse' : 'request', `${status === 'confirmed' ? 'Confirmed' : 'Sent back'} ${casHoursText(x.hours)} of CAS on “${a.title}”${via === 'code' ? ' (outside supervisor, by code)' : via === 'coordinator' ? ' (CAS coordinator)' : ''}`);
+  emit();
+  return x;
+}
+export function confirmCasHours(entryId, by, opts = {}) { return casDecide(entryId, by, opts, 'confirmed'); }
+export function returnCasHours(entryId, by, opts = {}) { return casDecide(entryId, by, opts, 'returned'); }
+// The server makes the code and keeps only its hash here (POST /api/cas/code); a new code replaces the old one, null ends it.
+export function setCasCode(entryId, hash, expires) {
+  const x = getCasEntry(entryId);
+  if (!x || x.status !== 'pending' || x.supervisor?.kind !== 'outside') throw casErr('A code is only for hours waiting for an outside supervisor');
+  if (hash) x.code = { hash: String(hash), expires: String(expires) }; else delete x.code;
+  emit();
+}
+export const casByCode = (hash) => getCasHours().find((x) => x.code?.hash === hash && x.status === 'pending' && x.code.expires >= TODAY) || null;
+export function setCasCoordinator(teacherId, on) {
+  const t = getTeacher(teacherId);
+  if (!t) throw casErr('No such member of staff');
+  if (on) t.casCoordinator = true; else delete t.casCoordinator;
+  emit();
+}
+export const casCoordinators = () => getTeachers().filter((t) => t.casCoordinator);
+// The coordinator's cohort, Years 12 and 13: strands, the seven outcomes, hours confirmed and waiting, and flags.
+export function casCohort({ advisorId = '' } = {}) {
+  const since = daysBefore(CAS_QUIET_DAYS);
+  return getStudents({ includeCohort: true }).filter((s) => s.grade >= 11 && (!advisorId || s.advisorId === advisorId)).sort((a, b) => a.name.localeCompare(b.name)).map((s) => {
+    const ex = store.events.filter((e) => e.studentId === s.id && e.cas);
+    const ids = new Set(ex.map((e) => e.id));
+    const strands = Object.fromEntries(Object.keys(CAS_STRANDS).map((k) => [k, ex.filter((e) => e.cas.strand === k)]));
+    const outcomes = CAS_OUTCOMES.map((_, i) => ex.filter((e) => (e.cas.outcomes || []).includes(i + 1)));
+    const hrs = casHoursOf(s.id);
+    const lastReflection = store.reflections.filter((r) => ids.has(r.eventId)).map((r) => r.date).sort().at(-1) || null;
+    const flags = !ex.length && !hrs.length ? ['nothing'] : [!strands.S.length && 'service', outcomes.some((l) => !l.length) && 'outcome', !(lastReflection && lastReflection >= since) && 'reflection'].filter(Boolean);
+    return { student: s, experiences: ex, strands, outcomes, covered: outcomes.filter((l) => l.length).length, hours: hrs, confirmed: casSum(hrs, 'confirmed'), pending: casSum(hrs, 'pending'), lastReflection, flags };
+  });
+}
 
 // ── Shared record: with the pilot server, every change is replayed there ──
 // A screen calls a change below; it runs here at once (instant UI) while recording the ids and
@@ -3174,6 +3326,7 @@ saveLeaver = act('saveLeaver', saveLeaver); shareLeaver = act('shareLeaver', sha
 checkInGoal = act('checkInGoal', checkInGoal); snoozeCheckins = act('snoozeCheckins', snoozeCheckins); sendEncouragement = act('sendEncouragement', sendEncouragement);
 openConferenceRound = act('openConferenceRound', openConferenceRound); editConferenceRound = act('editConferenceRound', editConferenceRound); closeConferenceRound = act('closeConferenceRound', closeConferenceRound); bookConference = act('bookConference', bookConference); cancelConference = act('cancelConference', cancelConference); blockConferenceSlot = act('blockConferenceSlot', blockConferenceSlot); sendConferenceReminders = act('sendConferenceReminders', sendConferenceReminders);
 setSubjectPrompts = act('setSubjectPrompts', setSubjectPrompts); clearSubjectPrompts = act('clearSubjectPrompts', clearSubjectPrompts); answerExampleAsk = act('answerExampleAsk', answerExampleAsk);
+logCasExperience = act('logCasExperience', logCasExperience); logCasHours = act('logCasHours', logCasHours); withdrawCasHours = act('withdrawCasHours', withdrawCasHours); confirmCasHours = act('confirmCasHours', confirmCasHours); returnCasHours = act('returnCasHours', returnCasHours); setCasCode = act('setCasCode', setCasCode); setCasCoordinator = act('setCasCoordinator', setCasCoordinator);
 // Undo puts a whole earlier copy back, and reset goes back to the seed (sync.js sends it to /api/reset).
 restore = act('restore', restore); resetDemo = act('resetDemo', resetDemo);
 export const MUTATORS = Object.keys(ACTIONS);
