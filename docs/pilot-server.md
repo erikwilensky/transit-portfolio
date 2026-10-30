@@ -2108,3 +2108,61 @@ was for is asked to add something from it.
   names; a coordinator sends the one reminder; a Year 10 student never gets it; Aaron's family sees the name; refusals; the
   activity log; axe). `thai-students.cjs` sweeps the card, its flow and Coming up in Thai.
 - Not done: a notification when an event ends (the card is the prompt), a reminder per advisor, and events from the SIS calendar.
+## Student-led conferences (`src/api.js`, `src/components/StudentLed.jsx`, builds on "Conference booking" and "Conference sheets")
+
+The student leads their own parent-student-advisor conference: they get ready in the app, present from a laptop or
+tablet, and at the end the family and the student each add one line. No new route: everything goes through `/api/action`.
+Demo and pilot (the demo record has no rounds, so nothing shows until one is opened).
+
+- **Record** (made on first use): `store.confPreps = [{ id: 'cp-…', roundId, studentId, picks: [eventId] (≤ SLC_PICKS = 3),
+  says: { [eventId]: text }, proud, hard, goal: { goalId } | { title } | null, step, status: 'draft' | 'ready', startedAt, savedAt,
+  readyAt? }]` and `store.confNotes = [{ id: 'cn-…', roundId, studentId, family: { text, by, at } | null, student: { text, by, at } |
+  null }]`, `by` being `'family'`, `'student'` or a teacher id. Limits `SLC_MAX` (a line is 200 characters).
+- **Mutators**: `saveConfPrep(roundId, studentId, draft, ready)`: while the round has a day to come (`prepOpen`; closing booking
+  does not stop it). Picks are only the student's own moments, never private, goals or safeguarding-hidden ones (`prepMoments`),
+  so the advisor can always see what is shown; a goal is one of their own goals or a few words. `ready: true` needs a pick or
+  "proud" (400 otherwise); it can still be changed until the day. `writeConfNote(roundId, studentId, who, text, by)`: `who` is
+  `'family'` ("What we will try at home") or `'student'` ("What I will do next"); writing again replaces that line. Each line
+  tells the other two in the app (kind `conference`): "Your family wrote on your conference note", "Aaron wrote on Aaron’s
+  conference note" (Thai for families and students, `NOTE_TH`), "Aaron Torres’s family wrote on the conference note" (advisor).
+  The advisor's **private staff note** is the existing `addNote` (`Conference (<round>): …`), so it stays with the advisor notes
+  and on the advisor copy of the sheet, never with students or families.
+- **Reads**: `myConfPrep(sid)` (the earliest round with a day to come), `prepMoments`, `conferenceDeck(roundId, sid, viewer)` (what
+  Conference mode shows: moments with first photo, the student's words or the summary, proud, hard, goal, note, `young` for
+  Years 7–9), `prepProgress(roundId, advisorId)`, `confPrepOf`, `confNoteOf`, `confNotesFor`, `sheetPrep(sid, viewer)`.
+- **canAct** (`SLC_FNS` in `server/auth.mjs`): preparing, only the student on their own prep in a round that includes them. Lines: a
+  parent for their own children, only the family's line, as `'family'`; the student only their own line, as `'student'`; the
+  student's advisor or whole-school staff either line, as themselves (for a conference on one device); admins with a teacher id.
+  Subject teachers, other advisors and other families never.
+- **Scope**: a prep goes to the student, their advisor and whole-school roles; a note to those and the student's family. Other staff
+  get neither. PDPA: both carry `studentId`, so they are in that student's copy and go with erasure (generic rule).
+- **Student** (home, every level, under the term reflection card): "Get ready for my conference" (Years 7–9: "Pick a few things to
+  show your family…", short and warm). Simple: one question a screen (`SimpleFlow`): what to show (up to 3), one screen per moment
+  ("What do you want to say about it?", optional), proud, hard, goal (their goals as buttons, or a few words), review, "I am ready";
+  sentence starters, read aloud and speak to type (`Said`, `SayIt`, src/voice.js). Standard and Full: one page. Once ready: "Start
+  my conference". After the conference (its day, or once a line is written; for 30 days): "My conference note" with both lines and
+  "Write what I will do next".
+- **Conference mode** (`ConferenceMode`, a full-screen portal): "Hi, I’m Aaron!" (Years 7–9) or "Aaron’s conference" with what will be
+  shown; one moment a screen (photo, title, their words; photo beside the words on a laptop, above on an upright tablet); proud and
+  hard; the goal; "Our next steps" (the two lines; on the advisor's device both can be written, plus the private staff note).
+  Large text (`clamp`), big Back / Next, arrow keys and Page Up / Down, Full screen, screen kept awake where allowed, and an
+  English / ไทย switch (labels through `studentThai`; a Thai student's own device is Thai already). **Offline**: once open it needs
+  no connection: it reads this browser's copy of the record, photos are fetched once into memory as blobs (never kept on the
+  device), and the lines and staff note go through the outbox (see "Offline capture"), sent when back; "Offline: this still works…"
+  shows meanwhile.
+- **Advisor**: each round on My advisory shows "Prepared: n of 23" (started too) and "Who has prepared" (Ready / Started / Not
+  started, note written, a Conference mode button each); each booked time in the day grid says Prepared / Preparing / Not prepared
+  yet and has "Conference mode".
+- **Family**: "After Aaron’s conference" on the family page (from the booked day, or once a line is written; 30 days): both lines and
+  "Write our line", in Thai or English (`slcWords`), the student's own words marked `lang="en"`.
+- **Conference sheet**: `conferenceSheet` carries `prep` (`sheetPrep`, the latest round's): "In Aaron’s words" with the moments to
+  show, proud, hard and the goal, read as the sheet's reader may (the family copy drops moments the family view does not show).
+  The moment list gives way so the sheet stays one A4 page.
+- Tests: `server/test/student-led.test.mjs` (picks filtered, replay, canAct for every role, notifications and Thai, scope, the sheet,
+  PDPA); browser: `node scripts/checks/student-led.cjs` (real roster: Ms Altemen opens a round for 8C; Aaron Torres prepares at Simple
+  on a phone; she sees "Prepared: 1 of 23", books him and opens Conference mode from the booking list, goes offline (photo still
+  shows, staff note sent when back), switches to ไทย; Aaron writes his line in his own Conference mode; his parent joins from a
+  family letter in Thai and writes theirs; another family gets nothing and is refused (403); the sheet carries the prep on one
+  A4 page; axe on each screen; each account in its own browser context). `thai-students.cjs` sweeps the prep, Conference mode and
+  the note in Thai. Screenshots and a PDF: `tp-slc-*` in `SCRATCH` or the temp folder.
+- Not done: a round's prep cannot be copied into the next round; the conference note is not on the printed sheet.
