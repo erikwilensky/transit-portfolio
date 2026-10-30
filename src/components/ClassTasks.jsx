@@ -6,6 +6,7 @@ import { UploadStatus, useUpload } from './FileAttach.jsx';
 import { CHIPS } from '../screens/TeacherQueue.jsx';
 import { Said, SayIt } from './Voice.jsx';
 import './class-tasks.css';
+import PhraseTools from './Phrases.jsx';
 
 // Class tasks (api.setTask, handInTask): a teacher sets a task for a class from My classes; each student hands it in as a
 // moment on its line, from the top of their home. Teacher: SetTaskDialog, ClassTaskList (class page), TaskGrid
@@ -131,6 +132,7 @@ export function TaskGrid({ taskId, teacherId, back, version, toast }) {
       {waiting.length > 0 && (
         <div className="ca-bar" role="group" aria-label="Endorse hand-ins">
           <div className="ca-bar-row"><input className="ca-note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="A note for every hand-in you endorse (optional)" aria-label="Shared note" /></div>
+          <PhraseTools value={note} onChange={setNote} kind="praise" />
           <div className="q-chips">{CHIPS.map((x) => { const on = chips.includes(x); return <button key={x} className={on ? 'on' : ''} aria-pressed={on} onClick={() => setChips(on ? chips.filter((y) => y !== x) : [...chips, x])}>{x}</button>; })}</div>
           {waiting.length > 1 && <div className="ca-bar-row"><span className="spacer" /><button className="primary" onClick={() => doEndorse(waiting.map((r) => r.request.id))}>Endorse all to look at ({waiting.length})</button></div>}
         </div>
@@ -157,6 +159,7 @@ export function TaskGrid({ taskId, teacherId, back, version, toast }) {
                 {asking ? <>
                   <input value={more[rid]} onChange={(e) => setMore({ ...more, [rid]: e.target.value })} placeholder={DEFAULT_MORE} aria-label={`What you need from ${r.student?.name || 'the student'}`} onKeyDown={(e) => { if (e.key === 'Enter') askMore(r); if (e.key === 'Escape') setMore(({ [rid]: _, ...m }) => m); }} />
                   <button className="ghost" onClick={() => setMore(({ [rid]: _, ...m }) => m)}>Cancel</button><button className="primary" onClick={() => askMore(r)}>Send</button>
+                  <PhraseTools value={more[rid]} onChange={(v) => setMore({ ...more, [rid]: v })} first={r.student?.name?.split(' ')[0] || null} kind="next" />
                 </> : extending ? <>
                   <label className="tk-until">Until<input type="date" value={extend[r.studentId]} min={TODAY} onChange={(e) => setExtend({ ...extend, [r.studentId]: e.target.value })} /></label>
                   <button className="ghost" onClick={() => setExtend(({ [r.studentId]: _, ...x }) => x)}>Cancel</button><button className="primary" disabled={!extend[r.studentId]} onClick={() => giveTime(r)}>Give more time</button>

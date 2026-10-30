@@ -13,6 +13,7 @@ import { AttachButton, FileView, FILE_ICON, PendingFiles, VoiceNote, evKind, fil
 import { docFor, useEvidenceDocs } from '../evidence/load.js';
 import { fmtTerm, TYPE_LABEL, VIS_LABEL, VERIFY_HELP } from '../format.js';
 import { dateIn, daysIn, lineName, termText, tr, useLang } from '../i18n.js';
+import PhraseTools from './Phrases.jsx';
 
 const KIND_ICON = { link: '↗', file: '▤', image: '▣', grade: '✓', certificate: '★' };
 
@@ -176,6 +177,7 @@ function AskBox({ first, onAsk }) {
     <section className="ask-box">
       <h3>Want to see more?</h3>
       <textarea rows={2} value={text} onChange={(e) => setText(e.target.value)} placeholder="e.g. Could we see the code?" aria-label={`Ask ${first} for more evidence`} />
+      <PhraseTools value={text} onChange={setText} first={first} kind="next" />
       <button className="ghost small-btn" disabled={text.trim().length < 4} onClick={() => { onAsk(text.trim()); setSent(true); }}>Ask {first}</button>
     </section>
   );

@@ -2104,6 +2104,88 @@ export function declineSpotted(id, studentId) {
   emit();
   return x;
 }
+// ── Teacher comment bank: saved phrases for the boxes staff write to students in (src/components/Phrases.jsx) ──
+// store.phrases: { id: 'ph-…', owner: teacherId | 'school', text, kind, lineId, order, by, at, editedAt?, editedBy? }.
+// store.phraseUses: { [teacherId]: { [phraseId]: count } }, so each teacher's most used float to the top. A phrase may
+// hold {first name}, filled in when it is put in a box. Staff only: students and families never receive a bank.
+export const PHRASE_KINDS = [['praise', 'Praise'], ['next', 'Next step'], ['question', 'Question'], ['other', 'Other']];
+export const PHRASE_MAX = 500, PHRASE_LIMIT = 200, FIRST_NAME = '{first name}';
+const phraseList = () => (store.phrases ||= []);
+const phraseUseMap = () => (store.phraseUses ||= {});
+export const getPhrase = (id) => phraseList().find((p) => p.id === id);
+const phErr = (m, status = 400) => Object.assign(new Error(m), { status });
+const phraseOrder = (a, b) => a.order - b.order || a.id.localeCompare(b.id);
+const ownPhrases = (owner) => phraseList().filter((p) => p.owner === owner).sort(phraseOrder);
+function cleanPhrase({ text, kind, lineId } = {}) {
+  const t = String(text ?? '').replace(/\s+/g, ' ').trim().slice(0, PHRASE_MAX);
+  if (t.length < 2) throw phErr('Write the phrase first');
+  return { text: t, kind: PHRASE_KINDS.some(([k]) => k === kind) ? kind : 'other', lineId: lineId && getSchoolLines().some((l) => l.id === lineId) ? lineId : null };
+}
+const phraseOwnerOk = (owner, by) => {
+  if (owner === 'school') { if (by && !teacherById[by]) throw phErr('No such teacher'); return; }
+  if (!owner || owner !== by || !teacherById[by]) throw phErr('Phrases are saved in your own bank', 403);
+};
+const editablePhrase = (id, by) => { const x = getPhrase(id); if (!x) throw phErr('No such phrase', 404); phraseOwnerOk(x.owner, by); return x; };
+export function addPhrase(owner, by, spec) {
+  phraseOwnerOk(owner, by);
+  const c = cleanPhrase(spec), list = ownPhrases(owner);
+  if (list.length >= PHRASE_LIMIT) throw phErr(`A bank holds up to ${PHRASE_LIMIT} phrases`, 409);
+  if (list.some((p) => p.text.toLowerCase() === c.text.toLowerCase())) throw phErr('That phrase is already in the bank', 409);
+  const x = { id: uid('ph-'), owner, ...c, order: (list.at(-1)?.order ?? 0) + 1, by: by || null, at: nowIso() };
+  phraseList().push(x);
+  emit();
+  return x;
+}
+export function editPhrase(id, by, spec) {
+  const x = editablePhrase(id, by), c = cleanPhrase(spec);
+  if (ownPhrases(x.owner).some((p) => p.id !== id && p.text.toLowerCase() === c.text.toLowerCase())) throw phErr('That phrase is already in the bank', 409);
+  Object.assign(x, c, { editedAt: nowIso(), editedBy: by || null });
+  emit();
+  return x;
+}
+export function deletePhrase(id, by) {
+  const x = editablePhrase(id, by);
+  store.phrases = phraseList().filter((p) => p.id !== id);
+  for (const u of Object.values(phraseUseMap())) delete u[id];
+  emit();
+  return x;
+}
+// Up (-1) or down (+1) one place in its bank (the school bank: among the phrases of its kind, as it is shown).
+export function movePhrase(id, by, dir) {
+  const x = editablePhrase(id, by), all = ownPhrases(x.owner), list = x.owner === 'school' ? all.filter((p) => p.kind === x.kind) : all;
+  const i = list.indexOf(x), j = i + (dir < 0 ? -1 : 1);
+  if (j < 0 || j >= list.length) return x;
+  all.forEach((p, k) => { p.order = k + 1; });
+  [list[i].order, list[j].order] = [list[j].order, list[i].order];
+  emit();
+  return x;
+}
+// Put in a box (counted for that teacher only; sends nothing).
+export function usePhrase(id, by) {
+  const x = getPhrase(id);
+  if (!x || !teacherById[by] || (x.owner !== 'school' && x.owner !== by)) throw phErr('No such phrase', 404);
+  const u = (phraseUseMap()[by] ||= {});
+  u[id] = (u[id] || 0) + 1;
+  emit();
+  return u[id];
+}
+// A teacher's bank: their own (in their order) and the school's, with their use counts.
+export function phraseBank(teacherId) {
+  const uses = (teacherId && phraseUseMap()[teacherId]) || {};
+  return { mine: teacherId ? ownPhrases(teacherId) : [], school: ownPhrases('school'), uses };
+}
+// {first name} filled in; with no one student (a shared note), taken out with its comma.
+export function fillPhrase(text, first) {
+  const s = String(text || '');
+  if (first) return s.replace(/\{first name\}/gi, first);
+  const t = s.replace(/^\s*\{first name\}\s*[,!.]?\s*/i, '').replace(/,?\s*\{first name\}(?=[\s.,!?;:]|$)/gi, '').replace(/\s{2,}/g, ' ').trim();
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+// The other way, for "Save as a phrase": the student's first name becomes {first name}.
+const reEsc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+export const phraseFrom = (text, first) => (first && first.length > 1 ? String(text).replace(new RegExp(`\\b${reEsc(first)}\\b`, 'g'), FIRST_NAME) : String(text)).trim();
+export const canPublishPhrases = (p) => !!p && (p.kind === 'coordinator' || p.kind === 'leadership' || p.kind === 'admin' || !!p.admin);
+
 // ── Year handover: a new year's class lists move students to new advisors (docs/pilot-server.md) ──
 // importRoster notes each change of advisor in store.handovers ({ id, studentId, from, to, date, at, fromYear, year,
 // newYear }) and, when the academic year changes, store.yearStart ({ year, fromYear, date, at }). The outgoing
@@ -3322,6 +3404,7 @@ setTask = act('setTask', setTask); editTask = act('editTask', editTask); extendT
 addMomentComment = act('addMomentComment', addMomentComment); editMomentComment = act('editMomentComment', editMomentComment); deleteMomentComment = act('deleteMomentComment', deleteMomentComment); markCommentsRead = act('markCommentsRead', markCommentsRead);
 reportItem = act('reportItem', reportItem); moderateReport = act('moderateReport', moderateReport);
 spotMoment = act('spotMoment', spotMoment); acceptSpotted = act('acceptSpotted', acceptSpotted); declineSpotted = act('declineSpotted', declineSpotted);
+addPhrase = act('addPhrase', addPhrase); editPhrase = act('editPhrase', editPhrase); deletePhrase = act('deletePhrase', deletePhrase); movePhrase = act('movePhrase', movePhrase); usePhrase = act('usePhrase', usePhrase);
 setHandoverNote = act('setHandoverNote', setHandoverNote); carryOverGoal = act('carryOverGoal', carryOverGoal); closeGoal = act('closeGoal', closeGoal);
 setPeerFeedback = act('setPeerFeedback', setPeerFeedback); givePeerFeedback = act('givePeerFeedback', givePeerFeedback); thankPeerFeedback = act('thankPeerFeedback', thankPeerFeedback); hidePeerFeedback = act('hidePeerFeedback', hidePeerFeedback); setPeerFeedbackYear = act('setPeerFeedbackYear', setPeerFeedbackYear);
 openReflectionWindow = act('openReflectionWindow', openReflectionWindow); closeReflectionWindow = act('closeReflectionWindow', closeReflectionWindow); saveTermReflection = act('saveTermReflection', saveTermReflection); finishTermReflection = act('finishTermReflection', finishTermReflection);

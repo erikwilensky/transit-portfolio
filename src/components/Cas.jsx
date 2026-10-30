@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CAS_CODE_DAYS, CAS_MAX_HOURS, CAS_OUTCOMES, CAS_STRANDS, TODAY, addReflection, casAbout, casCoordinators, casExperiences, casHoursOf, casHoursText, casSum,
   casSupervisorName, casToConfirm, confirmCasHours, getStore, getTeachers, logCasExperience, logCasHours, returnCasHours, setCasCoordinator, shortName, snapshot,
@@ -8,6 +8,7 @@ import { usePrintTitle } from '../print.js';
 import { AttachButton } from './FileAttach.jsx';
 import Qr from './Qr.jsx';
 import './cas.css';
+import PhraseTools, { phraseBox } from './Phrases.jsx';
 
 // CAS experiences and hours (api.logCasExperience, logCasHours, confirmCasHours, returnCasHours). Student: CasLog (#/me/cas),
 // with a one-time code for an outside supervisor (CasCodeCard; the supervisor opens CasCodePage, #/c/<code>). Staff named as
@@ -305,13 +306,15 @@ export function CasDecide({ x, by, via, toast }) {
   const [back, setBack] = useState(false);
   const [note, setNote] = useState('');
   const [err, setErr] = useState(null);
+  const box = useRef(null);
   const a = casAbout(x), first = a.name.split(' ')[0];
   const ok = () => { const snap = snapshot(); if (tryIt(() => confirmCasHours(x.id, by, { via }), setErr)) toast(`Confirmed ${casHoursText(x.hours)} for ${first}`, snap); };
   const no = (ev) => { ev.preventDefault(); const snap = snapshot(); if (tryIt(() => returnCasHours(x.id, by, { via, comment: note }), setErr)) toast(`Sent back to ${first}`, snap); };
   return (
     <div className="cas-decide">
       {!back && <div className="cas-acts"><button className="primary small-btn" onClick={ok}>{via === 'coordinator' && x.supervisor ? `Confirm for ${shortName(casSupervisorName(x.supervisor))}` : 'Confirm'}</button><button className="ghost small-btn" onClick={() => setBack(true)}>Not right</button></div>}
-      {back && <form onSubmit={no} className="cas-inline"><label>What is not right?<input autoFocus value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} placeholder="e.g. It was 2 hours, not 3" /></label>
+      {back && <form onSubmit={no} className="cas-inline"><label>What is not right?<input autoFocus value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} placeholder="e.g. It was 2 hours, not 3" {...phraseBox(box)} /></label>
+        <PhraseTools value={note} onChange={setNote} first={first} kind="next" box={box} />
         <div className="cas-foot"><button type="button" className="ghost small-btn" onClick={() => setBack(false)}>Cancel</button><button className="primary small-btn" type="submit" disabled={note.trim().length < 3}>Send back</button></div></form>}
       {err && <p className="up-error" role="alert">{err}</p>}
     </div>

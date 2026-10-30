@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { acceptSpotted, declineSpotted, getSchoolLines, shortName, snapshot, spotLineFor, spotMoment, spottedBy, spottedFor, SPOT_DAYS } from '../api.js';
 import { fmtDate } from '../format.js';
 import { evidenceFor } from '../upload.js';
 import { UploadStatus, useUpload } from './FileAttach.jsx';
 import './spotted.css';
+import PhraseTools, { phraseBox } from './Phrases.jsx';
 
 // Spotted moments (api.spotMoment, acceptSpotted, declineSpotted): a teacher saw a student do something worth keeping
 // and suggests it for their journey. Teacher side: SpotDialog (My classes, advisor's student page) and SpottedList.
@@ -15,6 +16,7 @@ export function SpotDialog({ students, teacherId, classId = null, onClose, toast
   const lines = useMemo(() => getSchoolLines().filter((l) => l.status !== 'ended'), []);
   const [f, setF] = useState({ title: '', note: '', lineId: spotLineFor(teacherId, classId) || '' });
   const [image, setImage] = useState(null);
+  const noteBox = useRef(null);
   const [err, setErr] = useState(null);
   const photo = useUpload();
   const set = (p) => setF((x) => ({ ...x, ...p }));
@@ -36,7 +38,8 @@ export function SpotDialog({ students, teacherId, classId = null, onClose, toast
         <h2>{one ? students[0].name : `${n} students`}</h2>
         {!one && <p className="spot-who">{students.map((s) => s.name).join(', ')}</p>}
         <label>What you saw<input autoFocus value={f.title} maxLength={120} onChange={(e) => set({ title: e.target.value })} placeholder="e.g. Led the group through the hard part" /></label>
-        <label>A short note <small>optional, they will read it</small><textarea rows={3} value={f.note} maxLength={500} onChange={(e) => set({ note: e.target.value })} placeholder="e.g. You kept everyone calm and found the fix." /></label>
+        <label>A short note <small>optional, they will read it</small><textarea rows={3} value={f.note} maxLength={500} onChange={(e) => set({ note: e.target.value })} placeholder="e.g. You kept everyone calm and found the fix." {...phraseBox(noteBox)} /></label>
+        <PhraseTools value={f.note} onChange={(note) => set({ note })} first={one ? students[0].name.split(' ')[0] : null} kind="praise" box={noteBox} />
         <label>Line<select value={f.lineId} onChange={(e) => set({ lineId: e.target.value })}>{lines.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</select></label>
         <div className="spot-photo">
           {image && !photo.busy

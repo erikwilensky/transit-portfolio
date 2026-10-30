@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { CHECKIN_SNOOZE_DAYS, CHECKIN_STATUS, ENCOURAGE_LINES, checkInGoal, checkinsDue, getTeacher, goalCheckins, sendEncouragement, shortName, snapshot, snoozeCheckins, stuckFlags } from '../api.js';
 import { fmtDate } from '../format.js';
 import { isPilot } from '../auth.js';
 import { MicButton, Said, SayIt } from './Voice.jsx';
 import './goal-checkins.css';
+import PhraseTools, { phraseBox } from './Phrases.jsx';
 
 // Weekly goal check-ins (api.checkInGoal): once a week, "How is your goal going?" for each open goal. Simple: one card per
 // goal and one question per screen. Standard and Full: a compact card. Pilot only. No streaks, no scores.
@@ -139,6 +140,7 @@ export function StuckFlags({ teacherId, toast, version, onOpen }) {
 function Encourage({ e, first, teacherId, onDone }) {
   const [line, setLine] = useState(ENCOURAGE_LINES[0]);
   const [text, setText] = useState('');
+  const box = useRef(null);
   const id = `gc-enc-${e.id}`;
   return (
     <div className="gc-enc">
@@ -147,7 +149,8 @@ function Encourage({ e, first, teacherId, onDone }) {
         {ENCOURAGE_LINES.map((l) => <label key={l} className="gc-line"><input type="radio" name={id} checked={line === l} onChange={() => setLine(l)} />{l}</label>)}
       </fieldset>
       <label htmlFor={`${id}-t`}>Add a sentence <small>(optional)</small></label>
-      <input id={`${id}-t`} maxLength={300} value={text} onChange={(ev) => setText(ev.target.value)} />
+      <input id={`${id}-t`} maxLength={300} value={text} onChange={(ev) => setText(ev.target.value)} {...phraseBox(box)} />
+      <PhraseTools value={text} onChange={setText} first={first} kind="praise" box={box} />
       <div className="nd-edit-foot"><small className="fineprint">In the app only. No email.</small>
         <button className="ghost" onClick={() => onDone(null)}>Cancel</button>
         <button className="primary" onClick={() => { const snap = snapshot(); sendEncouragement(e.id, teacherId, line, text); onDone(snap); }}>Send</button></div>

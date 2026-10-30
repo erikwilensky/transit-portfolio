@@ -1925,3 +1925,42 @@ number on the bell.
   Full each switch to ไทย, walk every student screen and dialog, fail on visible English UI left over, axe on each with
   `lang="th"`, then switch back to English).
 - Not done: teacher and family screens beyond what the Thai family work covers; a พ.ศ. toggle in the menu.
+
+## Teacher comment bank (`src/api.js`, `src/components/Phrases.jsx`, `src/screens/Phrases.jsx`, `server/routes/71-phrases.mjs`, pilot only)
+
+Saved phrases staff drop into the boxes they write to students in. Inserting only puts the words in the box: nothing is
+sent until the teacher sends it as before. Students and families never receive a bank.
+
+- **Record**: `store.phrases`: `{ id: 'ph-…', owner: teacherId | 'school', text (≤ 500), kind: 'praise' | 'next' |
+  'question' | 'other', lineId | null, order, by, at, editedAt?, editedBy? }`, up to 200 per bank, no duplicates (case
+  ignored). `store.phraseUses`: `{ [teacherId]: { [phraseId]: count } }`.
+- **Mutators**: `addPhrase(owner, by, { text, kind, lineId })`, `editPhrase(id, by, spec)`, `deletePhrase(id, by)`
+  (its counts go too), `movePhrase(id, by, -1 | 1)` (the school bank moves among phrases of the same kind, as shown),
+  `usePhrase(id, by)` (counts one use). Helpers: `phraseBank(teacherId)` → `{ mine, school, uses }`, `fillPhrase(text,
+  first)` (fills `{first name}`; with no one student, as in a shared note for many answers, it is taken out with its
+  comma), `phraseFrom(text, first)` (the student's first name back to `{first name}`, for "Save this as a phrase"),
+  `canPublishPhrases(persona)`.
+- **`canAct`** (`phraseOk` in `server/auth.mjs`): always as yourself (`by` is your teacherId; an admin with no staff
+  record: `null`). Your own bank: any member of staff with a staff record. The school bank: coordinators and leadership
+  with a staff record, and admins. `usePhrase`: your own or a school phrase, with a staff record. Students and families:
+  never. `TOUCHES`: no students, acting as `by`.
+- **Scope**: staff get their own phrases and the school bank (a coordinator does not get teachers' own banks), and only
+  their own counts; students and families get `phrases: []`, `phraseUses: {}`.
+- **Activity log**: every change is the usual `change` line; each school bank change also writes `school-phrase` with
+  `fn`, `target.id` (the phrase), `target.label` (its kind) and `detail: { op: add | edit | delete | move, kind }`,
+  never the text (`server/routes/71-phrases.mjs`, from the change stream).
+- **Picker** (`<PhraseTools value onChange first kind box />`): a "Phrases" button (`aria-haspopup="dialog"`) opening a
+  filter box (`role="combobox"`, `aria-activedescendant`) over a listbox grouped as Your phrases, then School: Praise /
+  Next step / Question / Other (the box's own kind first), most used first in each. Type to filter, arrows to move,
+  Enter to put it in, Escape to close (focus back on the button); after inserting, focus goes back to the box, at the
+  cursor where `phraseBox(ref)` is spread on it. "Save this as a phrase" saves the box's text to your bank with the
+  box's kind. Shown only to a signed-in member of staff or admin in a pilot. Placed on: the Endorsements note and its
+  "Ask for more", moment comments (staff), "Want to see more?" in the station panel, Review answers (the shared note
+  and "Ask for more"), class task hand-ins (shared note and "Ask for more"), I spotted something (the note),
+  encouragement on goal check-ins, and CAS "Not right" send-backs. The report writing helper's draft boxes get it
+  through `reportHooks.phrasePicker` when that feature is present (`import.meta.glob`, so nothing breaks without it).
+- **Screen**: "My phrases" (`#/<persona>/phrases`) for every member of staff and admins: add, edit, delete and reorder
+  your own; the school bank by kind, editable by coordinators, leadership and admins, read only for others.
+- Tests: `server/test/comment-bank.test.mjs`; browser: `node scripts/checks/comment-bank.cjs` (real roster: a
+  coordinator publishes, Mr David Coultas comments on and endorses Aaron Torres's moment with phrases by keyboard,
+  Aaron's context receives nothing; axe over the picker and My phrases).

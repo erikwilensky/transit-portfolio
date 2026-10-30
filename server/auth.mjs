@@ -211,6 +211,7 @@ export function canAct(user, fn, args = []) {
   if (CF_FNS.has(fn)) { try { return confOk(user, fn, args); } catch { return false; } }
   if (SP_FNS.has(fn)) { try { return subjectPromptOk(user, fn, args); } catch { return false; } }
   if (CAS_FNS.has(fn)) { try { return casOk(user, fn, args); } catch { return false; } }
+  if (PH_FNS.has(fn)) { try { return phraseOk(user, fn, args); } catch { return false; } }
   if (isAdmin(user)) return true;
   if (ADMIN_ONLY.has(fn)) return false;
   if (ANYONE.has(fn)) return true;
@@ -492,6 +493,22 @@ function casOk(user, fn, args) {
   if (!STAFF.includes(user.kind) || !user.teacherId || args[1] !== user.teacherId) return false;
   if (via === 'supervisor') return x.supervisor?.kind === 'staff' && x.supervisor.teacherId === user.teacherId;
   return via === 'coordinator' && api.isCasCoordinator({ kind: user.kind, teacherId: user.teacherId });
+}
+
+// ── Teacher comment bank (api.addPhrase, editPhrase, deletePhrase, movePhrase, usePhrase) ──
+// Always as yourself (an admin with no staff record: by null). Your own bank: any member of staff with a staff record.
+// The school bank: coordinators and leadership (with a staff record) and admins. Counting a use: your own or a school
+// phrase, with a staff record. Students and families never.
+const PH_FNS = new Set(['addPhrase', 'editPhrase', 'deletePhrase', 'movePhrase', 'usePhrase']);
+const PH_SCHOOL = ['coordinator', 'leadership'];
+function phraseOk(user, fn, args) {
+  const admin = isAdmin(user), tid = user.teacherId || null;
+  if (!(STAFF.includes(user.kind) || admin) || (args[1] ?? null) !== tid) return false;
+  const owner = fn === 'addPhrase' ? args[0] : api.getPhrase(args[0])?.owner;
+  if (typeof owner !== 'string') return false;
+  if (fn === 'usePhrase') return !!tid && (owner === 'school' || owner === tid);
+  if (owner === 'school') return admin || (!!tid && PH_SCHOOL.includes(user.kind));
+  return !!tid && owner === tid;
 }
 
 // ── System health (routes/69-health.mjs): how many sessions are live, and for how many people ──

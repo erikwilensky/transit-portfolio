@@ -11,6 +11,7 @@ import { classAnswerGroups } from '../api.js';
 import '../components/class-answers.css';
 import MomentComments from '../components/MomentComments.jsx';
 import { commentStaff, getEvent, getMomentComments, getStudent } from '../api.js';
+import PhraseTools from '../components/Phrases.jsx';
 
 export const CHIPS = ['Independent work', 'Beyond the syllabus', 'Strong collaboration', 'Real-world impact', 'Clear progress'];
 
@@ -120,6 +121,7 @@ export default function TeacherQueue({ teacherId, toast, version, focus, go, per
                   <button className="ghost" title="Sends your note to the student as what you need to see" onClick={() => { const snap = snapshot(); declineRequest(r.id, (notes[r.id] || '').trim() || 'Could you add more evidence, such as the code or a photo?'); toast(`Sent back to ${r.student.name.split(' ')[0]} with your request.`, snap); }}>Ask for more</button>
                   <button className="primary" onClick={() => doEndorse([r.id])}>Endorse</button>
                 </div>
+                <PhraseTools value={notes[r.id] || ''} onChange={(v) => setNotes({ ...notes, [r.id]: v })} first={r.student.name.split(' ')[0]} kind="praise" />
                 <MomentComments key={`c-${e.id}`} event={e} collapsible open={focus === `c~${e.id}`} toast={toast} />
               </div>
             </article>

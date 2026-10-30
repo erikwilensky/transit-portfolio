@@ -161,6 +161,9 @@ export function scopedSnapshot(user) {
   // Spotted moments: the student gets their own; the teacher who made them gets theirs, a declined one only as closed.
   const closed = ({ decidedAt, ...x }) => ({ ...x, status: 'closed' });
   store.spotted = (full.spotted || []).flatMap((x) => (self && x.studentId === self ? [x] : tid && x.teacherId === tid ? [x.status === 'declined' ? closed(x) : x] : []));
+  // Comment bank (api.addPhrase): staff get their own phrases, the school bank and their own use counts; students and families nothing.
+  store.phrases = staff && user ? (full.phrases || []).filter((p) => p.owner === 'school' || (!!tid && p.owner === tid)) : [];
+  store.phraseUses = staff && tid ? pickBy(full.phraseUses, (k) => k === tid) : {};
   const keys = recipientKeys(user);
   store.notifications = full.notifications.filter((n) => keys.has(n.to));
   // The activity log, without lines that name a station this person does not receive. Families: views and consent only.
@@ -357,3 +360,5 @@ Object.assign(TOUCHES, {
 });
 // Notification settings: "Clear read" in your own bell (canAct checks the keys).
 Object.assign(TOUCHES, { clearReadNotifications: () => T([]) });
+// Comment bank (canAct's own rules are phraseOk in auth.mjs): no student, acting as the writer.
+Object.assign(TOUCHES, Object.fromEntries(['addPhrase', 'editPhrase', 'deletePhrase', 'movePhrase', 'usePhrase'].map((f) => [f, (a) => T([], [a[1]])])));

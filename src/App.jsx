@@ -84,6 +84,8 @@ import { QADrawer, TourCard, TourRoute } from './components/TourCards.jsx';
 import { LeaverBuilder, PublicLeaver } from './components/Leaver.jsx';
 import { leaverAllowed } from './api.js';
 import SubjectPromptsScreen from './components/SubjectPrompts.jsx';
+import PhrasesScreen from './screens/Phrases.jsx';
+import { phraseWriter } from './components/Phrases.jsx';
 import { CasConfirm, CasLog } from './components/Cas.jsx';
 import { casAllowed, casToConfirm, isCasCoordinator } from './api.js';
 import NotificationSettings, { nsT } from './components/NotificationSettings.jsx';
@@ -406,7 +408,8 @@ export default function App() {
           {pilot && route.screen === 'activitylog' && (persona.admin || persona.kind === 'leadership') && <ActivityLog {...ctx} />}
           {pilot && route.screen === 'screens' && (persona.admin || ['advisor', 'teacher', 'counsellor', 'coordinator', 'leadership'].includes(persona.kind)) && <Exhibitions {...ctx} />}
           {pilot && route.screen === 'prompts' && (persona.admin || persona.kind === 'coordinator' || persona.kind === 'leadership') && <SubjectPromptsScreen {...ctx} />}
-          {route.screen !== 'prompts' && route.screen !== 'health' && route.screen !== 'screens' && route.screen !== 'accounts' && route.screen !== 'usage' && route.screen !== 'reports' && route.screen !== 'overview' && route.screen !== 'week' && route.screen !== 'activitylog' && route.screen !== 'leaver' && route.screen !== 'cas' && route.screen !== 'casconfirm' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} persona={persona} />}
+          {pilot && route.screen === 'phrases' && phraseWriter() && <PhrasesScreen {...ctx} />}
+          {route.screen !== 'phrases' && route.screen !== 'prompts' && route.screen !== 'health' && route.screen !== 'screens' && route.screen !== 'accounts' && route.screen !== 'usage' && route.screen !== 'reports' && route.screen !== 'overview' && route.screen !== 'week' && route.screen !== 'activitylog' && route.screen !== 'leaver' && route.screen !== 'cas' && route.screen !== 'casconfirm' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} persona={persona} />}
           {pilot && route.screen === 'health' && persona.admin && <SystemHealth {...ctx} />}
           </ErrorBoundary>
           {pilot && level === 'simple' && <div className="fb-simple"><button onClick={() => setFbOpen(true)}>Something not working? Tell us</button></div>}
