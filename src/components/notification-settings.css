@@ -1,0 +1,27 @@
+/* Notification settings (NotificationSettings.jsx) and the bell's actions (App.jsx). */
+.ns-modal { width: min(520px, 100%); box-shadow: none; border: 1px solid var(--rule); }
+.ns-lead { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
+.ns-list { display: flex; flex-direction: column; }
+.ns-row, .ns-quiet { border: 0; margin: 0; padding: 9px 0; border-top: 1px solid var(--rule); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; }
+.ns-row legend, .ns-quiet legend { float: left; padding: 0; font-weight: 600; font-size: 14.5px; }
+.ns-quiet legend { width: 100%; }
+.ns-seg { display: inline-flex; flex-wrap: wrap; background: var(--surface-2); border-radius: 10px; padding: 3px; gap: 2px; }
+.ns-seg label { position: relative; padding: 5px 11px; border-radius: 8px; font-weight: 600; font-size: 13px; color: var(--muted); border: 1px solid transparent; cursor: pointer; }
+.ns-seg label.on { background: var(--surface); color: var(--ink); border-color: var(--rule); }
+.ns-seg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.ns-seg label:has(input:focus-visible) { outline: 2px solid var(--b-purple, #5b2a86); outline-offset: 1px; }
+.ns-note { display: block; width: 100%; color: var(--muted); font-size: 12.5px; }
+.ns-always { margin: 10px 0 4px; padding: 9px 11px; border-radius: 10px; background: var(--surface-2); font-size: 13.5px; }
+.ns-check { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.ns-times { display: flex; gap: 12px; }
+.ns-times label { display: flex; align-items: center; gap: 6px; font-size: 13.5px; }
+.modal .ns-times input[type=time] { width: auto; padding: 6px 8px; }
+.ns-foot { display: flex; gap: 8px; margin-top: 14px; }
+.bell-menu .bm-actions { display: flex; gap: 6px; padding: 0 8px 6px; flex-wrap: wrap; }
+.bell-menu .bm-actions button { width: auto; padding: 4px 9px; border: 1px solid var(--rule); border-radius: 8px; font-size: 12.5px; font-weight: 600; background: none; color: var(--ink); }
+.bell-menu .bm-actions button:disabled { color: var(--muted); }
+.bell-menu .bm-quiet, .bell-menu .bm-hidden { padding: 4px 8px; font-size: 12.5px; color: var(--muted); margin: 0; }
+.bell-menu .bm-settings { border-top: 1px solid var(--rule); margin-top: 6px; }
+.tw-notes .tw-wait a, .tw-notes .tw-wait li > div { grid-template-columns: minmax(0, 1fr) auto; }
+.tw-notes .tw-wait strong { font-weight: 500; }
+.tw-notes .fineprint { margin: 0 0 8px; }

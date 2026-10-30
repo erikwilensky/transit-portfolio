@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { addMomentComment, COMMENT_EDIT_MIN, commentShown, commentsAsked, commentStaff, commentWho, deleteMomentComment, editMomentComment, getMomentComments, getStudent, getTeacher, hasPublicCopy, markCommentsRead, shortName, TODAY, unreadComments } from '../api.js';
 import { personaById } from '../personas.js';
 import { fmtDate } from '../format.js';
 import './moment-comments.css';
 import { HiddenNotice, ReportButton } from './Report.jsx';
+import PhraseTools, { phraseBox } from './Phrases.jsx';
 
 // Comments on one moment (api.addMomentComment): the student and the staff who can see it. In the station panel,
 // the Simple moment card and the Endorsements queue. Families, readers and public pages never get it.
@@ -34,6 +35,7 @@ export default function MomentComments({ event, simple = false, collapsible = fa
   const [text, setText] = useState('');
   const [writing, setWriting] = useState(!simple);
   const [editing, setEditing] = useState(null); // { id, text }
+  const box = useRef(null);
   useEffect(() => { if (open && unread && v?.me) { try { markCommentsRead(event.id, v.me); } catch { /* refused: the bar says */ } } }, [open, unread, event?.id, v?.me]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!v || (!list.length && !v.write)) return null;
   const s = getStudent(event.studentId);
@@ -75,7 +77,8 @@ export default function MomentComments({ event, simple = false, collapsible = fa
       {v.write && (writing ? (
         <div className="mc-write">
           <textarea rows={simple ? 3 : 2} value={text} onChange={(e) => setText(e.target.value)} autoFocus={simple}
-            placeholder={v.me === 'student' ? (simple ? `Write back to ${to}` : `Write to ${to}`) : `Write to ${first}`} aria-label={v.me === 'student' ? `Write to ${to}` : `Comment for ${first}`} />
+            placeholder={v.me === 'student' ? (simple ? `Write back to ${to}` : `Write to ${to}`) : `Write to ${first}`} aria-label={v.me === 'student' ? `Write to ${to}` : `Comment for ${first}`} {...phraseBox(box)} />
+          {v.me !== 'student' && <PhraseTools value={text} onChange={setText} first={s ? first : null} kind="question" box={box} />}
           <div className="mc-row">
             {simple && <button className="ghost" onClick={() => { setWriting(false); setText(''); }}>Not now</button>}
             <button className="primary" disabled={!text.trim()} onClick={send}>{simple ? 'Send' : 'Send comment'}</button>

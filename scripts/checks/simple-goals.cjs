@@ -132,6 +132,7 @@ let srv;
     await q.locator('button.primary', { hasText: 'Endorse' }).click();
     ok(await until(async () => (await state()).events.find((e) => e.id === g.id)?.verification === 'teacher-endorsed'), 'one click: endorsed');
     await s.reload(); await s.waitForSelector('.sh-tracks');
+    await s.locator(`.sh-track:has-text("${line.name}") .sh-stop.v-teacher-endorsed`).first().waitFor({ timeout: 8000 }).catch(() => {}); // the reload may draw before the sync lands
     ok(await s.locator(`.sh-track:has-text("${line.name}") .sh-stop.v-teacher-endorsed`).count() === 1, 'Aaron’s stop is solid (checked by a teacher)');
 
     // ── A second goal, no teacher, then "Not doing this any more" ──

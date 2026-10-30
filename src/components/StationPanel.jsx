@@ -4,13 +4,18 @@ import RecordInspector from './RecordInspector.jsx';
 import MomentComments, { commentViewer } from './MomentComments.jsx';
 import { HiddenNotice, ReportButton } from './Report.jsx';
 import { PeerOnMoment } from './PeerFeedback.jsx';
+import { FamilyNotesOn } from './FamilyNotes.jsx';
+import { CheckinTimeline } from './GoalCheckins.jsx';
+import { schoolEventName } from '../api.js';
 import { ATL, LEARNER_PROFILE, setTags, addCheckIn, addReflection, completeGoal, deleteStation, editStation, getTeacher, requestEndorsement, getEvent, requestFor, resubmit, setVisibility, snapshot, TODAY, endorserChoices } from '../api.js';
 import { createPortal } from 'react-dom';
+import { photoAlt } from '../a11y.js';
 import EvidenceDoc, { docLabel } from './EvidenceDoc.jsx';
 import { AttachButton, FileView, FILE_ICON, PendingFiles, VoiceNote, evKind, fileLabel, isUploaded } from './FileAttach.jsx';
 import { docFor, useEvidenceDocs } from '../evidence/load.js';
 import { fmtTerm, TYPE_LABEL, VIS_LABEL, VERIFY_HELP } from '../format.js';
 import { dateIn, daysIn, lineName, termText, tr, useLang } from '../i18n.js';
+import PhraseTools from './Phrases.jsx';
 
 const KIND_ICON = { link: '↗', file: '▤', image: '▣', grade: '✓', certificate: '★' };
 
@@ -30,6 +35,7 @@ export default function StationPanel({ event, map, onClose, readOnly = false, on
           <button className="panel-close" onClick={onClose} aria-label={t('Close')}>×</button>
           <div className="panel-type">{event.lineIds.length > 1 ? `${t('Interchange')} · ` : ''}{t(TYPE_LABEL[event.type])}</div>
           <h2>{event.title}</h2>
+          {schoolEventName(event) && <p className="se-on"><span>{t('School event')}</span> <b lang="en">{schoolEventName(event)}</b></p>}
           <HiddenNotice item={event} />
           <div className="panel-date">{fmtDate(event.date)} · {termText(lang, fmtTerm(event.date, map.student.g9StartYear, map.student.startGrade, map.student.endGrade))}</div>
           <div className="chips">
@@ -52,7 +58,7 @@ export default function StationPanel({ event, map, onClose, readOnly = false, on
               <h3>{t('Evidence')}</h3>
               <ul className="evidence">
                 {event.evidence.filter((ev) => ev.kind === 'image').map((ev, i) => (
-                  <li key={`img-${i}`} className="ev-image"><button className="ev-open" onClick={() => setView(ev)} aria-label={`Open ${ev.caption} full size`}><img src={ev.url} alt={ev.caption} loading="lazy" /></button><span><b>{ev.caption}</b><small>{t('image')}</small></span></li>
+                  <li key={`img-${i}`} className="ev-image"><button className="ev-open" onClick={() => setView(ev)} aria-label={`Open ${photoAlt(ev, event.title)} full size`}><img src={ev.url} alt={photoAlt(ev, event.title)} loading="lazy" /></button><span><b>{ev.caption}</b><small>{t('image')}</small></span></li>
                 ))}
                 {event.evidence.filter((ev) => ev.kind !== 'image').map((ev, i) => (
                   <li key={i}>
@@ -81,13 +87,14 @@ export default function StationPanel({ event, map, onClose, readOnly = false, on
               <div className="prompt">{t('Signal:')} {r.prompt}</div>
               {r.text && r.text.split('\n\n').map((para, i) => <p key={i}>{para}</p>)}
               {r.files?.length > 0 && <ul className="evidence rf-files">{r.files.map((ev, i) => <li key={i}>{ev.kind === 'image'
-                ? <button className="ev-open" onClick={() => setView(ev)} aria-label={`Open ${ev.caption} full size`}><img src={ev.url} alt={ev.caption} loading="lazy" /></button>
+                ? <button className="ev-open" onClick={() => setView(ev)} aria-label={`Open ${photoAlt(ev, event.title)} full size`}><img src={ev.url} alt={photoAlt(ev, event.title)} loading="lazy" /></button>
                 : <FileRow ev={ev} onOpen={() => setView(ev)} t={t} />}</li>)}</ul>}
             </section>
           ))}
 
           {!(readOnly && commentViewer(event)?.me === 'student') && <MomentComments key={`c-${event.id}`} event={event} toast={toast} />}
           <PeerOnMoment key={`pf-${event.id}`} event={event} toast={toast} />
+          <FamilyNotesOn key={`fn-${event.id}`} event={event} toast={toast} />
 
           <dl className="meta">
             <dt>{t('Source')}</dt><dd>{event.source.system}{event.source.ref ? ` · ${event.source.ref}` : ''}</dd>
@@ -158,6 +165,7 @@ function GoalBox({ event, readOnly, lang = 'en' }) {
           )}
         </div>
       )}
+      <CheckinTimeline event={event} me={readOnly ? 'staff' : 'student'} />
       {!readOnly && !event.requirement && <button className="primary small-btn" onClick={() => completeGoal(event.id)}>It happened: make it a station</button>}
       {!readOnly && sp?.status === 'accepted' && <p className="fineprint">Marking it done sends it to {t.name} to endorse in one click.</p>}
     </section>
@@ -173,6 +181,7 @@ function AskBox({ first, onAsk }) {
     <section className="ask-box">
       <h3>Want to see more?</h3>
       <textarea rows={2} value={text} onChange={(e) => setText(e.target.value)} placeholder="e.g. Could we see the code?" aria-label={`Ask ${first} for more evidence`} />
+      <PhraseTools value={text} onChange={setText} first={first} kind="next" />
       <button className="ghost small-btn" disabled={text.trim().length < 4} onClick={() => { onAsk(text.trim()); setSent(true); }}>Ask {first}</button>
     </section>
   );
@@ -201,7 +210,7 @@ function EvidenceView({ ev, event, student, doc, onClose }) {
     <div className="modal-back ev-back" onClick={onClose} onKeyDown={(k) => k.key === 'Escape' && onClose()}>
       <div className={`ev-view ${ev.kind === 'image' ? 'img' : 'doc'}${doc ? ` wide-${doc.t}` : ''}${isUploaded(ev) && ev.kind !== 'image' ? ` wide-file fk-${evKind(ev)}` : ''}`} role="dialog" aria-label={ev.caption} onClick={(x) => x.stopPropagation()}>
         <button className="panel-close" onClick={onClose} aria-label="Close" autoFocus>×</button>
-        {ev.kind === 'image' ? <img src={ev.url} alt={ev.caption} /> : isUploaded(ev) ? (
+        {ev.kind === 'image' ? <img src={ev.url} alt={photoAlt(ev, event.title)} /> : isUploaded(ev) ? (
           <div className="ev-doc">
             <div className="ev-doc-stamp">{t(event.verification === 'student-added' ? 'Added by the student' : 'Uploaded')} · {dateIn(lang, event.date)}</div>
             <h2>{ev.caption}</h2>

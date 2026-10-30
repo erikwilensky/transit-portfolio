@@ -12,6 +12,9 @@ import schoolData from '../data/school.json';
 // Re-exported so the server bundle carries it (public verify codes); the server never loads src/.
 export { verifyCode } from './format.js';
 import { planRoster, parseRoster } from './imports/roster.js';
+import { weekOf } from './week.js';
+import { inferKind } from './notify-kinds.js';
+export { notifyProblem, audienceOf as notifyAudience } from './notify-kinds.js';
 // The server reads roster files with the same code (POST /api/admin/roster).
 export { parseRoster, kindOfRoles } from './imports/roster.js';
 
@@ -482,7 +485,7 @@ export function setCasProject(sid, status, title, by) {
 export const getCasNudges = (sid) => store.casNudges.filter((n) => n.studentId === sid);
 export function casNudge(sid, about, text, by) {
   store.casNudges.push({ id: uid('cn-'), studentId: sid, about, text, by, date: TODAY });
-  notify(toStudent(sid), `${by}: ${text}`, { persona: toStudent(sid), screen: 'map' });
+  notify(toStudent(sid), `${by}: ${text}`, { persona: toStudent(sid), screen: 'map' }, 'teacher');
   log(sid, by, 'prompt', `CAS nudge about ${about}: “${text}”`);
   emit();
 }
@@ -638,7 +641,8 @@ const uid = (p) => nd('i', () => `${p}${seq++}_${TAG}`);
 const nowIso = () => nd('t', () => new Date().toISOString());
 // Made during the demo (not seeded)? Only generated ids contain '_'.
 export const isLiveId = (id) => id.includes('_');
-export function notify(to, text, go) { if (!to) return; store.notifications.unshift({ id: uid('nt-'), to, text, go, ts: nowIso(), read: false }); }
+// kind: what it is about, for notification settings (src/notify-kinds.js); named here when the words alone can't tell.
+export function notify(to, text, go, kind) { if (!to) return; store.notifications.unshift({ id: uid('nt-'), to, text, go, ts: nowIso(), read: false, kind: kind || inferKind(text, go) }); }
 export function log(studentId, actor, kind, text) { store.activity.unshift({ id: uid('ac-'), studentId, actor, kind, text, ts: nowIso() }); }
 // The same two, as changes a screen can make on its own.
 export function addLog(studentId, actor, kind, text) { log(studentId, actor, kind, text); emit(); }
@@ -647,6 +651,8 @@ export function addNotification(to, text, go) { notify(to, text, go); emit(); }
 const keySet = (keys) => new Set([].concat(keys || []));
 export const getNotifications = (keys) => { const k = keySet(keys); return store.notifications.filter((n) => k.has(n.to)); };
 export function markNotificationsRead(keys) { const k = keySet(keys); store.notifications.forEach((n) => { if (k.has(n.to)) n.read = true; }); emit(); }
+// "Clear read" in the bell: read ones are kept in the record (This week, a PDPA copy) but leave the bell.
+export function clearReadNotifications(keys) { const k = keySet(keys); store.notifications.forEach((n) => { if (k.has(n.to) && n.read) n.cleared = true; }); emit(); }
 
 // ── Student actions ───────────────────────────────────────────────────
 export function addReflection({ studentId, eventId, prompt, text, visibility = 'advisor', signal, files }) {
@@ -670,9 +676,11 @@ export function addStation(studentId, f) {
     about: f.about || '', evidence: f.evidence || [...(f.image ? [{ kind: 'image', url: f.image, caption: f.imageCaption || 'Photo' }] : []), ...(f.files || [])],
     verification: 'student-added', visibility: f.visibility || 'advisor', source: { system: f.via || 'Manual entry', ref: null },
     ...(f.cas ? { cas: f.cas } : {}),
+    ...(f.promptId ? { promptId: String(f.promptId).slice(0, 80) } : {}), // written with subject prompts (getPromptsFor)
   };
+  const se = f.schoolEvent ? linkSchoolEvent(e, f.schoolEvent) : null; // school events: a moment from one
   store.events.push(e);
-  if (f.reflection) store.reflections.push({ id: uid('rf-x'), eventId: e.id, text: f.reflection, prompt: 'Quick reflection', date: e.date, visibility: f.visibility || 'advisor' });
+  if (f.reflection) store.reflections.push({ id: uid('rf-x'), eventId: e.id, text: f.reflection, prompt: se?.question || 'Quick reflection', date: e.date, visibility: f.visibility || 'advisor' });
   const who = getStudent(studentId).name;
   log(studentId, who, 'station', `Added “${e.title}”${f.via ? ` from ${f.via}` : ''}`);
   if (f.requestFrom) requestEndorsement(e.id, f.requestFrom, f.requestNote);
@@ -684,7 +692,7 @@ export function requestEndorsement(eventId, teacherId, note) {
   const rq = { id: uid('rq-x'), eventId, studentId: e.studentId, teacherId, date: TODAY, source: 'student', note: note || null, status: 'pending', fresh: true };
   store.requests.unshift(rq);
   const name = getStudent(e.studentId).name;
-  notify(toTeacher(teacherId), `${name.split(' ')[0]} asked you to endorse “${e.title}”`, { persona: toTeacher(teacherId), screen: 'queue' });
+  notify(toTeacher(teacherId), `${name.split(' ')[0]} asked you to endorse “${e.title}”`, { persona: toTeacher(teacherId), screen: 'queue' }, { 'Class question': 'answers', 'Class task': 'handin' }[e.source?.system]);
   log(e.studentId, name, 'request', `Asked ${teacherById[teacherId].name} to endorse “${e.title}”`);
   emit();
   return rq;
@@ -1671,6 +1679,363 @@ export function answersCsv(promptId) {
   return `﻿${[head, ...rows].map((r) => r.map(cell).join(',')).join('\r\n')}\r\n`;
 }
 
+// ── Class tasks: a teacher sets a task for a class; each student hands it in as a moment on its line ──
+// store.teacherTasks: { id: 'tk-…', classId, teacherId, title, brief, due, lineId, checklist: [text], needsFile, date, at,
+// studentIds (the class when it was set), editedAt }. store.handIns: one row per student who has anything on a task:
+// { id: 'hi-…', taskId, studentId, due (an extension, or null), reminded (the due date reminded for), date, at, eventId,
+// ticked: [index], again } (eventId null until handed in). A hand-in is a station on the task's line with an endorsement
+// request to the teacher who set it, so endorse/declineRequest decide it. Both lists are made on first use.
+const tTasks = () => (store.teacherTasks ||= []);
+const tRows = () => (store.handIns ||= []);
+const ymd = /^\d{4}-\d{2}-\d{2}$/;
+const dayAfter = (d, n = 1) => new Date(Date.parse(d) + n * 864e5).toISOString().slice(0, 10);
+const WEEKDAY = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+// "today", "tomorrow", "Friday" (within a week), else "6 Nov 2026".
+export function dueWords(due) {
+  if (!ymd.test(due || '')) return '';
+  const n = Math.round((Date.parse(due) - Date.parse(TODAY)) / 864e5);
+  return n === 0 ? 'today' : n === 1 ? 'tomorrow' : n > 1 && n < 7 ? WEEKDAY[new Date(Date.parse(due)).getUTCDay()] : `${Number(due.slice(8))} ${MON[Number(due.slice(5, 7)) - 1]} ${due.slice(0, 4)}`;
+}
+export const getTask = (id) => tTasks().find((t) => t.id === id);
+const rowOf = (taskId, studentId) => tRows().find((r) => r.taskId === taskId && r.studentId === studentId);
+const rowFor = (taskId, studentId) => rowOf(taskId, studentId) || (tRows().push({ id: uid('hi-'), taskId, studentId, due: null, reminded: null, date: null, at: null, eventId: null, ticked: [] }), tRows().at(-1));
+export const taskDue = (t, studentId) => rowOf(t.id, studentId)?.due || t.due;
+const handInRequest = (t, e) => (e && store.requests.find((r) => r.eventId === e.id && r.teacherId === t.teacherId)) || null;
+// One student's state on a task. status: none | overdue (not handed in, past due) | handed | late (after the due date);
+// check: waiting | more (asked for more) | endorsed | null.
+export function taskStatus(t, studentId) {
+  const row = rowOf(t.id, studentId) || null, due = row?.due || t.due;
+  const event = (row?.eventId && getEvent(row.eventId)) || null;
+  if (!event) return { row, due, event: null, request: null, status: TODAY > due ? 'overdue' : 'none', check: null };
+  const request = handInRequest(t, event);
+  const check = event.verification === 'teacher-endorsed' ? 'endorsed' : request?.status === 'returned' ? 'more' : request?.status === 'pending' ? 'waiting' : null;
+  return { row, due, event, request, status: row.date > due ? 'late' : 'handed', check };
+}
+function taskFields(f, c, old = {}) {
+  const title = String(f.title ?? old.title ?? '').trim().slice(0, 120);
+  if (title.length < 3) throw Object.assign(new Error('Give the task a title'), { status: 400 });
+  const due = f.due ?? old.due;
+  if (!ymd.test(due || '')) throw Object.assign(new Error('Pick a due date'), { status: 400 });
+  const lineId = f.lineId !== undefined ? f.lineId : old.lineId ?? c?.lineId ?? null;
+  const l = lineId && lineById(lineId);
+  if (!l || l.studentId) throw Object.assign(new Error('Pick a line for the hand-ins'), { status: 400 });
+  const checklist = (Array.isArray(f.checklist) ? f.checklist : old.checklist || []).map((x) => String(x ?? '').trim().slice(0, 120)).filter(Boolean);
+  if (checklist.length > 5) throw Object.assign(new Error('Up to 5 checklist items'), { status: 400 });
+  return { title, brief: String(f.brief ?? old.brief ?? '').trim().slice(0, 600), due, lineId, checklist, needsFile: !!(f.needsFile ?? old.needsFile) };
+}
+const taskView = (t) => ({ ...t, teacher: teacherById[t.teacherId] || null, className: classById(t.classId)?.name || '', line: lineById(t.lineId) || null });
+// A class's tasks, newest first, with counts: handed (on time), late, notYet (overdue among them), waiting (to look at), endorsed.
+export function tasksForClass(classId) {
+  return tTasks().filter((t) => t.classId === classId).map((t) => {
+    const st = t.studentIds.map((sid) => taskStatus(t, sid));
+    const n = (k, v) => st.filter((x) => x[k] === v).length;
+    return { ...taskView(t), handed: n('status', 'handed'), late: n('status', 'late'), notYet: n('status', 'none') + n('status', 'overdue'), overdue: n('status', 'overdue'), waiting: n('check', 'waiting'), endorsed: n('check', 'endorsed') };
+  }).sort((a, b) => b.at.localeCompare(a.at) || b.id.localeCompare(a.id));
+}
+// The hand-in grid: one row per student the task was set for; to look at first, then asked for more, overdue, not yet, endorsed.
+const GRID_ORDER = ['waiting', 'more', 'overdue', 'none', 'endorsed', 'other'];
+export function taskGrid(taskId) {
+  const t = getTask(taskId);
+  if (!t) return null;
+  const rows = t.studentIds.map((sid) => ({ studentId: sid, student: getStudent(sid) || null, ...taskStatus(t, sid) })).map((r) => ({
+    ...r, photo: r.event?.evidence.find((x) => x.kind === 'image') || null, files: r.event?.evidence.filter((x) => x.kind !== 'image') || [],
+    text: (r.event && store.reflections.filter((x) => x.eventId === r.event.id && x.prompt === t.title).map((x) => x.text).join('\n\n')) || '', key: r.check || (r.event ? 'other' : r.status),
+  })).sort((a, b) => GRID_ORDER.indexOf(a.key) - GRID_ORDER.indexOf(b.key) || (a.student?.name || '~').localeCompare(b.student?.name || '~'));
+  return { task: taskView(t), rows };
+}
+// A student's tasks: open ones (not handed in, or asked for more) by due date, then ones handed in during the last week.
+export function tasksFor(studentId) {
+  return tTasks().filter((t) => t.studentIds.includes(studentId)).map((t) => ({ ...taskView(t), ...taskStatus(t, studentId) }))
+    .map((x) => ({ ...x, open: !x.event || x.check === 'more', reason: x.check === 'more' ? x.request?.reason || '' : '' }))
+    .filter((x) => x.open || (x.row?.date || '') >= daysBefore(7))
+    .sort((a, b) => b.open - a.open || a.due.localeCompare(b.due) || a.at.localeCompare(b.at));
+}
+// "Waiting for you": the teacher's tasks with hand-ins to look at, and those requests.
+export function taskHandInWaits(teacherId) {
+  return tTasks().filter((t) => t.teacherId === teacherId).map((t) => ({ task: taskView(t), requests: t.studentIds.map((sid) => taskStatus(t, sid)).filter((x) => x.check === 'waiting').map((x) => x.request) }))
+    .filter((g) => g.requests.length);
+}
+export function setTask(classId, teacherId, f = {}) {
+  const c = classById(classId), tr = teacherById[teacherId];
+  if (!c) throw Object.assign(new Error('No such class'), { status: 404 });
+  if (!tr) throw Object.assign(new Error('No such teacher'), { status: 400 });
+  const t = { id: uid('tk-'), classId, teacherId, ...taskFields(f, c), date: TODAY, at: nowIso(), studentIds: nowIn(classId) || [], editedAt: null };
+  tTasks().push(t);
+  for (const sid of t.studentIds) notify(toStudent(sid), `${shortName(tr.name)} set a task: “${t.title}”, due ${dueWords(t.due)}`, { persona: toStudent(sid), screen: 'map' });
+  emit();
+  return t;
+}
+export function editTask(taskId, teacherId, f = {}) {
+  const t = getTask(taskId);
+  if (!t) throw Object.assign(new Error('No such task'), { status: 404 });
+  const was = t.due;
+  Object.assign(t, taskFields(f, classById(t.classId), t), { editedAt: nowIso() });
+  if (t.due !== was) for (const sid of t.studentIds) if (!rowOf(t.id, sid)?.eventId && !rowOf(t.id, sid)?.due) notify(toStudent(sid), `“${t.title}” is now due ${dueWords(t.due)}`, { persona: toStudent(sid), screen: 'map' });
+  emit();
+  return t;
+}
+// More time for one student (due: a date, or null to go back to the task's date). A new date is reminded again.
+export function extendTask(taskId, studentId, due, teacherId) {
+  const t = getTask(taskId);
+  if (!t || !t.studentIds.includes(studentId)) throw Object.assign(new Error('This task is not for that student'), { status: 404 });
+  if (due !== null && !ymd.test(due || '')) throw Object.assign(new Error('Pick a date'), { status: 400 });
+  const row = rowFor(taskId, studentId);
+  row.due = due && due !== t.due ? due : null; row.reminded = null;
+  const tr = teacherById[teacherId] || teacherById[t.teacherId];
+  notify(toStudent(studentId), `${tr ? shortName(tr.name) : 'Your teacher'} gave you until ${dueWords(row.due || t.due)} for “${t.title}”`, { persona: toStudent(studentId), screen: 'map' });
+  emit();
+  return row;
+}
+// Hand in: a station on the task's line (the student's sub-line of it if they have one), what they did as its reflection,
+// and an endorsement request to the teacher who set it. Asked for more: the same station gets the new words and files,
+// and the request is pending again.
+export function handInTask(taskId, studentId, { text = '', ticked = [], image = null, imageCaption = 'Photo', files = [] } = {}) {
+  const t = getTask(taskId), s = getStudent(studentId);
+  if (!t || !s || !t.studentIds.includes(studentId)) throw Object.assign(new Error('This task is not for you'), { status: 404 });
+  const words = String(text || '').trim().slice(0, 4000);
+  const extra = (Array.isArray(files) ? files : []).filter((x) => x && typeof x.url === 'string').slice(0, 5);
+  if (t.needsFile && !image && !extra.length) throw Object.assign(new Error('This task needs a photo or a file'), { status: 400 });
+  if (!words && !image && !extra.length) throw Object.assign(new Error('Say what you did first'), { status: 400 });
+  const tick = [...new Set((Array.isArray(ticked) ? ticked : []).filter((i) => Number.isInteger(i) && i >= 0 && i < t.checklist.length))].sort((a, b) => a - b);
+  const now = taskStatus(t, studentId);
+  if (now.event && now.check !== 'more') throw Object.assign(new Error('You already handed this in'), { status: 409 });
+  const row = rowFor(taskId, studentId);
+  if (now.event) {
+    now.event.evidence = [...now.event.evidence, ...(image ? [{ kind: 'image', url: image, caption: imageCaption }] : []), ...extra];
+    if (words) store.reflections.push({ id: uid('rf-x'), eventId: now.event.id, text: words, prompt: t.title, date: TODAY, visibility: now.event.visibility });
+    Object.assign(now.request, { status: 'pending', resubmitted: true, date: TODAY, fresh: true });
+    Object.assign(row, { again: nowIso(), ticked: tick });
+    notify(toTeacher(t.teacherId), `${s.name.split(' ')[0]} handed in “${t.title}” again`, { persona: toTeacher(t.teacherId), screen: 'classes', param: `${t.classId}~task~${t.id}` });
+    log(studentId, s.name, 'request', `Handed in “${t.title}” again`);
+  } else {
+    const lane = laneFor(s, t.lineId);
+    const e = addStation(studentId, { title: t.title, lineIds: [lane], type: 'project', image, imageCaption, files: extra, visibility: 'advisor', via: 'Class task',
+      requestFrom: teacherById[t.teacherId] ? t.teacherId : null, requestNote: `Hand-in for “${t.title}”` });
+    e.task = t.id;
+    if (words) store.reflections.push({ id: uid('rf-x'), eventId: e.id, text: words, prompt: t.title, date: e.date, visibility: 'advisor' });
+    Object.assign(row, { date: TODAY, at: nowIso(), eventId: e.id, ticked: tick });
+  }
+  emit();
+  return row;
+}
+// The day before a task is due: one notification to each student still in the class who has not handed it in (an
+// extension's date counts, and is reminded once too). The server runs it (server/routes/68-tasks.mjs); nobody else may.
+export function remindDueTasks() {
+  const tomorrow = dayAfter(TODAY);
+  let n = 0;
+  for (const t of tTasks()) {
+    const still = new Set(nowIn(t.classId) || []);
+    for (const sid of t.studentIds) {
+      if (!still.has(sid)) continue;
+      const row = rowOf(t.id, sid), due = row?.due || t.due;
+      if (due !== tomorrow || row?.eventId || row?.reminded === due) continue;
+      rowFor(t.id, sid).reminded = due;
+      notify(toStudent(sid), `Reminder: “${t.title}” is due tomorrow`, { persona: toStudent(sid), screen: 'map' });
+      n++;
+    }
+  }
+  if (n) emit();
+  return n;
+}
+
+// ── School events: sports day, a trip, a concert. Students it was for get a card on their home afterwards ──
+// store.schoolEvents [{ id: 'se-…', title, start, end, for: { kind: 'school' | 'years' | 'homerooms' | 'classes', years,
+// homerooms, classIds }, lineId (a school line, or null), photo (url or null), question, by (teacher id or null), at,
+// studentIds (who it was for, when it was saved), reminded: { date, at, by, n } | null, editedAt }].
+// store.schoolEventAdds [{ id: 'sx-…', eventId, studentId, momentId, added, dismissed, date, at }]: one row per student who
+// added a moment from it (addStation with schoolEvent) or dismissed its card. Both made on first use.
+// Card: from the day after the event ends, for SE_CARD_DAYS days (and 3 days after a reminder). Coming up: from
+// SE_SOON_DAYS before it starts until it ends.
+export const SE_CARD_DAYS = 5, SE_SOON_DAYS = 28;
+const seList = () => (store.schoolEvents ||= []);
+const seRows = () => (store.schoolEventAdds ||= []);
+const seErr = (message, status = 400) => Object.assign(new Error(message), { status });
+const seDay = (d, n) => new Date(Date.parse(d) + n * 864e5).toISOString().slice(0, 10);
+export const getSchoolEvent = (id) => seList().find((x) => x.id === id);
+export const getSchoolEvents = () => seList();
+export const SE_KINDS = { school: 'Whole school', years: 'Some Years', homerooms: 'Some homerooms', classes: 'Some classes' };
+// Who an event is for, from the record now: students (never cohort-only records) by Year, homeroom or current class place.
+export function schoolEventStudents(f = {}) {
+  const kids = store.students.filter((s) => !s.cohortOnly);
+  if (f.kind === 'years') { const ys = new Set((f.years || []).map(Number)); return kids.filter((s) => ys.has(s.grade + 1)).map((s) => s.id); }
+  if (f.kind === 'homerooms') { const hs = new Set(f.homerooms || []); return kids.filter((s) => hs.has(s.homeroom)).map((s) => s.id); }
+  if (f.kind === 'classes') { const { out } = currentPlaces(new Set(f.classIds || [])); const ids = new Set([...out.values()].flat()); return kids.filter((s) => ids.has(s.id)).map((s) => s.id); }
+  return kids.map((s) => s.id);
+}
+export const homeroomsOf = () => [...new Set(store.students.filter((s) => !s.cohortOnly && s.homeroom).map((s) => s.homeroom))].sort((a, b) => a.localeCompare(b, 'en', { numeric: true }));
+function seFor(f) {
+  const kind = f?.kind || 'school';
+  if (!SE_KINDS[kind]) throw seErr('Pick who it is for');
+  const years = kind === 'years' ? [...new Set((f.years || []).map(Number).filter((y) => y >= 7 && y <= 13))].sort((a, b) => a - b) : [];
+  const homerooms = kind === 'homerooms' ? [...new Set((f.homerooms || []).map((h) => String(h).trim()).filter(Boolean))].slice(0, 80) : [];
+  const classIds = kind === 'classes' ? [...new Set((f.classIds || []).filter((id) => classById(id)))].slice(0, 80) : [];
+  if ((kind === 'years' && !years.length) || (kind === 'homerooms' && !homerooms.length) || (kind === 'classes' && !classIds.length)) throw seErr('Pick who it is for');
+  return { kind, years, homerooms, classIds };
+}
+function seFields(f = {}, old = {}) {
+  const title = String(f.title ?? old.title ?? '').trim().slice(0, 80);
+  if (title.length < 3) throw seErr('Give the event a name');
+  const start = f.start ?? old.start, end = f.end || (f.start ? f.start : old.end);
+  if (!ymd.test(start || '') || !ymd.test(end || '')) throw seErr('Pick the date');
+  if (end < start) throw seErr('The last day is before the first');
+  const lineId = f.lineId !== undefined ? f.lineId || null : old.lineId ?? null;
+  if (lineId && (!lineById(lineId) || lineById(lineId).studentId)) throw seErr('Pick a school line');
+  const photo = f.photo !== undefined ? f.photo || null : old.photo ?? null;
+  if (photo && (typeof photo !== 'string' || photo.length > 300 || !/^(\/?api\/files\/|https:\/\/)/.test(photo))) throw seErr('That photo did not upload');
+  return { title, start, end, for: seFor(f.for ?? old.for), lineId, photo, question: String(f.question ?? old.question ?? '').trim().slice(0, 200) };
+}
+export function addSchoolEvent(f = {}, by = null) {
+  if (by && !teacherById[by]) throw seErr('No such teacher');
+  const x = { id: uid('se-'), ...seFields(f), by: by || null, at: nowIso(), reminded: null, editedAt: null };
+  x.studentIds = schoolEventStudents(x.for);
+  if (!x.studentIds.length) throw seErr('No students match who it is for');
+  seList().push(x);
+  emit();
+  return x;
+}
+export function editSchoolEvent(id, f = {}, by = null) {
+  const x = getSchoolEvent(id);
+  if (!x) throw seErr('No such event', 404);
+  const next = seFields(f, x), ids = schoolEventStudents(next.for);
+  if (!ids.length) throw seErr('No students match who it is for');
+  Object.assign(x, next, { studentIds: ids, editedAt: nowIso(), editedBy: by || null });
+  emit();
+  return x;
+}
+// Moments added from it keep its name (their source), so a family still sees it after the event is removed.
+export function removeSchoolEvent(id, by = null) { // eslint-disable-line no-unused-vars
+  const i = seList().findIndex((x) => x.id === id);
+  if (i < 0) throw seErr('No such event', 404);
+  const [x] = seList().splice(i, 1);
+  store.schoolEventAdds = seRows().filter((r) => r.eventId !== id);
+  emit();
+  return x;
+}
+// A CSV list (parseEventsCsv in the browser): every row is checked first, then all are added, or none.
+export function importSchoolEvents(rows = [], by = null) {
+  if (!Array.isArray(rows) || !rows.length) throw seErr('There are no events in the file');
+  if (rows.length > 200) throw seErr('Up to 200 events at a time');
+  rows.forEach((r, i) => { try { seFields(r); if (!schoolEventStudents(seFor(r.for)).length) throw seErr('No students match who it is for'); } catch (e) { throw seErr(`Row ${i + 2}: ${e.message}`); } });
+  return rows.map((r) => addSchoolEvent(r, by));
+}
+// title,start,end,years,line (a header row first; columns in any order). Years: "8", "7-9", "8;9" or empty (whole school).
+// Dates: 2026-11-20 or 20/11/2026. line: a school line's name, or empty. → { rows, errors }
+export function parseEventsCsv(text) {
+  const recs = [];
+  let row = [], cell = '', q = false;
+  const src = String(text || '').replace(/^﻿/, '');
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i];
+    if (q) { if (c === '"' && src[i + 1] === '"') { cell += '"'; i++; } else if (c === '"') q = false; else cell += c; continue; }
+    if (c === '"') q = true; else if (c === ',') { row.push(cell); cell = ''; } else if (c === '\n' || c === '\r') { if (c === '\r' && src[i + 1] === '\n') i++; row.push(cell); recs.push(row); row = []; cell = ''; } else cell += c;
+  }
+  if (cell || row.length) { row.push(cell); recs.push(row); }
+  const lines = recs.filter((r) => r.some((x) => x.trim()));
+  if (!lines.length) return { rows: [], errors: ['The file is empty'] };
+  const head = lines[0].map((h) => h.trim().toLowerCase());
+  const col = (n) => head.indexOf(n);
+  if (col('title') < 0 || col('start') < 0) return { rows: [], errors: ['The first row needs the column names: title, start, end, years, line'] };
+  const day = (v) => { const s = String(v || '').trim(); if (ymd.test(s)) return s; const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); return m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : s ? null : ''; };
+  const lineOf = (v) => { const n = String(v || '').trim().toLowerCase(); if (!n) return null; return getSchoolLines().find((l) => l.name.toLowerCase() === n)?.id; };
+  const rows = [], errors = [];
+  lines.slice(1).forEach((r, i) => {
+    const at = (k) => (col(k) >= 0 ? String(r[col(k)] ?? '').trim() : '');
+    const n = i + 2, title = at('title'), start = day(at('start')), endRaw = day(at('end')), end = endRaw || start, lineId = lineOf(at('line'));
+    const ys = at('years').replace(/years?/gi, '').trim();
+    let years = [];
+    if (ys && !/^(all|whole school)$/i.test(ys)) {
+      for (const part of ys.split(/[;|/ ]+|,/).filter(Boolean)) { const m = part.match(/^(\d{1,2})(?:-(\d{1,2}))?$/); if (!m) { years = null; break; } for (let y = Number(m[1]); y <= Number(m[2] || m[1]); y++) years.push(y); }
+    }
+    if (!title) errors.push(`Row ${n}: no title`);
+    else if (!start) errors.push(`Row ${n}: the start date is not a date (use 2026-11-20)`);
+    else if (endRaw === null) errors.push(`Row ${n}: the end date is not a date`);
+    else if (end < start) errors.push(`Row ${n}: it ends before it starts`);
+    else if (years === null || years.some((y) => y < 7 || y > 13)) errors.push(`Row ${n}: Years should be 7 to 13, like 8 or 7-9`);
+    else if (lineId === undefined) errors.push(`Row ${n}: no school line called “${at('line')}”`);
+    else rows.push({ title: title.slice(0, 80), start, end, for: years.length ? { kind: 'years', years: [...new Set(years)] } : { kind: 'school' }, lineId });
+  });
+  return { rows, errors };
+}
+const seRow = (eventId, studentId) => seRows().find((r) => r.eventId === eventId && r.studentId === studentId);
+// addStation(…, { schoolEvent }): only for a student it was for; the moment keeps the event's name as its source.
+function linkSchoolEvent(e, id) {
+  const x = getSchoolEvent(id), s = getStudent(e.studentId);
+  if (!x || !s || !x.studentIds.includes(e.studentId)) return null;
+  e.schoolEvent = x.id;
+  e.source = { system: 'School event', ref: x.title };
+  e.lineIds = e.lineIds.map((l) => laneFor(s, l)).filter(Boolean);
+  const r = seRow(x.id, e.studentId);
+  if (r) Object.assign(r, { momentId: r.added && getEvent(r.momentId) ? r.momentId : e.id, added: true });
+  else seRows().push({ id: uid('sx-'), eventId: x.id, studentId: e.studentId, momentId: e.id, added: true, dismissed: false, date: TODAY, at: nowIso() });
+  return x;
+}
+export function dismissSchoolEvent(id, studentId) {
+  const x = getSchoolEvent(id);
+  if (!x || !x.studentIds.includes(studentId)) throw seErr('This event is not for you', 404);
+  const r = seRow(id, studentId);
+  if (r) r.dismissed = true;
+  else seRows().push({ id: uid('sx-'), eventId: id, studentId, momentId: null, added: false, dismissed: true, date: TODAY, at: nowIso() });
+  emit();
+}
+export const schoolEventName = (e) => (e?.schoolEvent && getSchoolEvent(e.schoolEvent)?.title) || (e?.source?.system === 'School event' ? e.source.ref : null);
+const seUntil = (x) => [seDay(x.end, SE_CARD_DAYS), x.reminded ? seDay(x.reminded.date, 3) : ''].sort().at(-1);
+// The student's lane for the event's line, without changing anything (addStation puts it on the map).
+const seLane = (s, lineId) => (lineId && (s.laneOrder.find((l) => l === lineId || lineById(l)?.parentLineId === lineId) || lineId)) || null;
+const sePrefill = (x, s) => ({ title: x.title, date: x.start <= TODAY ? x.start : TODAY, lineIds: x.lineId ? [seLane(s, x.lineId)] : [], schoolEvent: x.id, question: x.question || '' });
+// A student's home: cards to add something from events that ended (not added or dismissed yet), and what is coming up.
+export function schoolEventsFor(studentId) {
+  const s = getStudent(studentId);
+  if (!s) return { cards: [], coming: [] };
+  const mine = seList().filter((x) => x.studentIds.includes(studentId));
+  const cards = mine.filter((x) => TODAY > x.end && TODAY <= seUntil(x) && !seRow(x.id, studentId)).sort((a, b) => b.end.localeCompare(a.end)).map((x) => ({ ...x, prefill: sePrefill(x, s) }));
+  const coming = mine.filter((x) => x.end >= TODAY && x.start <= seDay(TODAY, SE_SOON_DAYS)).sort((a, b) => a.start.localeCompare(b.start) || a.title.localeCompare(b.title))
+    .map((x) => ({ ...x, now: x.start <= TODAY, line: lineById(x.lineId) || null, goal: { title: x.title, date: x.start, lineId: x.lineId ? seLane(s, x.lineId) : null } }));
+  return { cards, coming };
+}
+// Staff: the students this teacher sees for events (advisees and current class places).
+export function staffStudentsOf(teacherId) {
+  const mine = getClasses().filter((c) => teacherId && c.teacherIds?.includes(teacherId)).map((c) => c.id);
+  const ids = new Set([...currentPlaces(new Set(mine)).out.values()].flat());
+  for (const s of store.students) if (teacherId && s.advisorId === teacherId) ids.add(s.id);
+  return ids;
+}
+const seAdded = (r) => !!r?.added && (!r.momentId || !!getEvent(r.momentId));
+// Per event: how many of the students it was for added something, by homeroom. whole: every student, else teacherId's.
+export function schoolEventProgress(id, { teacherId = null, whole = true } = {}) {
+  const x = getSchoolEvent(id);
+  if (!x) return null;
+  const see = whole ? null : staffStudentsOf(teacherId);
+  const ids = x.studentIds.filter((sid) => getStudent(sid) && (!see || see.has(sid)));
+  const groups = new Map();
+  for (const sid of ids) {
+    const s = getStudent(sid), r = seRow(id, sid), k = s.homeroom || '—', added = seAdded(r);
+    const g = groups.get(k) || groups.set(k, { homeroom: k, total: 0, added: 0, dismissed: 0, students: [] }).get(k);
+    g.total++; if (added) g.added++; else if (r?.dismissed) g.dismissed++;
+    g.students.push({ id: sid, name: s.name, added, dismissed: !added && !!r?.dismissed, momentId: added ? r.momentId : null });
+  }
+  const homerooms = [...groups.values()].sort((a, b) => a.homeroom.localeCompare(b.homeroom, 'en', { numeric: true }));
+  for (const g of homerooms) g.students.sort((a, b) => a.name.localeCompare(b.name));
+  return { event: x, total: ids.length, added: homerooms.reduce((n, g) => n + g.added, 0), homerooms, ended: TODAY > x.end, open: TODAY > x.end && TODAY <= seUntil(x) };
+}
+// The list a member of staff sees: every event (whole school) or those with any of their students, newest first.
+export function schoolEventsForStaff({ teacherId = null, whole = true } = {}) {
+  const see = whole ? null : staffStudentsOf(teacherId);
+  return seList().filter((x) => !see || x.studentIds.some((sid) => see.has(sid))).sort((a, b) => b.start.localeCompare(a.start) || a.title.localeCompare(b.title));
+}
+// One reminder per event, after it ends: to each student it was for who has not added something or dismissed it.
+export function remindSchoolEvent(id, by = null) {
+  const x = getSchoolEvent(id);
+  if (!x) throw seErr('No such event', 404);
+  if (TODAY <= x.end) throw seErr('You can send a reminder once the event is over');
+  if (x.reminded) throw seErr('A reminder was already sent for this event', 409);
+  const to = x.studentIds.filter((sid) => getStudent(sid) && !seRow(id, sid));
+  for (const sid of to) notify(toStudent(sid), `Add something from “${x.title}” to your journey`, { persona: toStudent(sid), screen: 'map', param: `se~${x.id}` }, 'class');
+  x.reminded = { date: TODAY, at: nowIso(), by: by || null, n: to.length };
+  emit();
+  return to.length;
+}
+
 // ── Advisor nudges: a friendly note to an advisee who has gone quiet ──
 // store.nudges = [{ id, studentId, from (teacher id), text, date, ts }], made on first use. At most one per student per 7 days.
 export const NUDGE_TEXT = "Your advisor would love to see what you've been up to. Add one thing from this week.";
@@ -1704,7 +2069,7 @@ export function nudgeStudent(studentId, advisorId, text, about) {
   const msg = String(text ?? '').trim().slice(0, 500) || NUDGE_TEXT;
   const n = { id: uid('nu-'), studentId, from: advisorId, text: msg, date: TODAY, ts: nowIso(), ...(about ? { about: String(about).slice(0, 60) } : {}) };
   (store.nudges ||= []).push(n);
-  notify(toStudent(studentId), `${shortName(t.name)}: ${msg}`, { persona: toStudent(studentId), screen: 'map', param: about ? 'reflect' : 'add' });
+  notify(toStudent(studentId), `${shortName(t.name)}: ${msg}`, { persona: toStudent(studentId), screen: 'map', param: about ? 'reflect' : 'add' }, 'teacher');
   log(studentId, t.name, 'nudge', 'Sent a nudge to add something');
   emit();
   return n;
@@ -1937,6 +2302,228 @@ export function declineSpotted(id, studentId) {
   emit();
   return x;
 }
+// ── Teacher comment bank: saved phrases for the boxes staff write to students in (src/components/Phrases.jsx) ──
+// store.phrases: { id: 'ph-…', owner: teacherId | 'school', text, kind, lineId, order, by, at, editedAt?, editedBy? }.
+// store.phraseUses: { [teacherId]: { [phraseId]: count } }, so each teacher's most used float to the top. A phrase may
+// hold {first name}, filled in when it is put in a box. Staff only: students and families never receive a bank.
+export const PHRASE_KINDS = [['praise', 'Praise'], ['next', 'Next step'], ['question', 'Question'], ['other', 'Other']];
+export const PHRASE_MAX = 500, PHRASE_LIMIT = 200, FIRST_NAME = '{first name}';
+const phraseList = () => (store.phrases ||= []);
+const phraseUseMap = () => (store.phraseUses ||= {});
+export const getPhrase = (id) => phraseList().find((p) => p.id === id);
+const phErr = (m, status = 400) => Object.assign(new Error(m), { status });
+const phraseOrder = (a, b) => a.order - b.order || a.id.localeCompare(b.id);
+const ownPhrases = (owner) => phraseList().filter((p) => p.owner === owner).sort(phraseOrder);
+function cleanPhrase({ text, kind, lineId } = {}) {
+  const t = String(text ?? '').replace(/\s+/g, ' ').trim().slice(0, PHRASE_MAX);
+  if (t.length < 2) throw phErr('Write the phrase first');
+  return { text: t, kind: PHRASE_KINDS.some(([k]) => k === kind) ? kind : 'other', lineId: lineId && getSchoolLines().some((l) => l.id === lineId) ? lineId : null };
+}
+const phraseOwnerOk = (owner, by) => {
+  if (owner === 'school') { if (by && !teacherById[by]) throw phErr('No such teacher'); return; }
+  if (!owner || owner !== by || !teacherById[by]) throw phErr('Phrases are saved in your own bank', 403);
+};
+const editablePhrase = (id, by) => { const x = getPhrase(id); if (!x) throw phErr('No such phrase', 404); phraseOwnerOk(x.owner, by); return x; };
+export function addPhrase(owner, by, spec) {
+  phraseOwnerOk(owner, by);
+  const c = cleanPhrase(spec), list = ownPhrases(owner);
+  if (list.length >= PHRASE_LIMIT) throw phErr(`A bank holds up to ${PHRASE_LIMIT} phrases`, 409);
+  if (list.some((p) => p.text.toLowerCase() === c.text.toLowerCase())) throw phErr('That phrase is already in the bank', 409);
+  const x = { id: uid('ph-'), owner, ...c, order: (list.at(-1)?.order ?? 0) + 1, by: by || null, at: nowIso() };
+  phraseList().push(x);
+  emit();
+  return x;
+}
+export function editPhrase(id, by, spec) {
+  const x = editablePhrase(id, by), c = cleanPhrase(spec);
+  if (ownPhrases(x.owner).some((p) => p.id !== id && p.text.toLowerCase() === c.text.toLowerCase())) throw phErr('That phrase is already in the bank', 409);
+  Object.assign(x, c, { editedAt: nowIso(), editedBy: by || null });
+  emit();
+  return x;
+}
+export function deletePhrase(id, by) {
+  const x = editablePhrase(id, by);
+  store.phrases = phraseList().filter((p) => p.id !== id);
+  for (const u of Object.values(phraseUseMap())) delete u[id];
+  emit();
+  return x;
+}
+// Up (-1) or down (+1) one place in its bank (the school bank: among the phrases of its kind, as it is shown).
+export function movePhrase(id, by, dir) {
+  const x = editablePhrase(id, by), all = ownPhrases(x.owner), list = x.owner === 'school' ? all.filter((p) => p.kind === x.kind) : all;
+  const i = list.indexOf(x), j = i + (dir < 0 ? -1 : 1);
+  if (j < 0 || j >= list.length) return x;
+  all.forEach((p, k) => { p.order = k + 1; });
+  [list[i].order, list[j].order] = [list[j].order, list[i].order];
+  emit();
+  return x;
+}
+// Put in a box (counted for that teacher only; sends nothing).
+export function usePhrase(id, by) {
+  const x = getPhrase(id);
+  if (!x || !teacherById[by] || (x.owner !== 'school' && x.owner !== by)) throw phErr('No such phrase', 404);
+  const u = (phraseUseMap()[by] ||= {});
+  u[id] = (u[id] || 0) + 1;
+  emit();
+  return u[id];
+}
+// A teacher's bank: their own (in their order) and the school's, with their use counts.
+export function phraseBank(teacherId) {
+  const uses = (teacherId && phraseUseMap()[teacherId]) || {};
+  return { mine: teacherId ? ownPhrases(teacherId) : [], school: ownPhrases('school'), uses };
+}
+// {first name} filled in; with no one student (a shared note), taken out with its comma.
+export function fillPhrase(text, first) {
+  const s = String(text || '');
+  if (first) return s.replace(/\{first name\}/gi, first);
+  const t = s.replace(/^\s*\{first name\}\s*[,!.]?\s*/i, '').replace(/,?\s*\{first name\}(?=[\s.,!?;:]|$)/gi, '').replace(/\s{2,}/g, ' ').trim();
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+// The other way, for "Save as a phrase": the student's first name becomes {first name}.
+const reEsc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+export const phraseFrom = (text, first) => (first && first.length > 1 ? String(text).replace(new RegExp(`\\b${reEsc(first)}\\b`, 'g'), FIRST_NAME) : String(text)).trim();
+export const canPublishPhrases = (p) => !!p && (p.kind === 'coordinator' || p.kind === 'leadership' || p.kind === 'admin' || !!p.admin);
+
+// ── Class photo drop: a teacher sends photos from a lesson, trip or practical to the students in them (src/components/PhotoDrop.jsx) ──
+// store.photoDrops: { id: 'pd-…', classId, teacherId, title, date (the day of the lesson), lineId, note, at, draft, photos:
+// [{ id: 'ph-…', url, name, studentIds, removed? }] } (only photos given to someone; the server deletes the rest, by `draft`).
+// Each student gets one spotted offer (store.spotted, with dropId, on: the drop's date, photos: [{ id, url }]): they keep
+// some with a sentence (acceptSpotted(id, studentId, { photos, text }): a moment, endorsed by the teacher) or say "Not for me".
+export const DROP_MAX = 40, DROP_KEEP_DAYS = 7;
+const drops = () => (store.photoDrops ||= []);
+export const getPhotoDrop = (id) => drops().find((d) => d.id === id);
+export const dropPhotoById = (photoId) => { for (const d of drops()) { const p = d.photos.find((x) => x.id === photoId); if (p) return { d, p }; } return null; };
+const DROP_URL = /^(\/?api\/files\/[a-f0-9]{32}\.(jpg|png|gif|webp|heic|heif|avif)|data:image\/(jpeg|png|gif|webp);base64,[A-Za-z0-9+/=]+)$/;
+const dropShown = (x) => (x.status === 'accepted' ? 'added' : x.status === 'declined' ? 'not for me' : spotOpen(x) ? 'waiting' : 'not added');
+// A teacher's photo drops for one class (or all), newest first, with each student's answer.
+export const photoDropsBy = (teacherId, classId) => drops().filter((d) => d.teacherId === teacherId && (!classId || d.classId === classId))
+  .sort((a, b) => b.at.localeCompare(a.at) || b.id.localeCompare(a.id))
+  .map((d) => {
+    const rows = spots().filter((x) => x.dropId === d.id).map((x) => ({ spot: x, student: getStudent(x.studentId) || null, shown: dropShown(x), photos: (x.photos || []).length, kept: (x.kept || []).length }))
+      .sort((a, b) => (a.student?.name || '').localeCompare(b.student?.name || ''));
+    const n = (k) => rows.filter((r) => r.shown === k).length;
+    return { ...d, line: lineById(d.lineId) || null, rows, counts: { added: n('added'), waiting: n('waiting'), no: n('not for me'), expired: n('not added') } };
+  });
+// The students a drop's photo is given to, by its file name (null: not a drop photo). For server/files.mjs.
+export function dropPhotoStudents(fileName) {
+  for (const d of drops()) for (const p of d.photos) if (p.url && p.url.endsWith(`/${fileName}`)) return p.studentIds.filter((sid) => getStudent(sid));
+  return null;
+}
+export function dropPhotos(classId, teacherId, { title = '', date = '', lineId, note = '', photos = [], draft = null } = {}) {
+  const t = teacherById[teacherId], c = classById(classId);
+  if (!t) throw spotErr('No such teacher');
+  if (!c) throw spotErr('No such class', 404);
+  if (!(c.teacherIds || []).includes(teacherId)) throw spotErr('This class is not one of yours', 403);
+  if (!getSchoolLines().some((l) => l.id === lineId)) throw spotErr('Pick a line');
+  const kids = new Set(nowIn(classId));
+  const list = [].concat(photos || []).filter((p) => p && typeof p === 'object');
+  if (list.length > DROP_MAX) throw spotErr(`At most ${DROP_MAX} photos at once`);
+  if (list.some((p) => !DROP_URL.test(String(p.url || '')))) throw spotErr('Only photos can be added');
+  if (list.some((p) => [].concat(p.studentIds || []).some((sid) => !kids.has(sid)))) throw spotErr('Only students in this class can get these photos');
+  const given = list.map((p) => ({ url: String(p.url), name: String(p.name || 'Photo').slice(0, 120), studentIds: [...new Set([].concat(p.studentIds || []))] })).filter((p) => p.studentIds.length);
+  if (!given.length) throw spotErr('Give at least one photo to a student');
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(date) && date <= TODAY ? date : TODAY;
+  const name = String(title || '').trim().slice(0, 120) || `Photos from ${c.subject || c.name}`;
+  const at = nowIso(), expires = new Date(Date.parse(TODAY) + SPOT_DAYS * 864e5).toISOString().slice(0, 10);
+  const d = { id: uid('pd-'), classId, teacherId, title: name, date: day, lineId, note: String(note || '').trim().slice(0, 500), at,
+    draft: /^[a-z0-9-]{6,40}$/.test(String(draft || '')) ? draft : null, photos: given.map((p) => ({ id: uid('ph-'), ...p })) };
+  drops().push(d);
+  const who = [...new Set(d.photos.flatMap((p) => p.studentIds))].sort();
+  for (const sid of who) {
+    const mine = d.photos.filter((p) => p.studentIds.includes(sid)).map((p) => ({ id: p.id, url: p.url }));
+    spots().push({ id: uid('sp-'), studentId: sid, teacherId, classId, lineId, title: name, note: d.note, image: mine[0].url, photos: mine, dropId: d.id, on: day, date: TODAY, at, expires, status: 'open' });
+    notify(toStudent(sid), `${shortName(t.name)} added photos from “${name}”`, { persona: toStudent(sid), screen: 'map' }, 'spotted');
+  }
+  emit();
+  return d;
+}
+// Keeping photos: the chosen ones (at least one) become a moment on the line, dated the day of the lesson, in the student's
+// words, endorsed by the teacher. Offers without photos (spotMoment) are answered as before.
+const acceptSpottedOne = acceptSpotted;
+acceptSpotted = function acceptSpotted(id, studentId, { photos = [], text = '' } = {}) {
+  const x = getSpotted(id);
+  if (!x?.dropId) return acceptSpottedOne(id, studentId);
+  mySpot(id, studentId);
+  const want = new Set([].concat(photos || [])), keep = x.photos.filter((p) => want.has(p.id));
+  if (!keep.length) throw spotErr('Pick at least one photo to keep');
+  const s = getStudent(studentId), t = teacherById[x.teacherId], words = String(text || '').trim().slice(0, 300);
+  const e = addStation(studentId, { title: x.title, date: x.on || TODAY, summary: words || x.note, lineIds: [laneFor(s, x.lineId)], type: 'project', visibility: 'school', via: 'Class photos',
+    evidence: keep.map((p) => ({ kind: 'image', url: p.url, caption: 'Photo', type: 'image/jpeg' })) });
+  e.spotted = { id: x.id, teacherId: x.teacherId, dropId: x.dropId };
+  if (t) {
+    store.endorsements.push({ id: uid('en-x'), eventId: e.id, teacherId: x.teacherId, note: x.note || `Photos from ${t.name}.`, date: TODAY, live: true });
+    e.verification = 'teacher-endorsed';
+    notify(toTeacher(x.teacherId), `${s.name.split(' ')[0]} kept ${keep.length === 1 ? '1 photo' : `${keep.length} photos`} from “${x.title}”`, { persona: toTeacher(x.teacherId), screen: 'classes', param: x.classId }, 'spotted');
+  }
+  Object.assign(x, { status: 'accepted', decidedAt: nowIso(), eventId: e.id, kept: keep.map((p) => p.id) });
+  emit();
+  return e;
+};
+// Safeguarding: reportItem({ photoId, studentId }, …) on a photo in a drop (a student it was given to, as 'student'; staff
+// as themselves). The moderators' answer is 'photo' (it leaves every offer and moment and the file is deleted) or 'none'.
+const reportItemDrop = reportItem, moderateReportDrop = moderateReport;
+const photoTarget = (photoId, sid) => {
+  const f = dropPhotoById(photoId); if (f) return f;
+  const x = spots().find((y) => y.dropId && y.studentId === sid && (y.photos || []).some((p) => p.id === photoId));
+  const p = x?.photos.find((q) => q.id === photoId);
+  return p ? { d: { id: x.dropId, title: x.title, teacherId: x.teacherId }, p: { ...p, studentIds: [sid] } } : null;
+};
+reportItem = function reportItem(target, reason, note, from) {
+  if (!target?.photoId) return reportItemDrop(target, reason, note, from);
+  // The batch is only in its teacher's copy (and the server's); a student's copy has the photo on their own offer.
+  const f = photoTarget(target.photoId, target.studentId);
+  if (!f || !f.p.url) throw cmErr('That photo is gone.', 404);
+  const sid = target.studentId || f.p.studentIds[0];
+  if (!f.p.studentIds.includes(sid) || !getStudent(sid)) throw cmErr('This photo is not for you.', 404);
+  if (!REPORT_REASONS[reason]) throw cmErr('Pick a reason.');
+  const who = reporter(from, { studentId: sid });
+  if (who.role === 'Family') throw cmErr('Families do not see these photos.');
+  const at = nowIso(), list = (store.reports ||= []);
+  const open = list.find((r) => r.from.key === who.key && r.status === 'open' && r.photoId === f.p.id);
+  if (open) return open;
+  if (list.filter((r) => r.from.key === who.key && Date.parse(at) - Date.parse(r.at) < 3600e3).length >= REPORT_LIMIT) throw cmErr('You have sent a lot of reports. Try again later, or speak to a teacher.', 429);
+  const r = { id: uid('rp-'), kind: 'photo', photoId: f.p.id, dropId: f.d.id, url: f.p.url, title: f.d.title, teacherId: f.d.teacherId, studentId: sid, reason, note: String(note ?? '').trim().slice(0, 1000), at, from: who, status: 'open', history: [] };
+  list.push(r);
+  for (const k of MODERATOR_KINDS) notify(toRole(k), `New report: a photo from “${f.d.title}” (${getStudent(sid).name}). ${REPORT_REASONS[reason]}.`, { persona: toRole(k), screen: 'reports', param: r.id });
+  emit();
+  return r;
+};
+moderateReport = function moderateReport(id, action, note, by) {
+  const r = getReport(id);
+  if (!r?.photoId) return moderateReportDrop(id, action, note, by);
+  if (action !== 'photo' && action !== 'none') throw cmErr('For a photo: remove it, or no action needed.');
+  if (by && !teacherById[by]) throw cmErr('No such teacher.');
+  // A moderator's copy has the report, not the batch: the server (which has it) takes the photo off everywhere.
+  const f = dropPhotoById(r.photoId), at = nowIso(), name = by ? teacherById[by].name : 'Pilot admin';
+  if (action === 'photo' && !r.url) throw cmErr('That photo is gone.', 404);
+  if (action === 'photo' && f) {
+    if (!f.p.url) throw cmErr('That photo is gone.', 404);
+    const url = f.p.url, told = new Set();
+    for (const x of spots()) if (x.dropId === f.d.id && x.photos.some((p) => p.id === f.p.id)) {
+      x.photos = x.photos.filter((p) => p.id !== f.p.id);
+      if (x.image === url) x.image = x.photos[0]?.url || null;
+      if (x.status === 'open' && !x.photos.length) x.status = 'removed';
+      told.add(x.studentId);
+    }
+    for (const e of store.events) if (e.spotted?.dropId === f.d.id && e.evidence.some((v) => v.url === url)) e.evidence = e.evidence.filter((v) => v.url !== url);
+    Object.assign(f.p, { url: null, removed: { at, by: name } });
+    for (const sid of told) notify(toStudent(sid), `A teacher has removed a photo from “${f.d.title}”.`, { persona: toStudent(sid), screen: 'map' });
+  }
+  const entry = { action, note: String(note ?? '').trim().slice(0, 1000), at, by: name };
+  for (const x of store.reports) if (x.photoId === r.photoId) { x.history.push({ ...entry }); x.status = REPORT_STATUS[action]; if (action === 'photo') x.url = null; }
+  emit();
+  return r;
+};
+// PDPA erasure: the student leaves every photo they were given; a photo given to nobody else leaves the drop (its file is
+// deleted with the student's files, server/routes/50-pdpa.mjs, since nothing uses it any more).
+const eraseStudentDrop = eraseStudent;
+eraseStudent = function eraseStudent(sid, alsoTo = []) {
+  if (getStudent(sid)) for (const d of drops()) {
+    for (const p of d.photos) p.studentIds = p.studentIds.filter((x) => x !== sid);
+    d.photos = d.photos.filter((p) => p.studentIds.length || !p.url);
+  }
+  return eraseStudentDrop(sid, alsoTo);
+};
 // ── Year handover: a new year's class lists move students to new advisors (docs/pilot-server.md) ──
 // importRoster notes each change of advisor in store.handovers ({ id, studentId, from, to, date, at, fromYear, year,
 // newYear }) and, when the academic year changes, store.yearStart ({ year, fromYear, date, at }). The outgoing
@@ -2283,6 +2870,1044 @@ export function markMilestonesSeen(studentId, keys) {
   return seen;
 }
 
+// ── Exhibition screens (open evenings, the library, a lobby TV; src/screens/Exhibitions.jsx, src/screens/Kiosk.jsx,
+// server/routes/45-exhibition.mjs) ──
+// store.exhibitions [{ id: 'ex-…', title, token (long and random, made by the browser: the screen's address), by
+// (teacherId | null), at, from, to (moment dates, inclusive; null: open), seconds (per slide), years: [British Years],
+// classIds, advisory (by's advisees), lineIds (school lines; none: every line), paused: { at, by } | null, revoked:
+// { at, by } | null, removed: [{ eventId, by, at }] }], made on first use.
+// A slide is a moment that is publishable, not hidden by safeguarding, not a goal, dated in the window, on a chosen line,
+// of a chosen student, whose student has not turned school screens off (privacy.screens === false), and that was never
+// removed from this exhibition. It carries the first name and Year only, and one line of a publishable reflection.
+export const EXHIBIT_SECONDS = { min: 4, max: 60, standard: 10 };
+const exErr = (message, status = 400) => Object.assign(new Error(message), { status });
+export const getExhibitions = () => store.exhibitions || [];
+export const getExhibition = (id) => getExhibitions().find((x) => x.id === id);
+export const EXHIBIT_TOKEN = /^[A-Za-z0-9_-]{32,128}$/;
+export const exhibitionByToken = (t) => (typeof t === 'string' && EXHIBIT_TOKEN.test(t) ? getExhibitions().find((x) => x.token === t) : undefined);
+export const screensAllowed = (sid) => getPrivacy(sid).screens !== false;
+export function exhibitionStudents(x) {
+  const years = new Set(x.years || []), classes = new Set(x.classIds || []);
+  const any = years.size || classes.size || x.advisory;
+  const inClass = new Set(getEnrolments().filter((n) => classes.has(n.classId) && !(n.to && n.to < TODAY)).map((n) => n.studentId));
+  return new Set(getStudents().filter((s) => !any || years.has(s.grade + 1) || inClass.has(s.id) || (x.advisory && !!x.by && s.advisorId === x.by)).map((s) => s.id));
+}
+const oneLine = (t) => {
+  const s = String(t ?? '').replace(/\s+/g, ' ').trim(), first = s.match(/^.+?[.!?](?=\s|$)/)?.[0] || s;
+  return first.length > 140 ? `${first.slice(0, 139).trimEnd()}…` : first;
+};
+export function exhibitionSlides(idOrX) {
+  const x = typeof idOrX === 'string' ? getExhibition(idOrX) : idOrX;
+  if (!x) return [];
+  const who = exhibitionStudents(x), gone = new Set((x.removed || []).map((r) => r.eventId)), lines = new Set(x.lineIds || []);
+  const onLine = (l) => !lines.size || lines.has(l) || lines.has(rootLine(l));
+  return store.events.filter((e) => who.has(e.studentId) && e.visibility === 'publishable' && !e.hidden && e.type !== 'goal' && e.date <= TODAY
+    && (!x.from || e.date >= x.from) && (!x.to || e.date <= x.to) && e.lineIds.some(onLine) && !gone.has(e.id) && screensAllowed(e.studentId))
+    .sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id)).slice(0, 200).map((e) => {
+      const s = getStudent(e.studentId), l = lineById(e.lineIds.find(onLine));
+      const r = store.reflections.find((f) => f.eventId === e.id && f.visibility === 'publishable' && String(f.text || '').trim());
+      return { eventId: e.id, studentId: e.studentId, title: e.title, date: e.date, name: s.name.split(' ')[0], year: s.grade + 1,
+        line: l ? { id: l.id, name: l.name, colour: l.colour } : null, photo: (e.evidence || []).find(isPhoto)?.url || null, quote: r ? oneLine(r.text) : null };
+    });
+}
+export function createExhibition(spec, by, token) {
+  if (typeof token !== 'string' || !EXHIBIT_TOKEN.test(token) || getExhibitions().some((x) => x.token === token)) throw exErr('Could not make an address for the screen. Try again.');
+  if (by && !teacherById[by]) throw exErr('No such teacher.');
+  const title = String(spec?.title ?? '').replace(/\s+/g, ' ').trim().slice(0, 80);
+  if (!title) throw exErr('Give the screen a title.');
+  const day = (d) => (/^\d{4}-\d{2}-\d{2}$/.test(d || '') ? d : null);
+  const from = day(spec.from), to = day(spec.to);
+  if (from && to && from > to) throw exErr('The first day is after the last day.');
+  const seconds = Math.round(Number(spec.seconds ?? EXHIBIT_SECONDS.standard));
+  if (!(seconds >= EXHIBIT_SECONDS.min && seconds <= EXHIBIT_SECONDS.max)) throw exErr(`Show each slide for ${EXHIBIT_SECONDS.min} to ${EXHIBIT_SECONDS.max} seconds.`);
+  const years = [...new Set([].concat(spec.years || []).map(Number))].filter((y) => Number.isInteger(y) && y >= 1 && y <= 13).sort((a, b) => a - b);
+  const classIds = [...new Set([].concat(spec.classIds || []))].filter((c) => getClasses().some((k) => k.id === c));
+  const lineIds = [...new Set([].concat(spec.lineIds || []))].filter((l) => lineById(l) && !lineById(l).studentId);
+  const x = { id: uid('ex-'), title, token, by: by || null, at: nowIso(), from, to, seconds, years, classIds, advisory: !!spec.advisory && !!by, lineIds, paused: null, revoked: null, removed: [] };
+  (store.exhibitions ||= []).push(x);
+  emit();
+  return x;
+}
+const liveExhibition = (id) => {
+  const x = getExhibition(id);
+  if (!x) throw exErr('No such screen.', 404);
+  if (x.revoked) throw exErr('This screen has been turned off.', 409);
+  return x;
+};
+// Removed slides never come back, whatever the student does with the moment later.
+export function removeExhibitionSlide(id, eventId, by) {
+  const x = liveExhibition(id);
+  if (typeof eventId !== 'string' || !eventId) throw exErr('Pick a slide.');
+  if (!(x.removed ||= []).some((r) => r.eventId === eventId)) x.removed.push({ eventId, by: by || null, at: nowIso() });
+  emit();
+}
+export function pauseExhibition(id, paused, by) {
+  const x = liveExhibition(id);
+  x.paused = paused ? { at: nowIso(), by: by || null } : null;
+  emit();
+}
+export function revokeExhibition(id, by) {
+  const x = getExhibition(id);
+  if (!x) throw exErr('No such screen.', 404);
+  if (!x.revoked) x.revoked = { at: nowIso(), by: by || null };
+  emit();
+}
+// ── Leaver portfolio (src/components/Leaver.jsx, server/routes/41-leaver.mjs) ──
+// A Year 12 or 13 student (Year 11 as practice) builds one portfolio from their own record for applications.
+// store.leaver { [studentId]: { profile: { name, statement, email, photo }, moments: [{ eventId, evidence: [index],
+//   reflectionId, sentences: [index] | null }], skillsOff: [tag], endorsements: [endorsementId], template,
+//   links: [{ token, at, expiresAt, revoked, label }], comments: [{ id, by, text, at, done? }], updatedAt } }
+// Only the student changes it; their advisor (and whole-school staff) may comment. leaverView() is what any copy shows:
+// it checks every item again, so a moment made private or hidden by a moderator later drops out by itself.
+import { verifyCode as codeOf } from './format.js';
+export const LEAVER_MAX = 8;
+export const LEAVER_TEMPLATES = { classic: 'NIST navy classic', minimal: 'Minimal', 'two-column': 'Two columns' };
+export const LEAVER_LINK_DAYS = [30, 90, 180, 365];
+const LV_TEXT = { name: 80, statement: 1500, email: 120, label: 80, comment: 1000 };
+const lvErr = (m, status = 400) => Object.assign(new Error(m), { status });
+export const leaverAllowed = (sid) => { const s = getStudent(sid); return !!s && !s.cohortOnly && s.grade >= 10; };
+export const leaverPractice = (sid) => getStudent(sid)?.grade === 10;
+export const getLeaver = (sid) => store.leaver?.[sid] || null;
+export const sentencesOf = (text = '') => (String(text).match(/[^.!?]+(?:[.!?]+["”’)]*|$)/g) || []).map((x) => x.trim()).filter(Boolean);
+export const leaverMomentOk = (e, sid) => !!e && e.studentId === sid && e.type !== 'goal' && e.visibility !== 'private' && !e.hidden;
+export const leaverReflectionOk = (r, e) => !!r && !!e && r.eventId === e.id && (r.visibility || 'private') !== 'private' && !r.hidden;
+// Endorsements on moments the student shows the school or beyond (school, publishable); never on a hidden moment.
+const LV_ENDORSE_VIS = ['school', 'publishable'];
+export const leaverEndorsementOk = (n, sid) => { const e = n && getEvent(n.eventId); return !!e && e.studentId === sid && !e.hidden && LV_ENDORSE_VIS.includes(e.visibility) && (!n.visibility || LV_ENDORSE_VIS.includes(n.visibility)); };
+export function leaverChoices(sid) {
+  const moments = store.events.filter((e) => leaverMomentOk(e, sid)).sort((a, b) => b.date.localeCompare(a.date) || a.id.localeCompare(b.id))
+    .map((e) => ({ ...e, reflections: store.reflections.filter((r) => leaverReflectionOk(r, e)), tags: getTags(e) }));
+  const endorsements = store.endorsements.filter((n) => leaverEndorsementOk(n, sid)).map((n) => ({ ...n, teacher: teacherById[n.teacherId], moment: getEvent(n.eventId) }));
+  const blocked = store.events.filter((e) => e.studentId === sid && e.type !== 'goal' && (e.visibility === 'private' || e.hidden)).length;
+  return { moments, endorsements, blocked };
+}
+const blankLeaver = (sid) => ({ profile: { name: getStudent(sid).name, statement: '', email: '', photo: null }, moments: [], skillsOff: [], endorsements: [], template: 'classic', links: [], comments: [], updatedAt: null });
+const lvStr = (v, max) => String(v ?? '').replace(/\s+$/g, '').slice(0, max);
+const LV_PHOTO = /^(\/?api\/files\/[a-f0-9]{32}\.[a-z0-9]{2,5}|data:image\/(png|jpeg|gif|webp);base64,[A-Za-z0-9+/=]+|evidence\/[\w.-]+)$/;
+const ints = (a, n) => [...new Set((Array.isArray(a) ? a : []).filter((i) => Number.isInteger(i) && i >= 0 && i < n))].sort((x, y) => x - y);
+export function saveLeaver(studentId, patch = {}) {
+  if (!leaverAllowed(studentId)) throw lvErr('The leaver portfolio is for Years 11 to 13.', 403);
+  const p = ((store.leaver ||= {})[studentId] ||= blankLeaver(studentId));
+  if (patch.profile) {
+    const f = { ...p.profile, ...patch.profile };
+    const email = lvStr(f.email, LV_TEXT.email).trim();
+    if (email && !/^\S+@\S+\.\S+$/.test(email)) throw lvErr('That email does not look right.');
+    if (f.photo && !LV_PHOTO.test(String(f.photo))) throw lvErr('Use a photo you uploaded.');
+    p.profile = { name: lvStr(f.name, LV_TEXT.name).trim() || getStudent(studentId).name, statement: lvStr(f.statement, LV_TEXT.statement), email, photo: f.photo || null };
+  }
+  if (patch.moments) {
+    if (!Array.isArray(patch.moments)) throw lvErr('Pick moments from your map.');
+    const seen = new Set(), out = [];
+    for (const m of patch.moments) {
+      const e = getEvent(m?.eventId);
+      if (!leaverMomentOk(e, studentId)) throw lvErr(e?.studentId === studentId && e.visibility === 'private' ? 'Private moments cannot go in a portfolio.' : 'That moment cannot go in a portfolio.');
+      if (seen.has(e.id)) continue; seen.add(e.id);
+      const r = m.reflectionId ? store.reflections.find((x) => x.id === m.reflectionId) : null;
+      if (m.reflectionId && !leaverReflectionOk(r, e)) throw lvErr('Private reflections cannot go in a portfolio.');
+      out.push({ eventId: e.id, evidence: ints(m.evidence, e.evidence?.length || 0), reflectionId: r?.id || null, sentences: r && Array.isArray(m.sentences) ? ints(m.sentences, sentencesOf(r.text).length) : null });
+    }
+    if (out.length > LEAVER_MAX) throw lvErr(`Pick up to ${LEAVER_MAX} moments.`);
+    p.moments = out;
+  }
+  if (patch.skillsOff) p.skillsOff = [...new Set([].concat(patch.skillsOff).filter((k) => LEARNER_PROFILE.includes(k) || ATL.includes(k)))];
+  if (patch.endorsements) {
+    const ids = [...new Set([].concat(patch.endorsements))];
+    if (ids.some((id) => !leaverEndorsementOk(store.endorsements.find((n) => n.id === id), studentId))) throw lvErr('Only endorsements on moments your school can see can go in.');
+    p.endorsements = ids;
+  }
+  if (patch.template) { if (!LEAVER_TEMPLATES[patch.template]) throw lvErr('Pick a template.'); p.template = patch.template; }
+  p.updatedAt = nowIso();
+  emit();
+  return p;
+}
+// A share link: the token comes from the browser (crypto, unguessable), never from uid().
+export function shareLeaver(studentId, { token, days = 90, label = '' } = {}) {
+  const p = getLeaver(studentId);
+  if (!leaverAllowed(studentId) || !p) throw lvErr('Make your portfolio first.', 404);
+  if (!leaverView(studentId).moments.length) throw lvErr('Pick at least one moment first.');
+  if (!/^[A-Za-z0-9_-]{22,64}$/.test(String(token || ''))) throw lvErr('That link could not be made.');
+  const taken = Object.values(store.leaver).some((x) => x.links?.some((l) => l.token === token)) || Object.values(store.drafts || {}).flat().some((d) => d?.shareLinks?.some((l) => l.token === token));
+  if (taken) throw lvErr('That link could not be made.', 409);
+  if (!LEAVER_LINK_DAYS.includes(Number(days))) throw lvErr('Pick how long the link works.');
+  const link = { token, at: nowIso(), expiresAt: daysBefore(-Number(days)), revoked: false, label: lvStr(label, LV_TEXT.label).trim() };
+  (p.links ||= []).push(link);
+  log(studentId, getStudent(studentId).name, 'link', `Made a leaver portfolio link${link.label ? ` for ${link.label}` : ''}, until ${link.expiresAt}`);
+  emit();
+  return link;
+}
+export function revokeLeaver(studentId, token) {
+  const l = getLeaver(studentId)?.links?.find((x) => x.token === token);
+  if (!l) throw lvErr('No such link.', 404);
+  if (!l.revoked) { l.revoked = true; l.revokedAt = nowIso(); log(studentId, getStudent(studentId).name, 'link', `Withdrew a leaver portfolio link${l.label ? ` for ${l.label}` : ''}`); }
+  emit();
+  return l;
+}
+export function commentLeaver(studentId, by, text) {
+  const p = getLeaver(studentId), t = teacherById[by], body = lvStr(text, LV_TEXT.comment).trim();
+  if (!p) throw lvErr('There is no portfolio yet.', 404);
+  if (!t) throw lvErr('No such teacher.');
+  if (body.length < 2) throw lvErr('Write a comment first.');
+  const c = { id: uid('lc-'), by, text: body, at: nowIso() };
+  (p.comments ||= []).push(c);
+  notify(toStudent(studentId), `${shortName(t.name)} left a comment on your leaver portfolio`, { persona: toStudent(studentId), screen: 'leaver' });
+  emit();
+  return c;
+}
+export function doneLeaverComment(studentId, id) {
+  const c = getLeaver(studentId)?.comments?.find((x) => x.id === id);
+  if (!c) throw lvErr('No such comment.', 404);
+  c.done = c.done ? null : nowIso();
+  emit();
+  return c;
+}
+// What a portfolio shows, checked item by item: the draft view, the PDF and the public page all use it.
+export function leaverView(sid) {
+  const s = getStudent(sid), p = getLeaver(sid);
+  if (!s || !p) return null;
+  const lineOf = (id) => { const l = lineById(id); return l && { id, name: s.lineLabels?.[id] || l.name, colour: l.colour }; };
+  const moments = (p.moments || []).flatMap((m) => {
+    const e = getEvent(m.eventId);
+    if (!leaverMomentOk(e, sid)) return [];
+    const r = m.reflectionId && store.reflections.find((x) => x.id === m.reflectionId);
+    const ok = leaverReflectionOk(r, e) ? r : null, parts = ok ? sentencesOf(ok.text) : [];
+    const text = ok ? (Array.isArray(m.sentences) ? m.sentences.filter((i) => parts[i]).map((i) => parts[i]).join(' ') : ok.text) : '';
+    const verified = e.verification && e.verification !== 'student-added';
+    return [{ id: e.id, title: e.title, date: e.date, type: e.type, summary: e.summary || e.about || '', lines: (e.lineIds || []).map(lineOf).filter(Boolean),
+      verification: e.verification, code: verified && e.visibility === 'publishable' ? codeOf(e.id) : null,
+      evidence: (m.evidence || []).map((i) => e.evidence?.[i]).filter(Boolean).map(({ kind, url, caption }) => ({ kind, url: url || null, caption: caption || '' })),
+      reflection: text ? { prompt: ok.prompt || '', text } : null, tags: getTags(e) }];
+  }).slice(0, LEAVER_MAX);
+  const off = new Set(p.skillsOff || []);
+  const tally = (field, list) => list.map((k) => ({ k, n: moments.filter((m) => m.tags?.[field]?.includes(k)).length })).filter((x) => x.n && !off.has(x.k));
+  const endorsements = (p.endorsements || []).map((id) => store.endorsements.find((n) => n.id === id)).filter((n) => leaverEndorsementOk(n, sid))
+    .map((n) => ({ id: n.id, teacher: teacherById[n.teacherId]?.name || 'A teacher', role: teacherById[n.teacherId]?.role || '', note: n.note, date: n.date, moment: getEvent(n.eventId).title }));
+  return { name: p.profile?.name || s.name, year: s.grade + 1, programme: s.programme || '', statement: p.profile?.statement || '', email: p.profile?.email || '', photo: p.profile?.photo || null,
+    template: LEAVER_TEMPLATES[p.template] ? p.template : 'classic', moments: moments.map(({ tags, ...m }) => m), skills: { lp: tally('lp', LEARNER_PROFILE), atl: tally('atl', ATL) }, endorsements, practice: s.grade === 10 };
+}
+export const leaverLinkOpen = (l) => !!l && !l.revoked && l.expiresAt >= TODAY;
+
+// ── Weekly goal check-ins (src/components/GoalCheckins.jsx) ──
+// Once a week (Monday to Sunday, Bangkok) a student with an open goal is asked how it is going. Stored on the goal:
+// e.checkins [{ id, week (its Monday), date, status, note, next, at }] (one per week: answering again replaces it),
+// e.checkinSnooze (no questions before that day), e.encouragements [{ id, by, line, text, at }]. Stuck twice in a row
+// flags the goal to the advisor and an accepted sponsor, who can send encouragement. No streaks, no scores.
+export const CHECKIN_STATUS = { well: 'Going well', stuck: 'Stuck', none: 'Not started' };
+export const ENCOURAGE_LINES = ['You’ve got this. Small steps still count.', 'Being stuck is part of it. Come and find me if you want to talk it through.', 'I’m proud of you for keeping at it.', 'Try one tiny step this week. I’m here to help.'];
+export const CHECKIN_SNOOZE_DAYS = 14;
+const ciClip = (v, n) => String(v ?? '').trim().slice(0, n);
+const ciDays = (d, n) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 864e5).toISOString().slice(0, 10);
+export const isOpenGoal = (e) => e?.type === 'goal' && !e.requirement && !e.closedOn;
+export const goalCheckins = (e) => e?.checkins || [];
+export const checkinSnoozed = (e) => !!e?.checkinSnooze && e.checkinSnooze > TODAY;
+export const checkedInThisWeek = (e) => goalCheckins(e).some((c) => c.week === weekOf(TODAY).from);
+export const checkinsDue = (studentId) => store.events.filter((e) => e.studentId === studentId && isOpenGoal(e) && !checkinSnoozed(e) && !checkedInThisWeek(e)).sort((a, b) => a.date.localeCompare(b.date));
+// The last two check-ins both "Stuck", the latest one this week or last.
+export function stuckTwice(e) {
+  const c = goalCheckins(e).slice(-2);
+  return isOpenGoal(e) && c.length === 2 && c.every((x) => x.status === 'stuck') && c[1].week >= weekOf(TODAY, 1).from;
+}
+// Who may send encouragement on a goal: the student's advisor or the goal's accepted sponsor. Never a private goal.
+export const canEncourage = (eventId, tid) => { const e = getEvent(eventId); return isOpenGoal(e) && !!tid && e.visibility !== 'private' && (getStudent(e.studentId)?.advisorId === tid || (e.sponsor?.teacherId === tid && e.sponsor.status === 'accepted')); };
+// The stuck goals a teacher sees on My advisory and This week, from the part of the record they hold.
+export const stuckFlags = (tid) => store.events.filter((e) => stuckTwice(e) && canEncourage(e.id, tid)).map((e) => {
+  const last = goalCheckins(e).at(-1);
+  return { event: e, student: getStudent(e.studentId), last, sent: (e.encouragements || []).find((x) => x.by === tid && x.at >= last.at) || null };
+});
+export function checkInGoal(goalId, f = {}) {
+  const e = getEvent(goalId);
+  if (!isOpenGoal(e)) throw cmErr('No such goal.', 404);
+  if (!Object.hasOwn(CHECKIN_STATUS, f.status)) throw cmErr('Pick how it is going.');
+  const week = weekOf(TODAY).from;
+  const c = { id: uid('ci-'), week, date: TODAY, status: f.status, note: ciClip(f.note, 300), next: ciClip(f.next, 200), at: nowIso() };
+  e.checkins = [...goalCheckins(e).filter((x) => x.week !== week), c];
+  const s = getStudent(e.studentId);
+  log(e.studentId, s?.name, 'goal', `Checked in on “${e.title}”: ${CHECKIN_STATUS[c.status]}`);
+  if (stuckTwice(e) && e.visibility !== 'private') {
+    const to = [s?.advisorId, e.sponsor?.status === 'accepted' ? e.sponsor.teacherId : null].filter((t, i, a) => t && a.indexOf(t) === i);
+    for (const t of to) notify(toTeacher(t), `${s.name.split(' ')[0]} is stuck on “${e.title}”`, { persona: toTeacher(t), screen: 'week' });
+  }
+  emit();
+  return c;
+}
+export function snoozeCheckins(goalId) {
+  const e = getEvent(goalId);
+  if (!isOpenGoal(e)) throw cmErr('No such goal.', 404);
+  e.checkinSnooze = ciDays(TODAY, CHECKIN_SNOOZE_DAYS);
+  log(e.studentId, getStudent(e.studentId)?.name, 'goal', `Paused check-ins on “${e.title}” until ${e.checkinSnooze}`);
+  emit();
+  return e.checkinSnooze;
+}
+export function sendEncouragement(goalId, by, line, text) {
+  const e = getEvent(goalId);
+  if (!isOpenGoal(e)) throw cmErr('No such goal.', 404);
+  if (!ENCOURAGE_LINES.includes(line) && !ciClip(text, 300)) throw cmErr('Pick a line or write one.');
+  const n = { id: uid('en-'), by, line: ENCOURAGE_LINES.includes(line) ? line : '', text: ciClip(text, 300), at: nowIso() };
+  e.encouragements = [...(e.encouragements || []), n];
+  const who = shortName(teacherName(by));
+  notify(toStudent(e.studentId), `${who} sent you encouragement for “${e.title}”: ${[n.line, n.text].filter(Boolean).join(' ')}`, { persona: toStudent(e.studentId), screen: 'map', param: e.id });
+  log(e.studentId, teacherName(by), 'goal', `Sent encouragement on “${e.title}”`);
+  emit();
+  return n;
+}
+// ── Conference booking: families pick a time with the advisor (src/components/ConferenceBooking.jsx) ──
+// An advisor (their advisees) or whole-school staff (a whole Year: each student with their own advisor) open a round:
+// days with hours, a slot length, breaks (every day), a room or an online link. Each family picks one slot per child and can
+// change or cancel it until CONF_CHANGE_H hours before; the advisor sees the day grid, books for a family and blocks slots.
+// store.confRounds: { id: 'cr-…', title, days: [{ date, from, to }], slot, breaks: [{ from, to }], online, location, link,
+//   advisorId | null, year | null, advisorIds, studentIds, by, at, closedOn? }
+// store.confBookings: { id: 'cb-…', roundId, advisorId, studentId, date, time, by ('family' | teacher id), at, reminded? }
+// store.confBlocks: { id: 'ck-…', roundId, advisorId, date, time, by, at }. All three made on first use.
+// Times are Bangkok wall-clock times (no daylight saving): a slot starts at confAt(date, time).
+export const CONF_SLOTS = [10, 15, 20];
+export const CONF_CHANGE_H = 24;
+export const CONF_TZ = '+07:00';
+const cfErr = (m, status = 400) => Object.assign(new Error(m), { status });
+const isHm = (t) => /^([01]\d|2[0-3]):[0-5]\d$/.test(String(t || ''));
+const hmMin = (t) => +t.slice(0, 2) * 60 + +t.slice(3, 5);
+const minHm = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+// "3 Nov 2026 at 15:20" (notifications are stored in English; src/i18n.js renders the family's in Thai).
+export const confWhen = (date, time) => `${+date.slice(8)} ${MON[+date.slice(5, 7) - 1]} ${date.slice(0, 4)} at ${time}`;
+export const confAt = (date, time) => Date.parse(`${date}T${time}:00${CONF_TZ}`);
+export const confEnd = (r, time) => minHm(hmMin(time) + r.slot);
+export const getConferenceRounds = () => store.confRounds || [];
+export const getConferenceRound = (id) => getConferenceRounds().find((r) => r.id === id) || null;
+export const getConfBookings = () => store.confBookings || [];
+export const getConfBooking = (id) => getConfBookings().find((b) => b.id === id) || null;
+const confBlocks = () => store.confBlocks || [];
+export const roundLive = (r) => !!r && !r.closedOn && r.days.some((d) => d.date >= TODAY);
+// Brothers and sisters: a pilot server sets this from the family accounts (server/routes/68-conference.mjs); the demo has
+// its one family, by persona.
+let siblingsOf = (sid) => (PERSONA_OF_FAMILY[sid] ? Object.keys(PERSONA_OF_FAMILY).filter((x) => x !== sid && PERSONA_OF_FAMILY[x] === PERSONA_OF_FAMILY[sid]) : []);
+export const setSiblingsOf = (fn) => { siblingsOf = fn; };
+export const confSiblings = (sid) => siblingsOf(sid);
+// The start times of one day, leaving out the breaks.
+export function confDayTimes(r, day) {
+  const out = [], end = hmMin(day.to);
+  for (let t = hmMin(day.from); t + r.slot <= end; t += r.slot) if (!r.breaks.some((b) => t < hmMin(b.to) && t + r.slot > hmMin(b.from))) out.push(minHm(t));
+  return out;
+}
+const slotOk = (r, date, time) => r.days.some((d) => d.date === date && confDayTimes(r, d).includes(time));
+const sameSlot = (x, roundId, advisorId, date, time) => x.roundId === roundId && x.advisorId === advisorId && x.date === date && x.time === time;
+// One advisor's day grid in one round: booked, blocked or free. A family's copy has other families' bookings as
+// { taken: true } with no student (server/scope.mjs).
+export function confGrid(roundId, advisorId) {
+  const r = getConferenceRound(roundId); if (!r) return null;
+  return { round: r, days: r.days.map((d) => ({ ...d, slots: confDayTimes(r, d).map((time) => {
+    const booking = getConfBookings().find((b) => sameSlot(b, r.id, advisorId, d.date, time)), block = confBlocks().find((b) => sameSlot(b, r.id, advisorId, d.date, time));
+    return { date: d.date, time, end: confEnd(r, time), state: booking ? 'booked' : block ? 'blocked' : 'free', booking: booking || null, block: block || null };
+  }) })) };
+}
+export const confBookingOf = (roundId, studentId) => getConfBookings().find((b) => b.roundId === roundId && b.studentId === studentId) || null;
+// A brother's or sister's booking (any round, any advisor) that overlaps this slot.
+export function confClash(studentId, date, time, slot, siblings = siblingsOf(studentId)) {
+  const a = confAt(date, time), z = a + slot * 60000;
+  return getConfBookings().find((b) => {
+    if (!b.studentId || b.studentId === studentId || !siblings.includes(b.studentId)) return false;
+    const r = getConferenceRound(b.roundId), s = confAt(b.date, b.time);
+    return !!r && s < z && a < s + r.slot * 60000;
+  }) || null;
+}
+// Families change or cancel until CONF_CHANGE_H hours before; a new booking needs that much notice too.
+export const confTooSoon = (date, time, now = Date.now()) => confAt(date, time) - now < CONF_CHANGE_H * 3600e3;
+const roundStudents = ({ advisorId, year }) => store.students.filter((s) => !s.cohortOnly && s.advisorId && (advisorId ? s.advisorId === advisorId : s.grade + 1 === Number(year)));
+function confClean(spec, keep) {
+  const title = String(spec.title ?? keep?.title ?? '').trim().slice(0, 80) || 'Conferences';
+  const slot = Number(spec.slot ?? keep?.slot);
+  if (!CONF_SLOTS.includes(slot)) throw cfErr('Pick 10, 15 or 20 minutes');
+  const days = [].concat(spec.days ?? keep?.days ?? []).map((d) => ({ date: String(d?.date || ''), from: String(d?.from || ''), to: String(d?.to || '') }));
+  if (!days.length || days.length > 10 || new Set(days.map((d) => d.date)).size !== days.length) throw cfErr('Pick between 1 and 10 different days');
+  if (days.some((d) => !isDay(d.date) || !isHm(d.from) || !isHm(d.to) || d.from >= d.to)) throw cfErr('Each day needs a date and a start before its end');
+  if (days.some((d) => d.date < TODAY && !keep?.days.some((k) => k.date === d.date))) throw cfErr('Pick days from today on');
+  days.sort((a, b) => a.date.localeCompare(b.date));
+  const breaks = [].concat(spec.breaks ?? keep?.breaks ?? []).map((b) => ({ from: String(b?.from || ''), to: String(b?.to || '') }));
+  if (breaks.length > 6 || breaks.some((b) => !isHm(b.from) || !isHm(b.to) || b.from >= b.to)) throw cfErr('Each break needs a start before its end');
+  const online = !!(spec.online ?? keep?.online);
+  const location = String(spec.location ?? keep?.location ?? '').trim().slice(0, 80);
+  const link = online ? String(spec.link ?? keep?.link ?? '').trim().slice(0, 300) : '';
+  if (online ? !/^https:\/\/\S+$/.test(link) : !location) throw cfErr(online ? 'Add the meeting link (https://…)' : 'Say where it is');
+  const r = { title, days, slot, breaks, online, location, link };
+  if (!days.some((d) => confDayTimes(r, d).length)) throw cfErr('No times fit: check the hours and breaks');
+  return r;
+}
+export function openConferenceRound(spec = {}, by = null) {
+  if (by && !teacherById[by]) throw cfErr('No such teacher');
+  const { advisorId = null, year = null } = spec;
+  if (!advisorId === !year) throw cfErr('Pick an advisory or a Year');
+  if (advisorId && !teacherById[advisorId]) throw cfErr('No such advisor');
+  const c = confClean(spec);
+  const busy = new Set(getConferenceRounds().filter(roundLive).flatMap((r) => r.studentIds));
+  const all = roundStudents({ advisorId, year }), ids = all.map((s) => s.id).filter((id) => !busy.has(id));
+  if (!ids.length) throw cfErr(all.length ? 'These students already have conference booking open' : 'No students to book', all.length ? 409 : 400);
+  const advisorIds = [...new Set(ids.map((id) => getStudent(id).advisorId))];
+  const r = { id: uid('cr-'), ...c, advisorId: advisorId || null, year: year ? Number(year) : null, advisorIds, studentIds: ids, by: by || null, at: nowIso() };
+  (store.confRounds ||= []).push(r);
+  for (const sid of ids) {
+    const s = getStudent(sid);
+    notify(toFamily(sid), `${shortName(teacherById[s.advisorId]?.name || '')} opened conference booking: “${r.title}”. Pick a time for ${s.name.split(' ')[0]}`, { persona: toFamily(sid), screen: 'family', param: sid });
+  }
+  if (by) for (const aid of advisorIds) if (aid !== by) notify(toTeacher(aid), `${shortName(teacherById[by].name)} opened conference booking for ${r.year ? `Year ${r.year}` : 'your advisory'}: “${r.title}”`, { persona: toTeacher(aid), screen: 'advisory' });
+  emit();
+  return r;
+}
+// Title, place, days, hours, slot length or breaks. Refused while a booking would lose its time; blocks that no longer fit go.
+export function editConferenceRound(id, patch = {}, by = null) {
+  const r = getConferenceRound(id);
+  if (!r) throw cfErr('No such conference round', 404);
+  if (r.closedOn) throw cfErr('This round is closed', 410);
+  const c = confClean(patch, r);
+  const lost = getConfBookings().filter((b) => b.roundId === id && !slotOk(c, b.date, b.time)).length;
+  if (lost) throw cfErr(`${lost} booking${lost === 1 ? '' : 's'} would lose ${lost === 1 ? 'its' : 'their'} time: move or cancel ${lost === 1 ? 'it' : 'them'} first`, 409);
+  Object.assign(r, c, { editedAt: nowIso(), editedBy: by || null });
+  if (store.confBlocks) store.confBlocks = store.confBlocks.filter((k) => k.roundId !== id || slotOk(r, k.date, k.time));
+  emit();
+  return r;
+}
+export function closeConferenceRound(id, by = null) {
+  const r = getConferenceRound(id);
+  if (!r) throw cfErr('No such conference round', 404);
+  Object.assign(r, { closedOn: TODAY, closedBy: by || null });
+  emit();
+  return r;
+}
+// One slot per child per round: booking again moves it. by: 'family', or the advisor's teacher id (booking for the family).
+export function bookConference(roundId, studentId, { date, time } = {}, by = 'family') {
+  const r = getConferenceRound(roundId), s = getStudent(studentId);
+  if (!r || !s || !r.studentIds.includes(studentId)) throw cfErr('This conference is not for this student', 404);
+  if (!roundLive(r)) throw cfErr('Booking for this conference is closed', 410);
+  const advisorId = s.advisorId, fam = by === 'family';
+  if (!r.advisorIds.includes(advisorId)) throw cfErr('No advisor to meet', 409);
+  if (!fam && !teacherById[by]) throw cfErr('No such teacher');
+  if (!slotOk(r, date, time)) throw cfErr('Pick one of the times');
+  const now = Date.parse(nowIso());
+  if (confAt(date, time) <= now) throw cfErr('That time has passed', 409);
+  const mine = confBookingOf(roundId, studentId);
+  if (mine && mine.date === date && mine.time === time) return mine;
+  if (fam && mine && confTooSoon(mine.date, mine.time, now)) throw cfErr(`Less than ${CONF_CHANGE_H} hours to go: ask the advisor to change it`, 409);
+  if (fam && confTooSoon(date, time, now)) throw cfErr(`Pick a time at least ${CONF_CHANGE_H} hours ahead`, 409);
+  if (getConfBookings().some((b) => b !== mine && sameSlot(b, roundId, advisorId, date, time)) || confBlocks().some((k) => sameSlot(k, roundId, advisorId, date, time))) throw cfErr('That time was just taken. Pick another', 409);
+  const clash = confClash(studentId, date, time, r.slot);
+  if (clash) throw cfErr(`That clashes with ${getStudent(clash.studentId)?.name.split(' ')[0] || 'a brother or sister'}’s conference`, 409);
+  const b = mine || { id: uid('cb-'), roundId, advisorId, studentId };
+  Object.assign(b, { date, time, by, at: nowIso() }); delete b.reminded;
+  if (!mine) (store.confBookings ||= []).push(b);
+  const f = s.name.split(' ')[0], adv = shortName(teacherById[advisorId]?.name || '');
+  if (fam) notify(toTeacher(advisorId), `${s.name}’s family ${mine ? 'moved their' : 'booked a'} conference: ${confWhen(date, time)}`, { persona: toTeacher(advisorId), screen: 'advisory', param: `conf~${r.id}~${date}` });
+  else notify(toFamily(studentId), `${shortName(teacherById[by].name)} booked ${f}’s conference: ${confWhen(date, time)}`, { persona: toFamily(studentId), screen: 'family', param: studentId });
+  notify(toStudent(studentId), `Your conference with ${adv} is on ${confWhen(date, time)}`, { persona: toStudent(studentId), screen: 'map' });
+  emit();
+  return b;
+}
+export function cancelConference(id, by = 'family') {
+  const b = getConfBooking(id);
+  if (!b) throw cfErr('No such booking', 404);
+  const s = getStudent(b.studentId), fam = by === 'family';
+  if (!fam && !teacherById[by]) throw cfErr('No such teacher');
+  if (fam && confTooSoon(b.date, b.time, Date.parse(nowIso()))) throw cfErr(`Less than ${CONF_CHANGE_H} hours to go: ask the advisor to change it`, 409);
+  store.confBookings = getConfBookings().filter((x) => x !== b);
+  const f = s?.name.split(' ')[0] || 'the student';
+  if (fam) notify(toTeacher(b.advisorId), `${s?.name || 'A student'}’s family cancelled their conference on ${confWhen(b.date, b.time)}`, { persona: toTeacher(b.advisorId), screen: 'advisory', param: `conf~${b.roundId}~${b.date}` });
+  else notify(toFamily(b.studentId), `${shortName(teacherById[by].name)} cancelled ${f}’s conference on ${confWhen(b.date, b.time)}`, { persona: toFamily(b.studentId), screen: 'family', param: b.studentId });
+  notify(toStudent(b.studentId), `Your conference on ${confWhen(b.date, b.time)} was cancelled`, { persona: toStudent(b.studentId), screen: 'map' });
+  emit();
+  return b;
+}
+// The advisor keeps a time free of bookings (on), or opens it again (off).
+export function blockConferenceSlot(roundId, advisorId, date, time, on = true, by = null) {
+  const r = getConferenceRound(roundId);
+  if (!r || !r.advisorIds.includes(advisorId)) throw cfErr('No such conference round', 404);
+  if (!slotOk(r, date, time)) throw cfErr('Pick one of the times');
+  const k = confBlocks().find((x) => sameSlot(x, roundId, advisorId, date, time));
+  if (on && !k) {
+    if (getConfBookings().some((b) => sameSlot(b, roundId, advisorId, date, time))) throw cfErr('Someone booked this time: cancel it first', 409);
+    (store.confBlocks ||= []).push({ id: uid('ck-'), roundId, advisorId, date, time, by: by || null, at: nowIso() });
+  }
+  if (!on && k) store.confBlocks = confBlocks().filter((x) => x !== k);
+  emit();
+  return !!on;
+}
+// Bookings tomorrow (Bangkok) that have not had their reminder yet.
+export const confRemindersDue = (today = TODAY) => getConfBookings().filter((b) => b.studentId && b.date === dayAfter(today) && b.reminded !== b.date && getConferenceRound(b.roundId) && !getConferenceRound(b.roundId).closedOn);
+// The day before: a reminder to the family for each booking, and one to each advisor for their day. The server runs it.
+export function sendConferenceReminders(today = TODAY) {
+  const due = confRemindersDue(today), per = new Map();
+  for (const b of due) {
+    const r = getConferenceRound(b.roundId), s = getStudent(b.studentId);
+    b.reminded = b.date;
+    if (!s) continue;
+    notify(toFamily(b.studentId), `Reminder: ${s.name.split(' ')[0]}’s conference with ${shortName(teacherById[b.advisorId]?.name || '')} is tomorrow, ${confWhen(b.date, b.time)} · ${r.online ? 'online' : r.location}`, { persona: toFamily(b.studentId), screen: 'family', param: b.studentId });
+    per.set(b.advisorId, [...(per.get(b.advisorId) || []), b]);
+  }
+  for (const [aid, list] of per) {
+    const first = list.map((b) => b.time).sort()[0];
+    notify(toTeacher(aid), `Reminder: ${list.length} conference${list.length === 1 ? '' : 's'} tomorrow, the first ${confWhen(list[0].date, first)}`, { persona: toTeacher(aid), screen: 'advisory', param: `conf~${list[0].roundId}~${list[0].date}` });
+  }
+  if (due.length) emit();
+  return due.length;
+}
+// The rounds an advisor meets families in: live ones, and ones whose last day was in the past fortnight.
+export const advisorConfRounds = (advisorId) => getConferenceRounds().filter((r) => r.advisorIds.includes(advisorId) && (roundLive(r) || (!r.closedOn && r.days.at(-1).date >= daysBefore(14))))
+  .sort((a, b) => a.days[0].date.localeCompare(b.days[0].date) || a.at.localeCompare(b.at));
+// What a family sees: each live round that covers one of their children, with each child's advisor and booking.
+export const familyConfRounds = (childIds) => getConferenceRounds().filter((r) => roundLive(r) && childIds.some((id) => r.studentIds.includes(id)))
+  .map((r) => ({ round: r, children: childIds.filter((id) => r.studentIds.includes(id) && getStudent(id)).map((id) => ({ student: getStudent(id), advisorId: getStudent(id).advisorId, advisor: teacherById[getStudent(id).advisorId] || null, booking: confBookingOf(r.id, id) })) }));
+// A student's own conferences from today on.
+export const studentConferences = (studentId) => getConfBookings().filter((b) => b.studentId === studentId && b.date >= TODAY)
+  .map((b) => ({ booking: b, round: getConferenceRound(b.roundId), advisor: teacherById[b.advisorId] || null })).filter((x) => x.round && !x.round.closedOn)
+  .sort((a, b) => a.booking.date.localeCompare(b.booking.date) || a.booking.time.localeCompare(b.booking.time));
+// Booked so far in one round, for one advisor's students.
+export function confProgress(roundId, advisorId) {
+  const r = getConferenceRound(roundId);
+  const kids = (r ? r.studentIds : []).map(getStudent).filter((s) => s && (!advisorId || s.advisorId === advisorId)).sort((a, b) => a.name.localeCompare(b.name));
+  const waiting = kids.filter((s) => !confBookingOf(roundId, s.id));
+  return { total: kids.length, booked: kids.length - waiting.length, waiting, students: kids };
+}
+// ── Student-led conferences: the student gets ready, presents, and everyone adds one line (src/components/StudentLed.jsx) ──
+// While a conference round has a day to come, each student in it prepares: up to SLC_PICKS moments to show (their own, never
+// private ones, so the advisor can see them), a line of their own words on each, what they are proud of, one thing that
+// was hard and one goal (one of their goals, or a few words). On the day they present it in Conference mode. At the end the
+// family and the student each add one line; the advisor may write either for them, and keeps a private note (addNote).
+// store.confPreps: { id: 'cp-…', roundId, studentId, picks: [eventId], says: { [eventId]: text }, proud, hard, goal: { goalId } |
+//   { title } | null, step, status: 'draft' | 'ready', startedAt, savedAt, readyAt? }
+// store.confNotes: { id: 'cn-…', roundId, studentId, family: { text, by, at } | null, student: { text, by, at } | null }.
+// Both made on first use. by: 'family' | 'student' | the advisor's teacher id.
+export const SLC_PICKS = 3;
+export const SLC_MAX = { say: 300, proud: 400, hard: 400, goal: 120, line: 200 };
+const slcErr = (m, status = 400) => Object.assign(new Error(m), { status });
+export const getConfPreps = () => store.confPreps || [];
+export const confPrepOf = (roundId, studentId) => getConfPreps().find((p) => p.roundId === roundId && p.studentId === studentId) || null;
+export const getConfNotes = () => store.confNotes || [];
+export const confNoteOf = (roundId, studentId) => getConfNotes().find((n) => n.roundId === roundId && n.studentId === studentId) || null;
+// Prep stays open while the round has a day to come (closing booking does not stop the conferences).
+export const prepOpen = (r, studentId) => !!r && r.studentIds.includes(studentId) && r.days.some((d) => d.date >= TODAY);
+export const youngConf = (studentId) => (getStudent(studentId)?.grade ?? 99) <= 8; // Years 7 to 9: short and warm
+const nextDay = (r) => r.days.find((d) => d.date >= TODAY)?.date || '';
+// The round a student gets ready for: the earliest with a day to come.
+export function myConfPrep(studentId) {
+  const r = getConferenceRounds().filter((x) => prepOpen(x, studentId)).sort((a, b) => nextDay(a).localeCompare(nextDay(b)))[0];
+  return r ? { round: r, prep: confPrepOf(r.id, studentId), booking: confBookingOf(r.id, studentId) } : null;
+}
+// The moments a student may show: their own, not private, not goals, up to today (newest first).
+export const prepMoments = (studentId) => store.events.filter((e) => e.studentId === studentId && e.type !== 'goal' && e.visibility !== 'private' && !e.hidden && e.date <= TODAY)
+  .sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+const slcClip = (v, n) => String(v ?? '').trim().slice(0, n);
+function prepClean(studentId, d = {}) {
+  const ok = new Set(prepMoments(studentId).map((e) => e.id));
+  const picks = [...new Set([].concat(d.picks || []))].filter((id) => ok.has(id)).slice(0, SLC_PICKS);
+  const says = {}; for (const id of picks) { const t = slcClip(d.says?.[id], SLC_MAX.say); if (t) says[id] = t; }
+  const g = d.goal, own = g?.goalId && store.events.find((e) => e.id === g.goalId && e.studentId === studentId && e.type === 'goal');
+  const goal = own ? { goalId: own.id } : g?.title && slcClip(g.title, SLC_MAX.goal) ? { title: slcClip(g.title, SLC_MAX.goal) } : null;
+  return { picks, says, proud: slcClip(d.proud, SLC_MAX.proud), hard: slcClip(d.hard, SLC_MAX.hard), goal, step: Number.isInteger(d.step) ? Math.max(0, Math.min(20, d.step)) : 0 };
+}
+// Saves the student's prep; ready: true marks it ready (it can still be changed until the day).
+export function saveConfPrep(roundId, studentId, draft = {}, ready = false) {
+  const r = getConferenceRound(roundId), s = getStudent(studentId);
+  if (!r || !s || !r.studentIds.includes(studentId)) throw slcErr('This conference is not for you', 404);
+  if (!prepOpen(r, studentId)) throw slcErr('This conference has finished', 410);
+  const f = prepClean(studentId, draft);
+  if (ready && !f.picks.length && !f.proud) throw slcErr('Pick something to show, or say what you are proud of');
+  const at = nowIso();
+  let p = confPrepOf(roundId, studentId);
+  if (!p) (store.confPreps ||= []).push(p = { id: uid('cp-'), roundId, studentId, status: 'draft', startedAt: at });
+  Object.assign(p, f, { savedAt: at });
+  if (ready && p.status !== 'ready') { p.status = 'ready'; p.readyAt = at; log(studentId, s.name, 'reflection', `Got ready for “${r.title}”`); }
+  emit();
+  return p;
+}
+// One line each at the end: who is 'family' ("What we will try at home") or 'student' ("What I will do next").
+export function writeConfNote(roundId, studentId, who, text, by) {
+  const r = getConferenceRound(roundId), s = getStudent(studentId);
+  if (!r || !s || !r.studentIds.includes(studentId)) throw slcErr('This conference is not for this student', 404);
+  if (who !== 'family' && who !== 'student') throw slcErr('Say whose line it is');
+  if (!(by === who || teacherById[by])) throw slcErr('Say who is writing');
+  const t = slcClip(text, SLC_MAX.line);
+  if (!t) throw slcErr('Write one line first');
+  let n = confNoteOf(roundId, studentId);
+  if (!n) (store.confNotes ||= []).push(n = { id: uid('cn-'), roundId, studentId, family: null, student: null });
+  n[who] = { text: t, by, at: nowIso() };
+  const f = s.name.split(' ')[0], adv = s.advisorId;
+  const writer = teacherById[by] ? shortName(teacherById[by].name) : null;
+  if (by !== 'student') notify(toStudent(studentId), `${writer || 'Your family'} wrote on your conference note`, { persona: toStudent(studentId), screen: 'map' });
+  if (by !== 'family') notify(toFamily(studentId), `${writer || f} wrote on ${f}’s conference note`, { persona: toFamily(studentId), screen: 'family', param: studentId });
+  if (!writer && adv) notify(toTeacher(adv), `${by === 'family' ? `${s.name}’s family` : s.name} wrote on the conference note`, { persona: toTeacher(adv), screen: 'advisory', param: `conf~${r.id}` });
+  log(studentId, by === 'family' ? `${s.name}’s family` : by === 'student' ? s.name : teacherById[by].name, 'reflection', `Wrote on the conference note for “${r.title}”`);
+  emit();
+  return n;
+}
+// What Conference mode shows: the moments with a photo and the student's words, proud, hard, the goal.
+export function conferenceDeck(roundId, studentId, viewer = 'advisor') {
+  const r = getConferenceRound(roundId), s = getStudent(studentId), p = confPrepOf(roundId, studentId);
+  if (!r || !s) return null;
+  const map = getStudentMap(studentId, viewer);
+  const ev = (id) => map.events.find((e) => e.id === id);
+  const moments = (p?.picks || []).map(ev).filter(Boolean).map((e) => ({
+    id: e.id, title: e.title, date: e.date, say: p.says?.[e.id] || '', summary: e.summary || '',
+    photo: e.evidence?.find((v) => v.kind === 'image')?.url || null, line: map.lines.find((l) => e.lineIds.includes(l.id)) || null,
+  }));
+  const g = p?.goal?.goalId ? ev(p.goal.goalId) : null;
+  const goal = g ? { title: g.title, date: g.date, own: true } : p?.goal?.title ? { title: p.goal.title } : null;
+  return { round: r, student: s, first: s.name.split(' ')[0], young: youngConf(studentId), prep: p, moments, proud: p?.proud || '', hard: p?.hard || '', goal,
+    note: confNoteOf(roundId, studentId), booking: confBookingOf(roundId, studentId), advisor: teacherById[s.advisorId] || null };
+}
+// Who has prepared, for one advisor's students in a round.
+export function prepProgress(roundId, advisorId) {
+  const { students } = confProgress(roundId, advisorId);
+  const rows = students.map((s) => { const p = confPrepOf(roundId, s.id); return { student: s, status: p?.status === 'ready' ? 'ready' : p ? 'started' : 'not started', note: !!confNoteOf(roundId, s.id) }; });
+  return { rows, total: rows.length, ready: rows.filter((x) => x.status === 'ready').length, started: rows.filter((x) => x.status === 'started').length };
+}
+// The conference sheet (src/conference.js): the student's prep for their latest round, as the sheet's reader may see it
+// (viewer: 'advisor', or the family view's), the goal by title. null when there is nothing in it yet.
+export function sheetPrep(studentId, viewer = 'advisor') {
+  const rounds = getConferenceRounds().filter((r) => r.studentIds.includes(studentId)).sort((a, b) => b.days[0].date.localeCompare(a.days[0].date) || b.at.localeCompare(a.at));
+  const p = rounds.map((r) => confPrepOf(r.id, studentId)).find(Boolean);
+  if (!p) return null;
+  const map = getStudentMap(studentId, viewer), ev = (id) => map.events.find((e) => e.id === id);
+  const picks = p.picks.map(ev).filter(Boolean).map((e) => ({ id: e.id, title: e.title, say: p.says?.[e.id] || '' }));
+  const goal = p.goal?.goalId ? ev(p.goal.goalId)?.title || '' : p.goal?.title || '';
+  if (!picks.length && !p.proud && !p.hard && !goal) return null;
+  return { ready: p.status === 'ready', picks, proud: p.proud, hard: p.hard, goal };
+}
+// A student's conference notes (the family's and their own lines), newest round first.
+export const confNotesFor = (studentId) => getConfNotes().filter((n) => n.studentId === studentId && (n.family || n.student) && getConferenceRound(n.roundId))
+  .map((n) => ({ ...n, round: getConferenceRound(n.roundId) })).sort((a, b) => b.round.days[0].date.localeCompare(a.round.days[0].date));
+// ── Subject prompts: what makes a good moment on a line, a few guiding questions, sentence starters and examples ──
+// (src/components/SubjectPrompts.jsx). store.subjectPrompts [{ id: 'sp-…', lineId (a school line), classId (null: the whole
+// line), by (teacherId | null), at, note, questions (3–6), starters, examples }], made on first use. One per class and one per
+// line: writing again replaces it and keeps its id. An example is the teacher's own { id, title, text, status: 'teacher' } or
+// a student's publishable moment { id, eventId, studentId, status: 'asked' | 'yes' | 'no', askedAt, answeredAt? }, shown to
+// other students only once that student says yes (answerExampleAsk), and only while the moment stays publishable on the line.
+// Which prompts a student sees on a line: their class's (a class on that line they are in now), else the line's, else the
+// built-in defaults (DEFAULT_PROMPTS). A moment written with them carries promptId (addStation's f.promptId), for the counts.
+export const SP_LIMITS = { note: 400, question: 200, starter: 80, minQuestions: 3, maxQuestions: 6, starters: 8, examples: 3 };
+const D = (note, questions, starters) => ({ note, questions, starters });
+export const DEFAULT_PROMPTS = {
+  science: D('A good science moment says what you set out to find out, what you did and what the results showed, even when the experiment did not go to plan.',
+    ['What were you trying to find out?', 'What did you do, step by step?', 'What happened? What did you notice or measure?', 'What does it show, and what surprised you?', 'What would you change if you did it again?'],
+    ['I wanted to find out…', 'First we…', 'I noticed that…', 'This shows that…', 'Next time I would…']),
+  computing: D('A good computing moment says what you built or solved, how it works and what you learnt when it went wrong.',
+    ['What did you build, code or fix?', 'What problem was it solving, and for whom?', 'What went wrong, and how did you sort it out?', 'What would you add or improve next?'],
+    ['I built…', 'The tricky part was…', 'I fixed it by…', 'Next I want to…']),
+  environment: D('A good environment moment says what you did for the place around you, what changed and why it matters.',
+    ['What did you do, and where?', 'Why does it matter for the environment?', 'What changed because of it?', 'What would you like to do next?'],
+    ['We…', 'It matters because…', 'Afterwards…', 'Next I would like to…']),
+  sport: D('A good sport moment says what you trained for or played, how you improved and how you worked with others.',
+    ['What did you play, train for or compete in?', 'What did you get better at?', 'What was hard, and how did you keep going?', 'How did you help your team or others?'],
+    ['I trained for…', 'I got better at…', 'It was hard when…', 'I helped the team by…']),
+  service: D('A good service moment says who you worked with, what you did together and what you learnt about what they needed.',
+    ['Who did you help or work with?', 'What did you do together?', 'What did you learn about what they needed?', 'What difference did it make, to them and to you?'],
+    ['I worked with…', 'Together we…', 'I learnt that they needed…', 'It made a difference because…']),
+  music: D('A good music moment says what you played, sang or wrote, how you practised and how it felt to perform or share it.',
+    ['What did you play, sing or write?', 'How did you practise or prepare?', 'What went well, and what was tricky?', 'How did it feel to perform or share it?'],
+    ['I played…', 'To get ready I…', 'The tricky part was…', 'Performing felt…']),
+  design: D('A good design moment shows what you designed, who it was for and how it changed after you tested it.',
+    ['What did you design or make?', 'Who was it for, and what did they need?', 'What did you test, and what did you change?', 'What would you improve next time?'],
+    ['I designed…', 'It was for…', 'After testing I changed…', 'Next time I would…']),
+  languages: D('A good languages moment says what you read, wrote, said or understood, and what you can do now that you could not before.',
+    ['What did you read, write, say or listen to?', 'Which language, and who was it with or for?', 'What can you do now that you could not before?', 'What would you like to try next?'],
+    ['I read…', 'I wrote…', 'Now I can…', 'Next I want to try…']),
+  art: D('A good art moment shows what you made, the ideas behind it and the choices you made along the way.',
+    ['What did you make?', 'Where did the idea come from?', 'What choices did you make, and why?', 'What would you try differently next time?'],
+    ['I made…', 'My idea came from…', 'I chose to…', 'Next time I would try…']),
+};
+const spErr = (message, status = 400) => Object.assign(new Error(message), { status });
+const sPrompts = () => (store.subjectPrompts ||= []);
+export const getSubjectPrompts = () => store.subjectPrompts || [];
+export const getSubjectPrompt = (id) => getSubjectPrompts().find((p) => p.id === id);
+const schoolLine = (id) => { const l = lineById(id); return !!l && !l.studentId && !l.parentLineId; };
+export const schoolLines = () => store.lines.filter((l) => !l.studentId && !l.parentLineId && l.status !== 'ended');
+// The prompts written for exactly this class, or for exactly this line (not the ones it falls back to).
+export const subjectPromptFor = ({ classId, lineId } = {}) => getSubjectPrompts().find((p) => (classId ? p.classId === classId : !p.classId && p.lineId === lineId)) || null;
+// A moment that can be an example on a line: publishable, not hidden, not a goal, on that line or one of its sub-lines.
+export const exampleOk = (e, lineId) => !!e && e.visibility === 'publishable' && !e.hidden && e.type !== 'goal' && e.lineIds.some((l) => rootLine(l) === lineId);
+const exampleText = (e) => {
+  const r = store.reflections.find((f) => f.eventId === e.id && f.visibility === 'publishable' && String(f.text || '').trim());
+  const t = String(r?.text || e.summary || e.about || '').trim();
+  return t.length > 300 ? `${t.slice(0, 299).trimEnd()}…` : t;
+};
+// What other students see of a student's example: the moment's title, a line of it and the Year, never the name or ids.
+// null while the student has not said yes, or once the moment is no longer a publishable one on the line.
+export function exampleView(x, lineId) {
+  if (!x?.eventId || x.status !== 'yes') return null;
+  const e = getEvent(x.eventId), s = e && getStudent(e.studentId);
+  if (!s || !exampleOk(e, lineId)) return null;
+  return { id: x.id, status: 'yes', title: e.title, text: exampleText(e), year: s.grade + 1 };
+}
+// A student's publishable moments a teacher may pick from: on the line, of the class's students now (classId) or anyone
+// in this record (a line), newest first.
+export function exampleChoices(lineId, classId = null) {
+  const who = classId ? new Set(nowIn(classId) || []) : null;
+  return store.events.filter((e) => exampleOk(e, lineId) && (!who || who.has(e.studentId)) && getStudent(e.studentId))
+    .sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id)).slice(0, 60)
+    .map((e) => { const s = getStudent(e.studentId); return { eventId: e.id, studentId: s.id, title: e.title, date: e.date, name: s.name, year: s.grade + 1, text: exampleText(e) }; });
+}
+// How many moments were written with these prompts (in this person's record); a default's id is `sp-default-<line>`.
+export const promptUses = (id) => store.events.filter((e) => e.promptId === id && e.type !== 'goal').length;
+const shownExamples = (p) => (p.examples || []).flatMap((x) => {
+  if (x.status === 'teacher') return x.title || x.text ? [{ id: x.id, title: x.title, text: x.text, year: null }] : [];
+  if (!x.eventId) return x.status === 'yes' && x.title ? [{ id: x.id, title: x.title, text: x.text || '', year: x.year ?? null }] : []; // the server's copy for others
+  const v = exampleView(x, p.lineId);
+  return v ? [{ id: v.id, title: v.title, text: v.text, year: v.year }] : [];
+});
+// The prompts a student sees when adding a moment on a line (a sub-line counts for its school line). classId: a class's
+// own (a class task); otherwise their current class on that line that has prompts, newest first. null off the school lines.
+export function getPromptsFor(studentId, lineId, classId = null) {
+  const root = rootLine(lineId);
+  if (!schoolLine(root)) return null;
+  const mine = classId ? [classId] : getEnrolments().filter((n) => n.studentId === studentId && !(n.to && n.to < TODAY)).map((n) => n.classId);
+  const classes = new Set(mine.filter((id) => classById(id)?.lineId === root));
+  const own = getSubjectPrompts().filter((p) => p.classId && classes.has(p.classId) && p.lineId === root).sort((a, b) => b.at.localeCompare(a.at))[0]
+    || getSubjectPrompts().find((p) => !p.classId && p.lineId === root);
+  const line = lineById(root);
+  if (!own) return DEFAULT_PROMPTS[root] ? { id: `sp-default-${root}`, source: 'default', lineId: root, line, classId: null, className: '', by: null, teacher: null, ...structuredClone(DEFAULT_PROMPTS[root]), examples: [] } : null;
+  return { id: own.id, source: own.classId ? 'class' : 'line', lineId: root, line, classId: own.classId || null, className: (own.classId && classById(own.classId)?.name) || '', by: own.by || null,
+    teacher: (own.by && teacherById[own.by]) || null, note: own.note, questions: [...own.questions], starters: [...own.starters], examples: shownExamples(own) };
+}
+// A class's or a line's prompts as their writers manage them: the stored ones (or null), what students see, and the uses.
+export function promptsAdmin({ classId, lineId } = {}) {
+  const c = classId ? classById(classId) : null;
+  const root = c ? c.lineId : lineId;
+  const own = root ? subjectPromptFor(classId ? { classId } : { lineId: root }) : null;
+  const fallback = classId && root ? subjectPromptFor({ lineId: root }) : null;
+  const examples = (own?.examples || []).map((x) => {
+    if (!x.eventId) return { ...x };
+    const e = getEvent(x.eventId), s = getStudent(x.studentId);
+    return { ...x, title: e?.title || x.title || 'A moment', name: s?.name || null, year: s ? s.grade + 1 : x.year ?? null, gone: !!e && !exampleOk(e, root) };
+  });
+  const effective = own || fallback;
+  return { own, examples, fallback, source: own ? (classId ? 'class' : 'line') : fallback ? 'line' : 'default', lineId: root || null, line: (root && lineById(root)) || null,
+    shown: effective ? { note: effective.note, questions: effective.questions, starters: effective.starters } : (DEFAULT_PROMPTS[root] || null),
+    uses: own ? promptUses(own.id) : 0, defaultId: root ? `sp-default-${root}` : null };
+}
+// Example requests a student has not answered yet.
+export const exampleAsksFor = (studentId) => getSubjectPrompts().flatMap((p) => (p.examples || []).filter((x) => x.studentId === studentId && x.status === 'asked')
+  .map((x) => ({ promptId: p.id, exampleId: x.id, event: getEvent(x.eventId) || null, teacher: (p.by && teacherById[p.by]) || null, className: (p.classId && classById(p.classId)?.name) || '', line: lineById(p.lineId) || null })))
+  .filter((a) => a.event);
+// Write (or rewrite) a class's or a line's prompts. target: { classId } (a class on a line) or { lineId } (a school line).
+// spec: { note, questions, starters, examples: [{ eventId } | { keep: exampleId } | { title, text }] }.
+export function setSubjectPrompts(target = {}, spec = {}, by = null) {
+  const c = target?.classId ? classById(target.classId) : null;
+  if (target?.classId && !c) throw spErr('No such class', 404);
+  const lineId = c ? c.lineId : target?.lineId;
+  if (c && !lineId) throw spErr('This class is not on a line yet');
+  if (!schoolLine(lineId)) throw spErr('Pick a school line');
+  if (by && !teacherById[by]) throw spErr('No such teacher');
+  const one = (s, n) => String(s ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
+  const list = (xs, n) => [...new Set([].concat(xs || []).map((x) => one(x, n)).filter(Boolean))];
+  const questions = list(spec?.questions, SP_LIMITS.question);
+  if (questions.length < SP_LIMITS.minQuestions || questions.length > SP_LIMITS.maxQuestions) throw spErr(`Write ${SP_LIMITS.minQuestions} to ${SP_LIMITS.maxQuestions} questions`);
+  const starters = list(spec.starters, SP_LIMITS.starter).slice(0, SP_LIMITS.starters);
+  const note = String(spec.note ?? '').trim().slice(0, SP_LIMITS.note);
+  const old = subjectPromptFor(c ? { classId: c.id } : { lineId });
+  const inClass = c ? new Set(nowIn(c.id) || []) : null;
+  const examples = [], fresh = [];
+  for (const x of [].concat(spec.examples || [])) {
+    if (examples.length >= SP_LIMITS.examples) break;
+    if (x?.keep) { const was = old?.examples.find((o) => o.id === x.keep); if (was && !examples.some((o) => o.id === was.id)) examples.push({ ...was }); continue; }
+    if (x?.eventId) {
+      const e = getEvent(x.eventId);
+      if (!exampleOk(e, lineId)) throw spErr('An example has to be a publishable moment on this line');
+      if (inClass && !inClass.has(e.studentId)) throw spErr('An example has to be from a student in this class');
+      if (examples.some((o) => o.eventId === e.id)) continue;
+      const was = old?.examples.find((o) => o.eventId === e.id);
+      const ex = was ? { ...was } : { id: uid('spx-'), eventId: e.id, studentId: e.studentId, status: 'asked', askedAt: nowIso() };
+      if (!was) fresh.push(e);
+      examples.push(ex);
+      continue;
+    }
+    const title = one(x?.title, 120), text = String(x?.text ?? '').trim().slice(0, 1000);
+    if (title || text) examples.push({ id: uid('spx-'), title, text, status: 'teacher' });
+  }
+  const p = old || { id: uid('sp-'), lineId, classId: c?.id || null };
+  Object.assign(p, { by: by || null, at: nowIso(), note, questions, starters, examples });
+  if (!old) sPrompts().push(p);
+  const t = by && teacherById[by];
+  for (const e of fresh) notify(toStudent(e.studentId), `${t?.name || 'Your teacher'} would like to show your moment “${e.title}” to other students as an example. Your name is not shown.`, { persona: toStudent(e.studentId), screen: 'map' });
+  emit();
+  return p;
+}
+// Back to the line's prompts (a class) or the built-in ones (a line). Moments written with them keep their promptId.
+export function clearSubjectPrompts(promptId) {
+  if (!getSubjectPrompt(promptId)) throw spErr('No such prompts', 404);
+  store.subjectPrompts = sPrompts().filter((x) => x.id !== promptId);
+  emit();
+  return true;
+}
+// A student says yes or no to their moment being an example (and can change their mind later).
+export function answerExampleAsk(promptId, exampleId, studentId, yes) {
+  const p = getSubjectPrompt(promptId), x = p?.examples.find((o) => o.id === exampleId);
+  if (!x || x.studentId !== studentId) throw spErr('This is not your moment', 404);
+  x.status = yes ? 'yes' : 'no'; x.answeredAt = nowIso();
+  const s = getStudent(studentId);
+  if (p.by && s) notify(toTeacher(p.by), `${s.name.split(' ')[0]} said ${yes ? 'yes' : 'no'} to showing “${getEvent(x.eventId)?.title || 'their moment'}” as an example`, { persona: toTeacher(p.by), screen: p.classId ? 'classes' : 'prompts', ...(p.classId ? { param: p.classId } : {}) });
+  emit();
+  return x;
+}
+// ── CAS experiences and hours, Years 12 and 13 (src/components/Cas.jsx, src/screens/CasDashboard.jsx, server/routes/47-cas.mjs) ──
+// An experience is a station on the CAS line (type 'cas', e.cas: { strand, outcomes, from, to }), so the map and the
+// coordinator's grid read it as before. Hours are entries in store.casHours: { id, studentId, eventId, date, hours, note,
+// supervisor: { kind: 'staff', teacherId } | { kind: 'outside', name, email } | null, status: pending | confirmed | returned,
+// at, decided?: { via: supervisor | coordinator | code, by, name, at, comment }, code?: { hash, expires } }. A staff supervisor
+// confirms from "CAS to confirm"; an outside one (no account, never emailed) with a one-time code the student shows; a CAS
+// coordinator (role coordinator, or a teacher marked on Accounts: teacher.casCoordinator) on anyone's behalf.
+export const CAS_STRANDS = { C: 'Creativity', A: 'Activity', S: 'Service' };
+export const CAS_OUTCOMES = ['Strengths and growth', 'New challenges', 'Initiative and planning', 'Commitment', 'Collaboration', 'Global engagement', 'Ethics of choices'];
+export const CAS_LINE = 'cas';
+export const CAS_QUIET_DAYS = 42;
+export const CAS_CODE_DAYS = 30;
+export const CAS_MAX_HOURS = 24;
+export const CAS_FLAGS = { nothing: 'Nothing logged yet', service: 'No Service yet', outcome: 'Outcome missing', reflection: 'No reflection in 6 weeks' };
+const casErr = (m, status = 400) => Object.assign(new Error(m), { status });
+const CAS_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const CAS_VIS = ['advisor', 'school', 'publishable'];
+export const casHoursText = (n) => `${n} hour${n === 1 ? '' : 's'}`;
+export const casAllowed = (sid) => { const s = getStudent(sid); return !!s && !s.cohortOnly && s.grade >= 11; };
+export const isCasCoordinator = (p) => !!p && (p.kind === 'coordinator' || !!(p.teacherId && getTeacher(p.teacherId)?.casCoordinator));
+export const getCasHours = () => store.casHours || [];
+export const getCasEntry = (id) => getCasHours().find((x) => x.id === id) || null;
+export const casHoursOf = (sid, eventId) => getCasHours().filter((x) => x.studentId === sid && (!eventId || x.eventId === eventId));
+export const casExperiences = (sid) => store.events.filter((e) => e.studentId === sid && e.cas).sort((a, b) => b.date.localeCompare(a.date) || a.id.localeCompare(b.id));
+export const casToConfirm = (tid) => getCasHours().filter((x) => x.supervisor?.kind === 'staff' && x.supervisor.teacherId === tid);
+export const casSum = (list, status) => list.filter((x) => !status || x.status === status).reduce((n, x) => n + x.hours, 0);
+export const casSupervisorName = (sup) => (sup?.kind === 'staff' ? getTeacher(sup.teacherId)?.name || 'A member of staff' : sup?.kind === 'outside' ? sup.name : '');
+// What an entry is about. A supervisor's record holds only the entries naming them, so server/scope.mjs adds `about`.
+export function casAbout(x) {
+  const s = getStudent(x.studentId), e = getEvent(x.eventId);
+  return { name: s?.name || x.about?.name || 'A student', year: s ? s.grade + 1 : x.about?.year ?? null, title: e?.title || x.about?.title || 'A CAS experience', strand: e?.cas?.strand || x.about?.strand || null };
+}
+const casDay = (d, what) => { if (!/^\d{4}-\d{2}-\d{2}$/.test(d || '') || Number.isNaN(Date.parse(d))) throw casErr(`Give the ${what}`); return d; };
+function casSupervisor(sup) {
+  if (!sup || !sup.kind || sup.kind === 'none') return null;
+  if (sup.kind === 'staff') { if (!getTeacher(sup.teacherId)) throw casErr('Pick the member of staff who supervised'); return { kind: 'staff', teacherId: sup.teacherId }; }
+  if (sup.kind !== 'outside') throw casErr('Pick who supervised');
+  const name = String(sup.name || '').trim().slice(0, 80), email = String(sup.email || '').trim().toLowerCase().slice(0, 120);
+  if (!name) throw casErr('Give the supervisor’s name');
+  if (!CAS_EMAIL.test(email)) throw casErr('Give the supervisor’s email address');
+  return { kind: 'outside', name, email };
+}
+function casHoursIn(h) {
+  const hours = Math.round(Number(h?.hours) * 4) / 4;
+  if (!(hours > 0) || hours > CAS_MAX_HOURS) throw casErr(`Hours must be more than 0 and at most ${CAS_MAX_HOURS} in one go`);
+  const date = casDay(h.date, 'date of the hours');
+  if (date > TODAY) throw casErr('Hours cannot be in the future');
+  return { date, hours, note: String(h.note || '').trim().slice(0, 500), supervisor: casSupervisor(h.supervisor) };
+}
+function casEntry(s, e, h) {
+  const x = { id: uid('ch-'), studentId: s.id, eventId: e.id, ...h, status: 'pending', at: nowIso() };
+  (store.casHours ||= []).push(x);
+  const sup = h.supervisor;
+  log(s.id, s.name, 'station', `Logged ${casHoursText(h.hours)} of CAS on “${e.title}”${sup?.kind === 'staff' ? `, asked ${casSupervisorName(sup)} to confirm` : sup ? ', for an outside supervisor to confirm' : ''}`);
+  if (sup?.kind === 'staff') notify(toTeacher(sup.teacherId), `${s.name.split(' ')[0]} asked you to confirm ${casHoursText(h.hours)} of CAS: “${e.title}”`, { persona: toTeacher(sup.teacherId), screen: 'casconfirm' });
+  return x;
+}
+// The CAS line: one school line, made the first time anyone logs an experience, and put on that student's map.
+function casLane(s) {
+  if (!lineById(CAS_LINE)) store.lines.push({ id: CAS_LINE, name: 'CAS', colour: '#008A60', parentLineId: null, status: 'active', pattern: 'cased', code: 'CAS' });
+  if (!s.laneOrder.includes(CAS_LINE)) s.laneOrder.push(CAS_LINE);
+}
+export function logCasExperience(studentId, f = {}) {
+  const s = getStudent(studentId);
+  if (!casAllowed(studentId)) throw casErr('CAS is for Years 12 and 13');
+  const title = String(f.title || '').trim().slice(0, 120);
+  if (!title) throw casErr('Give the experience a name');
+  if (!CAS_STRANDS[f.strand]) throw casErr('Pick Creativity, Activity or Service');
+  const from = casDay(f.from, 'start date');
+  const to = f.to ? casDay(f.to, 'end date') : null;
+  if (to && to < from) throw casErr('The end date is before the start date');
+  const outcomes = [...new Set((Array.isArray(f.outcomes) ? f.outcomes : []).filter((n) => Number.isInteger(n) && n >= 1 && n <= 7))].sort((a, b) => a - b);
+  const hours = f.hours ? casHoursIn(f.hours) : null;
+  const evidence = (Array.isArray(f.evidence) ? f.evidence : []).filter((x) => x && typeof x.url === 'string' && x.url).slice(0, 10)
+    .map((x) => ({ kind: ['image', 'file', 'link'].includes(x.kind) ? x.kind : 'link', url: x.url.slice(0, 2000), caption: String(x.caption || x.name || 'Evidence').slice(0, 120), ...(x.name ? { name: String(x.name).slice(0, 200) } : {}), ...(x.size ? { size: Number(x.size) || 0 } : {}), ...(x.type ? { type: String(x.type).slice(0, 100) } : {}) }));
+  casLane(s);
+  const e = addStation(studentId, { title, date: from, lineIds: [CAS_LINE], type: 'cas', summary: String(f.summary || '').trim().slice(0, 1000), evidence,
+    visibility: CAS_VIS.includes(f.visibility) ? f.visibility : 'advisor', via: 'CAS log', cas: { strand: f.strand, outcomes, from, to } });
+  const text = String(f.reflection || '').trim().slice(0, 4000);
+  if (text) store.reflections.push({ id: uid('rf-x'), eventId: e.id, text, prompt: 'CAS reflection', date: TODAY, visibility: e.visibility });
+  const entry = hours ? casEntry(s, e, hours) : null;
+  emit();
+  return { event: e, entry };
+}
+// More hours on an experience: any station of theirs marked for CAS (the CAS log, or "Counts for CAS?" on a station).
+export function logCasHours(studentId, eventId, h = {}) {
+  const s = getStudent(studentId), e = getEvent(eventId);
+  if (!s || !e || e.studentId !== studentId || !e.cas) throw casErr('Pick one of your CAS experiences');
+  if (!casAllowed(studentId)) throw casErr('CAS is for Years 12 and 13');
+  const x = casEntry(s, e, casHoursIn(h));
+  emit();
+  return x;
+}
+export function withdrawCasHours(entryId, studentId) {
+  const x = getCasEntry(entryId);
+  if (!x || x.studentId !== studentId) throw casErr('No such hours');
+  if (x.status === 'confirmed') throw casErr('Confirmed hours stay. Ask your CAS coordinator to change them.');
+  store.casHours = getCasHours().filter((y) => y.id !== entryId);
+  log(studentId, getStudent(studentId)?.name || '', 'station', `Took back ${casHoursText(x.hours)} of CAS on “${casAbout(x).title}”`);
+  emit();
+}
+// Confirming or sending back: the staff supervisor ('supervisor'), a CAS coordinator for anyone ('coordinator'), or an
+// outside supervisor through their one-time code (server only, 'code'; by is null, name is theirs).
+function casDecide(entryId, by, opts, status) {
+  const x = getCasEntry(entryId);
+  if (!x) throw casErr('No such hours', 404);
+  if (x.status !== 'pending') throw casErr('These hours have already been answered', 409);
+  const via = ['supervisor', 'coordinator', 'code'].includes(opts?.via) ? opts.via : 'supervisor';
+  const comment = String(opts?.comment || '').trim().slice(0, 500);
+  if (status === 'returned' && via !== 'code' && !comment) throw casErr('Say what is not right, so the student can fix it');
+  const name = via === 'code' ? String(opts?.name || casSupervisorName(x.supervisor) || 'The supervisor').slice(0, 80) : getTeacher(by)?.name || 'Pilot admin';
+  x.status = status;
+  x.decided = { via, by: by || null, name, at: nowIso(), ...(comment ? { comment } : {}) };
+  delete x.code;
+  const a = casAbout(x), sup = x.supervisor && via === 'coordinator' ? ` for ${casSupervisorName(x.supervisor)}` : '';
+  const what = status === 'confirmed' ? `confirmed${sup} your ${casHoursText(x.hours)} of CAS on “${a.title}”` : `sent back your ${casHoursText(x.hours)} of CAS on “${a.title}”${comment ? `: ${comment}` : ''}`;
+  notify(toStudent(x.studentId), `${shortName(name)} ${what}`, { persona: toStudent(x.studentId), screen: 'cas' });
+  log(x.studentId, name, status === 'confirmed' ? 'endorse' : 'request', `${status === 'confirmed' ? 'Confirmed' : 'Sent back'} ${casHoursText(x.hours)} of CAS on “${a.title}”${via === 'code' ? ' (outside supervisor, by code)' : via === 'coordinator' ? ' (CAS coordinator)' : ''}`);
+  emit();
+  return x;
+}
+export function confirmCasHours(entryId, by, opts = {}) { return casDecide(entryId, by, opts, 'confirmed'); }
+export function returnCasHours(entryId, by, opts = {}) { return casDecide(entryId, by, opts, 'returned'); }
+// The server makes the code and keeps only its hash here (POST /api/cas/code); a new code replaces the old one, null ends it.
+export function setCasCode(entryId, hash, expires) {
+  const x = getCasEntry(entryId);
+  if (!x || x.status !== 'pending' || x.supervisor?.kind !== 'outside') throw casErr('A code is only for hours waiting for an outside supervisor');
+  if (hash) x.code = { hash: String(hash), expires: String(expires) }; else delete x.code;
+  emit();
+}
+export const casByCode = (hash) => getCasHours().find((x) => x.code?.hash === hash && x.status === 'pending' && x.code.expires >= TODAY) || null;
+export function setCasCoordinator(teacherId, on) {
+  const t = getTeacher(teacherId);
+  if (!t) throw casErr('No such member of staff');
+  if (on) t.casCoordinator = true; else delete t.casCoordinator;
+  emit();
+}
+export const casCoordinators = () => getTeachers().filter((t) => t.casCoordinator);
+// The coordinator's cohort, Years 12 and 13: strands, the seven outcomes, hours confirmed and waiting, and flags.
+export function casCohort({ advisorId = '' } = {}) {
+  const since = daysBefore(CAS_QUIET_DAYS);
+  return getStudents({ includeCohort: true }).filter((s) => s.grade >= 11 && (!advisorId || s.advisorId === advisorId)).sort((a, b) => a.name.localeCompare(b.name)).map((s) => {
+    const ex = store.events.filter((e) => e.studentId === s.id && e.cas);
+    const ids = new Set(ex.map((e) => e.id));
+    const strands = Object.fromEntries(Object.keys(CAS_STRANDS).map((k) => [k, ex.filter((e) => e.cas.strand === k)]));
+    const outcomes = CAS_OUTCOMES.map((_, i) => ex.filter((e) => (e.cas.outcomes || []).includes(i + 1)));
+    const hrs = casHoursOf(s.id);
+    const lastReflection = store.reflections.filter((r) => ids.has(r.eventId)).map((r) => r.date).sort().at(-1) || null;
+    const flags = !ex.length && !hrs.length ? ['nothing'] : [!strands.S.length && 'service', outcomes.some((l) => !l.length) && 'outcome', !(lastReflection && lastReflection >= since) && 'reflection'].filter(Boolean);
+    return { student: s, experiences: ex, strands, outcomes, covered: outcomes.filter((l) => l.length).length, hours: hrs, confirmed: casSum(hrs, 'confirmed'), pending: casSum(hrs, 'pending'), lastReflection, flags };
+  });
+}
+
+// ── Family encouragement: a short kind note from a family member on a moment the family view shows (src/components/FamilyNotes.jsx) ──
+// store.familyNotes [{ id: 'fn-…', eventId, studentId, by ('u:<accountId>' in a pilot, the demo persona id), name, text,
+// reaction, at, edited?, thanked?, studentHidden? (the student's own view), hidden? (a moderator) }], made on first use.
+// One note per family member per moment, edited or deleted by its writer. The student turns notes off with
+// setPrivacy(sid, { familyNotes: false }). Readers: the student, their family, the advisor, the teachers of their current
+// classes and whole-school roles (familyNoteReader); server/scope.mjs sends nothing to anyone else.
+export const FAMILY_REACTIONS = { proud: 'Proud of you', welldone: 'Well done', dinner: 'Tell me more at dinner', keepgoing: 'Keep going' };
+export const FAMILY_NOTE_MAX = 280;
+const fnErr = (message, status = 400) => Object.assign(new Error(message), { status });
+export const familyNotesOn = (sid) => getPrivacy(sid).familyNotes !== false;
+// A moment the family view shows: never private for that family's level, never hidden after a report, never a goal.
+export const familyShows = (e) => !!e && e.type !== 'goal' && !e.hidden && !!getStudent(e.studentId) && VISIBLE_TO[familyViewer(e.studentId)].includes(e.visibility);
+export const getFamilyNote = (id) => (store.familyNotes || []).find((n) => n.id === id);
+export const familyNotesFor = (eventId) => (store.familyNotes || []).filter((n) => n.eventId === eventId).sort((a, b) => a.at.localeCompare(b.at));
+export const familyNotesOf = (sid) => (store.familyNotes || []).filter((n) => n.studentId === sid).sort((a, b) => b.at.localeCompare(a.at));
+// Staff who read a student's family notes besides whole-school roles: the advisor and the teachers of a current class.
+export function familyNoteReader(tid, sid) {
+  const s = getStudent(sid); if (!s || !tid) return false;
+  if (s.advisorId === tid) return true;
+  const mine = new Set(getEnrolments().filter((n) => n.studentId === sid && !(n.to && n.to < TODAY)).map((n) => n.classId));
+  return getClasses().some((c) => mine.has(c.id) && (c.teacherIds || []).includes(tid));
+}
+const noteBody = (text, reaction) => {
+  const t = String(text ?? '').replace(/\s+/g, ' ').trim();
+  if (t.length > FAMILY_NOTE_MAX) throw fnErr(`Keep it to ${FAMILY_NOTE_MAX} characters.`);
+  if (reaction != null && reaction !== '' && !FAMILY_REACTIONS[reaction]) throw fnErr('Pick one of the reactions.');
+  if (!t && !reaction) throw fnErr('Write a few words or pick a reaction.');
+  return { text: t, reaction: reaction || null };
+};
+export const familyNoteWords = (n) => [n.reaction && FAMILY_REACTIONS[n.reaction], n.text].filter(Boolean).join('. ');
+export function addFamilyNote(eventId, from, text, reaction) {
+  const e = getEvent(eventId); if (!e) throw fnErr('No such moment.', 404);
+  if (!familyShows(e)) throw fnErr('This moment is not shared with the family.', 403);
+  if (!familyNotesOn(e.studentId)) throw fnErr('Notes from family are turned off for now.', 409);
+  const by = String(from?.key ?? ''), name = String(from?.name ?? '').trim().slice(0, 80);
+  if (!by || !name) throw fnErr('Who is writing this?');
+  if (familyNotesFor(eventId).some((n) => n.by === by)) throw fnErr('You already left a note on this moment. You can change it.', 409);
+  const n = { id: uid('fn-'), eventId, studentId: e.studentId, by, name, ...noteBody(text, reaction), at: nowIso() };
+  (store.familyNotes ||= []).push(n);
+  const words = n.text || FAMILY_REACTIONS[n.reaction]; // one or the other, so a reaction alone reads in Thai too
+  notify(toStudent(e.studentId), `${name} sent you encouragement for “${e.title}”: ${words.length > 60 ? `${words.slice(0, 57)}…` : words}`, { persona: toStudent(e.studentId), screen: 'map', param: e.id }, 'encourage');
+  log(e.studentId, name, 'family', `Left a note on “${e.title}”`);
+  emit();
+  return n;
+}
+const ownFamilyNote = (id, by) => {
+  const n = getFamilyNote(id); if (!n) throw fnErr('That note is gone.', 404);
+  if (n.by !== by) throw fnErr('Only the person who wrote a note can change it.', 403);
+  return n;
+};
+export function editFamilyNote(id, by, text, reaction) {
+  const n = ownFamilyNote(id, by);
+  Object.assign(n, noteBody(text, reaction), { edited: nowIso() });
+  emit();
+  return n;
+}
+export function deleteFamilyNote(id, by) {
+  ownFamilyNote(id, by);
+  store.familyNotes = store.familyNotes.filter((x) => x.id !== id);
+  emit();
+}
+export function thankFamilyNote(id) {
+  const n = getFamilyNote(id); if (!n) throw fnErr('That note is gone.', 404);
+  if (n.thanked) return n;
+  n.thanked = nowIso();
+  const e = getEvent(n.eventId);
+  notify(toFamily(n.studentId), `${getStudent(n.studentId)?.name.split(' ')[0] || 'Your child'} said thank you for your note on “${e?.title || 'a moment'}”.`, { persona: toFamily(n.studentId), screen: 'family', param: n.studentId }, 'encourage');
+  emit();
+  return n;
+}
+// The student hides a note from their own view (or shows it again). Nobody else is told.
+export function setFamilyNoteHidden(id, hidden) {
+  const n = getFamilyNote(id); if (!n) throw fnErr('That note is gone.', 404);
+  if (hidden) n.studentHidden = nowIso(); else delete n.studentHidden;
+  emit();
+  return n;
+}
+// Safeguarding: reportItem({ familyNoteId }, …) by the student, staff who read it or an admin; moderateReport on such a
+// report: hide (then only staff and its writer see it), unhide, none.
+const reportItemFam = reportItem, moderateReportFam = moderateReport;
+reportItem = function reportItem(target, reason, note, from) {
+  if (!target?.familyNoteId) return reportItemFam(target, reason, note, from);
+  const n = getFamilyNote(target.familyNoteId); if (!n) throw fnErr('That note is gone.', 404);
+  const e = getEvent(n.eventId); if (!e) throw fnErr('No such moment.', 404);
+  if (!REPORT_REASONS[reason]) throw fnErr('Pick a reason.');
+  const who = reporter(from, e);
+  if (who.role === 'Family') throw fnErr('Speak to the school about a family note.');
+  const at = nowIso(), list = (store.reports ||= []);
+  const open = list.find((r) => r.from.key === who.key && r.status === 'open' && r.familyNoteId === n.id);
+  if (open) return open;
+  if (list.filter((r) => r.from.key === who.key && Date.parse(at) - Date.parse(r.at) < 3600e3).length >= REPORT_LIMIT) throw fnErr('You have sent a lot of reports. Try again later, or speak to a teacher.', 429);
+  const r = { id: uid('rp-'), kind: 'familyNote', eventId: e.id, familyNoteId: n.id, studentId: e.studentId, reason, note: String(note ?? '').trim().slice(0, 1000), at, from: who, status: 'open', history: [] };
+  list.push(r);
+  for (const k of MODERATOR_KINDS) notify(toRole(k), `New report: a family note on “${e.title}” (${getStudent(e.studentId).name}). ${REPORT_REASONS[reason]}.`, { persona: toRole(k), screen: 'reports', param: r.id });
+  emit();
+  return r;
+};
+moderateReport = function moderateReport(id, action, note, by) {
+  const r = getReport(id);
+  if (!r?.familyNoteId) return moderateReportFam(id, action, note, by);
+  if (!REPORT_STATUS[action]) throw fnErr('Pick what to do.');
+  if (action === 'photo') throw fnErr('A note has no photo.');
+  if (by && !teacherById[by]) throw fnErr('No such teacher.');
+  const n = getFamilyNote(r.familyNoteId);
+  if (action !== 'none' && !n) throw fnErr('That note is gone.', 404);
+  const at = nowIso(), name = by ? teacherById[by].name : 'Pilot admin', e = getEvent(r.eventId), to = toStudent(r.studentId), go = e ? { persona: to, screen: 'map', param: e.id } : undefined;
+  if (action === 'hide') { n.hidden = { at, by: name }; notify(to, `A teacher has hidden a note from your family on “${e?.title}”.`, go); }
+  if (action === 'unhide') { delete n.hidden; notify(to, `A teacher has finished looking at a note from your family on “${e?.title}”. It is shown again.`, go); }
+  const entry = { action, note: String(note ?? '').trim().slice(0, 1000), at, by: name };
+  for (const x of store.reports) if (x.familyNoteId === r.familyNoteId) { x.history.push({ ...entry }); x.status = REPORT_STATUS[action]; }
+  emit();
+  return r;
+};
+
 // ── Shared record: with the pilot server, every change is replayed there ──
 // A screen calls a change below; it runs here at once (instant UI) while recording the ids and
 // times it made. The hook (src/sync.js) posts { fn, args, rec } to /api/action, and the server runs
@@ -2316,7 +3941,7 @@ dismissCandidate = act('dismissCandidate', dismissCandidate); restoreCandidate =
 setGithub = act('setGithub', setGithub); disconnectGithub = act('disconnectGithub', disconnectGithub); simulateWeek = act('simulateWeek', simulateWeek);
 setCasProject = act('setCasProject', setCasProject); casNudge = act('casNudge', casNudge); saveLetter = act('saveLetter', saveLetter); setLetterStatus = act('setLetterStatus', setLetterStatus);
 matchRoster = act('matchRoster', matchRoster); setRollout = act('setRollout', setRollout); addAlumStation = act('addAlumStation', addAlumStation);
-addLog = act('addLog', addLog); addNotification = act('addNotification', addNotification); markNotificationsRead = act('markNotificationsRead', markNotificationsRead);
+addLog = act('addLog', addLog); addNotification = act('addNotification', addNotification); markNotificationsRead = act('markNotificationsRead', markNotificationsRead); clearReadNotifications = act('clearReadNotifications', clearReadNotifications);
 addReflection = act('addReflection', addReflection); addStation = act('addStation', addStation); requestEndorsement = act('requestEndorsement', requestEndorsement);
 endorse = act('endorse', endorse); declineRequest = act('declineRequest', declineRequest); addNote = act('addNote', addNote); sendPrompt = act('sendPrompt', sendPrompt);
 recordView = act('recordView', recordView); logLink = act('logLink', logLink);
@@ -2335,13 +3960,25 @@ importCandidates = act('importCandidates', importCandidates); eraseStudent = act
 setSubjectLine = act('setSubjectLine', setSubjectLine);
 askClass = act('askClass', askClass); remindClass = act('remindClass', remindClass); answerPrompt = act('answerPrompt', answerPrompt); skipPrompt = act('skipPrompt', skipPrompt);
 nudgeStudent = act('nudgeStudent', nudgeStudent);
+setTask = act('setTask', setTask); editTask = act('editTask', editTask); extendTask = act('extendTask', extendTask); handInTask = act('handInTask', handInTask); remindDueTasks = act('remindDueTasks', remindDueTasks);
 addMomentComment = act('addMomentComment', addMomentComment); editMomentComment = act('editMomentComment', editMomentComment); deleteMomentComment = act('deleteMomentComment', deleteMomentComment); markCommentsRead = act('markCommentsRead', markCommentsRead);
 reportItem = act('reportItem', reportItem); moderateReport = act('moderateReport', moderateReport);
 spotMoment = act('spotMoment', spotMoment); acceptSpotted = act('acceptSpotted', acceptSpotted); declineSpotted = act('declineSpotted', declineSpotted);
+addPhrase = act('addPhrase', addPhrase); editPhrase = act('editPhrase', editPhrase); deletePhrase = act('deletePhrase', deletePhrase); movePhrase = act('movePhrase', movePhrase); usePhrase = act('usePhrase', usePhrase);
+dropPhotos = act('dropPhotos', dropPhotos);
 setHandoverNote = act('setHandoverNote', setHandoverNote); carryOverGoal = act('carryOverGoal', carryOverGoal); closeGoal = act('closeGoal', closeGoal);
 setPeerFeedback = act('setPeerFeedback', setPeerFeedback); givePeerFeedback = act('givePeerFeedback', givePeerFeedback); thankPeerFeedback = act('thankPeerFeedback', thankPeerFeedback); hidePeerFeedback = act('hidePeerFeedback', hidePeerFeedback); setPeerFeedbackYear = act('setPeerFeedbackYear', setPeerFeedbackYear);
 openReflectionWindow = act('openReflectionWindow', openReflectionWindow); closeReflectionWindow = act('closeReflectionWindow', closeReflectionWindow); saveTermReflection = act('saveTermReflection', saveTermReflection); finishTermReflection = act('finishTermReflection', finishTermReflection);
 markMilestonesSeen = act('markMilestonesSeen', markMilestonesSeen);
+createExhibition = act('createExhibition', createExhibition); removeExhibitionSlide = act('removeExhibitionSlide', removeExhibitionSlide); pauseExhibition = act('pauseExhibition', pauseExhibition); revokeExhibition = act('revokeExhibition', revokeExhibition);
+saveLeaver = act('saveLeaver', saveLeaver); shareLeaver = act('shareLeaver', shareLeaver); revokeLeaver = act('revokeLeaver', revokeLeaver); commentLeaver = act('commentLeaver', commentLeaver); doneLeaverComment = act('doneLeaverComment', doneLeaverComment);
+checkInGoal = act('checkInGoal', checkInGoal); snoozeCheckins = act('snoozeCheckins', snoozeCheckins); sendEncouragement = act('sendEncouragement', sendEncouragement);
+openConferenceRound = act('openConferenceRound', openConferenceRound); editConferenceRound = act('editConferenceRound', editConferenceRound); closeConferenceRound = act('closeConferenceRound', closeConferenceRound); bookConference = act('bookConference', bookConference); cancelConference = act('cancelConference', cancelConference); blockConferenceSlot = act('blockConferenceSlot', blockConferenceSlot); sendConferenceReminders = act('sendConferenceReminders', sendConferenceReminders);
+saveConfPrep = act('saveConfPrep', saveConfPrep); writeConfNote = act('writeConfNote', writeConfNote);
+setSubjectPrompts = act('setSubjectPrompts', setSubjectPrompts); clearSubjectPrompts = act('clearSubjectPrompts', clearSubjectPrompts); answerExampleAsk = act('answerExampleAsk', answerExampleAsk);
+logCasExperience = act('logCasExperience', logCasExperience); logCasHours = act('logCasHours', logCasHours); withdrawCasHours = act('withdrawCasHours', withdrawCasHours); confirmCasHours = act('confirmCasHours', confirmCasHours); returnCasHours = act('returnCasHours', returnCasHours); setCasCode = act('setCasCode', setCasCode); setCasCoordinator = act('setCasCoordinator', setCasCoordinator);
+addFamilyNote = act('addFamilyNote', addFamilyNote); editFamilyNote = act('editFamilyNote', editFamilyNote); deleteFamilyNote = act('deleteFamilyNote', deleteFamilyNote); thankFamilyNote = act('thankFamilyNote', thankFamilyNote); setFamilyNoteHidden = act('setFamilyNoteHidden', setFamilyNoteHidden);
+addSchoolEvent = act('addSchoolEvent', addSchoolEvent); editSchoolEvent = act('editSchoolEvent', editSchoolEvent); removeSchoolEvent = act('removeSchoolEvent', removeSchoolEvent); importSchoolEvents = act('importSchoolEvents', importSchoolEvents); dismissSchoolEvent = act('dismissSchoolEvent', dismissSchoolEvent); remindSchoolEvent = act('remindSchoolEvent', remindSchoolEvent);
 // Undo puts a whole earlier copy back, and reset goes back to the seed (sync.js sends it to /api/reset).
 restore = act('restore', restore); resetDemo = act('resetDemo', resetDemo);
 export const MUTATORS = Object.keys(ACTIONS);
@@ -2350,3 +3987,19 @@ export const MUTATORS = Object.keys(ACTIONS);
 // browser, never takes another tab's save, and every change is offered to the guard first (true: refused, not run).
 export const setActionGuard = (fn) => { guard = fn; };
 export function loadPreview(snap) { previewOnly = true; clearTimeout(saveTimer); apply(snap); }
+
+// ── Thai for students (src/thai.js): every piece of text in the record, so Thai shown at display time never replaces
+// someone's own words that happen to match an interface string. Machine fields and the app's own messages (activity,
+// notifications) are left out, and so is `prompt` (the questions answered, mostly the app's own wording).
+const NOT_WORDS = new Set(['activity', 'notifications', 'linkViews', 'rosterImport', 'answered', 'intensity', 'family']);
+const NOT_WORD_KEYS = new Set(['id', 'type', 'kind', 'status', 'verification', 'visibility', 'role', 'audience', 'theme', 'layout', 'tier', 'prompt', 'phrase', 'url', 'token', 'date', 'at', 'ts', 'colour']);
+export function recordWords() {
+  const out = new Set();
+  const walk = (v) => {
+    if (typeof v === 'string') { const s = v.trim(); if (s && /[A-Za-z]/.test(s)) out.add(s); }
+    else if (Array.isArray(v)) v.forEach(walk);
+    else if (v && typeof v === 'object') for (const k in v) if (!NOT_WORD_KEYS.has(k)) walk(v[k]);
+  };
+  for (const k in store) if (!NOT_WORDS.has(k)) walk(store[k]);
+  return out;
+}

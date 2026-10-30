@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { addStation, endorserChoices, getIntensity, getTeachers, teachersOf, TODAY } from '../api.js';
+import { useMemo, useState } from 'react';
+import { addStation, endorserChoices, getIntensity, getLine, getPromptsFor, getTeachers, teachersOf, TODAY } from '../api.js';
+import { IdeasPanel } from './SubjectPrompts.jsx';
 import { TYPE_LABEL, VIS_LABEL } from '../format.js';
 import { AttachButton, PendingFiles, UploadStatus, useUpload } from './FileAttach.jsx';
 import { evidenceFor } from '../upload.js';
@@ -10,7 +11,9 @@ export const OUTCOMES = ['Strengths and growth', 'New challenges', 'Initiative a
 
 // A student-added station: dotted until a teacher endorses it.
 export default function AddStation({ map, studentId, onClose, onAdded, prefill = {}, compact = false }) {
-  const lines = map.lines.filter((l) => l.status !== 'ended');
+  const open = map.lines.filter((l) => l.status !== 'ended');
+  // A school event's suggested line that is not on the map yet (addStation adds it).
+  const lines = [...open, ...(prefill.lineIds || []).filter((id) => !open.some((l) => l.id === id)).map(getLine).filter(Boolean)];
   const [f, setF] = useState({ title: '', date: TODAY, type: 'project', lineIds: [], summary: '', reflection: '', visibility: 'advisor', image: null, imageCaption: '', files: [], requestFrom: '', requestNote: '', cas: null, ...prefill });
   const set = (patch) => setF((x) => ({ ...x, ...patch }));
   const mine = teachersOf(studentId); // from the class lists; the demo has none and keeps its own list
@@ -24,13 +27,18 @@ export default function AddStation({ map, studentId, onClose, onAdded, prefill =
   };
   const photo = useUpload();
   const ok = f.title.trim() && f.lineIds.length && !photo.busy;
-  const save = () => { const e = addStation(studentId, { ...f, requestFrom: f.requestFrom || null }); onAdded?.(e); };
+  // Subject prompts for the first line picked (class's, line's or built-in); counted once shown open or a starter is used.
+  const prompts = useMemo(() => (f.lineIds[0] ? getPromptsFor(studentId, f.lineIds[0]) : null), [studentId, f.lineIds[0]]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [usedIdeas, setUsedIdeas] = useState(null);
+  const promptId = prompts && (prompts.source !== 'default' || usedIdeas === prompts.id) ? prompts.id : null;
+  const starter = (s) => { setUsedIdeas(prompts.id); set({ reflection: `${f.reflection ? `${f.reflection.trimEnd()} ` : ''}${s.replace(/…$/, ' ')}` }); };
+  const save = () => { const e = addStation(studentId, { ...f, requestFrom: f.requestFrom || null, promptId }); onAdded?.(e); };
   const pickPhoto = (file) => photo.run(file, (r) => { const ev = evidenceFor(r, file.name); if (ev.kind === 'image') set({ image: ev.url, imageCaption: file.name }); else set({ files: [...f.files, ev] }); });
   return (
     <div className="modal-back" onClick={onClose}>
       <div className={`modal add-station${compact ? ' compact' : ''}`} role="dialog" aria-label="Add a station" onClick={(ev) => ev.stopPropagation()}>
         <button className="panel-close" onClick={onClose} aria-label="Close">×</button>
-        <div className="modal-kicker">New station · student-added</div>
+        <div className="modal-kicker">{prefill.schoolEvent ? 'From a school event' : 'New station · student-added'}</div>
         <h2>{simple ? 'What did you do?' : 'Add something to your map'}</h2>
         <div className="form-grid">
           <label className="span2">What happened<input value={f.title} onChange={(e) => set({ title: e.target.value })} placeholder="e.g. Bangkok Smart City hackathon: 1st place" /></label>
@@ -39,6 +47,7 @@ export default function AddStation({ map, studentId, onClose, onAdded, prefill =
           <div className="span2 field"><span>{simple ? 'Which colour does it belong to?' : 'Which line, or lines (two or more makes an interchange)'}</span>
             <div className="chips">{lines.map((l) => <button key={l.id} type="button" className={`line-chip${f.lineIds.includes(l.id) ? '' : ' off'}`} style={{ '--c': l.colour }} aria-pressed={f.lineIds.includes(l.id)} onClick={() => toggleLine(l.id)}><i className={l.pattern === 'cased' ? 'cased' : undefined} />{l.name}</button>)}</div>
           </div>
+          <IdeasPanel key={prompts?.id || 'none'} prompts={prompts} onStarter={starter} onOpen={() => setUsedIdeas(prompts.id)} />
           <label className="span2">One line about it<input value={f.summary} onChange={(e) => set({ summary: e.target.value })} placeholder="What you did, and what came of it" /></label>
           <div className="span2 field"><span>Photo</span>
             <div className="photo-row">
@@ -52,7 +61,7 @@ export default function AddStation({ map, studentId, onClose, onAdded, prefill =
             <PendingFiles files={f.files} onRemove={(i) => set({ files: f.files.filter((_, j) => j !== i) })} />
             <AttachButton label={f.files.length ? 'Attach another file' : 'Attach a file'} onAdded={(ev) => setF((x) => ({ ...x, files: [...x.files, ev] }))} />
           </div>
-          <label className="span2">{simple ? 'What did you learn? (optional)' : 'Quick reflection (optional)'}<textarea rows={2} value={f.reflection} onChange={(e) => set({ reflection: e.target.value })} placeholder="What did you learn?" /></label>
+          <label className="span2">{f.question ? `${f.question} (optional)` : simple ? 'What did you learn? (optional)' : 'Quick reflection (optional)'}<textarea rows={2} value={f.reflection} onChange={(e) => set({ reflection: e.target.value })} placeholder="What did you learn?" /></label>
           {dp && !simple && (
             <div className="span2 field cas-field"><span>Counts for CAS?</span>
               <div className="seg small">{[[null, 'No'], ['C', 'Creativity'], ['A', 'Activity'], ['S', 'Service']].map(([v, l]) => <button type="button" key={l} className={(f.cas?.strand || null) === v ? 'on' : ''} onClick={() => set({ cas: v ? { strand: v, outcomes: f.cas?.outcomes || [] } : null })}>{l}</button>)}</div>

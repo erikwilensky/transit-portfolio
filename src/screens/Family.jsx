@@ -6,6 +6,10 @@ import { FamilyMilestones } from '../components/Milestones.jsx';
 import StationPanel from '../components/StationPanel.jsx';
 import { consentText, dateIn, LangContext, lineName, tr } from '../i18n.js';
 import { chooseLang, exportUrl, isPilot } from '../auth.js';
+import { FamilyBooking } from '../components/ConferenceBooking.jsx';
+import { FamilyNotesHint } from '../components/FamilyNotes.jsx';
+import { schoolEventName } from '../api.js';
+import { FamilyConfNotes } from '../components/StudentLed.jsx';
 
 // N1: a parent's own screens, in English or Thai. One parent, two children:
 // Ploy (Year 11) decides what her family sees; Pim (Year 7) needs her parent's consent first.
@@ -103,7 +107,7 @@ export default function Family({ persona, screen, param, go, toast, version }) {
   );
 }
 
-function FamilyMap({ persona, childId, go, lang, version }) {
+function FamilyMap({ persona, childId, go, lang, version, toast }) {
   const s = getStudent(childId);
   const say = SAY[lang];
   const map = useMemo(() => getStudentMap(childId, familyViewer(childId), { family: true }), [childId, version]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -115,6 +119,8 @@ function FamilyMap({ persona, childId, go, lang, version }) {
   return (
     <>
       <Head persona={persona} childId={childId} screen="family" go={go} lang={lang} title={say.homeT(s.name)} lede={youngStudent(s) ? say.homeYoung(f) : say.homeOld(f)} />
+      <FamilyBooking persona={persona} lang={lang} version={version} toast={toast} />
+      <FamilyConfNotes persona={persona} lang={lang} version={version} toast={toast} />
       {empty ? (
         <div className="card-sec fam-empty">
           <p>{say.empty(f)}</p>
@@ -123,10 +129,11 @@ function FamilyMap({ persona, childId, go, lang, version }) {
       ) : (
         <div className="fam-body">
           <section className="pv-intro">
-            <h3>{say.thisTerm}</h3>
-            {term.length ? <ul>{term.map((e) => <li key={e.id}><button className="linkish" lang="en" onClick={() => setSel(e.id)}>{e.title}</button> <small>{dateIn(lang, e.date)} · {e.lineIds.map((id) => lineName(lang, map.lines.find((l) => l.id === id)?.name || id)).join(', ')}</small></li>)}</ul> : <p className="fineprint">{say.none}</p>}
+            <h2>{say.thisTerm}</h2>
+            {term.length ? <ul>{term.map((e) => <li key={e.id}><button className="linkish" lang="en" onClick={() => setSel(e.id)}>{e.title}</button> <small>{dateIn(lang, e.date)} · {e.lineIds.map((id) => lineName(lang, map.lines.find((l) => l.id === id)?.name || id)).join(', ')}</small>{schoolEventName(e) && <small className="se-on"> · <span>{tr(lang, 'School event')}</span> <b lang="en">{schoolEventName(e)}</b></small>}</li>)}</ul> : <p className="fineprint">{say.none}</p>}
+            <FamilyNotesHint childId={childId} lang={lang} />
             <FamilyMilestones childId={childId} lang={lang} version={version} onOpen={setSel} />
-            <h3>{say.ask}</h3>
+            <h2>{say.ask}</h2>
             <ul>{QUESTIONS.map((q) => <li key={q}>{tr(lang, q)}</li>)}</ul>
           </section>
           <div className="pv-map fam-map">

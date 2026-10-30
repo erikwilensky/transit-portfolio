@@ -1,0 +1,39 @@
+/* Family encouragement (FamilyNotes.jsx): notes on a moment, the composer, the Simple home cards. */
+.fn-on { margin: 14px 0; display: grid; gap: 8px; }
+.fn-on h3 { margin: 0; }
+.fn-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.fn-note { border: 1px solid var(--rule); border-left: 4px solid var(--b-gold); border-radius: 12px; padding: 10px 12px; background: var(--surface); display: grid; gap: 4px; }
+.fn-note.muted { opacity: .75; }
+.fn-note p { margin: 0; font-size: 14px; overflow-wrap: anywhere; }
+.fn-react { font-weight: 600; color: var(--navy); font-size: 15px; }
+.fn-who { color: var(--muted); font-size: 12px; }
+.fn-acts { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 2px; }
+.fn-thanked { font-size: 13px; color: var(--navy); font-weight: 600; }
+.fn-more { justify-self: start; }
+.fn-compose { display: grid; gap: 8px; }
+.fn-reacts { display: flex; flex-wrap: wrap; gap: 6px; }
+.fn-reacts button { padding: 8px 12px; border-radius: 999px; border: 2px solid var(--rule); background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.fn-reacts button.on { border-color: var(--navy); background: var(--navy); color: #fff; }
+.fn-compose textarea { font: inherit; padding: 10px; border: 1px solid var(--rule); border-radius: 10px; background: var(--surface); color: var(--ink); resize: vertical; width: 100%; box-sizing: border-box; }
+.fn-foot { display: flex; gap: 8px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
+.fn-count { color: var(--muted); font-size: 12px; margin-right: auto; }
+.fn-hint { margin: 6px 0 0; }
+
+/* Big and warm: the Simple home and the Simple moment card. */
+.fn-home { display: grid; gap: 10px; margin: 0; }
+.fn-home h2 { margin: 0; font-size: 20px; font-weight: 600; }
+.fn-list.big .fn-note { border-width: 2px; border-left-width: 8px; border-radius: 18px; padding: 16px 18px; gap: 8px; }
+.fn-list.big .fn-react { font-size: 24px; }
+.fn-list.big .fn-note p { font-size: 18px; line-height: 1.45; }
+.fn-list.big .fn-who { font-size: 14px; }
+.fn-list.big .fn-acts .primary { font-size: 17px; padding: 12px 20px; border-radius: 14px; min-height: 48px; }
+.fn-list.big .fn-acts .ghost { min-height: 44px; }
+.fn-list.big .fn-thanked { font-size: 16px; }
+.fn-on.big h3 { font-size: 19px; }
+@media (max-width: 480px) { .fn-list.big .fn-acts .primary { flex: 1 1 100%; } }
+
+:root[data-theme="dark"] .fn-react, :root[data-theme="dark"] .fn-thanked { color: var(--b-sky); }
+:root[data-theme="dark"] .fn-reacts button.on { background: var(--b-sky); border-color: var(--b-sky); color: var(--navy); }
+.sh-fam-notes { margin-top: 18px; }
+.sh-fam-notes .fn-switch { display: flex; gap: 14px; align-items: center; justify-content: space-between; font-size: 17px; padding: 14px 16px; border: 2px solid var(--rule); border-radius: 16px; background: var(--surface); cursor: pointer; }
+.sh-fam-notes .fn-switch input, .pv-family-notes .fn-switch input { width: 26px; height: 26px; accent-color: var(--navy); flex: none; }

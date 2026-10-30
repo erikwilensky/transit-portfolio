@@ -7,6 +7,7 @@
 import { api, rev } from './store.mjs';
 import { reachOf, scopedSnapshot } from './scope.mjs';
 import { publicSnapshot } from './routes/40-public.mjs';
+import { leaverPublicFiles } from './routes/41-leaver.mjs';
 import * as A from './auth.mjs';
 import * as F from './feedback.mjs';
 
@@ -41,6 +42,7 @@ function publicFiles() {
     if (l.revoked || l.expiresAt < api.TODAY) continue;
     try { for (const n of namesIn(publicSnapshot(l.token).store)) c.pub.add(n); } catch { /* a link that no longer opens */ }
   }
+  for (const s of leaverPublicFiles()) for (const n of namesIn(s)) c.pub.add(n); // leaver portfolio links
   return c.pub;
 }
 
@@ -68,14 +70,28 @@ const viaRecord = (u, name, refs) => {
 };
 
 // meta: the .json kept beside the upload ({ by: account id, … }).
-export function canSeeFile(user, name, meta = {}) {
+// exToken: an exhibition screen's token (?ex=, server/routes/45-exhibition.mjs), for the photos on its slides.
+export function canSeeFile(user, name, meta = {}, exToken = null) {
   if (user && meta.by && meta.by === user.id) return true;
   if (publicFiles().has(name)) return true;
+  if (exToken && exhibitionFiles(exToken).has(name)) return true;
   if (!user) return false;
   if ((A.isAdmin(user) || user.kind === 'leadership') && F.allFeedback().some((f) => f.screenshot?.url?.endsWith(`/${name}`))) return true;
   // Kind feedback: the photo on a classmate's moment opened for feedback (api.peerMomentsFor).
   if (user.kind === 'student' && user.studentId && api.peerMomentsFor(user.studentId).some((m) => m.image?.includes(`api/files/${name}`))) return true;
+  // Class photo drop: a photo given to students also opens for staff who reach one of them (the batch itself goes only to
+  // its teacher; each student gets their own photos through their copy of the record).
+  if (user.kind !== 'student' && user.kind !== 'parent') { const sids = api.dropPhotoStudents(name); if (sids?.length) { const { reach } = seen(user); if (reach === null || sids.some((sid) => reach.has(sid))) return true; } }
   const refs = fileIndex().get(name);
   if (!refs) return false; // not attached to anything yet: the uploader only
   return [user, ...(A.isAdmin(user) ? previewed(user) : [])].some((u) => viaRecord(u, name, refs));
+}
+
+// Photos on an exhibition screen's slides, by its token: none once it is paused or turned off.
+export function exhibitionFiles(token) {
+  const x = api.exhibitionByToken(token);
+  if (!x || x.revoked || x.paused) return new Set();
+  const c = now(), ex = (c.ex ||= new Map());
+  if (!ex.has(x.id)) ex.set(x.id, new Set(api.exhibitionSlides(x).flatMap((s) => namesIn(s.photo))));
+  return ex.get(x.id);
 }

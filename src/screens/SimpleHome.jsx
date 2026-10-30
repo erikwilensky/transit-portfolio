@@ -1,18 +1,26 @@
 import { useEffect, useMemo, useState } from 'react';
-import { addGoal, addReflection, addStation, completeGoal, deleteStation, editStation, endorserChoices, getEvent, getStudent, getTeacher, getTeachers, requestFor, setVisibility, snapshot, teachersOf, TODAY } from '../api.js';
+import { addGoal, addReflection, addStation, completeGoal, deleteStation, editStation, endorserChoices, getEvent, getLine, getPromptsFor, getStudent, getTeacher, getTeachers, requestFor, setPrivacy, setVisibility, snapshot, teachersOf, TODAY } from '../api.js';
 import { fmtDate } from '../format.js';
 import { isPilot } from '../auth.js';
 import { evidenceFor } from '../upload.js';
 import { UploadStatus, useUpload } from '../components/FileAttach.jsx';
 import { SUGGEST } from '../components/AddStation.jsx';
 import { OpenPrompts } from '../components/ClassPrompts.jsx';
+import { MyTasks } from '../components/ClassTasks.jsx';
+import { EventCards } from '../components/SchoolEvents.jsx';
+import { schoolEventName } from '../api.js';
+import { ExampleAsks, Examples, promptsFrom } from '../components/SubjectPrompts.jsx';
 import { SpottedForMe } from '../components/Spotted.jsx';
 import { PeerFromClasses, PeerOnMoment } from '../components/PeerFeedback.jsx';
+import { FamilyNotesHome, FamilyNotesOn, FamilyNotesSwitch } from '../components/FamilyNotes.jsx';
 import MomentComments, { NewBadge, useUnread } from '../components/MomentComments.jsx';
 import './simple-goals.css';
 import { HiddenNotice, ReportButton } from '../components/Report.jsx';
 import { Said, SayIt, VoiceNotes, VoiceRecorder } from '../components/Voice.jsx';
+import { CheckinTimeline, GoalCheckins } from '../components/GoalCheckins.jsx';
 import { canRecord } from '../voice.js';
+import { photoAlt } from '../a11y.js';
+import { shown } from '../thai.js';
 
 // Simple: the student interface for Years 7 and 8 (and anyone who picks it). Not the full app with parts hidden,
 // but its own calmer design: one question per screen, big buttons, plain words, and a map drawn as a few
@@ -51,6 +59,7 @@ export default function SimpleHome({ map, studentId, toast, version, addRequest,
   useEffect(() => { if (addRequest) setAdding(true); }, [addRequest]); // a nudge's "Add something"
   const [asking, setAsking] = useState(null); // { event, prompt, signal }
   const [open, setOpen] = useState(focusId?.startsWith('ev-') ? focusId : null); // a notification's moment
+  useEffect(() => { if (focusId?.startsWith('ev-')) setOpen(focusId); }, [focusId]); // search opens one
   const first = map.student.name.split(' ')[0];
   const moments = map.events.filter((e) => e.type !== 'goal' && e.type !== 'reflection').sort((a, b) => b.date.localeCompare(a.date));
   const signals = map.signals.filter((g) => g.open && g.eventId);
@@ -71,9 +80,14 @@ export default function SimpleHome({ map, studentId, toast, version, addRequest,
         <p>{moments.length ? `Your journey has ${moments.length} moment${moments.length > 1 ? 's' : ''} so far.` : 'Your journey starts here.'} What have you been up to?</p>
       </section>
 
+      <FamilyNotesHome studentId={studentId} toast={toast} version={version} onOpen={setOpen} />
+      <MyTasks studentId={studentId} simple toast={toast} version={version} />
+      <EventCards studentId={studentId} simple toast={toast} version={version} focusId={focusId} onAdd={(p) => setAdding(p)} />
       <OpenPrompts studentId={studentId} simple toast={toast} version={version} />
+      <ExampleAsks studentId={studentId} simple toast={toast} version={version} />
       <SpottedForMe studentId={studentId} simple toast={toast} version={version} />
       <PeerFromClasses studentId={studentId} simple toast={toast} version={version} />
+      <GoalCheckins studentId={studentId} simple toast={toast} version={version} />
 
       <div className="sh-actions">
         <button className="sh-card add" onClick={() => setAdding(true)}><span className="sh-ic" aria-hidden="true">＋</span><b>Add something I did</b><small>A club, a project, a match, anything</small></button>
@@ -115,7 +129,7 @@ export default function SimpleHome({ map, studentId, toast, version, addRequest,
         <GoalCard e={openGoal} map={map} toast={toast} onDone={(id) => { setOpen(null); setFinishing(id); }} />
       </div></div>}
       {finishing && <DoneFlow id={finishing} studentId={studentId} toast={toast} onClose={() => setFinishing(null)} />}
-      {adding && <QuickAdd map={map} studentId={studentId} toast={toast} onClose={() => setAdding(false)} />}
+      {adding && <QuickAdd map={map} studentId={studentId} toast={toast} prefill={adding === true ? null : adding} onClose={() => setAdding(false)} />}
       {asking && <AskFlow q={asking} studentId={studentId} onClose={() => setAsking(null)} onDone={() => { setAsking(null); toast('Saved. Your advisor can read it.'); }} />}
       {openEvent && <Moment e={openEvent} map={map} toast={toast} onClose={() => setOpen(null)} onReflect={() => { setOpen(null); setAsking({ event: openEvent, prompt: `What did “${openEvent.title}” teach you?` }); }} />}
     </div>
@@ -156,34 +170,52 @@ function Tracks({ map, onOpen }) {
 }
 
 export function Steps({ n, at }) {
-  return <div className="sh-steps" aria-label={`Step ${at + 1} of ${n}`}>{Array.from({ length: n }, (_, i) => <i key={i} className={i <= at ? 'on' : ''} />)}</div>;
+  return <div className="sh-steps" role="img" aria-label={`Step ${at + 1} of ${n}`}>{Array.from({ length: n }, (_, i) => <i key={i} className={i <= at ? 'on' : ''} />)}</div>;
 }
 
 // Adding a moment, one question at a time. Also the phone app's "Add a moment" and "Take a photo" (#/me/add,
 // #/me/snap), for any student at any level: camera starts on the photo, then asks the same questions.
-export function QuickAdd({ map, studentId, toast, onClose, camera = false }) {
-  return <AddFlow map={map} studentId={studentId} camera={camera} onClose={onClose} onDone={(e, t) => { onClose(); toast(`${WARM[e.title.length % WARM.length]} “${e.title}” is on your journey.${t ? ` You asked ${t.name} to check it.` : ''}`); }} />;
+export function QuickAdd({ map, studentId, toast, onClose, camera = false, prefill = null }) {
+  return <AddFlow map={map} studentId={studentId} camera={camera} prefill={prefill} onClose={onClose} onDone={(e, t) => { onClose(); toast(`${WARM[e.title.length % WARM.length]} “${e.title}” is on your journey.${t ? ` You asked ${t.name} to check it.` : ''}`); }} />;
 }
-function AddFlow({ map, studentId, onClose, onDone, camera }) {
+// prefill (a school event's card, SchoolEvents.jsx): { title, date, lineIds, schoolEvent, question }; its line is picked for them.
+function AddFlow({ map, studentId, onClose, onDone, camera, prefill }) {
   const [step, setStep] = useState(camera ? -1 : 0);
-  const [f, setF] = useState({ title: '', image: null, imageCaption: 'Photo', line: null, reflection: '', voice: null });
+  const [f, setF] = useState({ title: prefill?.title || '', image: null, imageCaption: 'Photo', line: null, reflection: '', voice: null });
+  const preLine = prefill?.lineIds?.[0] || null;
   const [recording, setRecording] = useState(false);
   const [more, setMore] = useState(false);
-  const lines = map.lines.filter((l) => l.status !== 'ended');
+  const lines = [...map.lines.filter((l) => l.status !== 'ended'), ...(preLine && !map.lines.some((l) => l.id === preLine) && getLine(preLine) ? [getLine(preLine)] : [])];
   const set = (p) => setF((x) => ({ ...x, ...p }));
   const photo = useUpload();
   const pickPhoto = (e) => { const file = e.target.files?.[0]; e.target.value = ''; photo.run(file, (r) => set({ image: evidenceFor(r, file.name).url, imageCaption: 'Photo' })); };
   const who = useMemo(() => (f.line ? checkers(studentId, f.line) : []), [studentId, f.line]);
+  // Subject prompts (SubjectPrompts.jsx): a teacher's for this line go one question per screen; the built-in ones show their
+  // note and starters, with "Help me with questions" for the same screens.
+  const prompts = useMemo(() => (f.line ? getPromptsFor(studentId, f.line) : null), [studentId, f.line]);
+  const [guided, setGuided] = useState(false);
+  const [qi, setQi] = useState(0);
+  const [answers, setAnswers] = useState([]);
+  const [usedStarter, setUsedStarter] = useState(false);
+  const qn = guided && prompts ? prompts.questions.length : 0;
+  const reflection = () => (qn ? prompts.questions.map((q, i) => (answers[i]?.trim() ? `${q}\n${answers[i].trim()}` : null)).filter(Boolean).join('\n\n') : f.reflection.trim());
+  const pickLine = (id) => { const p = getPromptsFor(studentId, id); set({ line: id }); setGuided(!!p && p.source !== 'default'); setQi(0); setAnswers([]); setUsedStarter(false); setMore(false); setStep(2); };
   const save = (teacher) => {
     const snap = snapshot();
-    const e = addStation(studentId, { title: f.title.trim(), lineIds: [f.line], type: 'project', image: f.image, imageCaption: f.imageCaption, files: f.voice ? [f.voice] : [], reflection: f.reflection.trim() || null, visibility: 'advisor', via: 'Simple add', requestFrom: teacher?.id || null });
+    const e = addStation(studentId, { title: f.title.trim(), lineIds: [f.line], ...(prefill?.schoolEvent ? { date: prefill.date, schoolEvent: prefill.schoolEvent } : {}), type: 'project', image: f.image, imageCaption: f.imageCaption, files: f.voice ? [f.voice] : [], reflection: reflection() || null, visibility: 'advisor', via: 'Simple add', requestFrom: teacher?.id || null, promptId: prompts && (qn || usedStarter) ? prompts.id : null });
     onDone(e, teacher, snap);
   };
+  const steps = (who.length ? 4 : 3) + (qn ? qn - 1 : 0) + (camera ? 1 : 0);
+  const at = (step === 2 ? 2 + qi : step === 3 ? 3 + (qn ? qn - 1 : 0) : step) + (camera ? 1 : 0);
+  const voice = f.voice ? <div className="sh-voice"><VoiceNotes evidence={[f.voice]} /><button type="button" className="ghost" onClick={() => set({ voice: null })}>Remove voice note</button></div>
+    : recording ? <VoiceRecorder onAdded={(v) => { set({ voice: v }); setRecording(false); }} onCancel={() => setRecording(false)} />
+    : <VoiceStart onClick={() => setRecording(true)} />;
+  const finish = (has) => (who.length ? <button className="primary" onClick={() => setStep(3)}>{has ? 'Next' : 'Skip'}</button> : <button className="primary" onClick={() => save(null)}>{has ? 'Add it' : 'Skip and add it'}</button>);
   return (
     <div className="modal-back" onClick={onClose}>
       <div className="modal sh-flow" role="dialog" aria-label="Add something I did" onClick={(e) => e.stopPropagation()}>
         <button className="panel-close" onClick={onClose} aria-label="Close">×</button>
-        <Steps n={(who.length ? 4 : 3) + (camera ? 1 : 0)} at={step + (camera ? 1 : 0)} />
+        <Steps n={steps} at={at} />
         {step === -1 && <>
           <Said text="Take a photo" />
           <p className="sh-sub">Of something you did, made or took part in. Then say what it was.</p>
@@ -195,30 +227,46 @@ function AddFlow({ map, studentId, onClose, onDone, camera }) {
         </>}
         {step === 0 && <>
           <Said text="What did you do?" />
-          <input className="sh-input" autoFocus value={f.title} onChange={(e) => set({ title: e.target.value })} placeholder="e.g. Joined the robotics club" aria-label="What did you do?" onKeyDown={(e) => e.key === 'Enter' && f.title.trim() && !photo.busy && setStep(1)} />
+          <input className="sh-input" autoFocus value={f.title} onChange={(e) => set({ title: e.target.value })} placeholder="e.g. Joined the robotics club" aria-label="What did you do?" onKeyDown={(e) => e.key === 'Enter' && f.title.trim() && !photo.busy && (preLine ? pickLine(preLine) : setStep(1))} />
           <SayIt value={f.title} onChange={(title) => set({ title })} />
           <p className="sh-sub">Add a photo if you have one</p>
           <PhotoPick f={f} set={set} photo={photo} pickPhoto={pickPhoto} />
-          <div className="sh-next"><button className="primary" disabled={!f.title.trim() || photo.busy} onClick={() => setStep(1)}>{photo.busy ? 'Wait for the photo…' : 'Next'}</button></div>
+          <div className="sh-next"><button className="primary" disabled={!f.title.trim() || photo.busy} onClick={() => (preLine ? pickLine(preLine) : setStep(1))}>{photo.busy ? 'Wait for the photo…' : 'Next'}</button></div>
         </>}
         {step === 1 && <>
           <Said text="Which colour does it go with?" />
-          <div className="sh-lines">{lines.map((l) => <button key={l.id} style={{ '--c': l.colour }} className={f.line === l.id ? 'on' : ''} onClick={() => { set({ line: l.id }); setMore(false); setStep(2); }}><i />{l.name}</button>)}</div>
+          <div className="sh-lines">{lines.map((l) => <button key={l.id} style={{ '--c': l.colour }} className={f.line === l.id ? 'on' : ''} onClick={() => pickLine(l.id)}><i />{l.name}</button>)}</div>
           <div className="sh-next"><button className="ghost" onClick={() => setStep(0)}>Back</button></div>
         </>}
-        {step === 2 && <>
-          <Said text="What did you learn?" />
-          <p className="sh-sub">One or two sentences is plenty. You can skip this.</p>
-          <div className="sh-starters">{STARTERS.map((s) => <button key={s} onClick={() => set({ reflection: `${f.reflection ? `${f.reflection} ` : ''}${s.replace('…', ' ')}` })}>{s}</button>)}</div>
+        {step === 2 && !qn && <>
+          <Said text={prefill?.question || 'What did you learn?'} />
+          {prompts?.note ? <p className="sp-note">{prompts.note}</p> : <p className="sh-sub">One or two sentences is plenty. You can skip this.</p>}
+          <div className="sh-starters">{(prompts?.starters?.length ? prompts.starters : STARTERS).map((s) => <button key={s} onClick={() => { setUsedStarter(!!prompts); set({ reflection: `${f.reflection ? `${f.reflection} ` : ''}${shown(s).replace('…', ' ')}` }); }}>{s}</button>)}</div>
           <textarea className="sh-input" rows={3} value={f.reflection} onChange={(e) => set({ reflection: e.target.value })} aria-label="What did you learn?" />
           <SayIt value={f.reflection} onChange={(reflection) => set({ reflection })} />
-          {f.voice ? <div className="sh-voice"><VoiceNotes evidence={[f.voice]} /><button type="button" className="ghost" onClick={() => set({ voice: null })}>Remove voice note</button></div>
-            : recording ? <VoiceRecorder onAdded={(voice) => { set({ voice }); setRecording(false); }} onCancel={() => setRecording(false)} />
-            : <VoiceStart onClick={() => setRecording(true)} />}
-          <div className="sh-next"><button className="ghost" onClick={() => setStep(1)}>Back</button>
-            {who.length ? <button className="primary" onClick={() => setStep(3)}>{f.reflection.trim() ? 'Next' : 'Skip'}</button> : <button className="primary" onClick={() => save(null)}>{f.reflection.trim() ? 'Add it' : 'Skip and add it'}</button>}</div>
+          {prompts?.questions.length > 0 && <button type="button" className="ghost sp-help" onClick={() => { setGuided(true); setQi(0); setAnswers(f.reflection.trim() ? [f.reflection] : []); }}>Help me with questions</button>}
+          {voice}
+          <div className="sh-next"><button className="ghost" onClick={() => setStep(1)}>Back</button>{finish(!!f.reflection.trim())}</div>
           {!who.length && <p className="sh-note">Only you and your advisor can see it at first.</p>}
         </>}
+        {step === 2 && qn > 0 && (() => {
+          const q = prompts.questions[qi], last = qi === qn - 1, val = answers[qi] || '';
+          const put = (v) => setAnswers((xs) => { const n = [...xs]; n[qi] = v; return n; });
+          return <div className="sp-guided" key={qi}>
+            <p className="sp-from">{qi === 0 ? promptsFrom(prompts) : `Question ${qi + 1} of ${qn}`}</p>
+            {qi === 0 && prompts.note && <p className="sp-note">{prompts.note}</p>}
+            <Said text={q} />
+            {prompts.starters.length > 0 && <div className="sh-starters" role="group" aria-label="Ways to start">{prompts.starters.map((s) => <button key={s} onClick={() => put(`${val ? `${val} ` : ''}${shown(s).replace('…', ' ')}`)}>{s}</button>)}</div>}
+            <textarea className="sh-input" rows={3} value={val} onChange={(e) => put(e.target.value)} aria-label={q} />
+            <SayIt value={val} onChange={put} />
+            {qi === 0 && <Examples examples={prompts.examples} simple />}
+            {last && voice}
+            <div className="sh-next"><button className="ghost" onClick={() => (qi ? setQi(qi - 1) : setStep(1))}>Back</button>
+              {last ? finish(answers.some((a) => a?.trim())) : <button className="primary" onClick={() => setQi(qi + 1)}>{val.trim() ? 'Next question' : 'Skip this one'}</button>}</div>
+            {!last && <button type="button" className="linkish sp-skip" onClick={() => (who.length ? setStep(3) : save(null))}>{answers.some((a) => a?.trim()) ? 'That is enough, carry on' : 'Skip the questions'}</button>}
+            {last && !who.length && <p className="sh-note">Only you and your advisor can see it at first.</p>}
+          </div>;
+        })()}
         {step === 3 && who.length > 0 && <>
           <Said text="Ask a teacher to check it?" />
           <p className="sh-sub">A teacher can say it really happened. You can skip this.</p>
@@ -343,6 +391,7 @@ function GoalCard({ e, map, toast, onDone }) {
       <b>{e.title}</b>
       <small>{e.date < TODAY ? `You planned it for ${fmtDate(e.date)}` : `By ${fmtDate(e.date)}`}{sp ? ` · ${sp}` : ''}</small>
       {e.sponsor?.status === 'accepted' && e.sponsor.expectations && <p className="sh-tip">{callOf(e.sponsor.teacherId)}: “{e.sponsor.expectations}”</p>}
+      <CheckinTimeline event={e} limit={3} />
       {drop
         ? <div className="sh-goal-do"><span>Take it off your journey?</span><button className="ghost" onClick={() => { deleteStation(e.id); toast(`“${e.title}” is off your journey.`); }}>Yes, take it off</button><button className="ghost" onClick={() => setDrop(false)}>Keep it</button></div>
         : <div className="sh-goal-do"><button className="primary" onClick={() => { completeGoal(e.id); onDone(e.id); }}>I did it!</button><button className="ghost" onClick={() => setDrop(true)}>Not doing this any more</button></div>}
@@ -382,7 +431,7 @@ function DoneFlow({ id, studentId, toast, onClose }) {
         {step === 1 && <>
           <Said text="How did it go?" />
           <p className="sh-sub">One sentence is plenty.</p>
-          <div className="sh-starters">{STARTERS.map((s) => <button key={s} onClick={() => set({ text: `${f.text ? `${f.text} ` : ''}${s.replace('…', ' ')}` })}>{s}</button>)}</div>
+          <div className="sh-starters">{STARTERS.map((s) => <button key={s} onClick={() => set({ text: `${f.text ? `${f.text} ` : ''}${shown(s).replace('…', ' ')}` })}>{s}</button>)}</div>
           <textarea className="sh-input" rows={3} autoFocus value={f.text} onChange={(ev) => set({ text: ev.target.value })} aria-label="How did it go?" />
           <SayIt value={f.text} onChange={(text) => set({ text })} />
           <div className="sh-next"><button className="ghost" onClick={() => setStep(0)}>Back</button><button className="primary" onClick={finish}>{f.text.trim() ? 'Save' : 'Skip and finish'}</button></div>
@@ -401,7 +450,7 @@ function AskFlow({ q, studentId, onClose, onDone }) {
         <button className="panel-close" onClick={onClose} aria-label="Close">×</button>
         <p className="sh-sub">About “{q.event.title}”</p>
         <Said text={q.prompt} />
-        <div className="sh-starters">{STARTERS.map((s) => <button key={s} onClick={() => setText(`${text ? `${text} ` : ''}${s.replace('…', ' ')}`)}>{s}</button>)}</div>
+        <div className="sh-starters">{STARTERS.map((s) => <button key={s} onClick={() => setText(`${text ? `${text} ` : ''}${shown(s).replace('…', ' ')}`)}>{s}</button>)}</div>
         <textarea className="sh-input" rows={4} autoFocus value={text} onChange={(e) => setText(e.target.value)} aria-label="Your answer" />
         <SayIt value={text} onChange={setText} />
         <div className="sh-next"><button className="primary" disabled={text.trim().length < 5} onClick={() => { addReflection({ studentId, eventId: q.event.id, prompt: q.prompt, text: text.trim(), visibility: 'advisor', signal: q.signal }); onDone(); }}>Save my answer</button></div>
@@ -422,9 +471,10 @@ function Moment({ e, map, onClose, onReflect, toast }) {
     <div className="modal-back" onClick={onClose}>
       <div className="modal sh-flow sh-moment" role="dialog" aria-label={e.title} onClick={(ev) => ev.stopPropagation()} style={{ '--c': l?.colour }}>
         <button className="panel-close" onClick={onClose} aria-label="Close">×</button>
-        {img && <img src={img.url} alt={img.caption} />}
+        {img && <img src={img.url} alt={photoAlt(img, e.title)} />}
         <span className="sh-line">{l?.name}</span>
         <h2>{e.title}</h2>
+        {schoolEventName(e) && <p className="se-on"><span>School event</span> <b>{schoolEventName(e)}</b></p>}
         <HiddenNotice item={e} />
         <p className="sh-sub">{fmtDate(e.date)} · <Badge e={e} /></p>
         {e.summary && <p>{e.summary}</p>}
@@ -436,6 +486,7 @@ function Moment({ e, map, onClose, onReflect, toast }) {
         <div className="sh-next"><button className="primary" onClick={onReflect}>{e.reflections?.length ? 'Add another thought' : 'What did I learn?'}</button></div>
         <MomentComments key={`c-${e.id}`} event={e} simple toast={toast} />
         <PeerOnMoment key={`pf-${e.id}`} event={e} simple toast={toast} />
+        <FamilyNotesOn key={`fn-${e.id}`} event={e} simple toast={toast} />
         <ReportButton event={e} simple toast={toast} />
       </div>
     </div>
@@ -462,6 +513,7 @@ export function ShowFamily({ map, toast }) {
         </li>
       ); })}</ul>
       {!moments.length && <p className="sh-empty">When you add moments, you can choose here who sees them.</p>}
+      <div className="sh-fam-notes"><FamilyNotesSwitch studentId={map.student.id} onChange={(on) => { setPrivacy(map.student.id, { familyNotes: on }); toast(on ? 'Your family can leave notes again.' : 'Notes from family are off. You can turn them on again here.'); }} /></div>
     </div>
   );
 }

@@ -7,12 +7,17 @@ import { AskClassDialog, ClassQuestions } from '../components/ClassPrompts.jsx';
 import ClassAnswers from '../components/ClassAnswers.jsx';
 import { SpotDialog, SpottedList } from '../components/Spotted.jsx';
 import { PeerClassList } from '../components/PeerFeedback.jsx';
+import { ClassTaskList, SetTaskDialog, TaskGrid } from '../components/ClassTasks.jsx';
+import { ClassPromptsCard } from '../components/SubjectPrompts.jsx';
+import { PhotoDropDialog, PhotoDropList } from '../components/PhotoDrop.jsx';
 import './classes.css';
 
 // Pilot: a teacher's classes from the class lists. #/<persona>/classes, /classes/<classId>,
 // /classes/<classId>~<studentId> (that student's map, read only), /classes/<classId>~answers~<promptId> (Review answers).
+// /classes/<classId>~task~<taskId> (the hand-in grid for a class task).
 export default function MyClasses({ teacherId, param, go, persona, version, toast }) {
   const [classId, studentId, promptId] = String(param || '').split('~');
+  if (classId && studentId === 'task') return <TaskGrid taskId={promptId} teacherId={teacherId} version={version} toast={toast} back={<button className="cb-back" onClick={() => go(persona.id, 'classes', classId)}>‹ Back to the class</button>} />;
   if (classId && studentId === 'answers') return <ClassAnswers promptId={promptId} teacherId={teacherId} version={version} toast={toast} back={<button className="cb-back" onClick={() => go(persona.id, 'classes', classId)}>‹ Back to the class</button>} />;
   if (classId && studentId) return <StudentRead classId={classId} studentId={studentId} teacherId={teacherId} go={go} persona={persona} version={version} toast={toast} />;
   if (classId) return <ClassPage classId={classId} teacherId={teacherId} go={go} persona={persona} version={version} toast={toast} />;
@@ -36,6 +41,7 @@ function Waiting({ teacherId, go, persona }) {
 function ClassList({ teacherId, go, persona, version, toast }) {
   const classes = useMemo(() => classesOf(teacherId), [teacherId, version]); // eslint-disable-line react-hooks/exhaustive-deps
   const [asking, setAsking] = useState(null);
+  const [tasking, setTasking] = useState(null);
   const students = new Set(classes.flatMap((c) => c.studentIds)).size;
   return (
     <div className="page mc">
@@ -59,11 +65,13 @@ function ClassList({ teacherId, go, persona, version, toast }) {
                 <span className="mc-num"><b>{c.line ? c.recent : '–'}</b><small>{c.recent === 1 ? 'moment' : 'moments'}, 30 days</small></span>
               </a>
               <button className="ghost cp-askbtn" disabled={!c.studentIds.length} onClick={() => setAsking(c)}>Ask the class</button>
+              <button className="ghost tk-setbtn" disabled={!c.studentIds.length} onClick={() => setTasking(c)}>Set a task</button>
             </li>
           ))}
         </ul>
       )}
       {asking && <AskClassDialog c={asking} teacherId={teacherId} toast={toast} onClose={() => setAsking(null)} />}
+      {tasking && <SetTaskDialog c={tasking} teacherId={teacherId} toast={toast} onClose={() => setTasking(null)} />}
     </div>
   );
 }
@@ -71,8 +79,10 @@ function ClassList({ teacherId, go, persona, version, toast }) {
 function ClassPage({ classId, teacherId, go, persona, version, toast }) {
   const c = useMemo(() => classRoster(classId, teacherId), [classId, teacherId, version]); // eslint-disable-line react-hooks/exhaustive-deps
   const [asking, setAsking] = useState(false);
+  const [tasking, setTasking] = useState(false);
   const [ticked, setTicked] = useState([]);
   const [spotting, setSpotting] = useState(null); // the students a spotted moment is for
+  const [dropping, setDropping] = useState(false); // class photos
   const back = <button className="cb-back" onClick={() => go(persona.id, 'classes')}>‹ My classes</button>;
   if (!c || !c.teacherIds?.includes(teacherId)) return <div className="page mc">{back}<div className="empty-state"><b>This class is not one of yours.</b></div></div>;
   return (
@@ -86,11 +96,17 @@ function ClassPage({ classId, teacherId, go, persona, version, toast }) {
         </div>
         <div className="cp-head-acts">
           <button className="primary" disabled={!c.students.length} onClick={() => setAsking(true)}>Ask the class</button>
+          <button className="ghost" disabled={!c.students.length} onClick={() => setTasking(true)}>Set a task</button>
+          <button className="ghost pd-open" disabled={!c.students.length} onClick={() => setDropping(true)}>Drop photos</button>
           <Waiting teacherId={teacherId} go={go} persona={persona} />
         </div>
       </header>
       {asking && <AskClassDialog c={c} teacherId={teacherId} toast={toast} onClose={() => setAsking(false)} />}
+      {dropping && <PhotoDropDialog c={c} teacherId={teacherId} toast={toast} onClose={() => setDropping(false)} />}
       <ClassQuestions c={c} teacherId={teacherId} go={go} persona={persona} version={version} toast={toast} />
+      {tasking && <SetTaskDialog c={c} teacherId={teacherId} toast={toast} onClose={() => setTasking(false)} />}
+      <ClassTaskList c={c} teacherId={teacherId} go={go} persona={persona} version={version} toast={toast} />
+      <ClassPromptsCard c={c} teacherId={teacherId} version={version} toast={toast} />
       {spotting && <SpotDialog students={spotting} teacherId={teacherId} classId={c.id} toast={toast} onClose={() => { setSpotting(null); setTicked([]); }} />}
       {c.students.length > 0 && <div className="mc-spot-bar">
         <span>{ticked.length ? `${plural(ticked.length, 'student')} ticked` : 'Tick students to add the same spotted moment to each.'}</span>
@@ -116,6 +132,7 @@ function ClassPage({ classId, teacherId, go, persona, version, toast }) {
         </table>
       )}
       <SpottedList teacherId={teacherId} classId={c.id} version={version} />
+      <PhotoDropList teacherId={teacherId} classId={c.id} version={version} />
       <PeerClassList classId={c.id} version={version} />
     </div>
   );

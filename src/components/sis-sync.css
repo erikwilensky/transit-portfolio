@@ -1,0 +1,24 @@
+/* Class list sync (SisSync.jsx), on Accounts. NIST navy, no gradients or shadows. */
+.sis-head { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+.sis-head h2 { margin: 0 0 4px; }
+.sis-status { margin: 0; color: var(--muted); font-size: 14px; display: flex; align-items: center; flex-wrap: wrap; gap: 0 4px; }
+.sis-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); margin-right: 4px; flex: none; }
+.sis-dot.ok { background: var(--ok); } .sis-dot.bad { background: #E73C3E; }
+.sis-report { display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--rule); padding-top: 12px; }
+.sis-report h3 { margin: 0; font-size: 16px; }
+.sis-report .auth-lede { margin: 0; }
+.sis-refused { margin: 0; border-left: 4px solid #E73C3E; padding: 8px 12px; }
+.sis-group { border: 1px solid var(--rule); border-radius: 8px; padding: 8px 12px; background: var(--surface); }
+.sis-group summary { cursor: pointer; font-weight: 600; font-size: 14.5px; }
+.sis-group ul, .sis-history ul { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 14px; max-height: 320px; overflow: auto; }
+.sis-group li { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; }
+.sis-group li b { font-weight: 600; }
+.sis-group li small { color: var(--muted); }
+.sis-ch { display: flex; flex-wrap: wrap; gap: 2px 12px; color: var(--muted); }
+.sis-group .fineprint { margin: 6px 0 0; }
+.sis-history summary { cursor: pointer; font-size: 14px; color: var(--muted); }
+.sis-history li { display: flex; flex-wrap: wrap; gap: 2px 12px; padding: 4px 0; border-top: 1px solid var(--rule); }
+.sis-history li small { color: var(--muted); width: 100%; }
+.sis-st { font-weight: 600; }
+.sis-st.ready { color: var(--navy); } .sis-st.applied { color: var(--ok); } .sis-st.refused, .sis-st.invalid { color: var(--warn); }
+:root[data-theme="dark"] .sis-st.ready { color: var(--ink); }

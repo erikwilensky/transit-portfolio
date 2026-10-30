@@ -17,7 +17,8 @@
 @keyframes ms-arrive { from { transform: scale(0); } to { transform: scale(1); } }
 @keyframes ms-ring { from { transform: scale(.7); opacity: .9; } to { transform: scale(1.6); opacity: 0; } }
 @keyframes ms-track { from { stroke-dashoffset: 120; } to { stroke-dashoffset: 0; } }
-@media (prefers-reduced-motion: reduce) { .ms-station .ms-dot, .ms-station .ms-ring, .ms-station .ms-track { animation: none; } }
+@media (prefers-reduced-motion: reduce) { :root:not(.a11y-moving) .ms-station :is(.ms-dot, .ms-ring, .ms-track) { animation: none; } }
+.a11y-calm .ms-station :is(.ms-dot, .ms-ring, .ms-track) { animation: none !important; }
 @media (max-width: 640px) {
   .ms-big { grid-template-columns: minmax(0, 1fr); text-align: center; justify-items: center; padding: 18px 16px; }
   .ms-thanks { width: 100%; }

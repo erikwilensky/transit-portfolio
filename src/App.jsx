@@ -4,6 +4,7 @@ import SimpleHome, { ShowFamily, QuickAdd } from './screens/SimpleHome.jsx';
 import { InstallHint } from './components/PhoneApp.jsx';
 import { ReadAloudSetting } from './components/Voice.jsx';
 import IntensityControl from './components/IntensityControl.jsx';
+import DisplaySettings from './components/DisplaySettings.jsx';
 import { ensureEndorsed } from './tourStory.js';
 import { PERSONAS, KIND_LABEL, personaById, home, navOf, pilotPersona } from './personas.js';
 import Accounts from './screens/Accounts.jsx';
@@ -11,6 +12,8 @@ import Usage from './screens/Usage.jsx';
 import Reports from './screens/Reports.jsx';
 import Overview from './screens/Overview.jsx';
 import ActivityLog from './screens/ActivityLog.jsx';
+import SystemHealth from './screens/SystemHealth.jsx';
+import Exhibitions from './screens/Exhibitions.jsx';
 import { isModerator } from './api.js';
 import { AccountMenu, PasswordDialog } from './screens/SignIn.jsx';
 import { appUrl, inkOn } from './format.js';
@@ -38,6 +41,7 @@ import Pdpa from './screens/Pdpa.jsx';
 import { FeedbackDialog } from './components/Feedback.jsx';
 import { NudgeBanner } from './components/Nudges.jsx';
 import { TermReflectionCard } from './components/TermReflection.jsx';
+import { StudentConference } from './components/ConferenceBooking.jsx';
 import { StudentMilestones } from './components/Milestones.jsx';
 import Applications from './screens/Applications.jsx';
 import SignalBoard from './screens/SignalBoard.jsx';
@@ -62,6 +66,7 @@ import Poster from './screens/Poster.jsx';
 import AlumJourney from './screens/AlumJourney.jsx';
 import ImportFile from './screens/ImportFile.jsx';
 import Logo from './components/Logo.jsx';
+import { TopSearch, SimpleFind, openSearch } from './components/Search.jsx';
 import NavBar from './components/NavBar.jsx';
 import Launcher from './components/Launcher.jsx';
 import ShareDialog from './components/ShareDialog.jsx';
@@ -76,15 +81,30 @@ import ThisWeek from './screens/ThisWeek.jsx';
 import { TODAY } from './api.js';
 import { isMonday } from './week.js';
 import { QADrawer, TourCard, TourRoute } from './components/TourCards.jsx';
+import { LeaverBuilder, PublicLeaver } from './components/Leaver.jsx';
+import { leaverAllowed } from './api.js';
+import SubjectPromptsScreen from './components/SubjectPrompts.jsx';
+import PhrasesScreen from './screens/Phrases.jsx';
+import { phraseWriter } from './components/Phrases.jsx';
+import { CasConfirm, CasLog } from './components/Cas.jsx';
+import { casAllowed, casToConfirm, isCasCoordinator } from './api.js';
+import NotificationSettings, { nsT } from './components/NotificationSettings.jsx';
+import { audienceOf, bellView } from './notify-kinds.js';
+import { getNotifyPrefs, onNotifyPrefs } from './notify-prefs.js';
+import { clearReadNotifications } from './api.js';
+import { useStudentThai } from './thai.js';
+import { recordWords } from './api.js';
+import ReportComments from './screens/ReportComments.jsx';
+import SchoolEventsScreen from './components/SchoolEvents.jsx';
 
 // Routes: #/<persona>/<screen>/<param>, plus public #/s/<token>, #/v/<code> and #/p/<student>[/th] (parent link).
 // A screen set this persona uses: their own kind, or another hat they wear in the pilot (persona.also).
 const acts = (p, kind) => p.kind === kind || !!p.also?.includes(kind);
 const parse = () => {
   const [a, b, c] = location.hash.replace(/^#\/?/, '').split('/');
-  if (a === 's' || a === 'v' || a === 'p') return { publicKind: a, param: b, lang: c };
+  if (a === 's' || a === 'v' || a === 'p' || a === 'l') return { publicKind: a, param: b, lang: c };
   const p = personaById(a);
-  const screens = navOf(p).map(([id]) => id).concat(p.kind === 'advisor' ? ['student'] : p.kind === 'student' ? ['poster', 'add', 'snap'] : []);
+  const screens = navOf(p).map(([id]) => id).concat(p.kind === 'advisor' ? ['student'] : p.kind === 'student' ? ['poster', 'add', 'snap', 'leaver', 'cas'] : []).concat(p.teacherId && p.kind !== 'student' ? ['cas', 'casconfirm'] : []);
   // Staff with "This week" land on it on Mondays (Bangkok) when the address names no screen.
   return { persona: p.id, screen: screens.includes(b) ? b : !b && screens.includes('week') && isMonday(TODAY) ? 'week' : home(p), param: c || null };
 };
@@ -110,6 +130,8 @@ export default function App() {
   const [qa, setQa] = useState(false);
   const [pwOpen, setPwOpen] = useState(false);
   const [fbOpen, setFbOpen] = useState(false); // pilot feedback
+  const [nsOpen, setNsOpen] = useState(false); // notification settings
+  const [, setNsTick] = useState(0); // a settings change, or quiet hours starting or ending
   // Pilot mode: the signed-in person's own persona; no switcher, tours, presenter or reset.
   const pilot = pilotPersona();
   // F18: Escape closes the top dialog, else an open station panel; Tab stays inside an open dialog;
@@ -132,29 +154,44 @@ export default function App() {
       }
     };
     const back = [];
+    // A step that replaces the focused button (a flow's Next) would drop focus to the page: keep it in the dialog.
+    let last = null, prev = null; const fin = (e) => { prev = last; last = e.target; }; addEventListener('focusin', fin);
     const mo = new MutationObserver(() => {
       const dlg = top();
+      if (dlg?.dataset.focused && document.activeElement === document.body && last && !last.isConnected) { last = null; ([...dlg.querySelectorAll(FOCUSABLE)].find((x) => !x.classList.contains('panel-close') && x.offsetParent !== null) || dlg.querySelector(FOCUSABLE))?.focus(); }
       if (dlg && !dlg.dataset.focused) {
-        dlg.dataset.focused = '1'; back.push(document.activeElement);
+        dlg.dataset.focused = '1'; back.push(dlg.contains(document.activeElement) ? prev : document.activeElement); // autoFocus got there first
         if (!dlg.contains(document.activeElement)) (dlg.querySelector('[autofocus], input:not([type=checkbox]), textarea') || dlg.querySelector(FOCUSABLE))?.focus();
       }
       const open = document.querySelectorAll('.modal-back').length;
       while (back.length > open) { const el = back.pop(); if (el?.isConnected) el.focus(); }
     });
     mo.observe(document.body, { childList: true, subtree: true });
-    addEventListener('keydown', k); return () => { removeEventListener('keydown', k); mo.disconnect(); };
+    addEventListener('keydown', k); return () => { removeEventListener('keydown', k); removeEventListener('focusin', fin); mo.disconnect(); };
   }, []);
-  // F16: / or Ctrl+K opens the launcher from anywhere (except while typing).
+  // Escape closes an open top-bar menu and puts focus back on the button that opened it.
+  useEffect(() => {
+    if (!menu) return undefined;
+    const k = (e) => {
+      if (e.key !== 'Escape' || document.querySelector('.modal-back')) return;
+      const btn = document.querySelector('.topnav .menu')?.closest('.menu-wrap')?.querySelector(':scope > button');
+      e.preventDefault(); setMenu(null); btn?.focus();
+    };
+    addEventListener('keydown', k, true); return () => removeEventListener('keydown', k, true);
+  }, [menu]);
+  // F16: Ctrl+K opens the launcher from anywhere; / goes to search (the launcher where there is none), except while typing.
   useEffect(() => {
     const k = (e) => {
       const typing = e.target.closest?.('input, textarea, select, [contenteditable]');
       if ((e.key === 'k' || e.key === 'K') && (e.ctrlKey || e.metaKey)) { e.preventDefault(); setLaunch((v) => !v); }
-      else if (e.key === '/' && !typing && !e.ctrlKey && !e.metaKey) { e.preventDefault(); setLaunch(true); }
+      else if (e.key === '/' && !typing && !e.ctrlKey && !e.metaKey) { e.preventDefault(); if (!openSearch()) setLaunch(true); }
     };
     addEventListener('keydown', k); return () => removeEventListener('keydown', k);
   }, []);
 
   useEffect(() => subscribe(() => setVersion((v) => v + 1)), []);
+  useEffect(() => onNotifyPrefs(() => setNsTick((x) => x + 1)), []);
+  useEffect(() => { const t = setInterval(() => setNsTick((x) => x + 1), 30000); return () => clearInterval(t); }, []);
   const drafts = getDrafts();
   // F3: #/reset puts the demo back to its seeded state (handy on a shared screen).
   useEffect(() => {
@@ -169,6 +206,8 @@ export default function App() {
   const tourRef = useRef(null);
   useEffect(() => { const k = (e) => tourRef.current?.key(e); addEventListener('keydown', k); return () => removeEventListener('keydown', k); }, []);
   useEffect(() => { if (!auto || !tourState) return undefined; const t = setTimeout(() => tourRef.current?.advance(), 12000); return () => clearTimeout(t); }, [auto, tourState]);
+  // Thai for students: a student's screens in Thai at display time (src/thai.js).
+  useStudentThai(!route.publicKind && personaById(route.persona)?.kind === 'student' && getLang() === 'th', recordWords, version);
 
   const go = (persona, screen, param) => {
     // A notification's target may be a pilot key (st:…, t:…): in the demo that stays on the current persona.
@@ -190,6 +229,7 @@ export default function App() {
   if (route.publicKind === 's') return <PublicShare key={route.param} token={route.param} version={version} />;
   if (route.publicKind === 'v') return <PublicVerify key={route.param || ''} code={route.param} />;
   if (route.publicKind === 'p') return <VerifyProvider><ParentView studentId={route.param} lang={route.lang} /></VerifyProvider>;
+  if (route.publicKind === 'l') return <PublicLeaver key={route.param} token={route.param} />;
 
   const persona = personaById(route.persona);
   const studentId = persona.studentId;
@@ -200,9 +240,17 @@ export default function App() {
   const level = persona.kind === 'student' ? getIntensity(persona.studentId) : null;
   const changeLevel = (v) => { setIntensity(persona.studentId, v); if (INTENSITY_NAV[v] && !INTENSITY_NAV[v].includes(route.screen)) go(persona.id, 'map'); toast(`Interface set to ${v}. Your map and everything on it stay the same.`); };
   const nav = navOf(persona).filter(([id]) => !level || !INTENSITY_NAV[level] || INTENSITY_NAV[level].includes(id)).map(([id, l]) => [id, T(INTENSITY_LABEL[level]?.[id] || l)]);
+  if (persona.kind === 'student' && leaverAllowed(studentId)) nav.push(['leaver', 'Leaver portfolio']); // Years 11 to 13
+  // CAS (src/components/Cas.jsx): Years 12 and 13 log experiences and hours (pilot); staff named as supervisor confirm; a teacher
+  // marked as CAS coordinator on Accounts gets the cohort grid.
+  if (pilot && persona.kind === 'student' && casAllowed(studentId)) nav.push(['cas', 'CAS']);
+  if (persona.kind !== 'student' && persona.teacherId && casToConfirm(persona.teacherId).length) nav.push(['casconfirm', 'CAS to confirm']);
+  if (persona.kind !== 'student' && persona.kind !== 'coordinator' && isCasCoordinator(persona)) nav.push(['cas', 'CAS outcomes']);
   const keys = notifyKeys(persona);
-  const notes = getNotifications(keys);
-  const unread = notes.filter((n) => !n.read).length;
+  const nPrefs = getNotifyPrefs(persona);
+  const bell = bellView(getNotifications(keys), nPrefs, audienceOf(persona.kind));
+  const notes = bell.shown, unread = bell.unread;
+  const NT = nsT(lang);
   const ctx = { go, toast, version, persona, drafts, setDrafts, audience, setAudience, tier, setTier, startTour: (t) => { setTourState({ tour: t, step: 0 }); TOURS[t].steps[0].run(ctx); } };
   const tour = tourState && TOURS[tourState.tour];
   const stepTo = (i) => { if (!tour || i < 0 || i >= tour.steps.length) { setAuto(false); return setTourState(null); } setTourState({ ...tourState, step: i }); tour.steps[i].run(ctx); };
@@ -220,19 +268,21 @@ export default function App() {
   return (
     <VerifyProvider>
       <div className={`app kind-${persona.kind}${level ? ` int-${level}` : ''}`} lang={lang}>
+        <a className="skip-link" href="#main" onClick={(e) => { e.preventDefault(); document.getElementById('main')?.focus(); }}>{T('Skip to content')}</a>
         <header className="topnav">
           <a className="brand" href={`#/${persona.id}`} aria-label="NIST Transit Portfolio home"><Logo className="brand-logo" /><span className="brand-name"><b>Transit</b> Portfolio</span></a>
           <NavBar items={nav} hrefOf={(id) => `#/${persona.id}/${id}`} isOn={(id) => route.screen === id || (id === 'advisory' && route.screen === 'student')} onGo={(id) => go(persona.id, id)} moreLabel={T('More')} />
           <div className="nav-right">
             <SyncStatus />
-            <button className="icon-btn nav-search" onClick={() => setLaunch(true)} aria-label="Jump to anything (Ctrl+K)" title="Jump to anything (/ or Ctrl+K)"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" strokeWidth="1.8" /><path d="M11 11l3.5 3.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg></button>
+            <TopSearch key={persona.id} persona={persona} go={go} toast={toast} version={version} lang={lang} simple={level === 'simple'} />
+            <button className="icon-btn nav-search" onClick={() => setLaunch(true)} aria-label="Jump to anything (Ctrl+K)" title="Jump to anything (Ctrl+K)"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" strokeWidth="1.8" /><path d="M11 11l3.5 3.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg></button>
             <div className="menu-wrap">
               <button className="persona-btn" onClick={() => setMenu(menu === 'persona' ? null : 'persona')} aria-expanded={menu === 'persona'} aria-haspopup="menu">
                 <span className="av" style={{ background: persona.colour, color: inkOn(persona.colour) }}>{persona.initials}</span>
                 <span className="pb-text"><small>{T(inPreview() ? 'Seeing as' : pilot ? 'Signed in' : 'Viewing as')}</small><b>{persona.name}</b></span><span aria-hidden="true">▾</span>
               </button>
               {menu === 'persona' && pilot && !inPreview() && (
-                <AccountMenu persona={persona} onPassword={() => { setMenu(null); setPwOpen(true); }} onFeedback={() => { setMenu(null); setFbOpen(true); }} />
+                <AccountMenu persona={persona} onPassword={() => { setMenu(null); setPwOpen(true); }} onFeedback={() => { setMenu(null); setFbOpen(true); }} onNotifications={() => { setMenu(null); setNsOpen(true); }} />
               )}
               {menu === 'persona' && !pilot && (
                 <div className="menu persona-menu" role="menu">
@@ -250,19 +300,26 @@ export default function App() {
               )}
             </div>
             <div className="menu-wrap">
-              <button className="icon-btn bell" onClick={() => { setMenu(menu === 'bell' ? null : 'bell'); if (unread) setTimeout(() => markNotificationsRead(keys), 1500); }} aria-label={`Notifications${unread ? `, ${unread} unread` : ''}`}>
+              <button className="icon-btn bell" onClick={() => { setMenu(menu === 'bell' ? null : 'bell'); if (unread) setTimeout(() => markNotificationsRead(keys), 1500); }} aria-label={`Notifications${bell.badge ? `, ${bell.badge} unread` : bell.quiet ? ', quiet hours' : ''}`}>
                 <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 17V11a6 6 0 1 1 12 0v6l2 2H4z M10 21h4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" /></svg>
-                {unread > 0 && <span className="badge">{unread}</span>}
+                {bell.badge > 0 && <span className="badge">{bell.badge}</span>}
               </button>
               {menu === 'bell' && (
                 <div className="menu bell-menu" role="menu">
                   <div className="menu-title">{T('Notifications for')} {persona.name}</div>
+                  <div className="bm-actions">
+                    <button role="menuitem" disabled={!unread} onClick={() => markNotificationsRead(keys)}>{NT('Mark all as read')}</button>
+                    <button role="menuitem" disabled={!notes.some((n) => n.read)} onClick={() => clearReadNotifications(keys)}>{NT('Clear read')}</button>
+                  </div>
+                  {bell.quiet && <p className="bm-quiet">{NT('Quiet hours: the number waits until')} {nPrefs.quiet.to}.</p>}
                   {!notes.length && <p className="menu-empty">{T('Nothing yet. Things other people do with this record will show up here.')}</p>}
                   {notes.map((n) => (
                     <button key={n.id} role="menuitem" className={n.read ? '' : 'unread'} onClick={() => n.go && go(n.go.persona, n.go.screen, n.go.param)}>
                       <span><b>{noteText(lang, n.text)}</b><small>{agoIn(lang, n.ts)}</small></span>
                     </button>
                   ))}
+                  {bell.hidden > 0 && <p className="bm-hidden">{bell.hidden} {NT('not shown: cleared, or turned off in your settings')}.</p>}
+                  <button role="menuitem" className="bm-settings" onClick={() => { setMenu(null); setNsOpen(true); }}><span><b>{NT('Notification settings')}</b></span></button>
                 </div>
               )}
             </div>
@@ -272,13 +329,14 @@ export default function App() {
                 <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /><circle cx="16" cy="7" r="2.2" fill="none" stroke="currentColor" strokeWidth="2" /><circle cx="10" cy="17" r="2.2" fill="none" stroke="currentColor" strokeWidth="2" /></svg>
               </button>
               {menu === 'view' && (
-                <div className="menu view-menu" role="menu">
+                <div className="menu view-menu" role="group" aria-label={T('Display settings')}>
                   {level && <><div className="menu-title">How much to show</div><div className="vm-row"><IntensityControl value={level} onChange={changeLevel} /><small className="vm-note">{INTENSITY.find(([k]) => k === level)?.[2]}</small></div></>}
                   <div className="menu-title">{T('Language')}</div>
                   <div className="vm-row seg">{[['en', 'English'], ['th', 'ภาษาไทย']].map(([k, l]) => <button key={k} className={lang === k ? 'on' : ''} lang={k} onClick={() => chooseLang(k)}>{l}</button>)}</div>
                   <div className="menu-title">{T('Theme')}</div>
                   <div className="vm-row seg">{[[false, 'Light'], [true, 'Dark']].map(([k, l]) => <button key={l} className={dark === k ? 'on' : ''} onClick={() => setDark(k)}>{T(l)}</button>)}</div>
                   <ReadAloudSetting T={T} />
+                  <DisplaySettings T={T} />
                 </div>
               )}
             </div>
@@ -311,15 +369,16 @@ export default function App() {
           </div>
         </header>
 
-        <main className={`screen screen-${route.screen}`} key={`${persona.id}-${route.screen}`}>
+        <main id="main" tabIndex={-1} className={`screen screen-${route.screen}`} key={`${persona.id}-${route.screen}`}>
           <ErrorBoundary resetKey={`${persona.id}-${route.screen}-${route.param}`}>
           {persona.kind === 'student' && <StudentScreens {...ctx} screen={route.screen} param={route.param} studentId={studentId} />}
           {persona.kind === 'student' && route.screen === 'map' && !tour && !getStudent(studentId)?.onboarding && <InstallHint />}
-          {acts(persona, 'advisor') && route.screen === 'advisory' && <AdvisorGrid advisorId={persona.teacherId} version={version} toast={toast} onOpen={(id) => go(persona.id, 'student', id)} />}
+          {acts(persona, 'advisor') && route.screen === 'advisory' && <AdvisorGrid advisorId={persona.teacherId} version={version} toast={toast} persona={persona} focus={route.param} onOpen={(id) => go(persona.id, 'student', id)} />}
           {acts(persona, 'advisor') && route.screen === 'student' && (getStudent(route.param?.split('~')[0] || 'st-01') ? <AdvisorStudent studentId={route.param?.split('~')[0] || 'st-01'} focus={route.param?.split('~')[1]} {...ctx} /> : <NotInRecord onBack={() => go(persona.id, 'advisory')} />)}
           {acts(persona, 'teacher') && route.screen === 'queue' && <TeacherQueue teacherId={persona.teacherId} focus={route.param} {...ctx} />}
           {pilot && acts(persona, 'teacher') && route.screen === 'classes' && <MyClasses teacherId={persona.teacherId} param={route.param} {...ctx} />}
-          {persona.kind === 'coordinator' && route.screen === 'cas' && <CasDashboard {...ctx} />}
+          {persona.kind !== 'student' && isCasCoordinator(persona) && route.screen === 'cas' && <CasDashboard {...ctx} />}
+          {persona.kind !== 'student' && persona.teacherId && route.screen === 'casconfirm' && <CasConfirm {...ctx} />}
           {persona.kind === 'counsellor' && route.screen === 'letter' && (getStudent(route.param || 'st-01') ? <ReferenceLetter {...ctx} studentId={route.param || 'st-01'} /> : <NotInRecord onBack={() => go(persona.id, 'applications')} />)}
           {persona.kind === 'leadership' && route.screen === 'dashboard' && <SchoolDashboard {...ctx} />}
           {persona.kind === 'leadership' && route.screen === 'scan' && <ScanIn {...ctx} />}
@@ -349,7 +408,13 @@ export default function App() {
           {pilot && route.screen === 'week' && (acts(persona, 'teacher') || acts(persona, 'advisor')) && <ThisWeek {...ctx} param={route.param} />}
           {pilot && route.screen === 'overview' && (persona.admin || persona.kind === 'leadership' || persona.kind === 'coordinator') && <Overview {...ctx} />}
           {pilot && route.screen === 'activitylog' && (persona.admin || persona.kind === 'leadership') && <ActivityLog {...ctx} />}
-          {route.screen !== 'accounts' && route.screen !== 'usage' && route.screen !== 'reports' && route.screen !== 'overview' && route.screen !== 'week' && route.screen !== 'activitylog' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} persona={persona} />}
+          {pilot && route.screen === 'screens' && (persona.admin || ['advisor', 'teacher', 'counsellor', 'coordinator', 'leadership'].includes(persona.kind)) && <Exhibitions {...ctx} />}
+          {pilot && route.screen === 'prompts' && (persona.admin || persona.kind === 'coordinator' || persona.kind === 'leadership') && <SubjectPromptsScreen {...ctx} />}
+          {pilot && route.screen === 'phrases' && phraseWriter() && <PhrasesScreen {...ctx} />}
+          {pilot && route.screen === 'reportcomments' && (persona.teacherId || persona.admin || persona.kind === 'coordinator' || persona.kind === 'leadership') && <ReportComments {...ctx} param={route.param} />}
+          {pilot && route.screen === 'events' && persona.kind !== 'student' && persona.kind !== 'parent' && <SchoolEventsScreen {...ctx} />}
+          {route.screen !== 'phrases' && route.screen !== 'events' && route.screen !== 'reportcomments' && route.screen !== 'prompts' && route.screen !== 'health' && route.screen !== 'screens' && route.screen !== 'accounts' && route.screen !== 'usage' && route.screen !== 'reports' && route.screen !== 'overview' && route.screen !== 'week' && route.screen !== 'activitylog' && route.screen !== 'leaver' && route.screen !== 'cas' && route.screen !== 'casconfirm' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} persona={persona} />}
+          {pilot && route.screen === 'health' && persona.admin && <SystemHealth {...ctx} />}
           </ErrorBoundary>
           {pilot && level === 'simple' && <div className="fb-simple"><button onClick={() => setFbOpen(true)}>Something not working? Tell us</button></div>}
         </main>
@@ -372,6 +437,7 @@ export default function App() {
         )}
         {launch && <Launcher onGo={go} onClose={() => setLaunch(false)} only={pilot} />}
         {pwOpen && <PasswordDialog onClose={() => setPwOpen(false)} toast={toast} />}
+        {nsOpen && <NotificationSettings persona={persona} onClose={() => setNsOpen(false)} toast={toast} />}
         {fbOpen && <FeedbackDialog simple={level === 'simple'} onClose={() => setFbOpen(false)} toast={toast} />}
         <div className={`toast${toastMsg ? ' show' : ''}`} role="status" aria-live="polite">{toastMsg?.m}{toastMsg?.undo && <button className="toast-undo" onClick={() => undoToast(toastMsg)}>Undo</button>}</div>
       </div>
@@ -395,7 +461,8 @@ function StudentScreens({ screen, param, studentId, drafts, setDrafts, audience,
   const [addReq, setAddReq] = useState(0);
   useEffect(() => { if (param === 'add' && screen === 'map') setAddReq((n) => n + 1); }, [param, screen]);
   const nudge = <><StudentMilestones studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} /><NudgeBanner studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} onAdd={() => setAddReq((n) => n + 1)} /><CarryOverGoals studentId={studentId} version={version} toast={toast} simple={getIntensity(studentId) === 'simple'} />
-    <TermReflectionCard studentId={studentId} version={version} toast={toast} simple={getIntensity(studentId) === 'simple'} auto={screen === 'map' && param === 'reflect'} /></>;
+    <TermReflectionCard studentId={studentId} version={version} toast={toast} simple={getIntensity(studentId) === 'simple'} auto={screen === 'map' && param === 'reflect'} />
+    <StudentConference studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} toast={toast} /></>;
   // N11: stations a presentation would show but a link cannot, because they are not publishable.
   const [gapFor, setGapFor] = useState(null);
   const gapsOf = (pres) => { const l = applyLens(map, pres, { hiddenLines: pres.filters.hiddenLines }); return map.events.filter((e) => l.visible.has(e.id) && e.type !== 'goal' && e.visibility !== 'publishable'); };
@@ -422,12 +489,16 @@ function StudentScreens({ screen, param, studentId, drafts, setDrafts, audience,
   }
   if (map.student.onboarding) return <Onboarding map={map} studentId={studentId} onDone={() => { toast('Your map is ready.'); go(persona.id, 'map'); }} />;
   const level = getIntensity(studentId);
-  if (level === 'simple' && screen === 'map') return <>{nudge}<SimpleHome map={map} studentId={studentId} toast={toast} version={version} addRequest={addReq} focusId={param} /></>;
+  if (screen === 'leaver' && !leaverAllowed(studentId)) screen = 'map'; // under Year 11: no leaver portfolio
+  if (screen === 'cas' && !casAllowed(studentId)) screen = 'map'; // CAS: Years 12 and 13
+  if (level === 'simple' && screen === 'map') return <>{nudge}<SimpleFind big persona={persona} go={go} version={version} /><SimpleHome map={map} studentId={studentId} toast={toast} version={version} addRequest={addReq} focusId={param} /></>;
+  if (screen === 'leaver' && leaverAllowed(studentId)) return <LeaverBuilder studentId={studentId} version={version} toast={toast} />;
   if (screen === 'poster') return <Poster map={map} publicMap={publicMap} drafts={myDrafts} toast={toast} />;
   if (screen === 'family') return <ShowFamily map={map} toast={toast} version={version} />;
   if (screen === 'links') return <ShareLinks studentId={studentId} drafts={myDrafts} updateDraft={updateDraft} toast={toast} version={version} />;
   if (screen === 'activity') return <Activity studentId={studentId} version={version} />;
   if (screen === 'privacy') return <Privacy studentId={studentId} drafts={myDrafts} toast={toast} go={go} persona={persona} version={version} />;
+  if (screen === 'cas' && casAllowed(studentId)) return <CasLog studentId={studentId} version={version} toast={toast} go={go} persona={persona} />;
   if (screen === 'map') return <>{nudge}<StudentMap map={map} studentId={studentId} toast={toast} version={version} focusId={param} go={go} persona={persona} addRequest={addReq} /></>;
   if (screen === 'studio') return <>{newLink && <ShareDialog link={newLink.link} title={newLink.title} onClose={() => setNewLink(null)} />}
     {gapFor && <ShareGaps pres={gapFor} gaps={gapsOf(gapFor)} lines={map.lines} toast={toast} onClose={() => setGapFor(null)} onShare={() => { const p = gapFor; setGapFor(null); share(myDrafts.find((x) => x.id === p.id) || p); }} />}<Studio key={studentId} level={level} map={publicMap} drafts={myDrafts} audience={(level === 'simple' && !['general', 'university', 'employer'].includes(audience)) || (level === 'standard' && audience === 'custom') ? 'general' : audience} setAudience={setAudience} tier={level === 'simple' ? 'template' : level === 'standard' && tier === 'code' ? 'builder' : tier} setTier={setTier} updateDraft={updateDraft} onShare={askShare} toast={toast} /></>;

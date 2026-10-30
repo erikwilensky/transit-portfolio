@@ -17,6 +17,7 @@ import { fileRefused } from '../audit.mjs';
 const DIR = path.join(DATA_DIR, 'uploads');
 fs.mkdirSync(DIR, { recursive: true });
 const LIMIT = 25 * 1024 * 1024;
+const DROP_LIMIT = 15 * 1024 * 1024;
 
 // Allowed types → extension. SVG and HTML are left out on purpose: they can carry script.
 const TYPES = {
@@ -52,11 +53,15 @@ export default (app) => {
     let type = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
     if (!TYPES[type]) type = BY_EXT[path.extname(name).slice(1).toLowerCase()] || type;
     if (!TYPES[type]) { req.resume(); throw fail(415, 'That kind of file cannot be added. Use a photo, PDF, office document, audio or video.'); }
-    const body = await readBody(req, LIMIT);
+    // A class photo drop (server/routes/71-photo-drop.mjs): photos only, smaller, marked with the draft they belong to.
+    const drop = /^photo-drop:([a-z0-9-]{6,40})$/.exec(String(req.headers['x-purpose'] || ''));
+    if (drop && !/^image\//.test(type)) { req.resume(); throw fail(415, 'Only photos can be added here.'); }
+    if (drop && len > DROP_LIMIT) { req.resume(); return send(res, 413, { error: 'That photo is larger than 15 MB.' }, { connection: 'close' }); }
+    const body = await readBody(req, drop ? DROP_LIMIT : LIMIT);
     if (!body.length) throw fail(400, 'The file was empty.');
     const file = `${crypto.randomBytes(16).toString('hex')}.${TYPES[type]}`;
     fs.writeFileSync(path.join(DIR, file), body);
-    const meta = { name, size: body.length, type, at: new Date().toISOString(), by: req.user?.id || null };
+    const meta = { name, size: body.length, type, at: new Date().toISOString(), by: req.user?.id || null, ...(drop ? { purpose: 'photo-drop', draft: drop[1] } : {}) };
     fs.writeFileSync(path.join(DIR, `${file}.json`), JSON.stringify(meta));
     send(res, 201, { url: `/api/files/${file}`, name, size: body.length, type });
   });
@@ -67,7 +72,7 @@ export default (app) => {
     let st; try { st = fs.statSync(f); } catch { throw fail(404, 'Not found'); }
     let meta = {}; try { meta = JSON.parse(fs.readFileSync(`${f}.json`, 'utf8')); } catch { /* serve without the original name */ }
     const pilot = MODE === 'pilot';
-    if (pilot && !canSeeFile(req.user, name, meta)) { fileRefused(req, name); throw fail(404, 'Not found'); }
+    if (pilot && !canSeeFile(req.user, name, meta, req.query?.get('ex'))) { fileRefused(req, name); throw fail(404, 'Not found'); }
     const ext = name.split('.').pop();
     const type = SERVE[ext] || 'application/octet-stream';
     const fname = (meta.name || name).replace(/["\r\n]/g, '');

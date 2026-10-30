@@ -10,7 +10,10 @@
 name: transit-portfolio
 
 x-app: &app
-  build: .
+  build:
+    context: .
+    args:
+      GIT_COMMIT: ${GIT_COMMIT:-}   # set by scripts/deploy-mac.sh: the version on System health and /api/health
   image: transit-portfolio:local
   restart: unless-stopped
   init: true                 # a tiny init as PID 1: passes SIGTERM on, reaps zombies
@@ -47,7 +50,9 @@ services:
     environment:
       TP_MODE: pilot
       TP_START: ${TP_START:-empty}   # a fresh pilot data folder begins with no fictional people
+      BACKUP_DIR: /backups           # System health reads the newest nightly backup here (read-only)
     ports:
       - "${TP_BIND:-127.0.0.1}:8081:8080"
     volumes:
       - ${TP_PILOT_DATA:-../transit-pilot-data}:/data
+      - ${BACKUP_DIR:-../transit-portfolio-backups}:/backups:ro

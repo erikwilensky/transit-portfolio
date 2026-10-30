@@ -3,6 +3,7 @@ import { overview } from '../auth.js';
 import '../auth.css';
 import './overview.css';
 import { YearReflections } from '../components/TermReflection.jsx';
+import { YearBooking } from '../components/ConferenceBooking.jsx';
 import { PeerYears } from '../components/PeerFeedback.jsx';
 
 // School overview (server/routes/63-overview.mjs): counts by Year and by line, a weekly chart and quiet homerooms.
@@ -70,6 +71,7 @@ export default function Overview({ persona, version, toast }) {
         <WeekBars weeks={r.weeks} />
       </section>
       <YearReflections persona={persona} version={version} toast={toast} />
+      <YearBooking persona={persona} version={version} toast={toast} />
       <PeerYears persona={persona} version={version} toast={toast} />
     </div>
   );

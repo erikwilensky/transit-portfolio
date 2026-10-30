@@ -200,17 +200,29 @@ export function canAct(user, fn, args = []) {
   // Undo sends a whole copy of the record, and in a pilot every browser holds only its own part of it.
   if (fn === 'restore') return false;
   if (SPOT_FNS.has(fn)) { try { return spotOk(user, fn, args); } catch { return false; } }
+  if (fn === 'dropPhotos' || (fn === 'reportItem' && args[0]?.photoId)) { try { return dropOk(user, fn, args); } catch { return false; } }
   if (fn === 'setHandoverNote') { try { return handoverOk(user, args); } catch { return false; } }
   if (TR_FNS.has(fn)) { try { return termReflectionOk(user, fn, args); } catch { return false; } }
   if (PF_FNS.has(fn) || (fn === 'reportItem' && args[0]?.feedbackId)) { try { return peerOk(user, fn, args); } catch { return false; } }
   if (fn === 'markMilestonesSeen') return milestonesOk(user, args); // only the student, never staff, admins or families
+  if (EX_FNS.has(fn)) { try { return exhibitionOk(user, fn, args); } catch { return false; } }
+  if (LV_FNS.has(fn)) { try { return leaverOk(user, fn, args); } catch { return false; } }
+  if (GC_FNS.has(fn)) { try { return checkinOk(user, fn, args); } catch { return false; } }
+  if (TK_FNS.has(fn)) { try { return taskOk(user, fn, args); } catch { return false; } }
+  if (CF_FNS.has(fn)) { try { return confOk(user, fn, args); } catch { return false; } }
+  if (SLC_FNS.has(fn)) { try { return slcOk(user, fn, args); } catch { return false; } }
+  if (SP_FNS.has(fn)) { try { return subjectPromptOk(user, fn, args); } catch { return false; } }
+  if (CAS_FNS.has(fn)) { try { return casOk(user, fn, args); } catch { return false; } }
+  if (PH_FNS.has(fn)) { try { return phraseOk(user, fn, args); } catch { return false; } }
+  if (FN_FNS.has(fn) || (fn === 'reportItem' && args[0]?.familyNoteId)) { try { return familyNoteOk(user, fn, args); } catch { return false; } }
+  if (SE_FNS.has(fn)) { try { return schoolEventOk(user, fn, args); } catch { return false; } }
   if (isAdmin(user)) return true;
   if (ADMIN_ONLY.has(fn)) return false;
   if (ANYONE.has(fn)) return true;
   if (COMMENT_FNS.has(fn)) { try { return commentOk(user, fn, args); } catch { return false; } }
   if (SAFE_FNS.has(fn)) { try { return safeOk(user, fn, args); } catch { return false; } }
   // Only your own bell: every key must be one of yours (st:…, t:…, fam:…, role:…, or your record's demo persona id).
-  if (fn === 'markNotificationsRead') { const mine = new Set(api.notifyKeys({ kind: user.kind, studentId: user.studentId, teacherId: user.teacherId, children: user.children })); return [].concat(args[0] ?? []).every((k) => mine.has(k)); }
+  if (fn === 'markNotificationsRead' || fn === 'clearReadNotifications') { const mine = new Set(api.notifyKeys({ kind: user.kind, studentId: user.studentId, teacherId: user.teacherId, children: user.children })); return [].concat(args[0] ?? []).every((k) => mine.has(k)); }
   try {
     // A nudge: the student's own advisor, or whole-school staff, as themselves.
     if (fn === 'nudgeStudent') return STAFF.includes(user.kind) && !!user.teacherId && args[1] === user.teacherId && (reachOf(user) === null || api.getStudent(args[0])?.advisorId === user.teacherId);
@@ -258,9 +270,12 @@ function commentOk(user, fn, [target, by]) {
 
 // ── Per-person settings (POST /api/auth/prefs): each account's own language, kept on the account ──
 export const LANGS = ['en', 'th'];
-export function setPrefs(a, { lang }) {
-  if (!LANGS.includes(lang)) return 'Pick English or Thai.';
-  a.lang = lang; saveAccounts();
+export function setPrefs(a, { lang, display, notify }) {
+  if ((lang !== undefined || (!display && !notify)) && !LANGS.includes(lang)) return 'Pick English or Thai.';
+  if (lang !== undefined) a.lang = lang;
+  if (display) a.display = display; // already checked (routes/19-prefs.mjs)
+  if (notify) a.notify = notify; // notification settings, checked there too
+  saveAccounts();
   return null;
 }
 // The demo's one shared family language (api.setLang) would change it for everybody: in a pilot only an admin may.
@@ -340,3 +355,237 @@ function peerOk(user, fn, args) {
 }
 // ── Milestones (api.markMilestonesSeen): a student marks their own celebrations seen; nobody does it for them. ──
 const milestonesOk = (user, args) => user.kind === 'student' && !!user.studentId && args[0] === user.studentId;
+// ── Exhibition screens (api.createExhibition, removeExhibitionSlide, pauseExhibition, revokeExhibition) ──
+// Staff and admins only, as themselves (an admin with no staff record: by null). Making one: whole-school staff and admins
+// for any Years, classes and lines; an advisor or subject teacher only from classes they teach and their own advisory (at
+// least one of those, never whole Years). Pausing and turning off: whoever made it, and admins. Removing a slide: those,
+// the moderators (coordinators, counsellors, leadership), and a teacher of a class the moment's student is in now.
+const EX_FNS = new Set(['createExhibition', 'removeExhibitionSlide', 'pauseExhibition', 'revokeExhibition']);
+function exhibitionOk(user, fn, args) {
+  const admin = isAdmin(user);
+  if (!admin && !(STAFF.includes(user.kind) && user.teacherId)) return false;
+  const by = fn === 'createExhibition' || fn === 'revokeExhibition' ? args[1] : args[2];
+  if (admin ? !!by && by !== user.teacherId : by !== user.teacherId) return false;
+  if (fn === 'createExhibition') {
+    const spec = args[0] || {};
+    if (typeof args[2] !== 'string' || !api.EXHIBIT_TOKEN.test(args[2])) return false;
+    if (admin || reachOf(user) === null) return true;
+    const classes = [].concat(spec.classIds || []);
+    if ([].concat(spec.years || []).length || (!classes.length && !spec.advisory)) return false;
+    return classes.every((c) => teachesClass(user, c));
+  }
+  const x = api.getExhibition(args[0]);
+  if (!x) return false;
+  if (admin || (!!x.by && x.by === user.teacherId)) return true;
+  if (fn !== 'removeExhibitionSlide') return false;
+  if (api.MODERATOR_KINDS.includes(user.kind)) return true;
+  const e = api.getEvent(args[1]);
+  return !!e && (st().enrolments || []).some((n) => n.studentId === e.studentId && !(n.to && n.to < api.TODAY) && teachesClass(user, n.classId));
+}
+// ── Leaver portfolio (api.saveLeaver, shareLeaver, revokeLeaver, doneLeaverComment, commentLeaver) ──
+// Building, sharing, withdrawing and ticking comments: only the student, on their own (never staff, admins or families).
+// Commenting: the student's advisor or whole-school staff, as themselves, once there is a portfolio.
+const LV_FNS = new Set(['saveLeaver', 'shareLeaver', 'revokeLeaver', 'doneLeaverComment', 'commentLeaver']);
+function leaverOk(user, fn, [sid, by]) {
+  if (fn !== 'commentLeaver') return user.kind === 'student' && !!user.studentId && sid === user.studentId;
+  if (!STAFF.includes(user.kind) || !user.teacherId || by !== user.teacherId || !api.getLeaver(sid)) return false;
+  const reach = reachOf(user);
+  return reach === null || (reach.has(sid) && api.getStudent(sid)?.advisorId === user.teacherId);
+}
+// ── Weekly goal check-ins (api.checkInGoal, snoozeCheckins, sendEncouragement) ──
+// Checking in and snoozing: only the student, on their own open goals (never staff, admins or families on their behalf).
+// Encouragement: the student's advisor or the goal's accepted sponsor, as themselves (admins too, only when they are one).
+const GC_FNS = new Set(['checkInGoal', 'snoozeCheckins', 'sendEncouragement']);
+function checkinOk(user, fn, [goalId, by]) {
+  const e = api.getEvent(goalId);
+  if (!api.isOpenGoal(e)) return false;
+  if (fn !== 'sendEncouragement') return user.kind === 'student' && !!user.studentId && e.studentId === user.studentId;
+  if (!(STAFF.includes(user.kind) || isAdmin(user)) || !user.teacherId || by !== user.teacherId) return false;
+  return api.canEncourage(e.id, user.teacherId);
+}
+// ── Class tasks (api.setTask, editTask, extendTask, handInTask, remindDueTasks) ──
+// Setting, editing and extending: a teacher of the class (in its teacherIds; whole-school staff and admins too, but only
+// when they teach it), as themselves; extending only for a student the task was set for. Handing in: only that student,
+// on their own. The day-before reminder: only the server (server/routes/68-tasks.mjs), never through /api/action.
+const TK_FNS = new Set(['setTask', 'editTask', 'extendTask', 'handInTask', 'remindDueTasks']);
+function taskOk(user, fn, a) {
+  if (fn === 'remindDueTasks') return false;
+  if (fn === 'handInTask') return user.kind === 'student' && !!user.studentId && a[1] === user.studentId && !!api.getTask(a[0])?.studentIds.includes(a[1]);
+  if (!(STAFF.includes(user.kind) || isAdmin(user)) || !user.teacherId) return false;
+  if (fn === 'setTask') return a[1] === user.teacherId && teachesClass(user, a[0]);
+  const t = api.getTask(a[0]);
+  if (!t || !teachesClass(user, t.classId)) return false;
+  if (fn === 'editTask') return a[1] === user.teacherId;
+  return a[3] === user.teacherId && t.studentIds.includes(a[1]);
+}
+// ── Conference booking (api.openConferenceRound, editConferenceRound, closeConferenceRound, bookConference,
+// cancelConference, blockConferenceSlot) ──
+// Opening: an advisor for their own advisory, whole-school staff for any advisory or a whole Year, as themselves; admins.
+// Editing and closing: whoever opened it, its advisor, whole-school staff, admins. Booking: a family only for their own
+// children ('family'), at least api.CONF_CHANGE_H hours ahead by the server's clock, and only moving a booking that is still
+// that far off; the advisor (as themselves) for their own advisees, any time. Cancelling: the same. Blocking a slot: the
+// advisor of that grid, as themselves. Students never; reminders only the server (sendConferenceReminders).
+const CF_FNS = new Set(['openConferenceRound', 'editConferenceRound', 'closeConferenceRound', 'bookConference', 'cancelConference', 'blockConferenceSlot']);
+ADMIN_ONLY.add('sendConferenceReminders');
+function confOk(user, fn, args) {
+  const admin = isAdmin(user), tid = user.teacherId || null, staff = STAFF.includes(user.kind) && !!tid;
+  const whole = staff && reachOf(user) === null;
+  const soon = (d, t) => api.confTooSoon(d, t, Date.now());
+  if (fn === 'openConferenceRound') {
+    const [spec, by] = args;
+    if (admin) return !by || by === tid;
+    return staff && by === tid && (whole || (!spec?.year && spec?.advisorId === tid));
+  }
+  if (fn === 'editConferenceRound' || fn === 'closeConferenceRound') {
+    const r = api.getConferenceRound(args[0]), by = fn === 'editConferenceRound' ? args[2] : args[1];
+    if (!r) return false;
+    if (admin) return true;
+    return staff && by === tid && (whole || r.by === tid || r.advisorId === tid);
+  }
+  if (fn === 'blockConferenceSlot') {
+    const [rid, aid, , , , by] = args, r = api.getConferenceRound(rid);
+    return !!r && r.advisorIds.includes(aid) && !!tid && aid === tid && by === tid && (staff || admin);
+  }
+  const parent = user.kind === 'parent', kids = user.children || [];
+  if (fn === 'bookConference') {
+    const [rid, sid, slot, by] = args, r = api.getConferenceRound(rid), s = api.getStudent(sid);
+    if (!r || !s || !r.studentIds.includes(sid)) return false;
+    if (parent) { const mine = api.confBookingOf(rid, sid); return by === 'family' && kids.includes(sid) && !soon(slot?.date, slot?.time) && !(mine && soon(mine.date, mine.time)); }
+    return (staff || admin) && !!tid && by === tid && s.advisorId === tid;
+  }
+  if (fn === 'cancelConference') {
+    const b = api.getConfBooking(args[0]), by = args[1];
+    if (!b) return false;
+    if (parent) return by === 'family' && kids.includes(b.studentId) && !soon(b.date, b.time);
+    return (staff || admin) && !!tid && by === tid && api.getStudent(b.studentId)?.advisorId === tid;
+  }
+  return false;
+}
+// ── Student-led conferences (api.saveConfPrep, writeConfNote) ──
+// Getting ready: only the student, on their own prep, in a round that includes them. The lines at the end: a parent for
+// their own children (the family's line, as 'family'), the student their own line (as 'student'), and the student's
+// advisor or whole-school staff either line, as themselves. Admins too, as themselves. Nobody else.
+const SLC_FNS = new Set(['saveConfPrep', 'writeConfNote']);
+function slcOk(user, fn, args) {
+  const r = api.getConferenceRound(args[0]), sid = args[1];
+  if (!r || !r.studentIds.includes(sid)) return false;
+  if (fn === 'saveConfPrep') return user.kind === 'student' && !!user.studentId && sid === user.studentId;
+  const [, , who, , by] = args;
+  if (user.kind === 'parent') return who === 'family' && by === 'family' && (user.children || []).includes(sid);
+  if (user.kind === 'student') return who === 'student' && by === 'student' && sid === user.studentId;
+  const tid = user.teacherId || null;
+  if (!tid || by !== tid || !(STAFF.includes(user.kind) || isAdmin(user))) return false;
+  return isAdmin(user) || reachOf(user) === null || api.getStudent(sid)?.advisorId === tid;
+}
+// ── Subject prompts (api.setSubjectPrompts, clearSubjectPrompts, answerExampleAsk) ──
+// A class's prompts: a teacher of that class (in its teacherIds), as themselves. A line's prompts: coordinators (heads of
+// department) and leadership, as themselves. Admins: either, as themselves or with no staff record (by null). An example
+// from a student's moment: only one the writer can reach. Saying yes or no to an example: only that student.
+const SP_FNS = new Set(['setSubjectPrompts', 'clearSubjectPrompts', 'answerExampleAsk']);
+const LINE_PROMPT_KINDS = ['coordinator', 'leadership'];
+function subjectPromptOk(user, fn, args) {
+  if (fn === 'answerExampleAsk') return user.kind === 'student' && !!user.studentId && args[2] === user.studentId && !!api.getSubjectPrompt(args[0])?.examples.some((x) => x.id === args[1] && x.studentId === user.studentId);
+  const admin = isAdmin(user), by = args[fn === 'setSubjectPrompts' ? 2 : 1] ?? null;
+  if (admin ? !!by && by !== user.teacherId : !(STAFF.includes(user.kind) && !!user.teacherId && by === user.teacherId)) return false;
+  const target = fn === 'setSubjectPrompts' ? args[0] : api.getSubjectPrompt(args[0]);
+  if (!target || typeof target !== 'object') return false;
+  if (!admin && !(target.classId ? teachesClass(user, target.classId) : LINE_PROMPT_KINDS.includes(user.kind))) return false;
+  if (fn !== 'setSubjectPrompts') return true;
+  const reach = reachOf(user);
+  return [].concat(args[1]?.examples || []).every((x) => { if (!x?.eventId) return true; const sid = api.getEvent(x.eventId)?.studentId; return !!sid && (reach === null || reach.has(sid)); });
+}
+// ── CAS hours (api.logCasExperience, logCasHours, withdrawCasHours, confirmCasHours, returnCasHours, setCasCode, setCasCoordinator) ──
+// Logging and taking back: only the student (Years 12 and 13), on their own experiences. Confirming or sending back, as
+// yourself: the staff supervisor the entry names ('supervisor'), or a CAS coordinator (role coordinator, or marked on
+// Accounts) or admin on anyone's behalf ('coordinator'). An outside supervisor confirms through their code on the server
+// (server/routes/47-cas.mjs), never through /api/action, and nobody sets a code here. Marking a CAS coordinator: admins.
+const CAS_FNS = new Set(['logCasExperience', 'logCasHours', 'withdrawCasHours', 'confirmCasHours', 'returnCasHours', 'setCasCode', 'setCasCoordinator']);
+function casOk(user, fn, args) {
+  const me = user.kind === 'student' && user.studentId;
+  if (fn === 'logCasExperience') return !!me && args[0] === me && api.casAllowed(me);
+  if (fn === 'logCasHours') { const e = api.getEvent(args[1]); return !!me && args[0] === me && !!e?.cas && e.studentId === me && api.casAllowed(me); }
+  if (fn === 'withdrawCasHours') return !!me && args[1] === me && api.getCasEntry(args[0])?.studentId === me;
+  if (fn === 'setCasCoordinator') return isAdmin(user);
+  if (fn === 'setCasCode') return false;
+  const x = api.getCasEntry(args[0]), via = args[2]?.via;
+  if (!x || me) return false;
+  if (isAdmin(user)) return via === 'coordinator' && (args[1] ?? null) === (user.teacherId ?? null);
+  if (!STAFF.includes(user.kind) || !user.teacherId || args[1] !== user.teacherId) return false;
+  if (via === 'supervisor') return x.supervisor?.kind === 'staff' && x.supervisor.teacherId === user.teacherId;
+  return via === 'coordinator' && api.isCasCoordinator({ kind: user.kind, teacherId: user.teacherId });
+}
+
+// ── Teacher comment bank (api.addPhrase, editPhrase, deletePhrase, movePhrase, usePhrase) ──
+// Always as yourself (an admin with no staff record: by null). Your own bank: any member of staff with a staff record.
+// The school bank: coordinators and leadership (with a staff record) and admins. Counting a use: your own or a school
+// phrase, with a staff record. Students and families never.
+const PH_FNS = new Set(['addPhrase', 'editPhrase', 'deletePhrase', 'movePhrase', 'usePhrase']);
+const PH_SCHOOL = ['coordinator', 'leadership'];
+function phraseOk(user, fn, args) {
+  const admin = isAdmin(user), tid = user.teacherId || null;
+  if (!(STAFF.includes(user.kind) || admin) || (args[1] ?? null) !== tid) return false;
+  const owner = fn === 'addPhrase' ? args[0] : api.getPhrase(args[0])?.owner;
+  if (typeof owner !== 'string') return false;
+  if (fn === 'usePhrase') return !!tid && (owner === 'school' || owner === tid);
+  if (owner === 'school') return admin || (!!tid && PH_SCHOOL.includes(user.kind));
+  return !!tid && owner === tid;
+}
+// ── School events (api.addSchoolEvent, editSchoolEvent, removeSchoolEvent, importSchoolEvents, remindSchoolEvent,
+// dismissSchoolEvent) ──
+// Adding, editing, removing, importing and the one reminder: admins, coordinators and leadership, as themselves (an admin
+// with no staff record as null). Dismissing the card: only a student it was for, on their own.
+// A moment from it is an ordinary addStation; api.addStation links it only when the event was for that student.
+const SE_FNS = new Set(['addSchoolEvent', 'editSchoolEvent', 'removeSchoolEvent', 'importSchoolEvents', 'remindSchoolEvent', 'dismissSchoolEvent']);
+export const SE_MANAGERS = ['coordinator', 'leadership'];
+export const manageSchoolEvents = (u) => !!u && (isAdmin(u) || (SE_MANAGERS.includes(u.kind) && !!u.teacherId));
+function schoolEventOk(user, fn, a) {
+  const me = user.kind === 'student' && user.studentId;
+  if (fn === 'dismissSchoolEvent') return !!me && a[1] === me && !!api.getSchoolEvent(a[0])?.studentIds.includes(me);
+  if (!manageSchoolEvents(user)) return false;
+  const by = a[{ addSchoolEvent: 1, editSchoolEvent: 2, removeSchoolEvent: 1, importSchoolEvents: 1, remindSchoolEvent: 1 }[fn]] ?? null;
+  if (by !== (user.teacherId ?? null)) return false;
+  return fn === 'addSchoolEvent' || fn === 'importSchoolEvents' || !!api.getSchoolEvent(a[0]);
+}
+
+// ── System health (routes/69-health.mjs): how many sessions are live, and for how many people ──
+export function liveSessions() {
+  const now = Date.now(), live = Object.values(sessions).filter((s) => s.expiresAt >= now && accountById(s.userId));
+  return { sessions: live.length, people: new Set(live.map((s) => s.userId)).size };
+}
+
+// ── Family encouragement (api.addFamilyNote, editFamilyNote, deleteFamilyNote, thankFamilyNote, setFamilyNoteHidden;
+// reportItem on { familyNoteId }) ──
+// Writing: only a family member, as their own account (`u:<id>`, their own name), on their child's moment that the family
+// view shows (not hidden), while the student has notes on. Changing or deleting: only its writer. Thanking and hiding it
+// from their own view: only the student. Reporting: the student, staff who read it (advisor, a current class's teacher,
+// whole-school roles) as themselves, admins. Never staff or admins writing as a family.
+const FN_FNS = new Set(['addFamilyNote', 'editFamilyNote', 'deleteFamilyNote', 'thankFamilyNote', 'setFamilyNoteHidden']);
+function familyNoteOk(user, fn, args) {
+  const me = user.kind === 'student' && user.studentId, fam = user.kind === 'parent' && !!user.id, key = `u:${user.id}`, kids = user.children || [];
+  if (fn === 'addFamilyNote') { const e = api.getEvent(args[0]); return fam && !!e && kids.includes(e.studentId) && api.familyShows(e) && api.familyNotesOn(e.studentId) && args[1]?.key === key && args[1]?.name === user.name; }
+  const n = api.getFamilyNote(fn === 'reportItem' ? args[0].familyNoteId : args[0]);
+  if (!n) return false;
+  if (fn === 'editFamilyNote' || fn === 'deleteFamilyNote') return fam && args[1] === key && n.by === key && kids.includes(n.studentId);
+  if (fn !== 'reportItem') return !!me && n.studentId === me && !n.hidden;
+  const k = args[3]?.key;
+  if (isAdmin(user)) return k === 'admin' || (!!user.teacherId && k === user.teacherId);
+  if (me) return k === 'student' && n.studentId === me && !n.hidden;
+  if (!STAFF.includes(user.kind) || !user.teacherId || k !== user.teacherId) return false;
+  return reachOf(user) === null || api.familyNoteReader(user.teacherId, n.studentId);
+}
+// ── Class photo drop (api.dropPhotos; acceptSpotted/declineSpotted answer it; reportItem on { photoId }) ──
+// Sending: a teacher of the class (whole-school staff and admins too, only for a class they teach), as themselves; the
+// mutator checks every student is in the class. Reporting a photo: a student it was given to who still holds it, as
+// 'student'; staff who reach a student it was given to, as themselves; admins. Never families.
+function dropOk(user, fn, args) {
+  if (fn === 'dropPhotos') return (STAFF.includes(user.kind) || isAdmin(user)) && !!user.teacherId && args[1] === user.teacherId && teachesClass(user, args[0]);
+  const [target, , , from] = args, f = api.dropPhotoById(target.photoId), key = from?.key;
+  if (!f?.p.url) return false;
+  const sid = target.studentId || f.p.studentIds[0];
+  if (!f.p.studentIds.includes(sid)) return false;
+  if (user.kind === 'student') return key === 'student' && sid === user.studentId && (st().spotted || []).some((x) => x.dropId === f.d.id && x.studentId === sid && x.photos?.some((p) => p.id === f.p.id) && (x.status === 'open' || (x.kept || []).includes(f.p.id)));
+  if (isAdmin(user)) return key === 'admin' || (!!user.teacherId && key === user.teacherId);
+  if (!STAFF.includes(user.kind) || !user.teacherId || key !== user.teacherId) return false;
+  const reach = reachOf(user);
+  return reach === null || reach.has(sid);
+}

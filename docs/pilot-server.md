@@ -1346,3 +1346,895 @@ family. Demo and pilot. No new route, no email, no leaderboard: nothing compares
   not on a second device, which gets "5 moments" live and still under reduced motion); a classmate at Standard gets the
   toast and the station badge; refusals for advisor, admin and classmate; Ms Jane Altemen sees it on My advisory, his
   page and This week; his family sees milestones but none from a private moment. Screenshots `tp-ms-*.png`.
+
+## Class list sync from the SIS (`server/sis.mjs`, `server/routes/67-sis.mjs`, `src/components/SisSync.jsx`, pilot only)
+
+The class lists can come from the school information system every night instead of an uploaded file. Nothing is applied
+by itself: each check makes a change report that waits on Accounts until an admin applies or dismisses it. Settings, the
+feed and the mapping file: `docs/roster-format.md`, "SIS sync".
+
+- **Settings** (environment only, never in a data file): `SIS_URL` (the feed), `SIS_TOKEN` (sent as
+  `Authorization: Bearer`), `SIS_SYNC_AT` (default `02:00`, `TP_TZ` time, Bangkok by default; `off` for no nightly check),
+  `SIS_MAP` (a field-mapping file, relative to `DATA_DIR`), `SIS_TIMEOUT_MS` (default 60000). Without `SIS_URL` the panel
+  says "Not set up" and files are imported as before. Demo mode: every route is 403 and nothing runs.
+- **A check** (`check(req)` in `server/sis.mjs`; one at a time): fetch → a `transit-roster/1` file as is, anything else
+  through `SIS_MAP` (`mapFeed`) → `api.parseRoster` → `buildReport`, compared with the record. Report statuses: `ready`
+  (waiting for an admin), `nothing` (no changes), `invalid` (validation errors: the parser's `errors` and `missing`),
+  `refused` (more than 10% of the record's students are gone from the feed: never staged, and the warning says to import
+  a file by hand if it is right), then `applied`, `dismissed`, or `replaced` (a newer check came first). A failed fetch
+  (unreachable, timeout, HTTP 401/403 "refused the token", not JSON, no map) makes no report: it sets `lastError`.
+- **Report**: `{ id, at, by: { id, name } | null (nightly), mapped, status, school, counts, added / changed / leaving:
+  { students, teachers, classes: { n, items (up to 200) } }, enrolments: { joins, ends, updated }, handover (as
+  handoverPreview), accounts: { toCreate, leavers }, drop: { students, of, pct }, warnings, errors, base }`. `changed`
+  items list `{ field, from, to }` (students: name, year, homeroom, advisor, programme, email, house; staff: name, email,
+  roles, department; classes: name, subject, year, level, teachers). `leaving` leaves out records an applied report
+  already had as gone (nobody is removed from the record, so they would otherwise come back every night).
+- **Files**: `DATA_DIR/sis-sync.json` `{ status: { lastChecked, lastOk, lastError: { at, message }, lastScheduledDay },
+  gone, reports (newest first, the last 10, each with `applied`/`dismissed` `{ at, by }`) }`; `DATA_DIR/sis-pending.json`
+  `{ id, roster }`, the validated roster of the one `ready` report (removed on apply, dismiss or a newer check).
+- **Routes** (admin only): `GET /api/admin/sis` → `{ configured, connected, lastChecked, lastError, syncAt, tz, mapped,
+  checking, reports }` (never the URL or token); `POST /api/admin/sis/check` (Check now; 409 when not set up) → the same,
+  plus `error`; `POST /api/admin/sis/reports/:id/apply { pauseLeavers? }` → the roster import's answer (summary, setup
+  links for new accounts, paused, unpaused, accounts list) plus `sis`; 409 unless the report is `ready`, and when the
+  record's class lists changed since the check (`base` ≠ `store.rosterImport.at`: someone imported a file); `POST
+  /api/admin/sis/reports/:id/dismiss` → `{ sis }`.
+- **Apply** runs `applyRoster(req, roster, opts)` (exported from `server/routes/15-roster.mjs`, which the file import now
+  uses too): `api.importRoster` (so the year handover, ended class places and leavers' lists work as for a file), new
+  accounts with setup links, unpaused returners, and the leavers' accounts paused when the admin ticks the box.
+- **Nightly**: a timer every 30 s (and once a second after start) runs one check per local day when the time is between
+  `SIS_SYNC_AT` and three hours later (`dueDay`), so a server restarted at 03:00 still checks that night and one started
+  at noon waits for the next night.
+- **Activity log**: `sis-fetch` (`detail.how` admin or schedule; the report status and counts, or `error` with status
+  502; the nightly check has no actor), `sis-apply` (the import's counts and `detail.report`; paused and unpaused
+  accounts get their own lines), `sis-dismiss` (`target.id` the report).
+- **Screen**: Accounts › Class list sync: Connected / Not connected / Not checked yet, last checked, the nightly time,
+  the last error; Check now; the waiting report (counts, then new, changed and leaving people and classes, class places
+  joining and ending, advisor handovers, sign-in accounts to make, warnings) with "Apply these changes" and "Dismiss";
+  after applying, "Download sign-in links (CSV)"; the last 10 checks with who applied or dismissed them.
+- Tests: `server/test/sis-sync.test.mjs` (a mock SIS on localhost: good feed, mapped feed, bad token, 10% drop refused,
+  invalid feed, stale report, dismiss, the last 10, the nightly run, applying a new year runs the handover, no token in
+  any file or answer); browser: `node scripts/checks/sis-sync.cjs` (a mock SIS serving the real roster from `TP_ROSTER`,
+  then a modified copy in memory; screenshots `tp-sis-*.png`).
+## School screens: an exhibition for open evenings, the library or a lobby TV (`src/api.js`, `server/routes/45-exhibition.mjs`, `src/screens/Kiosk.jsx`, pilot)
+
+- **Record**: `store.exhibitions` `[{ id: 'ex-…', title, token, by (teacherId | null), at, from, to, seconds, years,
+  classIds, advisory, lineIds, paused, revoked, removed: [{ eventId, by, at }] }]`, made on first use. `token` is 32
+  random bytes (base64url, 43 characters) made in the browser (`crypto.getRandomValues`) and passed as an argument, so the
+  replay stays deterministic. Mutators: `createExhibition(spec, by, token)`, `removeExhibitionSlide(id, eventId, by)`,
+  `pauseExhibition(id, paused, by)`, `revokeExhibition(id, by)` (turn off: for good).
+- **Slides** (`api.exhibitionSlides`): moments of the chosen students (Years, current class places, the maker's
+  advisory; none chosen: the whole school), `visibility === 'publishable'` (the public share link rule), not hidden by
+  safeguarding, not a goal, dated within `from`–`to` and up to today, on a chosen school line (or a branch of one; none
+  chosen: every line), never removed from this screen (a removed slide never comes back, whatever happens to the moment),
+  and whose student has not turned school screens off: `privacy.screens === false` (`setPrivacy`, Privacy → "Don't show
+  my moments on school screens", allowed by default). Newest first, at most 200. Each slide: title, first name, Year, the
+  line's name and colour, the first photo, one line (first sentence, at most 140 characters) of a publishable
+  reflection. Never surnames, comments or student ids.
+- **canAct** (`exhibitionOk` in `server/auth.mjs`): staff and admins, as themselves. Making one: whole-school staff and
+  admins for anything; an advisor or subject teacher only from classes they teach and their own advisory, never Years or
+  the whole school; the token must look like one. Pause and turn off: the maker and admins. Remove a slide: the maker,
+  admins, moderators (coordinators, counsellors, leadership) and a teacher of a class the moment's student is in now.
+- **Scope**: the maker and admins get their screens whole; other staff get every screen without its token and with only
+  the removed slides of students in reach; students and families get none.
+- **Routes**: `GET /api/public/exhibition/:token` (no sign-in) → `{ title, seconds, paused, refresh, slides }`; paused:
+  no slides; turned off or unknown: 404. `GET /api/exhibitions/:id/slides` (signed in) → `{ slides, removed }` for the
+  panel: everything for the maker, admins and moderators, only their class students' slides for another teacher.
+  `refresh` is `TP_EXHIBIT_REFRESH_S` (default 300 seconds; the browser check uses 3).
+- **Photos**: `/api/files/<name>?ex=<token>`. `canSeeFile(user, name, meta, exToken)` (`server/files.mjs`) opens a file
+  for anyone with the token only while it is on one of that screen's current slides (not paused, not turned off),
+  cached until the next change. Without the token the usual rules apply.
+- **The screen** (`#/x/<token>`, `src/screens/Kiosk.jsx`, loaded on its own from `src/main.jsx`, never the record):
+  full screen on the first tap or key, a navy NIST frame, one slide at a time (photo left and words right on a TV, photo
+  above on an upright tablet), moving on every `seconds`, no links or buttons, the pointer hidden when still, the screen
+  kept awake where the browser allows. It fetches the list again every `refresh` seconds; a removed slide goes at that
+  point. No connection: it keeps showing what it has (photos as blobs in memory and in IndexedDB `tp-exhibit`, so a
+  reload works too) for up to 24 hours, with "Offline · showing saved slides". The service worker still never caches
+  `/api`. Turned off (404): "This screen has been turned off", and it deletes what it kept.
+- **Panel** (School screens, every member of staff and admins, `src/screens/Exhibitions.jsx`): make a screen (title,
+  Years for whole-school staff, own classes, own advisory, lines, dates, 6–30 seconds a slide), copy or open its
+  address, pause, start again, turn off, the queue of slides with Remove, and the removed ones. Other staff's screens
+  show your class students' slides, to remove.
+- **Activity log**: create, remove and turn off (and pause) go through `/api/action`, so each is a `change` entry with
+  the screen's id (`getExhibition` is a known item); a removal names the student. The token is never logged.
+- Tests: `server/test/exhibition.test.mjs` (only publishable, opted out and hidden left out, removed never back, paused,
+  file token, canAct, scope, and through the server: the signed-out feed, photos by token, the panel's queue, 404 once
+  turned off, the activity log); browser: `node scripts/checks/exhibition.cjs` (real roster, in `run.sh`). Screenshots
+  `tp-exhibit-*.png`.
+## Leaver portfolio (`src/api.js`, `src/components/Leaver.jsx`, `server/routes/41-leaver.mjs`)
+
+A Year 12 or 13 student (`grade` 11–12; Year 11 as a "Practice" run) builds one portfolio from their own record for
+university, scholarship or job applications. Students under Year 11 never see it (no navigation item; `#/me/leaver` shows
+their map; the server refuses the mutators).
+
+- **Student** (`#/<me>/leaver`, "Leaver portfolio" in the navigation at every level): five steps beside a live A4 preview.
+  1 Profile (name, one-paragraph statement up to 1,500 characters, optional contact email, optional photo uploaded as any
+  evidence); 2 up to 8 best moments, reordered, and for each which evidence and which reflection to show, and which of its
+  sentences (`sentencesOf`); 3 Skills and qualities: the IB learner profile and ATL tags on the picked moments (`getTags`),
+  each can be unticked; 4 Endorsements: teacher name and note, only on moments the student shows the school or beyond
+  (`school`, `publishable`; an endorsement carrying its own `visibility` must be one of those too); 5 Template (NIST navy
+  classic, Minimal, Two columns) and share links. "Download PDF" prints through `src/print.js` / `PrintKit` (A4, running
+  footer, QR to an open link). Comments from staff show at the top with "Done".
+- **Record**: `store.leaver[studentId] = { profile: { name, statement, email, photo }, moments: [{ eventId, evidence: [index],
+  reflectionId, sentences: [index] | null }], skillsOff, endorsements: [id], template, links: [{ token, at, expiresAt, revoked,
+  revokedAt?, label }], comments: [{ id, by, text, at, done? }], updatedAt }`.
+- **Mutators** (replayed like the rest): `saveLeaver(studentId, patch)` (any of profile, moments, skillsOff, endorsements,
+  template; 400 for a private moment or reflection, a goal, a hidden moment, more than 8, a photo that is not an upload, a bad
+  email; 403 under Year 11), `shareLeaver(studentId, { token, days, label })` (the token is made in the browser with
+  `crypto.getRandomValues`, 22–64 url-safe characters, never by `uid()`; `days` one of 30, 90, 180, 365; needs a moment),
+  `revokeLeaver(studentId, token)`, `commentLeaver(studentId, teacherId, text)` (notifies the student),
+  `doneLeaverComment(studentId, commentId)`. Reads: `getLeaver`, `leaverChoices` (what may go in, and how many private or
+  hidden moments were left out), `leaverView(studentId)`: what every copy shows, checked item by item at read time, so a
+  moment made private or hidden by a moderator later drops out of the draft, the PDF and the link by itself.
+- **canAct** (`LV_FNS`, before the admin rule): building, sharing, withdrawing and ticking comments: only the student, on their
+  own; never staff, admins or families. Commenting: the student's advisor or whole-school staff, as themselves, once a portfolio
+  exists. **Scope**: the student gets theirs whole; staff in reach get it without the links' tokens (subject teachers read it,
+  only the advisor and whole-school roles comment); families and everyone else nothing: a family reads it only through a link.
+- **Public**: `GET /api/public/leaver/:token` (no sign-in) → `{ portfolio: leaverView, expiresAt }` (no record ids, no comments);
+  404 unknown or withdrawn, 410 expired. The page is `#/l/<token>` (`PUBLIC_KINDS` in `src/publicRoute.js`; never syncs the
+  record); without a server it reads the browser's own copy. `server/files.mjs` opens the photo and chosen evidence to anyone
+  while a link is open (`leaverPublicFiles`), and stops when it is withdrawn or expires.
+- **Advisor**: "Leaver portfolio" on the advisor's student page (Year 11 and up): counts, "Read the draft" (read only) and comments.
+- **PDPA**: `leaver` is keyed by student, so it is in their copy and their erasure.
+- Tests: `server/test/leaver-portfolio.test.mjs`; browser: `node scripts/checks/leaver-portfolio.cjs` (real roster, skipped
+  without it): a Year 13 student and their advisor picked at runtime, 3 moments, PDF in each template (A4, ≤ 3 pages, nothing
+  wider than the page), a link opened signed out (only the chosen items), withdrawn → 404; Aaron Torres (Year 8) has no feature.
+## Readability and accessibility (`src/a11y.js`, `src/a11y.css`, `src/components/DisplaySettings.jsx`, `server/routes/19-prefs.mjs`)
+
+- **Display options**, in the display menu (the sliders button, beside "How much to show", Language, Theme and "Read
+  questions aloud"; English and Thai): **Text size** Normal / Large (×1.15) / Larger (×1.3); **High contrast** Off / On
+  (black or white text, darker borders and secondary text, underlined links, a thicker focus ring; light and dark);
+  **Easy-read font** Off / On (Atkinson Hyperlegible, SIL OFL, bundled in `src/assets/fonts` with its licence, so it
+  works offline and is cached by the phone app; falls back to Verdana or Tahoma; Thai keeps Sarabun); **Reduce motion**
+  Like this device / On / Off (follows `prefers-reduced-motion` by default; On stops CSS animations and the map's eased
+  moves, `useTween`, and keeps milestone stations still; Off keeps them even where the device asks for less).
+- **How**: classes on `<html>`: `a11y-large`, `a11y-larger`, `a11y-contrast`, `a11y-font`, `a11y-calm`, `a11y-moving`.
+  No component knows about them. Text size: a small Vite plugin (`textScale` in `vite.config.js`) writes every CSS
+  `font-size: Npx` as `calc(Npx * var(--ts, 1))`, and `--ts` is set on `<html>` for screens only; `svg` resets it to 1,
+  so the metro map, its labels and other drawings keep their layout (the map zooms). High contrast and size live under
+  `@media screen`, so printing ignores both. Components that animate in JS ask `calm()`.
+- **Saved**: per device in `localStorage` (`tp-display`), applied before the first paint. In a pilot also per account:
+  `POST /api/auth/prefs { display: { size, contrast, font, motion } }` (all four keys, known values only, else 400; the
+  signed-in account's own, like `lang`, which it leaves alone). `/api/auth/me` carries `user.display`; a signed-in
+  account's choice (or the defaults) wins on every device it signs in on. Never saved from a See as preview.
+- **Keyboard and screen readers**: a "Skip to content" link (first Tab) to `<main id="main">`; a visible focus ring
+  everywhere (purple on light, sky on navy and dark, black or gold in high contrast, a ring round a focused map
+  station); Escape closes the top-bar menus and returns focus to their button; dialogs (`.modal-back`) trap Tab, close
+  on Escape and return focus to what opened them, also when the dialog focuses its own field first; a flow step that
+  replaces the focused button keeps focus in the dialog. The display menu is a group of radio groups. Map stations are
+  buttons named by title, lines, date and how checked (the label beside them is hidden from screen readers); photos
+  take their caption as alt text, or the moment's title when the caption is only a file name (`photoAlt`); the toast
+  and the save status are live regions; headings run in order on the queue and family view.
+- **Contrast fixes** (in `src/a11y.css`, light theme unless said): `--ok` is `#006B4B`; endorsed and verified badges and
+  ATL tags use it; the brand green and red behind white initials or a NEW pill are a shade deeper (`#007B56`,
+  `#CF3437`); "Today" on the Simple timeline at full strength; returned badges a deeper red (lighter in dark).
+- **Check**: `node scripts/checks/accessibility.cjs` (in `run.sh`; needs `npm run build`; axe-core 4.x is a
+  devDependency loaded into each page). Demo: first-time setup, Simple home and add flow, Standard map, station panel,
+  add a station, Full map, teacher queue, My advisory, an advisee, family view, the display menu, five screens in dark;
+  pilot on the real roster (`TP_ROSTER`, skipped without it), one browser context per account: students at Simple,
+  Standard and Full (map, station panel, add flow, ask a teacher), the science teacher (queue, My classes, This week),
+  the advisor (My advisory, the student, This week), a parent (phone), the admin (Accounts). Every screen is checked
+  again for colour contrast with high contrast on; any serious or critical finding fails. Keyboard only: Aaron Torres
+  sets Large and high contrast (saved on his account, shown on his phone), adds a moment at Simple and asks his science
+  teacher; that teacher endorses it from the queue; both outcomes are announced. Also: per-device in the demo, Larger
+  scales text 1.3× with no sideways scroll at phone width, the map labels keep their size, print ignores size and
+  contrast, Reduce motion follows the device. Server: `server/test/display-prefs.test.mjs`.
+- **Known issues**: the metro map's light line colours (sky, gold) are under 3:1 against white as strokes; each line
+  also carries its name and a code tag, but high contrast does not darken the strokes. Text sizes set inline in
+  JavaScript (the map's line codes) do not scale. The axe pass covers the screens above, not every screen (the
+  presentation studio, poster, CAS, counsellor and leadership dashboards are not yet checked), and other avatars
+  rely on the CSS colour fix in `a11y.css` rather than their own markup. axe cannot judge everything, and nothing has
+  been tried yet with a real screen reader (VoiceOver, NVDA, TalkBack). The Thai words for the new
+  options are in `src/i18n.js`; the sign-in page has no display menu (it uses this device's last choice).
+
+## Weekly goal check-ins (`src/api.js`, `src/components/GoalCheckins.jsx`, pilot only)
+
+- **When**: once a week (Monday to Sunday, Asia/Bangkok, `weekOf` in `src/week.js`) for each open goal (`isOpenGoal`: a
+  goal, not a school requirement, not closed). Due from Monday, or the first time the student opens the app that week
+  (`checkinsDue(studentId)`), until they answer or snooze. No streaks, no scores, no email.
+- **Student**: Simple: one big "How is your goal going?" card per goal on the home, then one question per screen: Going
+  well / Stuck / Not started (or "Ask me again in 2 weeks"), an optional sentence (with "Say it", `SayIt` from
+  `Voice.jsx`), and "What's one next step?". Standard and Full: a compact card per goal on the home (`MicButton` beside
+  each box). Answers show as a small timeline (`CheckinTimeline`) on the goal's station panel and the Simple goal card.
+- **Stored on the goal**: `e.checkins [{ id, week (its Monday), date, status: 'well'|'stuck'|'none', note ≤300, next ≤200,
+  at }]` (one per week; answering again that week replaces it), `e.checkinSnooze` (a day; nothing asked before it),
+  `e.encouragements [{ id, by, line, text, at }]`. `addCheckIn` (the sponsor's thread) is left as it is.
+- **Stuck twice in a row** (`stuckTwice(e)`: the last two check-ins "Stuck", the latest this week or last): a notification
+  to the advisor and an accepted sponsor ("Aaron is stuck on 'Run 5k'", opens This week), and a "Stuck on a goal" list
+  (`StuckFlags`, `stuckFlags(teacherId)`) on My advisory and This week. **Send encouragement**: one of
+  `ENCOURAGE_LINES` plus an optional sentence; the student gets an in-app notification and it shows on the goal.
+- **Mutators**: `checkInGoal(goalId, { status, note, next })`, `snoozeCheckins(goalId)` (14 days): only the student, on
+  their own open goal. `sendEncouragement(goalId, by, line, text)`: the student's advisor or the goal's accepted sponsor,
+  as themselves (`canEncourage`; never on a private goal). `canAct` in `server/auth.mjs` (`GC_FNS`), `TOUCHES` in scope.
+- **Who reads it**: whoever receives the goal (the student, staff in reach at the advisor level, the sponsor); families
+  never (`scopedSnapshot` strips the three fields). Private goals never reach staff, so they never flag. Part of the
+  student's record for a PDPA copy and erasure (it lives on the goal).
+- Tests: `server/test/goal-checkins.test.mjs` (once a week, snooze, stuck twice, who may act and download; earlier weeks
+  seeded by moving check-ins back); browser: `node scripts/checks/goal-checkins.cjs` (the real roster from `TP_ROSTER`:
+  Aaron Torres checks in Stuck, the server is stopped and his check-in moved back a week in `state.json`, he is stuck
+  again; Ms Jane Altemen sees the flag on My advisory and This week and sends encouragement; Aaron sees it; the Standard
+  card; axe over the new parts; screenshots as `tp-checkins-*.png`).
+## Class tasks: set for a class, handed in as a moment (`src/api.js`, `src/components/ClassTasks.jsx`, `server/routes/68-tasks.mjs`)
+
+A teacher sets a task for a class ("Plant cell poster, due Friday"); each student hands it in from their home, and it
+becomes a moment on the task's line waiting for that teacher. Distinct from class prompts (a question, answered once)
+and from the demo's ManageBac "Endorse a whole-class task" (`store.classTasks`, unchanged).
+- **Teacher**: My classes has "Set a task" on each class and on the class page: title, a short brief, due date, the line
+  hand-ins go on (default the class's line; any school line), an optional checklist (up to 5 things the student ticks)
+  and "Needs a photo or a file". The class page lists its tasks ("N of M handed in, K late", "Look at hand-ins (n)",
+  Edit). `#/<persona>/classes/<classId>~task~<taskId>` is the hand-in grid: every student it was set for, with Handed
+  in / Handed in late / Not yet / Not yet, overdue (text, and red), their moment (photo, words, files, ticks) and its
+  check (To look at, Asked for more, Endorsed). The teacher who set it endorses (one or "Endorse all to look at", with a
+  shared note and the queue's chips: `endorse`) or asks for more (`declineRequest`); any teacher of the class gives one
+  student more time. Hand-ins also reach Endorsements as ordinary requests.
+- **Student**, at the top of the home: Simple, a big card per open task ("Mr Coultas set a task: … due Friday", up to
+  three) and a step-by-step hand-in (the brief, read aloud; the checklist; what I did, with speak-to-type; a photo or a
+  file, required when the task asks; done). Standard and Full: a "Tasks" list with due dates, "Overdue" in red and in
+  words, and the last week's hand-ins. Asked for more: the task opens again with the teacher's note, and handing in
+  adds to the same moment. Works offline: the hand-in is an ordinary change and its photo goes through `holdUpload`.
+- **This week**: "Waiting for you" has one line per task with hand-ins to look at ("Hand-ins for “…”", opens the
+  grid); those requests are not counted again as single endorsement requests.
+- **Record**: `store.teacherTasks[] { id: 'tk-…', classId, teacherId, title, brief, due, lineId, checklist, needsFile,
+  date, at, studentIds, editedAt }` (studentIds: the class when it was set); `store.handIns[] { id: 'hi-…', taskId,
+  studentId, due (more time, or null), reminded (the due date reminded for), date, at, eventId, ticked, again }`, one per
+  student with anything on a task. Both made on first use. The moment: `addStation` (type project, via "Class task",
+  `e.task` = the task id, visibility advisor) with `requestFrom` the setting teacher, and the words as a reflection whose
+  prompt is the task's title. Late: handed in after the student's due date (more time counts); overdue: not handed in
+  and past it (by `TODAY`, Bangkok).
+- **Mutators** (replayed like the rest): `setTask(classId, teacherId, { title, brief, due, lineId, checklist, needsFile })`
+  (notifies the class), `editTask(taskId, teacherId, fields)` (a new date tells those not handed in),
+  `extendTask(taskId, studentId, due | null, teacherId)` (tells the student), `handInTask(taskId, studentId, { text,
+  ticked, image, imageCaption, files })` (400 without a file when one is needed, 409 when already handed in unless asked
+  for more), `remindDueTasks()`. Reads: `tasksForClass`, `taskGrid`, `tasksFor(studentId)`, `taskHandInWaits(teacherId)`,
+  `taskStatus`, `getTask`, `dueWords(date)` ("today", "tomorrow", "Friday", else the date).
+- **Reminder**: the day before the due date, one in-app notification to each student still in the class who has not
+  handed in ("Reminder: “…” is due tomorrow"); once per student and due date, so more time is reminded again. The server
+  runs `remindDueTasks` in pilot mode shortly after start and every `TASK_TICK_MS` (default 10 minutes). No email.
+- **canAct** (`taskOk` in `server/auth.mjs`): setting, editing and extending, a teacher in the class's `teacherIds`
+  acting as themselves (whole-school staff and admins too, only for a class they teach); extending only for a student
+  it was set for. `handInTask`: only that student, for themselves. `remindDueTasks`: nobody through `/api/action`.
+- **Scope**: tasks and every hand-in row go to the class's teachers, the teacher who set it and whole-school roles; a
+  student gets the tasks set for them (their copy's `studentIds` is just themselves) and their own rows; families and
+  other staff get neither. The moment itself follows the usual rules (the setting teacher receives it through the
+  request). **PDPA**: hand-in rows are the student's own (copy and erasure); a task lists them only by id (mentions).
+- Tests: `server/test/class-tasks.test.mjs`; `node scripts/checks/class-tasks.cjs` (real roster, skipped without it:
+  Mr David Coultas sets a task for Y8 Sciences 08.04 (04); the reminder once per student; Aaron Torres hands it in at
+  Simple on a phone, offline, with a photo; the server restarted two days later (a Date shift): a classmate at Standard
+  sees it overdue and hands it in late; This week, the grid, more time, endorse from the grid; refusals; axe).
+## Conference booking (`src/api.js`, `src/components/ConferenceBooking.jsx`, `server/routes/68-conference.mjs`)
+
+Families book a parent-student-advisor conference in the app. Nothing is emailed. Demo and pilot. Times are Bangkok time
+(`CONF_TZ` +07:00, no daylight saving): a slot starts at `confAt(date, time)`.
+
+- **Record** (made on first use): `store.confRounds = [{ id: 'cr-…', title, days: [{ date, from, to }], slot (10 | 15 | 20),
+  breaks: [{ from, to }] (every day), online, location, link, advisorId | null, year | null, advisorIds, studentIds, by, at,
+  closedOn?, closedBy? }]`, `store.confBookings = [{ id: 'cb-…', roundId, advisorId, studentId, date, time, by ('family' |
+  teacher id), at, reminded? }]` and `store.confBlocks = [{ id: 'ck-…', roundId, advisorId, date, time, by, at }]`.
+- **Mutators**: `openConferenceRound({ title, days, slot, breaks, online, location, link, advisorId | year }, by)` (an advisory,
+  or every student in a British Year with an advisor, each meeting their own advisor; students already in a live round are left
+  out, 409 when none are left; each family is told, and each advisor of a Year round); `editConferenceRound(id, patch, by)` (409
+  while a booking would lose its time; blocks that no longer fit go); `closeConferenceRound(id, by)`;
+  `bookConference(roundId, studentId, { date, time }, by)` (one slot per child per round: booking again moves it; refused when
+  the time is booked or blocked (409 "That time was just taken"), clashes with a brother's or sister's booking in any round
+  (409), has passed, or, for `by: 'family'`, is less than `CONF_CHANGE_H` = 24 hours away or moves a booking that is);
+  `cancelConference(id, by)` (a family until 24 hours before); `blockConferenceSlot(roundId, advisorId, date, time, on, by)`
+  (never a booked time); `sendConferenceReminders(today)`. The other side is told in the app (family ↔ advisor) and the student
+  hears when their conference is. Reads: `confGrid(roundId, advisorId)`, `confDayTimes(r, day)`, `confBookingOf`, `confClash`,
+  `confTooSoon`, `confProgress`, `advisorConfRounds`, `familyConfRounds(childIds)`, `studentConferences(sid)`.
+- **Siblings**: `setSiblingsOf(fn)`. The server (`68-conference.mjs`) sets it from the family accounts (every parent account
+  listing that child: its other `children`), so a clash is refused whoever books; the browser's family card greys out times that
+  clash with a brother or sister. The demo uses its one family.
+- **Reminders**: `68-conference.mjs` looks every `CONF_REMIND_MS` (default 10 minutes) and shortly after start; bookings tomorrow
+  (Bangkok) get one reminder to the family and one per advisor for the day (`reminded` stops a second), then `changed()`.
+  `sendConferenceReminders` is admin-only through `/api/action`.
+- **canAct** (`CF_FNS` in `server/auth.mjs`, before the admin rule): open: an advisor for `advisorId` = their own `teacherId`;
+  whole-school staff for any advisory or a Year, as themselves; admins. Edit and close: whoever opened it, its advisor,
+  whole-school staff, admins. Book and cancel: a parent only for their own `children`, as `'family'`, and only 24 hours or more
+  ahead by the server's clock (a new time and the time being moved or cancelled); the student's advisor as themselves, any time.
+  Block: the advisor of that grid. Students never.
+- **Scope**: rounds go to whole-school roles whole, to anyone else when they cover a student in reach (only those ids).
+  Bookings and blocks: whole-school roles and admins all; an advisor their own grid; a student their own bookings; a family their
+  children's bookings in full, and every other booking or block in their children's advisors' grids only as `{ roundId,
+  advisorId, date, time, taken: true }`: no student, no id, nobody's name. PDPA: a booking carries `studentId`, so it is in that
+  student's copy (and the family's) and goes with erasure; a round only lists the id and loses it.
+- **Screens**: My advisory has "Conference booking" (open: title, days and hours, 10/15/20 minutes, breaks, a room or "Online
+  (link)"; then "Booked: n of 23", "Not booked yet", Edit, Close booking, and the day grid: booked / free / blocked per day, Cancel,
+  "Book for…" a family, Block / Unblock, "Print the day’s schedule": one A4 page with each time, the student's name, Year and
+  homeroom, who booked, and the link to their conference sheet, `conferenceSheetLink(personaId, sid)` in `src/conference.js`
+  (`#/<persona>/student/<sid>~sheet` opens the advisor's page with the sheet). Notifications open the grid on that day
+  (`advisory/conf~<roundId>~<date>`). The school overview has "Conference booking" for a whole Year. The family view has a card
+  per round with one column per child, side by side (taken, too soon, or "Mira’s time" when it clashes), and Change time /
+  Cancel booking until 24 hours before. Family text, toasts, refusals and notifications are in Thai from `src/i18n.js`
+  (`confWords`, `confDay`, `confSlotText`, `NOTE_TH`, `ERR_TH`). The student's home shows "Your conference" at every level.
+- Tests: `server/test/conference-booking.test.mjs`; browser: `node scripts/checks/conference-booking.cjs` (real roster from
+  `TP_ROSTER`: Ms Jane Altemen opens a round for 8C; Aaron Torres's parent joins from a family letter on a phone in Thai and
+  books; a second 8C family sees that time as "Taken" without a name and is refused it; Aaron sees his time; the advisor blocks a
+  time, books for a third family, prints the day's schedule (1 A4 page) and its link opens Aaron's sheet; axe on every new
+  screen). Screenshots and a PDF: `tp-confbook-*` in `SCRATCH` or the temp folder.
+## Subject prompts: what to write on each line (`src/api.js`, `src/components/SubjectPrompts.jsx`)
+
+When a student adds a moment on a line they get help on what to write: a short "what makes a good moment here" note, 3 to
+6 guiding questions, sentence starters, and sometimes an example. A class's own prompts win over the line's, and the
+line's over the built-in ones (`DEFAULT_PROMPTS`, one set per school line, British English).
+- **Students**: Simple: after picking the line, a teacher's prompts (class or line) go one question per screen (who they
+  are from and the note on the first, its starters, Say it, read aloud through `Said`, "See an example", the voice note on
+  the last, "Skip the questions" any time); the answers are saved as the reflection, each under its question. With only the
+  built-in prompts the usual "What did you learn?" screen shows the line's note and starters, and "Help me with questions"
+  opens the same one-per-screen questions. Standard/Full: "Ideas for this line" (a `<details>`) under the line choice in
+  the add dialog, open for a teacher's prompts and closed for the built-in ones; a starter goes into the reflection.
+  "Can your moment be an example?" (yes / no thanks) sits at the top of the home when a teacher picks one of their moments.
+- **Teachers**: a class page in My classes has "Prompts for students" (what students see, "Write prompts for this class" /
+  "Edit prompts", examples with each student's answer, "Use the line's prompts instead", "N moments written with them").
+  Coordinators, leadership and admins: "Subject prompts" (`#/<persona>/prompts`, pilot): each school line's prompts
+  (written or built-in, uses of each, the classes with their own and their uses), "Write the line's prompts", "Go back
+  to the built-in prompts". The editor starts from what students see now.
+- **Record**: `store.subjectPrompts [{ id: 'sp-…', lineId, classId | null, by, at, note, questions, starters, examples }]`,
+  one per class and one per line (rewriting keeps the id). Examples: `{ id, title, text, status: 'teacher' }` or
+  `{ id, eventId, studentId, status: 'asked' | 'yes' | 'no', askedAt, answeredAt }` (a student's moment: copied nowhere, read
+  from the moment while it is publishable, not hidden and on the line). A moment written with prompts has `promptId` (the
+  prompts' id, or `sp-default-<line>`): set by the Simple flow when the questions or a starter were used, by the add dialog
+  when the panel was open or a starter used (`addStation(…, { promptId })`).
+- **Mutators**: `setSubjectPrompts({ classId } | { lineId }, { note, questions, starters, examples: [{ eventId } | { keep:
+  exampleId } | { title, text }] }, by)` (400: fewer than 3 or more than 6 questions, a class off the map, not a school
+  line, an example that is not a publishable moment on the line or, for a class, not of a student in it now; a new student
+  example notifies the student); `clearSubjectPrompts(promptId, by)`; `answerExampleAsk(promptId, exampleId, studentId, yes)`
+  (notifies the writer).
+- **Reads**: `getPromptsFor(studentId, lineId, classId?)` → `{ id, source: 'class' | 'line' | 'default', lineId, line,
+  classId, className, by, teacher, note, questions, starters, examples: [{ id, title, text, year }] }` or null off the
+  school lines (a sub-line counts for its line; `classId` lets class tasks name their class; without it, the student's
+  current class on that line with prompts, newest first). `promptsAdmin({ classId } | { lineId })`, `promptUses(id)`,
+  `exampleChoices(lineId, classId?)`, `exampleAsksFor(studentId)`, `exampleView(example, lineId)`, `schoolLines()`.
+- **canAct**: a class's prompts: a teacher in its `teacherIds` (any staff kind), as themselves; a line's: coordinators and
+  leadership as themselves; admins either (as themselves, or `by` null). Student examples only from students in the
+  writer's reach. `answerExampleAsk`: only that student, for themselves. Everyone else (other teachers, advisors,
+  counsellors, families): 403.
+- **Scope**: everyone but families gets `subjectPrompts`. A student example goes whole to that student and to staff who
+  reach them; anyone else gets it only after a yes and while it is still publishable, as `{ id, status, title, text, year }`
+  (no name, student id or moment id). Families get none.
+- Tests: `server/test/subject-prompts.test.mjs`; `node scripts/checks/subject-prompts.cjs` (real roster, skipped when
+  missing; separate browser contexts: Mr David Coultas writes prompts for C-392000; Aaron Torres at Simple adds a Science
+  moment through them step by step, with read aloud, and at Standard sees them open in the add dialog; a Year 8 student of
+  another Science class gets the built-in ones; a coordinator's Subject prompts screen; axe on each).
+- Not done: Thai versions of the built-in prompts; prompts per Year group; class tasks do not show them yet (they can
+  call `getPromptsFor(studentId, lineId, classId)`).
+## CAS experiences and hours, Years 12 and 13 (`src/api.js`, `src/components/Cas.jsx`, `src/screens/CasDashboard.jsx`, `server/routes/47-cas.mjs`)
+
+Builds on the demo's CAS material: an experience is a station with `e.cas = { strand, outcomes, from, to }` (the same field
+"Counts for CAS?" sets on any station), so the coordinator's outcome grid, the map and imports read it as before.
+
+- **Experiences**: `api.logCasExperience(studentId, { title, strand: 'C'|'A'|'S', from, to?, outcomes: [1..7], summary, reflection,
+  evidence, visibility, hours? })` → `{ event, entry }`. A station of type `cas` on the **CAS line** (`cas`, a school line made the
+  first time anyone logs, put on that student's map; left out of onboarding), never private (advisor at least), its reflection
+  dated today. Only students in Years 12 and 13 (`api.casAllowed`).
+- **Hours**: `store.casHours = [{ id, studentId, eventId, date, hours, note, supervisor, status: pending|confirmed|returned, at,
+  decided?: { via, by, name, at, comment }, code?: { hash, expires } }]`. `api.logCasHours(studentId, eventId, { date, hours, note,
+  supervisor })` on any CAS station of theirs; `withdrawCasHours(id, studentId)` (not once confirmed). `supervisor` is
+  `{ kind: 'staff', teacherId }`, `{ kind: 'outside', name, email }` (no account, never emailed) or null (the coordinator confirms).
+  Hours: more than 0, at most 24 in one go (quarter hours), never in the future. A staff supervisor is notified (`casconfirm`).
+- **Confirming**: `api.confirmCasHours(id, by, { via, comment? })` and `returnCasHours(id, by, { via, comment })` (a note is required,
+  except by code). `via: 'supervisor'`: the staff member the entry names, as themselves; `'coordinator'`: a CAS coordinator or admin
+  on anyone's behalf; `'code'`: only the server. The student is notified either way.
+- **CAS coordinators**: account kind `coordinator` (the class lists' role), or any teacher marked on Accounts ("CAS coordinators",
+  `api.setCasCoordinator(teacherId, on)`, admin only; `teacher.casCoordinator`, kept by later imports). A marked teacher's reach
+  (`teacherReach`) gains every student in Years 12 and 13. `api.isCasCoordinator(persona)`.
+- **Outside supervisor's code**: `POST /api/cas/code { entryId }` (the student, a CAS coordinator, an admin) → `{ code: 'ABCD-2345',
+  expires }`, 30 days (`CAS_CODE_DAYS`); a new code replaces the old; only its SHA-256 is in the record (`api.setCasCode`, never
+  through `/api/action`). The student shows or prints the card (QR of `#/c/<code>`). `GET /api/public/cas/:code` → `{ student (first
+  name), year, title, strand, date, hours, note, supervisor, expires }`; `POST /api/public/cas/:code { email, ok, comment? }` →
+  `{ status }`: the email must be the one the student gave. One time only. Wrong codes and emails count per address (`CAS_TRIES`,
+  30 in 15 minutes, then 429); five wrong emails end that code. Activity log: `cas-code`, `cas-confirm` (never the code).
+- **canAct** (`server/auth.mjs`, `casOk`): logging and taking back only the student; confirming as above; `setCasCode` nobody;
+  `setCasCoordinator` admins. **Scope** (`server/scope.mjs`): `casHours` go to the student (without the code's hash), CAS coordinators
+  and admins, and a staff supervisor only for the entries naming them, each with `about: { name, year, title, strand }`, without the
+  student entering their reach. Never families, advisors or other teachers (they see the station, by its visibility).
+- **Screens**: students in Years 12 and 13 get **CAS** (`#/me/cas`, pilot navigation): coverage of strands and the seven outcomes,
+  hours confirmed and waiting, "Log a new experience", and per experience "Log more hours", "Add a reflection", "Show code".
+  Staff named as supervisor get **CAS to confirm** (`#/me/casconfirm`, in the navigation once an entry names them). CAS
+  coordinators get **CAS outcomes** (`#/me/cas`): per student Hours (confirmed, waiting) and Flags (`api.casCohort`: Nothing logged
+  yet, No Service yet, Outcome missing, No reflection in 6 weeks: `CAS_QUIET_DAYS`), a filter by advisor, the hours in the side
+  panel and "Hours waiting for confirmation", each with Confirm (for the supervisor) and Not right. The supervisor's page (`#/c`,
+  `#/c/<code>`) loads on its own, signed out, never the record.
+- PDPA: hours entries carry `studentId`, so a copy and erasure include them.
+- Tests: `server/test/cas-hours.test.mjs`; `node scripts/checks/cas-hours.cjs` (a clean pilot on the real roster: picks a Year 12
+  or 13 student and a teacher who neither teaches nor advises them; the student logs, the teacher confirms, the coordinator's grid
+  updates live, an outside supervisor confirms by code on a phone, the coordinator confirms one on a supervisor's behalf; axe on
+  every new screen).
+
+## System health (`server/health.mjs`, `server/routes/69-health.mjs`, `src/screens/SystemHealth.jsx`, pilot only)
+
+Admins get **System health** in the nav: is the pilot server well, in plain words. Each part says **OK**, **Check this** or
+**Problem**, what it means, and what to do. The page checks again every minute and on **Check again**.
+
+| Part | What it shows | Check this / Problem when |
+| --- | --- | --- |
+| Server | version (`GIT_COMMIT`, else `git rev-parse` in a checkout, else the package version), started, uptime, Node | never |
+| Disk space | data folder size, free disk space (`fs.statfsSync`) | under 5 GB or 10% free / under 1 GB or 5% |
+| The record | `state.json` size, changes saved since start, revision | no `state.json` yet; over 100 MB |
+| Uploaded files | count and total size of `DATA_DIR/uploads` | never |
+| Backups | newest `<folder>-YYYYMMDD-HHMMSS.tar.gz` in `BACKUP_DIR`: its time and size; `backup.log` | older than 26 hours (Problem after 3 days); the log ends with an error; under 1 KB / no folder or no backups |
+| Class list sync | `server/sis.mjs` status: last check, last good check, last error | not checked for 26 hours with a nightly time / the last check failed |
+| Reminders | class task and conference reminders: last run, last error (heartbeats) | not run since start (after 15 min), or late / failed last time |
+| Server errors | the last 50 errors (time, route pattern, short message) | any in 24 hours / 10 or more in the last hour |
+| Sign-in | from the activity log, last 24 hours: sign-ins, wrong passwords, blocks | 30+ wrong or any block / 200+ wrong or 10+ accounts blocked |
+| Signed in | live sessions and people | never |
+
+- **Routes**: `GET /api/admin/health` → `{ at, mode, overall, version: { commit, package, label }, uptimeS, sections:
+  [{ id, title, status: 'ok' | 'check' | 'problem', summary, todo, facts: [{ label, value, type?: 'bytes' | 'time' |
+  'count', private? }] }] }` (the errors part also has `errors: [{ at, route, message }]`). Admins only (401 signed out,
+  403 anyone else, 403 in the demo). `?format=diagnostics` is the same as a `transit-diagnostics-YYYY-MM-DD.json`
+  download for support, without the private facts (folder paths); it is logged as `health-diagnostics`. Neither ever holds
+  names, emails, account or student ids, IP addresses, request bodies or tokens: sign-ins are counts only.
+- `GET /api/health` (public) now includes `version`.
+- **Errors** (`server/health.mjs`): `index.mjs` notes every unhandled error and every 5xx with the route's pattern
+  (`POST /api/admin/sis/reports/:id/apply`, never the real path); messages are cut to 200 characters with email addresses
+  and token-like strings replaced. In memory only, so a restart clears them.
+- **Heartbeats**: `beat(name, { every, error? })` from any background job; `heartbeats()` lists them. Class tasks
+  (`68-tasks.mjs`) and conference reminders (`68-conference.mjs`) beat on each run. A new job beats and adds itself to
+  `JOBS` in `69-health.mjs`.
+- **Backups folder**: `BACKUP_DIR`, read as `scripts/backup.sh` does (relative to the repo, default
+  `../transit-portfolio-backups`). In Docker, `docker-compose.yml` mounts `${BACKUP_DIR:-../transit-portfolio-backups}`
+  read-only at `/backups` in the pilot container and sets `BACKUP_DIR=/backups`; `scripts/deploy-mac.sh` creates the
+  folder. If you put backups elsewhere, set `BACKUP_DIR` in `.env` too, so the mount follows.
+- **Version**: `scripts/deploy-mac.sh` exports `GIT_COMMIT`; compose passes it as a build argument and the Dockerfile
+  bakes it into the image's environment.
+- `auth.mjs` `liveSessions()` → `{ sessions, people }`.
+- Tests: `server/test/system-health.test.mjs` (admin only, contents, a 3-day-old backup in a temp folder then a fresh one,
+  a real 500, sign-in blocks from the activity log, diagnostics without secrets, not in the demo);
+  `node scripts/checks/system-health.cjs` (fixture class lists; admin nav and page, backup warning, diagnostics download,
+  axe light, dark, high contrast and phone; a teacher has no nav entry, the address does not open it, 403).
+
+## Leaver archive (`server/archive.mjs`, `server/routes/52-archive.mjs`, `server/pdf.mjs`, `src/components/LeaverArchive.jsx`, pilot)
+
+At the end of the year each leaving student gets their whole journey as a ZIP to keep. One builder for the admin and the
+student (`buildArchive(sid)`):
+- **The ZIP**: `README.txt` (what each part is, in English and Thai), `my-journey.pdf` (A4; every moment and reflection the
+  student can see, private and hidden ones too: `api.getStudentMap(sid, 'student')`, by line in their lane order, then by
+  date, with endorsements and where each file is in the archive), `my-journey.html` (the same, every letter exactly),
+  `leaver-portfolio.pdf` (from `api.leaverView`, only when they made one), `photos/`, `documents/`, `voice-notes/` (their
+  uploads by original name, by type) and `data/` (the PDPA copy, `buildCopy` in `routes/50-pdpa.mjs`, without its `files/`;
+  `data/manifest.json` gives each upload's `inArchive` path).
+- **PDF** (`server/pdf.mjs`, no dependency): Helvetica in WinAnsi, so Western letters only. Other letters (Thai) show as
+  `[?]`; the README then says so and points to `my-journey.html`. To put Thai in the PDF, embed a TTF there.
+- **Streaming** (`zipStream(res)` in `server/zip.mjs`): stored entries written as they come, waiting for the socket, so a
+  combined download holds one student's archive in memory at a time. No ZIP64: one download stays under 4 GB and 65,535 entries.
+- **Who is leaving** (`leavers()`): Year 13 (`grade === 12`); students in `store.rosterImport.summary.missingFromFile` (the last
+  class-list import or applied SIS sync); `sis-sync.json` `gone`; and the waiting SIS report's `leaving.students`.
+- **Routes**: `GET /api/admin/leavers` (admin) → `{ students: [{ id, name, year, homeroom, why: [...], hasAccount, moments,
+  leaverPortfolio, downloaded: { at, by } | null, erasure: { due, at, by } | null }], due: [the same, due today or earlier],
+  today, eraseDays: 90 }`. `GET /api/admin/students/:id/archive` (admin) → one ZIP. `GET /api/admin/leavers/archive?ids=a,b`
+  or `?all=1` (admin) → one streamed ZIP holding `<name>-<id>.zip` per student and a README. `GET /api/me/archive` → a
+  student's own (`?student=` only their own id; admins any); parents and staff → 403.
+- **Erasure** (never automatic): `POST /api/admin/leavers/:id/erasure` (409 until an admin has downloaded their archive)
+  records `due = today + 90`; `DELETE` withdraws it. On or after the day the student is listed under "erasures due";
+  `POST /api/admin/leavers/:id/erase { confirm: <name> }` (409 before the day or when not scheduled, 400 for a wrong name)
+  runs the PDPA erase (`eraseStudent`). Kept in `DATA_DIR/leaver-archive.json { downloads, erasures }`, outside the record.
+- **Activity log**: `leaver-archive` (one line per student archive; `detail.how` admin or self, `detail.combined` = how many in
+  that ZIP), `erasure-schedule`, `erasure-cancel` (`detail.due`), `pdpa-erase` with `detail.scheduled`. Each archive also
+  writes `{ action: 'archive' }` to `audit.log`, like the PDPA copy.
+- **Screens**: Accounts › End of year: leaver archive (a summary; the list opens on request: a checkbox each, Choose all,
+  Download archives, "Schedule erasure in 90 days" after a download, Withdraw; erasures due, with Erase… and the name typed).
+  Privacy › Take your map with you: "Download my archive" (students).
+- Tests: `server/test/leaver-archive.test.mjs` (the streaming writer under backpressure, the PDF writer, the ZIP's contents
+  with `unzip -t` when present, permissions, a combined ZIP, erasure only on the day); `node scripts/checks/leaver-archive.cjs`
+  (real roster, separate contexts: the admin downloads two Year 13 archives, schedules, confirms on the day; the student
+  downloads their own from Privacy; a teacher gets 403; axe on the panel and Privacy).
+- Not done: Thai letters inside the PDF (see above); photos are listed in the PDF, not drawn.
+
+## Notification settings and quiet hours (`src/notify-kinds.js`, `src/notify-prefs.js`, `src/components/NotificationSettings.jsx`)
+
+Each person chooses what reaches their bell, and when its number shows. Settings filter the bell and its count; they
+never delete a notification (the record, a PDPA copy and This week still have it). Nothing is emailed, and the app makes
+no sounds, vibration or phone banners (`public/sw.js` and `PhoneApp.jsx` have no push), so quiet hours hold back only the
+number on the bell.
+- **Kinds**: `notify(to, text, go, kind)` stores `kind` on every new notification: the one the call names, else
+  `inferKind(text, go)` (`src/notify-kinds.js`, pure: rules on the words with quoted titles emptied, so a title never
+  decides it, then the link's screen). Named in `src/api.js`: an endorsement request from a class question's answer
+  (`answers`) or a class task hand-in (`handin`), and teacher nudges (`teacher`). Older notifications without `kind` are
+  inferred the same way when read (`noteKind`). Kinds: `endorse`, `answers`, `handin`, `comment`, `report`, `spotted`,
+  `stuck`, `checkin`, `conference`, `class`, `teacher`, `kindfb`, `encourage`, `milestone`, `digest`, `consent`,
+  `system`, and the two that can't be turned off: `safeguarding` (a teacher hid, showed again or removed a photo) and
+  `security` (named by its notify() call; none are sent yet).
+- **Groups** (`GROUPS`, by `audienceOf(kind)`): staff: Endorsement requests, Class answers, Task hand-ins, Comments,
+  Reports (moderators only; On or Only in This week, never Off), Spotted replies, Stuck goals and check-ins,
+  Conferences, System (anything else); each On / Off / Only in This week. Students: Teacher replies and endorsements,
+  Comments, Class questions and tasks, Kind feedback, Milestones, Encouragement, Conferences. Families: Weekly digest,
+  Consent requests, Conferences, Your child’s milestones. Students and families have On / Off; a kind outside their
+  groups always arrives. Milestones and the weekly digest are not sent as notifications today, so those two only take
+  effect once they are.
+- **Settings**: `{ kinds: { [group]: 'off' | 'week' }, quiet: { on, from: 'HH:MM', to: 'HH:MM' } }` (`on` is left out;
+  quiet hours off by default, 21:00–07:00 Asia/Bangkok when turned on; the same two times mean never). In a pilot, per
+  account: `POST /api/auth/prefs { notify }` (checked by `notifyProblem` for the person's own groups and choices, else 400;
+  401 signed out; leaves `lang` and `display` alone); `/api/auth/me` carries `user.notify`, so every device follows it.
+  In the demo, per device and persona (`localStorage['tp-notify']`). A See as preview shows the previewed account's and
+  never saves.
+- **Bell** (`bellView` in `App.jsx`): lists what is not cleared and set to On; the number is its unread count, 0 during
+  quiet hours (re-checked every 30 seconds), and its name says "quiet hours". "Mark all as read"
+  (`markNotificationsRead`), "Clear read" (the mutator `clearReadNotifications(keys)`: sets `cleared` on read ones; canAct
+  like `markNotificationsRead`, your own keys only), "N not shown", and "Notification settings". The account menu has
+  "Notifications" too (pilot).
+- **This week**: notifications set to "Only in This week" and dated in the week are listed under "Kept for This week"
+  (`src/components/WeekNotes.jsx`). The rest of This week is made from the record, so class answers still wait there
+  even when their notifications are Off.
+- Tests: `src/notify-kinds.test.mjs` (classifier, filters, quiet hours, checks), `server/test/notification-settings.test.mjs`
+  (kinds on real mutators, Clear read and canAct, the prefs route across a restart); browser:
+  `node scripts/checks/notification-settings.cjs` (real roster from `TP_ROSTER`, in `run.sh`): Mr David Coultas turns
+  Class answers off (gone from his bell, still on This week, on his phone too), then Only in This week; Mark all as read
+  and Clear read; Aaron Torres turns everything off and sets quiet hours: at 22:30 Bangkok (Playwright clock) no number,
+  at 07:30 the number counts only the safeguarding notice, which is still in his bell; the demo keeps settings per device;
+  axe on the dialog and the bell. Screenshots `tp-ns-*.png`.
+
+## Search (`src/search.js`, `src/components/Search.jsx`)
+
+- **Where**: a box in the top bar ("Search your portfolio", "Search students and moments", "Search your family view"); `/`
+  from anywhere focuses it (Ctrl+K still opens the launcher, and `/` opens the launcher only where there is no search, as
+  for alumni and external readers). An ARIA combobox (`#tsearch-q`, `aria-controls="tsearch"`, `aria-activedescendant`) over
+  one listbox whose options are grouped by kind (Students, Moments, Goals, Reflections, Teachers' notes, Lines), the
+  matching words in `<mark>`, a snippet of the field that matched. Filters: type, line, date (last 30 days, this term,
+  this school year, before it). Arrows, Home/End, Enter; Escape closes the list, then the station panel, then clears. On a
+  phone it opens as a full sheet. Simple level: no text box; a big "Find something I did" on the home and a search icon in
+  the bar open a dialog with recent moments and line chips first, and "Type a word instead".
+- **Opening a result**: a student goes to their own map with the station open (`#/me/map/<eventId>`, Simple level too).
+  Staff and families get the read-only station panel over the screen they are on. A student result (staff) narrows the
+  search to that student and offers their page where one exists (an advisee's page, or `classes/<class>~<student>` for a
+  class they teach).
+- **What is searched**: only the part of the record this browser already holds (no new server data, no route). Per student,
+  the map as that person's screens read it (`mapFor(api, persona, sid)`): a student's own `getStudentMap(id, 'student')`; a
+  family `getStudentMap(child, familyViewer(child), { family: true })`; whole-school roles and the student's advisor
+  `getStudentMap(id, 'advisor')`; any other teacher the school level plus moments the student asked them about or they
+  sponsor (as My classes shows it). So private moments and reflections never reach any staff search, and in a pilot,
+  students outside reach are not in the browser at all. Docs: moments and goals (title, summary, about, evidence captions,
+  learner profile and ATL tags, line names), reflections, teachers' notes (endorsement notes, a sponsor's check-ins, staff
+  comments on a moment; for the student also a teacher's reflection question), the student's lines; staff also students
+  (name, homeroom, Year, programme) and advisor notes (advisor and whole-school roles only).
+- **Index**: built on the first search, kept per signed-in person; each api change marks it stale and the next search
+  re-reads only docs whose text changed (`setDocs`). Words: lower case, split on non-letters; Thai with `Intl.Segmenter`
+  where the browser has it. A query word matches the start of a word; a Thai word also matches anywhere (word breaks in Thai
+  are a guess, and without a segmenter that is the only way). Every query word must match. At most 50 results (`LIMIT`),
+  best first (title, then summary and notes, then the rest; newer first on a tie), with the total shown.
+- **Size** (real roster, `scripts/checks/search.cjs`): Aaron with 300 moments, first search with the index built about 4 ms,
+  then under 1 ms; a coordinator over 960 students (1,260 docs), first search about 23 ms, then about 2 ms.
+- `window.__tpSearch(q, filters, { cold })` returns `{ ms, buildMs, docs, total, titles }` for the browser checks.
+- Tests: `node --test src/search.test.mjs` (index, Thai, highlights, filters, visibility); `server/test/search.test.mjs`
+  (each person's scoped snapshot loaded and searched: only what was sent, never private for staff, nothing without reach);
+  `node scripts/checks/search.cjs` (real roster, skipped when missing; separate browser contexts: Aaron Torres finds his
+  moments at Simple and Standard level and a Thai-titled one by a Thai word; Mr David Coultas finds Aaron by name and
+  homeroom and his school-visible moment, not his private one, and sees a new moment as soon as it is added; a teacher with
+  no reach finds nothing of Aaron; his family finds the family view; a coordinator's timing; phone sheet; axe).
+- Not done: Thai labels beyond the box, groups and filters; searching presentations, share links or class tasks; spelling
+  variants (British/US) and typo tolerance.
+
+## Thai for students
+
+- **What**: a student whose language is ไทย (display menu, saved per account by `/api/auth/prefs`) sees every screen in
+  Thai at Simple, Standard and Full: home, map, station panel, add flows, goals and check-ins, class tasks and questions,
+  term reflection, milestones, kind feedback, the leaver builder, the display menu, notifications and server errors.
+- **How**: `src/thai.js` (`useStudentThai`, mounted in `App.jsx` for student personas only) translates at display time: a
+  MutationObserver rewrites text nodes and `aria-label`/`placeholder`/`title`/`alt` through `studentThai()` (the
+  `STU` dictionary and `STU_RE` patterns, in their own block at the end of `src/i18n.js`), sets `<html lang="th">`, and
+  restores English when switched off. Notifications are matched by their known patterns at display time, so names and
+  quoted titles stay as written. Student-facing server errors are added to `ERR_TH` (shown by `errText`).
+- **Own words**: `recordWords()` (`src/api.js`) collects every string in the record (titles, notes, comments, names,
+  line names, teachers' prompts) except the app's own messages (`activity`, `notifications`) and machine fields; any
+  text equal to one is never translated. Anything under `translate="no"` is skipped: the leaver document, the Studio
+  preview and shared views stay in English for outside readers.
+- **Built-in prompts**: every `DEFAULT_PROMPTS` note, question and starter has Thai; Simple starters insert the Thai text.
+- **Dates**: Thai month and weekday names with Gregorian years (`12 ต.ค. 2026`). Buddhist Era years are a device option
+  (`localStorage['tp-thai-be'] = '1'`, `setThaiBE()` in `src/i18n.js`); no menu toggle yet.
+- **Lines**: line names stay English, with a Thai gloss on line chips and pickers (`Science (วิทยาศาสตร์)`).
+- Tests: `server/test/thai-students.test.mjs`; `node scripts/checks/thai-students.cjs` (real roster, skipped when
+  missing; separate browser contexts: Aaron Torres at Simple on a phone, a Year 10 student at Standard and a Year 12 at
+  Full each switch to ไทย, walk every student screen and dialog, fail on visible English UI left over, axe on each with
+  `lang="th"`, then switch back to English).
+- Not done: teacher and family screens beyond what the Thai family work covers; a พ.ศ. toggle in the menu.
+
+## Teacher comment bank (`src/api.js`, `src/components/Phrases.jsx`, `src/screens/Phrases.jsx`, `server/routes/71-phrases.mjs`, pilot only)
+
+Saved phrases staff drop into the boxes they write to students in. Inserting only puts the words in the box: nothing is
+sent until the teacher sends it as before. Students and families never receive a bank.
+
+- **Record**: `store.phrases`: `{ id: 'ph-…', owner: teacherId | 'school', text (≤ 500), kind: 'praise' | 'next' |
+  'question' | 'other', lineId | null, order, by, at, editedAt?, editedBy? }`, up to 200 per bank, no duplicates (case
+  ignored). `store.phraseUses`: `{ [teacherId]: { [phraseId]: count } }`.
+- **Mutators**: `addPhrase(owner, by, { text, kind, lineId })`, `editPhrase(id, by, spec)`, `deletePhrase(id, by)`
+  (its counts go too), `movePhrase(id, by, -1 | 1)` (the school bank moves among phrases of the same kind, as shown),
+  `usePhrase(id, by)` (counts one use). Helpers: `phraseBank(teacherId)` → `{ mine, school, uses }`, `fillPhrase(text,
+  first)` (fills `{first name}`; with no one student, as in a shared note for many answers, it is taken out with its
+  comma), `phraseFrom(text, first)` (the student's first name back to `{first name}`, for "Save this as a phrase"),
+  `canPublishPhrases(persona)`.
+- **`canAct`** (`phraseOk` in `server/auth.mjs`): always as yourself (`by` is your teacherId; an admin with no staff
+  record: `null`). Your own bank: any member of staff with a staff record. The school bank: coordinators and leadership
+  with a staff record, and admins. `usePhrase`: your own or a school phrase, with a staff record. Students and families:
+  never. `TOUCHES`: no students, acting as `by`.
+- **Scope**: staff get their own phrases and the school bank (a coordinator does not get teachers' own banks), and only
+  their own counts; students and families get `phrases: []`, `phraseUses: {}`.
+- **Activity log**: every change is the usual `change` line; each school bank change also writes `school-phrase` with
+  `fn`, `target.id` (the phrase), `target.label` (its kind) and `detail: { op: add | edit | delete | move, kind }`,
+  never the text (`server/routes/71-phrases.mjs`, from the change stream).
+- **Picker** (`<PhraseTools value onChange first kind box />`): a "Phrases" button (`aria-haspopup="dialog"`) opening a
+  filter box (`role="combobox"`, `aria-activedescendant`) over a listbox grouped as Your phrases, then School: Praise /
+  Next step / Question / Other (the box's own kind first), most used first in each. Type to filter, arrows to move,
+  Enter to put it in, Escape to close (focus back on the button); after inserting, focus goes back to the box, at the
+  cursor where `phraseBox(ref)` is spread on it. "Save this as a phrase" saves the box's text to your bank with the
+  box's kind. Shown only to a signed-in member of staff or admin in a pilot. Placed on: the Endorsements note and its
+  "Ask for more", moment comments (staff), "Want to see more?" in the station panel, Review answers (the shared note
+  and "Ask for more"), class task hand-ins (shared note and "Ask for more"), I spotted something (the note),
+  encouragement on goal check-ins, and CAS "Not right" send-backs. The report writing helper's draft boxes get it
+  through `reportHooks.phrasePicker` when that feature is present (`import.meta.glob`, so nothing breaks without it).
+- **Screen**: "My phrases" (`#/<persona>/phrases`) for every member of staff and admins: add, edit, delete and reorder
+  your own; the school bank by kind, editable by coordinators, leadership and admins, read only for others.
+- Tests: `server/test/comment-bank.test.mjs`; browser: `node scripts/checks/comment-bank.cjs` (real roster: a
+  coordinator publishes, Mr David Coultas comments on and endorses Aaron Torres's moment with phrases by keyboard,
+  Aaron's context receives nothing; axe over the picker and My phrases).
+## Report comments: a writing helper for end-of-term reports (`src/report-comments.js`, `src/screens/ReportComments.jsx`, `server/report-comments.mjs`, `server/routes/71-report-comments.mjs`, pilot only)
+
+Teachers and advisors write each student's report comment beside what that student did this term, then copy it into
+the school's report system. This tool sends nothing anywhere, and writes nothing for them: no AI, no generated text.
+
+- **Screen** (`#/<persona>/reportcomments`, in the nav of anyone who teaches or advises, and of coordinators, leadership
+  and admins): "Your comments" lists the person's current classes (subject comment) and their advisory (advisor comment)
+  with "N of M done". `#/<persona>/reportcomments/subject~<classId>` or `advisor~<teacherId>`: a date range (default this
+  term: `termStartOf(TODAY)` to today; "This term" resets it), "Hide done", "Download all as CSV", and one row per student:
+  - left, compact: counts (moments, endorsements, class answers, "3 of 4 tasks handed in"), then each moment newest first
+    (date, title, a tag: Spotted by …, Class question, Task hand-in, Term reflection; Endorsed), the student's own words
+    (their reflections), each endorsement's note, and the teacher's own spotted suggestions not added. Subject: moments on
+    the class's line (a sub-line counts), plus answers, hand-ins and spotted moments made for that class. Advisor: every line,
+    plus the latest term reflection (finished or not, with its words when the station reaches the advisor) and goals (with
+    the last weekly check-in). Gathered in the browser from the person's scoped record (`momentsFor`, `groupsOf`,
+    `groupStudents`), at the advisor visibility level the server already sends staff; nothing new is sent.
+  - right: the draft box, "17 / 150 words · 112 / 1000 characters" (red when over), the checks (`src/report-checks.js`:
+    over the word or character limit; short, under 30% of the word limit; the student's first name used or not; another
+    student of the class or advisory named, matched with its capital letter: "Mentions Maya: is this the right student?"),
+    Copy (clipboard) and Mark done. Saved 0.8 s after typing stops, on blur and on leaving ("Saved").
+  - **Comment bank hook**: `reportHooks.phrasePicker` (exported from `src/report-comments.js`), null here. Set it to a
+    component and each draft box renders it under the text with `{ student, kind, classId, text, insert(str) }`; `insert`
+    puts a phrase at the cursor and saves as typing does.
+- **Drafts are private to the writer**: kept outside the shared record, in `DATA_DIR/report-comments.json` (`{ limits,
+  drafts: [{ id, by: accountId, teacherId, kind: subject|advisor, group: classId|teacherId, studentId, text, done, updatedAt,
+  doneAt }] }`), so no snapshot, Undo, history, See as or other account carries them. Only the writing account reads its
+  own; students, families, other teachers, coordinators and admins never do (See as shows "Drafts belong to the person
+  writing them"). Nightly backups hold the file with the rest of `DATA_DIR`.
+- **Routes** (signed in; 401 otherwise):
+  - `GET /api/report-comments` → `{ limits, drafts }` (this account's own only).
+  - `PUT /api/report-comments/:kind/:group/:studentId { text, done }` → `{ draft }` (null when text is empty and not done:
+    the draft is removed). subject: `group` a class whose `teacherIds` has the account's `teacherId`, the student currently
+    enrolled; advisor: `group` is the account's own `teacherId`, the student's `advisorId` is it. 403 otherwise (students,
+    families, accounts with no teacher record), 413 over 4,000 characters.
+  - `GET /api/report-comments/export?kind=&group=` → CSV (UTF-8 with BOM; `Student ID,Name,Comment`; every current student
+    by name, empty comment when none; cells starting `= + - @` get a `'`). Writes one `report-export` line to the activity
+    log: the class (`target.id`, label) and counts `{ kind, rows, written, done }`, never text.
+  - `GET /api/report-comments/progress` (coordinators, leadership, admins) → `{ limits, teachers: [{ teacherId, name,
+    classes: [{ id, name, students, drafted, done }], subject: { classes, students, drafted, done }, advisor: { students,
+    drafted, done } | null }] }`, counts only, for the current students of each group. Shown as "Progress by teacher"
+    ("Only those who have started").
+  - `POST /api/admin/report-comments/limits { kind, words, chars }` (admins) → `{ limits }`; 0 is no limit. Defaults: subject
+    150 words / 1,000 characters, advisor 200 / 1,300. Logged as `report-limits`. Shown as "Comment length" for admins.
+- **PDPA (decision)**: a draft is about the student, so it is their personal data. It is **in the copy an admin makes**
+  (`GET /api/admin/students/:id/export`, or `/api/me/export?student=` by an admin): `report-comments.json` with each
+  writer's name, the class, the text, done and when. It is **not** in the student's or family's own self-service download,
+  nor in the leaver archive: those would show unfinished comments while teachers are still writing them. A formal PDPA
+  request goes through the admin, who gets everything. Erasure (`eraseStudent`, also the leaver erasure) removes every
+  draft about the student.
+- Tests: `server/test/report-comments.test.mjs`, `src/report-checks.test.mjs`; browser: `node scripts/checks/report-comments.cjs`
+  (real roster: Mr David Coultas writes for C-392000, Aaron Torres's row shows his endorsed moment with his words and a
+  spotted one; the checks catch a classmate's name; Saved, Mark done, 1 of 17, Copy, CSV; reload keeps it. Ms Jane Altemen
+  writes Aaron's advisor comment for 8C. Another teacher, Aaron, a coordinator and the admin get neither draft and cannot
+  write them; the coordinator's progress shows counts only; the admin sets 15 words and Mr Coultas sees 2 over; the export
+  is in the activity log; axe; phone width).
+## Family encouragement (`src/api.js`, `src/components/FamilyNotes.jsx`, pilot only)
+
+A signed-in family member leaves a short kind note on a moment the family view shows them. Pilot only (the screens check
+`isPilot()`); no route of its own: it runs on `/api/action` like any change. No email.
+
+- **Record** (made on first use): `store.familyNotes = [{ id: 'fn-…', eventId, studentId, by ('u:<accountId>'), name (the
+  account's name), text, reaction, at, edited?, thanked?, studentHidden?, hidden?: { at, by } }]`. Reactions
+  (`FAMILY_REACTIONS`): `proud` "Proud of you", `welldone` "Well done", `dinner` "Tell me more at dinner", `keepgoing` "Keep
+  going". Text up to `FAMILY_NOTE_MAX` = 280 characters (spaces collapsed); a reaction, words, or both. The student's switch is
+  `privacy[sid].familyNotes` (`false` = off; `familyNotesOn(sid)`).
+- **Which moments**: `familyShows(e)`: not a goal, not hidden after a report, and at a level the family view reads
+  (`VISIBLE_TO[familyViewer(sid)]`: the advisor level for Years 7 to 9, the school level from Year 10). Never private ones.
+- **Mutators**: `addFamilyNote(eventId, { key, name }, text, reaction)` (403 not shown to the family, 409 notes off, 409 a second
+  note by the same person on the same moment; notifies the student "Maria Torres sent you encouragement for “…”: …", kind
+  `encourage`, `go: map/<eventId>`; activity line "Left a note on “…”"); `editFamilyNote(id, by, text, reaction)` and
+  `deleteFamilyNote(id, by)` (the writer, any time; 403 otherwise); `thankFamilyNote(id)` (notifies `fam:<sid>`: "Aaron said
+  thank you for your note on “…”.", kind `encourage`; in Thai through `noteText`); `setFamilyNoteHidden(id, hidden)` (the
+  student's own view; nobody is told). Reads: `getFamilyNote`, `familyNotesFor(eventId)`, `familyNotesOf(sid)`,
+  `familyNoteReader(tid, sid)` (advisor or a teacher of a current class), `familyNoteWords(n)`.
+- **Safeguarding**: `reportItem({ familyNoteId }, reason, note, from)` makes a `kind: 'familyNote'` report (families cannot
+  report notes; same limits and moderator notifications, "New report: a family note on “…”"). `moderateReport` on it: `hide`
+  (only staff and its writer see it, with "A teacher is looking at this note"), `unhide`, `none`; `photo` is refused. The
+  student is told "A teacher has hidden a note from your family on “…”." Reports shows "A note from family (name)" and the words.
+- **canAct** (`FN_FNS` and `familyNoteOk` in `server/auth.mjs`, before the admin rule): writing only as a parent's own account
+  (`key` = `u:<their id>`, `name` = their account name) on their child's moment that `familyShows`, while notes are on; editing
+  and deleting only the writer; thanking and hiding only the student (not a hidden note). Reporting: the student, staff who read
+  it (advisor, a current class's teacher, whole-school roles) as themselves, admins. Staff and admins never write a note.
+- **Scope** (`familyNotesScope` in `server/scope.mjs`): notes go only with moments the person receives. A family: notes on their
+  children's moments (a hidden one only to its writer), without `studentHidden`, plus `privacy[child] = { familyNotes: false }`
+  when a child turned them off. The student: their own, not hidden, without `by`. Staff: the advisor, a current class's teachers
+  and whole-school roles; any other teacher gets none. A non-moderator's own report keeps its `familyNoteId`.
+- **PDPA**: `familyNotes.json` in the student's copy (and their family's copy); erasure removes them (by `studentId`).
+- **Activity log**: each change is a `change` line with its `fn` (`addFamilyNote`, …) and the student, never the words.
+- **Screens**: the station panel and the Simple moment card: "Notes from family" (ข้อความจากครอบครัว). A family member:
+  everyone's notes, theirs with Change and Delete, and the box (reactions, a 280-character count, "Send note") while they have
+  none there; the family view says "Open any moment to leave Aaron a kind note." (or that notes are off). The student: each note
+  with "Say thank you", "Hide" (hidden ones behind "Show n hidden notes", "Show again") and "Report". Simple home: "From your
+  family", big cards, notes not thanked first, with "Open the moment". Staff: read only, "(family)", thanked, hidden, Report.
+  The student's switch: Privacy ("Notes from family") and, at Simple, "Show my family". Family words are English or Thai in the
+  component; the student's in `src/i18n.js` (its own block). Notes are people's own words and never translated.
+- Tests: `server/test/family-notes.test.mjs`; browser: `node scripts/checks/family-notes.cjs` (the real roster from `TP_ROSTER`;
+  Aaron Torres at Simple on a phone, a parent joined by the family letter in Thai, Ms Jane Altemen, a coordinator, an unrelated
+  teacher, each in its own context; screenshots `tp-fn-*.png`); `thai-students.cjs` sweeps the note on his home, moment and report.
+## School events (`src/api.js`, `src/components/SchoolEvents.jsx`)
+
+Sports day, a trip, a concert, a service day, Week Without Walls: the school adds it once, and afterwards every student it
+was for is asked to add something from it.
+- **Staff screen** "School events" (`#/<persona>/events`, pilot; every member of staff and admins). Admins, coordinators and
+  leadership add, edit and remove events: name, first and last day, who it is for (whole school, some Years, some homerooms
+  or some classes, with the number of students shown), a suggested school line, an optional photo (an ordinary upload) and
+  an optional question. "Import from CSV": a header row `title,start,end,years,line` (dates `2026-11-20` or `20/11/2026`, end
+  empty for one day; Years `8`, `7-9` or `8;9`, empty for the whole school; line a school line's name or empty); every row
+  is checked first and any problem stops the whole import. Each finished event shows "N of M added something" and a bar
+  per homeroom, with names on request (Added something / Said not for me / Not yet). Whole-school roles and admins count
+  every student; an advisor or teacher counts only their advisees and the students in their current classes
+  (`staffStudentsOf`). Managers send **one reminder per event**, once it is over, to each student who has neither added
+  something nor dismissed the card (kind `class`, "Add something from “…” to your journey", opening the card's flow via
+  `#/me/map/se~<id>`). Advisors and teachers see the counts but do not send it.
+- **Student**: from the morning after the last day, for `SE_CARD_DAYS` (5) days (and 3 days after a reminder), a card at the
+  top of the home: "Add something from Sports day" (the event's photo, the dates, "Add it", "Not for me"). At Simple it opens
+  the guided add flow with the title filled, the line picked and the event's question as the reflection question; at
+  Standard and Full the add dialog with title, date and line filled. The card goes once they add something or dismiss it.
+  Standard and Full also get a small "Coming up" strip (from 28 days before until the event ends) with "Set a goal", which
+  opens the goal dialog with the name, first day and line filled. Thai: their own block at the end of `src/i18n.js`.
+- **The moment**: `addStation(sid, { …, schoolEvent })` links it only when the event was for that student (otherwise the field
+  is ignored): `e.schoolEvent`, `e.source = { system: 'School event', ref: <title> }` (so the name stays after the event is
+  removed), the line put on their map if missing (`laneFor`), and the question as the reflection's prompt. The station panel,
+  the Simple moment and the family view show "School event <name>" (`schoolEventName(e)`, Thai for families too).
+- **Record**: `store.schoolEvents[] { id: 'se-…', title, start, end, for: { kind, years, homerooms, classIds }, lineId, photo,
+  question, by, at, studentIds (resolved when saved; cohort-only records never), reminded: { date, at, by, n } | null,
+  editedAt }`; `store.schoolEventAdds[] { id: 'sx-…', eventId, studentId, momentId, added, dismissed, date, at }`, one per
+  student who added or dismissed. Both made on first use.
+- **Mutators**: `addSchoolEvent(f, by)`, `editSchoolEvent(id, f, by)`, `removeSchoolEvent(id, by)`, `importSchoolEvents(rows, by)`,
+  `remindSchoolEvent(id, by)` (400 before it is over, 409 the second time), `dismissSchoolEvent(id, studentId)`. Reads:
+  `schoolEventsFor(sid)` → `{ cards, coming }`, `schoolEventProgress(id, { teacherId, whole })`, `schoolEventsForStaff`,
+  `schoolEventStudents(for)`, `parseEventsCsv(text)` → `{ rows, errors }` (pure).
+- **canAct** (`schoolEventOk` in `server/auth.mjs`): managing and the reminder, admins (as themselves, `by` their teacher id or
+  null), coordinators and leadership (as themselves); nobody else. Dismissing: only a student it was for, for themselves.
+- **Scope**: whole-school roles get everything. A student: the events for them (`studentIds` just themselves) and their own
+  rows. A family: their children's events (only their ids), no rows. An advisor or teacher: events with any of their advisees
+  or class students (only those ids) and those students' rows; a row's `momentId` only when they receive the moment, so a
+  private moment from an event is counted, never sent. **Activity log**: every change with its event id (`getSchoolEvent` is
+  a known item) and the acting teacher. **PDPA**: a student's rows are their own (copy and erasure).
+- Tests: `server/test/school-events.test.mjs`; `node scripts/checks/school-events.cjs` (real roster, skipped without it: the
+  admin adds Sports day for Year 8 with a photo and imports a CSV; Aaron Torres at Simple on a phone adds a moment from the
+  card; an 8C classmate at Standard sets a goal from Coming up and dismisses the card; Ms Jane Altemen sees 8C's count and
+  names; a coordinator sends the one reminder; a Year 10 student never gets it; Aaron's family sees the name; refusals; the
+  activity log; axe). `thai-students.cjs` sweeps the card, its flow and Coming up in Thai.
+- Not done: a notification when an event ends (the card is the prompt), a reminder per advisor, and events from the SIS calendar.
+## Student-led conferences (`src/api.js`, `src/components/StudentLed.jsx`, builds on "Conference booking" and "Conference sheets")
+
+The student leads their own parent-student-advisor conference: they get ready in the app, present from a laptop or
+tablet, and at the end the family and the student each add one line. No new route: everything goes through `/api/action`.
+Demo and pilot (the demo record has no rounds, so nothing shows until one is opened).
+
+- **Record** (made on first use): `store.confPreps = [{ id: 'cp-…', roundId, studentId, picks: [eventId] (≤ SLC_PICKS = 3),
+  says: { [eventId]: text }, proud, hard, goal: { goalId } | { title } | null, step, status: 'draft' | 'ready', startedAt, savedAt,
+  readyAt? }]` and `store.confNotes = [{ id: 'cn-…', roundId, studentId, family: { text, by, at } | null, student: { text, by, at } |
+  null }]`, `by` being `'family'`, `'student'` or a teacher id. Limits `SLC_MAX` (a line is 200 characters).
+- **Mutators**: `saveConfPrep(roundId, studentId, draft, ready)`: while the round has a day to come (`prepOpen`; closing booking
+  does not stop it). Picks are only the student's own moments, never private, goals or safeguarding-hidden ones (`prepMoments`),
+  so the advisor can always see what is shown; a goal is one of their own goals or a few words. `ready: true` needs a pick or
+  "proud" (400 otherwise); it can still be changed until the day. `writeConfNote(roundId, studentId, who, text, by)`: `who` is
+  `'family'` ("What we will try at home") or `'student'` ("What I will do next"); writing again replaces that line. Each line
+  tells the other two in the app (kind `conference`): "Your family wrote on your conference note", "Aaron wrote on Aaron’s
+  conference note" (Thai for families and students, `NOTE_TH`), "Aaron Torres’s family wrote on the conference note" (advisor).
+  The advisor's **private staff note** is the existing `addNote` (`Conference (<round>): …`), so it stays with the advisor notes
+  and on the advisor copy of the sheet, never with students or families.
+- **Reads**: `myConfPrep(sid)` (the earliest round with a day to come), `prepMoments`, `conferenceDeck(roundId, sid, viewer)` (what
+  Conference mode shows: moments with first photo, the student's words or the summary, proud, hard, goal, note, `young` for
+  Years 7–9), `prepProgress(roundId, advisorId)`, `confPrepOf`, `confNoteOf`, `confNotesFor`, `sheetPrep(sid, viewer)`.
+- **canAct** (`SLC_FNS` in `server/auth.mjs`): preparing, only the student on their own prep in a round that includes them. Lines: a
+  parent for their own children, only the family's line, as `'family'`; the student only their own line, as `'student'`; the
+  student's advisor or whole-school staff either line, as themselves (for a conference on one device); admins with a teacher id.
+  Subject teachers, other advisors and other families never.
+- **Scope**: a prep goes to the student, their advisor and whole-school roles; a note to those and the student's family. Other staff
+  get neither. PDPA: both carry `studentId`, so they are in that student's copy and go with erasure (generic rule).
+- **Student** (home, every level, under the term reflection card): "Get ready for my conference" (Years 7–9: "Pick a few things to
+  show your family…", short and warm). Simple: one question a screen (`SimpleFlow`): what to show (up to 3), one screen per moment
+  ("What do you want to say about it?", optional), proud, hard, goal (their goals as buttons, or a few words), review, "I am ready";
+  sentence starters, read aloud and speak to type (`Said`, `SayIt`, src/voice.js). Standard and Full: one page. Once ready: "Start
+  my conference". After the conference (its day, or once a line is written; for 30 days): "My conference note" with both lines and
+  "Write what I will do next".
+- **Conference mode** (`ConferenceMode`, a full-screen portal): "Hi, I’m Aaron!" (Years 7–9) or "Aaron’s conference" with what will be
+  shown; one moment a screen (photo, title, their words; photo beside the words on a laptop, above on an upright tablet); proud and
+  hard; the goal; "Our next steps" (the two lines; on the advisor's device both can be written, plus the private staff note).
+  Large text (`clamp`), big Back / Next, arrow keys and Page Up / Down, Full screen, screen kept awake where allowed, and an
+  English / ไทย switch (labels through `studentThai`; a Thai student's own device is Thai already). **Offline**: once open it needs
+  no connection: it reads this browser's copy of the record, photos are fetched once into memory as blobs (never kept on the
+  device), and the lines and staff note go through the outbox (see "Offline capture"), sent when back; "Offline: this still works…"
+  shows meanwhile.
+- **Advisor**: each round on My advisory shows "Prepared: n of 23" (started too) and "Who has prepared" (Ready / Started / Not
+  started, note written, a Conference mode button each); each booked time in the day grid says Prepared / Preparing / Not prepared
+  yet and has "Conference mode".
+- **Family**: "After Aaron’s conference" on the family page (from the booked day, or once a line is written; 30 days): both lines and
+  "Write our line", in Thai or English (`slcWords`), the student's own words marked `lang="en"`.
+- **Conference sheet**: `conferenceSheet` carries `prep` (`sheetPrep`, the latest round's): "In Aaron’s words" with the moments to
+  show, proud, hard and the goal, read as the sheet's reader may (the family copy drops moments the family view does not show).
+  The moment list gives way so the sheet stays one A4 page.
+- Tests: `server/test/student-led.test.mjs` (picks filtered, replay, canAct for every role, notifications and Thai, scope, the sheet,
+  PDPA); browser: `node scripts/checks/student-led.cjs` (real roster: Ms Altemen opens a round for 8C; Aaron Torres prepares at Simple
+  on a phone; she sees "Prepared: 1 of 23", books him and opens Conference mode from the booking list, goes offline (photo still
+  shows, staff note sent when back), switches to ไทย; Aaron writes his line in his own Conference mode; his parent joins from a
+  family letter in Thai and writes theirs; another family gets nothing and is refused (403); the sheet carries the prep on one
+  A4 page; axe on each screen; each account in its own browser context). `thai-students.cjs` sweeps the prep, Conference mode and
+  the note in Thai. Screenshots and a PDF: `tp-slc-*` in `SCRATCH` or the temp folder.
+- Not done: a round's prep cannot be copied into the next round; the conference note is not on the printed sheet.
+## Class photo drop (`src/api.js`, `src/components/PhotoDrop.jsx`, `server/routes/71-photo-drop.mjs`)
+
+A teacher takes photos in a lesson, on a trip or in a practical and gives each one to the students in it. Each student
+picks which to keep and says what they did; what they keep becomes a moment the teacher has already endorsed. Built on
+spotted moments (the student's card and inbox are the same; see "Spotted moments").
+
+- **Teacher** (My classes, class page, "Drop photos"): drag photos onto the dialog or "Choose photos" (`multiple`,
+  `accept="image/*"`, so a phone offers its camera roll); up to `DROP_MAX` (40), three uploads at a time. Optional title
+  (default "Photos from <subject>"), date (default today, never later), line (default the class's line, `spotLineFor`)
+  and a short note. Each photo has the class list as chips (toggle buttons with `aria-pressed`, full name as `title`),
+  "Same students as previous", "Clear" and "Remove photo N"; everything is a button, so Tab and Space/Enter do it all.
+  A reminder at the top: each student sees every photo they are given, other students' faces included. The footer counts
+  photos and students, and says photos given to nobody are deleted on send. Closing keeps a draft on this device
+  (`localStorage['tp-photo-drop:<teacherId>:<classId>']`, file addresses and choices only) for 7 days; "Discard all"
+  deletes the uploads at once. Under the class table, "Class photos" lists each batch (newest first): date, photos, line,
+  "N added · N waiting · N said no", thumbnails, and per student Added (kept K of N) / Waiting / Not for me / Not added
+  (expired, or every photo removed). Class photos are left out of the "Spotted moments" list there.
+- **Student** (the spotted card at the top of the home, every level; big at Simple): "Mr Coultas added photos from …",
+  the note, the date and line, the photos as big toggle cards (all picked to start: "✓ Keeping" / "Not keeping"), "Say
+  what you did" (optional, up to 300 characters), "Keep N photos" and "Not for me". Under each photo, "Something wrong with
+  this photo?" opens a report (reasons as for moments). Thai: its own block at the end of `src/i18n.js`.
+- **Record**: `store.photoDrops[] { id: 'pd-…', classId, teacherId, title, date, lineId, note, at, draft, photos: [{ id: 'ph-…',
+  url, name, studentIds, removed? }] }` (only photos given to someone). One `store.spotted` item per student given a photo,
+  as for spotted moments plus `dropId`, `on` (the drop's date), `photos: [{ id, url }]` (theirs only), `image` (the first)
+  and, once kept, `kept: [photoId]`. The kept moment: `addStation` (type project, visibility school, via "Class photos",
+  dated `on`, summary = their sentence or else the note, the kept photos as evidence), `spotted: { id, teacherId, dropId }`,
+  an endorsement by the teacher (the note, else "Photos from <teacher>.").
+- **Mutators** (replayed like the rest): `dropPhotos(classId, teacherId, { title, date, lineId, note, photos: [{ url, name,
+  studentIds }], draft })`: the teacher must be in the class's `teacherIds` (403), every student a current member of the
+  class, every url an uploaded photo (`api/files/<id>.<jpg|png|gif|webp|heic|heif|avif>`) or, without a server, an image
+  data URL; at least one photo given; notifies each student once, "Mr Coultas added photos from “…”" (kind `spotted`, in the
+  student's "Teacher replies and endorsements" group). `acceptSpotted(id, studentId, { photos: [photoId], text })` on a drop
+  offer: at least one of their photos (400); tells the teacher "Aaron kept 1 photo from “…”" (kind `spotted`, staff "Spotted
+  replies"). `declineSpotted` as before (nobody is told; the teacher sees "Not for me"). Offers expire after `SPOT_DAYS` (30).
+  Reads: `photoDropsBy(teacherId, classId)`, `getPhotoDrop`, `dropPhotoById`, `dropPhotoStudents(fileName)`.
+- **Safeguarding**: `reportItem({ photoId, studentId }, reason, note, from)` → a report `{ kind: 'photo', photoId, dropId, url,
+  title, teacherId, studentId, … }` to the moderators ("New report: a photo from “…” (Student). Reason."). Reports shows the
+  photo, "Class photo from <teacher>", and "Remove photo" / "No action needed" (hide does not apply). Remove takes it off
+  every offer and every moment kept from it, sets the batch's photo `url: null, removed`, clears `url` on its reports, tells
+  each student it was given to "A teacher has removed a photo from “…”." (kind `safeguarding`), and the server deletes the
+  file. An offer left with no photos becomes `removed` ("Not added").
+- **canAct** (`dropOk` in `server/auth.mjs`): `dropPhotos`: staff (or an admin with a staff record) in the class's
+  `teacherIds`, as themselves; whole-school roles only for a class they teach. Keeping and "Not for me": only that student
+  (`spotOk`). Reporting a photo: the student it was given to while they still hold it (open, or kept), as `'student'`;
+  staff who reach a student it was given to, as themselves; admins. Never families.
+- **Files** (pilot): uploads go through `POST /api/upload` with `x-purpose: photo-drop:<draft>` (`uploadFile(file, { purpose,
+  max: 1600 })` in `src/upload.js`: photos only, scaled on the device to 1600 px, never held offline): the route refuses
+  anything but an image (415) and over 15 MB (413), and keeps `purpose` and `draft` in the `.json`. Who opens a photo
+  (`server/files.mjs`): its uploader; each student given it, through their own copy (after "Not for me" or expiry their
+  copy keeps no photos, after keeping only the kept ones, so a photo they turned down stops opening for them); staff who
+  reach any student given it (`dropPhotoStudents` + `reachOf`); moderators through the report; and, once kept, whoever may
+  read that moment. Everyone else gets the usual 404.
+- **Deleting** (`server/routes/71-photo-drop.mjs`): when a batch is sent, every upload of that draft by that account that no
+  student was given; `POST /api/photo-drops/discard { files: [name] }` → `{ deleted }` (the caller's own photo-drop uploads
+  that the record does not use; 401 signed out; logged as `photo-discard` with the count); any batch photo the record stops
+  using (removed by a moderator, a student erased); and unsent photo-drop uploads older than `DROP_KEEP_DAYS` (7), checked
+  shortly after start and every `PHOTO_DROP_TICK_MS` (1 hour; heartbeat `photo-drop` on System health).
+- **Scope**: `photoDrops` goes only to the teacher who sent it. `spotted` drop offers go to the student (their own) and that
+  teacher (who sees "declined" as it is, not "closed"); nobody else, whole-school roles included. A student's own photo
+  reports keep their `photoId`. **Activity log**: `dropPhotos` names the students given photos and the teacher.
+- **PDPA**: offers are the student's own (copy and erasure, with their photo files); erasure also takes them out of every
+  batch photo, and a photo given only to them leaves the batch, so its file is deleted with theirs. `FILE_RE` in
+  `server/routes/50-pdpa.mjs` now also matches addresses saved without the leading slash (as the browser saves them),
+  so every uploaded file a student's data uses is in the copy and in an erasure.
+- Tests: `server/test/photo-drop.test.mjs`; browser: `node scripts/checks/photo-drop.cjs` (the real roster, skipped without
+  it): Mr David Coultas drops 4 photos on C-392000 (photo 1 Aaron Torres; photo 2 Aaron and a classmate, by "Same students as
+  previous" and a chip by keyboard; photo 3 a second classmate; photo 4 nobody, deleted on send). The second classmate, a
+  teacher with no reach and a signed-out browser get 404 for Aaron's photo, each in its own context. Aaron at Simple on a
+  phone keeps one photo with a sentence; the other then stops opening for him. The first classmate says "Not for me"; the
+  second reports her photo; the teacher sees Added / Not for me / Waiting; a coordinator removes the photo from Reports and
+  the file is deleted. Axe on each screen. Thai: `scripts/checks/thai-students.cjs` walks Aaron's card and report dialog.
+- Not done: a teacher cannot edit a batch after sending it (add students or photos); faces are not detected.

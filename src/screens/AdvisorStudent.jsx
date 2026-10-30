@@ -11,6 +11,7 @@ import { ConferenceSheets } from '../components/ConferenceSheets.jsx';
 import { SpotDialog, SpottedList } from '../components/Spotted.jsx';
 import { LastYear } from '../components/YearHandover.jsx';
 import { AdvisorStudentMilestones } from '../components/Milestones.jsx';
+import { LeaverForStaff } from '../components/Leaver.jsx';
 
 const daysBetween = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
 
@@ -18,13 +19,13 @@ const daysBetween = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000)
 export default function AdvisorStudent({ studentId, version, toast, go, persona, focus }) {
   const map = useMemo(() => getStudentMap(studentId, 'advisor'), [studentId, version]); // eslint-disable-line react-hooks/exhaustive-deps
   const lens = useMemo(() => applyLens(map, null), [map]);
-  const [selected, setSelected] = useState(focus || null); // a comment notification opens its station
+  const [selected, setSelected] = useState(focus && focus !== 'sheet' ? focus : null); // a comment notification opens its station
   const [note, setNote] = useState('');
   const [promptText, setPromptText] = useState('');
   const notes = getNotes(studentId);
   const [meeting, setMeeting] = useState(false);
   const [parent, setParent] = useState(false);
-  const [sheet, setSheet] = useState(false);
+  const [sheet, setSheet] = useState(focus === 'sheet'); // the day schedule's conference sheet link
   const [spotting, setSpotting] = useState(false);
   const one = useMemo(() => [studentId], [studentId]);
   const g = growth(studentId);
@@ -65,6 +66,7 @@ export default function AdvisorStudent({ studentId, version, toast, go, persona,
           <SpottedList teacherId={persona.teacherId} studentId={studentId} version={version} title="You spotted" />
           <LastYear studentId={studentId} version={version} />
           <AdvisorStudentMilestones studentId={studentId} version={version} onOpen={setSelected} />
+          <LeaverForStaff studentId={studentId} version={version} persona={persona} toast={toast} />
           <section className="card-sec">
             <h3>Meeting agenda</h3>
             <ol className="agenda">{agenda.map((a, i) => <li key={i}>{a}</li>)}</ol>

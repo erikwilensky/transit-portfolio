@@ -173,6 +173,18 @@ export function personaFor(user) {
   if (kind === 'teacher' || kind === 'advisor' || also.length) { p.nav = [...(p.nav || NAV[kind])]; p.nav.splice(1, 0, ['week', 'This week']); }
   // Activity log (src/screens/ActivityLog.jsx): admins and leadership.
   if (kind === 'leadership' || user.admin) p.nav = [...(p.nav || NAV[kind]), ['activitylog', 'Activity log']];
+  // School screens (src/screens/Exhibitions.jsx): every member of staff and admins.
+  if (['advisor', 'teacher', 'counsellor', 'coordinator', 'leadership'].includes(kind) || user.admin) p.nav = [...(p.nav || NAV[kind]), ['screens', 'School screens']];
+  // Subject prompts for every line (src/components/SubjectPrompts.jsx): coordinators, leadership and admins.
+  if (kind === 'coordinator' || kind === 'leadership' || user.admin) p.nav = [...(p.nav || NAV[kind]), ['prompts', 'Subject prompts']];
+  // My phrases, the comment bank (src/screens/Phrases.jsx): every member of staff and admins.
+  if (['advisor', 'teacher', 'counsellor', 'coordinator', 'leadership'].includes(kind) || user.admin) p.nav = [...(p.nav || NAV[kind]), ['phrases', 'My phrases']];
+  // Report comments (src/screens/ReportComments.jsx): anyone who teaches or advises; progress for coordinators, leadership, admins.
+  if (kind === 'teacher' || kind === 'advisor' || also.length || kind === 'coordinator' || kind === 'leadership' || user.admin) p.nav = [...(p.nav || NAV[kind]), ['reportcomments', 'Report comments']];
+  // School events (src/components/SchoolEvents.jsx): every member of staff and admins (adding them: admins, coordinators, leadership).
+  if (['advisor', 'teacher', 'counsellor', 'coordinator', 'leadership'].includes(kind) || user.admin) p.nav = [...(p.nav || NAV[kind]), ['events', 'School events']];
+  // System health (src/screens/SystemHealth.jsx): admins only.
+  if (user.admin) p.nav = [...(p.nav || NAV[kind]), ['health', 'System health']];
   return p;
 }
 function applyPersona() {
@@ -194,3 +206,26 @@ async function adoptLang(user) {
   if (!user || user.lang || user.kind !== 'parent' || !l || l === 'en') return user;
   try { await call('POST', '/api/auth/prefs', { lang: l }); return { ...user, lang: l }; } catch { return user; }
 }
+// Class list sync from the SIS (server/routes/67-sis.mjs): status and change reports; nothing applies without an admin.
+export const sisSync = {
+  status: () => call('GET', '/api/admin/sis'),
+  check: () => call('POST', '/api/admin/sis/check'),
+  apply: (id, opts = {}) => call('POST', `/api/admin/sis/reports/${encodeURIComponent(id)}/apply`, opts), // opts: { pauseLeavers }
+  dismiss: (id) => call('POST', `/api/admin/sis/reports/${encodeURIComponent(id)}/dismiss`),
+};
+// System health (server/routes/69-health.mjs): admins only, pilot.
+export const systemHealth = {
+  get: () => call('GET', '/api/admin/health'),
+  diagnosticsUrl: '/api/admin/health?format=diagnostics',
+};
+// Leaver archive (server/routes/52-archive.mjs): a ZIP per leaving student; erasure scheduled, confirmed by an admin on the day.
+const enc = encodeURIComponent;
+export const leaverArchive = {
+  list: () => call('GET', '/api/admin/leavers'),
+  schedule: (id) => call('POST', `/api/admin/leavers/${enc(id)}/erasure`),
+  cancel: (id) => call('DELETE', `/api/admin/leavers/${enc(id)}/erasure`),
+  erase: (id, confirm) => call('POST', `/api/admin/leavers/${enc(id)}/erase`, { confirm }),
+  url: (ids) => (ids.length === 1 ? `/api/admin/students/${enc(ids[0])}/archive` : `/api/admin/leavers/archive?ids=${ids.map(enc).join(',')}`),
+  allUrl: '/api/admin/leavers/archive?all=1',
+  mine: '/api/me/archive',
+};

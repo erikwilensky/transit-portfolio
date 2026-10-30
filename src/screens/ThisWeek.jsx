@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { weeklySummary, weekSignups } from '../weekly.js';
 import { weekLabel } from '../week.js';
+import { taskHandInWaits } from '../api.js';
 import { progress } from '../auth.js';
 import { fmtDate, inkOn } from '../format.js';
 import { QuietGroup } from '../components/Nudges.jsx';
 import { WeekMilestones } from '../components/Milestones.jsx';
+import { StuckFlags } from '../components/GoalCheckins.jsx';
+import { WeekNotes } from '../components/WeekNotes.jsx';
 import './classes.css';
 import './this-week.css';
 
@@ -23,6 +26,7 @@ export default function ThisWeek({ persona, go, version, toast, param }) {
   const su = weekSignups(prog, back);
   const to = (screen, p) => ({ href: `#/${persona.id}/${screen}${p ? `/${p}` : ''}`, onClick: (e) => { e.preventDefault(); go(persona.id, screen, p); } });
   const { requests, groups, reports, spotted, threads } = s.waiting;
+  const handIns = useMemo(() => (s.teaches && persona.teacherId ? taskHandInWaits(persona.teacherId) : []), [s, persona.teacherId]); // class tasks
   const studentLink = (sid, eid, classId) => (s.advises && persona.teacherId && s.advisory?.students.some((x) => x.id === sid) ? to('student', `${sid}${eid ? `~${eid}` : ''}`) : classId ? to('classes', `${classId}~${sid}`) : null);
   const threadLink = (t) => (s.advisory?.students.some((x) => x.id === t.student?.id) ? to('student', `${t.student.id}~${t.event.id}`) : s.teaches ? to('queue', `c~${t.event.id}`) : null);
   const waits = [
@@ -30,6 +34,7 @@ export default function ThisWeek({ persona, go, version, toast, param }) {
     ...groups.map((g) => ({ k: g.prompt.id, n: g.requests.length, label: `Answers to “${g.prompt.question}”`, sub: `${g.prompt.className} · class answers to review`, link: to('classes', `${g.prompt.classId}~answers~${g.prompt.id}`) })),
     reports?.length > 0 && { k: 'rp', n: reports.length, label: reports.length === 1 ? 'Open report' : 'Open reports', sub: 'Reported moments or comments to look at', link: to('reports') },
     spotted.length > 0 && { k: 'sp', n: spotted.length, label: `Spotted ${spotted.length === 1 ? 'moment' : 'moments'} waiting`, sub: `For ${[...new Set(spotted.map((x) => x.student?.name.split(' ')[0]).filter(Boolean))].slice(0, 3).join(', ')}${spotted.length > 3 ? '…' : ''} to add or not`, link: s.teaches ? to('classes', spotted.every((x) => x.classId && x.classId === spotted[0].classId) ? spotted[0].classId : undefined) : studentLink(spotted[0].studentId) },
+    ...handIns.map((g) => ({ k: `tk-${g.task.id}`, n: g.requests.length, label: `Hand-ins for “${g.task.title}”`, sub: `${g.task.className} · ${g.requests.length === 1 ? 'a hand-in' : 'hand-ins'} to look at`, link: to('classes', `${g.task.classId}~task~${g.task.id}`) })),
     ...threads.slice(0, 5).map((t) => ({ k: `c-${t.event.id}`, n: t.unread, label: `New ${t.unread === 1 ? 'comment' : 'comments'} on “${t.event.title}”`, sub: t.student?.name || '', link: threadLink(t) })),
   ].filter(Boolean);
   return (
@@ -56,6 +61,10 @@ export default function ThisWeek({ persona, go, version, toast, param }) {
         )}
         {threads.length > 5 && <p className="fineprint">And {plural(threads.length - 5, 'more thread')} with new comments.</p>}
       </section>
+
+      <WeekNotes persona={persona} week={s.week} go={go} />
+
+      {!back && <StuckFlags teacherId={persona.teacherId} toast={toast} version={version} />}
 
       {s.teaches && (
         <section className="tw-sec" aria-labelledby="tw-classes">

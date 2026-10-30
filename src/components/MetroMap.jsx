@@ -4,7 +4,7 @@ import { select } from 'd3-selection';
 import { computeLayout, lineSegments } from '../layout/metroLayout.js';
 import { useTween } from '../hooks/useTween.js';
 import { TODAY } from '../api.js';
-import { inkOn, lineCode } from '../format.js';
+import { inkOn, lineCode, VERIFY_LABEL } from '../format.js';
 import { lineName, tr as say, useLang } from '../i18n.js';
 
 // Station labels wrap onto up to three short rows instead of being cut off.
@@ -260,10 +260,11 @@ export default function MetroMap({ map, lens, selectedId, onSelect, onSignal, mi
         const bottom = s.interchange ? s.capsule.y2 : s.y + 7;
         const labelY = above ? top - 10 - lp.extra - (labelRows.length - 1) * 14 : bottom + 18 + lp.extra;
         return (
-          <g key={e.id} className={`station${isNew ? ' station-enter' : ''}${selectedId === e.id ? ' selected' : ''}`} style={{ opacity: s.opacity }}
+          // The label sits beside the button, not in it: its name (aria-label) is the whole title, with lines, date and check.
+          <g key={e.id} className="station-wrap" style={{ opacity: s.opacity }}><g className={`station${isNew ? ' station-enter' : ''}${selectedId === e.id ? ' selected' : ''}`}
             onClick={onSelect ? (ev) => { ev.stopPropagation(); onSelect(e.id); } : undefined}
             onKeyDown={onSelect ? (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); onSelect(e.id); } } : undefined}
-            tabIndex={onSelect && !mini ? 0 : undefined} role={onSelect && !mini ? 'button' : undefined} aria-label={onSelect ? `${e.title}, ${e.date}` : undefined}>
+            tabIndex={onSelect && !mini ? 0 : undefined} role={onSelect && !mini ? 'button' : undefined} aria-label={onSelect ? [e.title, e.lineIds.map((id) => lineById[id]?.name).filter(Boolean).join(' and '), e.date, isGoal ? 'goal' : VERIFY_LABEL[e.verification], isNew && 'new'].filter(Boolean).join(', ') : undefined}>
             <g className="station-body">
               {selectedId === e.id && (s.interchange
                 ? <rect x={s.x - 15} y={s.capsule.y1 - 6} width={30} height={s.capsule.y2 - s.capsule.y1 + 12} rx={15} className="sel-ring" />
@@ -279,9 +280,9 @@ export default function MetroMap({ map, lens, selectedId, onSelect, onSignal, mi
                 <circle cx={s.x} cy={s.y} r={14} className="new-ring" />
                 <g className="new-tag" transform={`translate(${s.x - 18} ${s.y - 44})`}><rect width={36} height={18} rx={9} /><text x={18} y={13} textAnchor="middle">NEW</text></g>
               </>}
-            </g>
+            </g></g>
             {!mini && !thin && (
-              <text className={`station-label${isGoal ? ' goal-label' : ''}`} textAnchor="middle" x={s.x} y={labelY}>
+              <text className={`station-label${isGoal ? ' goal-label' : ''}`} textAnchor="middle" x={s.x} y={labelY} aria-hidden="true">
                 {labelRows.map((row, i) => <tspan key={i} x={s.x} dy={i ? 14 : 0}>{row}</tspan>)}
               </text>
             )}

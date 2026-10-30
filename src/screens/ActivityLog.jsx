@@ -12,7 +12,10 @@ const ACTIONS = {
   'account-create': 'Made an account', 'account-edit': 'Edited an account', 'role-change': 'Changed a role', 'account-pause': 'Paused an account', 'account-unpause': 'Unpaused an account', 'account-remove': 'Removed an account',
   'roster-import': 'Imported class lists', 'see-as-start': 'Started See as', 'see-as-stop': 'Stopped See as',
   'pdpa-copy': 'Downloaded a data copy', 'pdpa-erase': 'Erased a student',
+  'leaver-archive': 'Downloaded a leaver archive', 'erasure-schedule': 'Scheduled an erasure', 'erasure-cancel': 'Withdrew an erasure',
   'file-refused': 'Files refused', 'family-join': 'Family joined', 'family-remove': 'Family member removed', 'family-letters': 'Made family letters',
+  'report-export': 'Downloaded report comments', 'report-limits': 'Set report comment length',
+  'cas-code': 'Made a CAS confirmation code', 'cas-confirm': 'Outside supervisor answered CAS hours',
 };
 const KIND = { student: 'Student', advisor: 'Advisor', teacher: 'Teacher', counsellor: 'Counsellor', coordinator: 'Coordinator', leadership: 'Leadership', parent: 'Family', admin: 'Admin' };
 const SIZE = 50;
@@ -28,6 +31,8 @@ function detailText(e) {
   if (e.action === 'file-refused') return `${d.count} in the hour from ${String(d.hour).slice(11, 13)}:00`;
   if (e.action === 'role-change') return `${d.from} → ${d.to}`;
   if (e.action === 'undo') return d.revs?.length ? `change ${d.revs.join(', ')}` : '';
+  if (e.action === 'leaver-archive') return d.how === 'self' ? 'their own' : d.combined ? `one of ${d.combined} in a ZIP` : '';
+  if (e.action === 'erasure-schedule' || e.action === 'erasure-cancel') return d.due ? `due ${d.due}` : '';
   if (d.count != null) return `${d.count}`;
   return [d.why, d.how, d.kind && KIND[d.kind]].filter(Boolean).join(' · ');
 }

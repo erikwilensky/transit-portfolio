@@ -9,8 +9,12 @@ import AddStation from '../components/AddStation.jsx';
 import GoalDialog from '../components/GoalDialog.jsx';
 import TermReview from '../components/TermReview.jsx';
 import { OpenPrompts } from '../components/ClassPrompts.jsx';
+import { MyTasks } from '../components/ClassTasks.jsx';
+import { ComingUp, EventCards } from '../components/SchoolEvents.jsx';
+import { ExampleAsks } from '../components/SubjectPrompts.jsx';
 import { SpottedForMe } from '../components/Spotted.jsx';
 import { PeerFromClasses } from '../components/PeerFeedback.jsx';
+import { GoalCheckins } from '../components/GoalCheckins.jsx';
 import { milestoneBadges } from '../components/Milestones.jsx';
 import { MapLegend, VerifyBadge, VerifyLegend } from '../components/Badge.jsx';
 import { fmtDate, fmtTerm, TYPE_LABEL, VERIFY_LABEL, inkOn } from '../format.js';
@@ -106,9 +110,14 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
   return (
     <div className="home">
       <div className="home-head">
+        <MyTasks studentId={studentId} simple={simple} toast={toast} version={version} />
+        <EventCards studentId={studentId} simple={simple} toast={toast} version={version} focusId={focusId} onAdd={(p) => setAdding(p)} />
+        {!simple && <ComingUp studentId={studentId} version={version} onGoal={(g) => setGoal(g)} />}
         <OpenPrompts studentId={studentId} simple={simple} toast={toast} version={version} />
+        <ExampleAsks studentId={studentId} simple={simple} toast={toast} version={version} />
         <SpottedForMe studentId={studentId} simple={simple} toast={toast} version={version} />
         <PeerFromClasses studentId={studentId} simple={simple} toast={toast} version={version} />
+        <GoalCheckins studentId={studentId} simple={simple} toast={toast} version={version} />
         <div className="who">
           <span className="pres-avatar" style={{ background: s.avatar.colour, color: inkOn(s.avatar.colour) }}>{s.avatar.initials}</span>
           <div>
@@ -191,7 +200,7 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
         if (r?.id) markNew(r.id);
         if (r?.endedLine) setTimeout(() => { const g = getStudentMap(studentId).signals.find((x) => x.kind === 'terminus' && x.lineId === r.endedLine && x.open); if (g) setSignal(g); }, 600);
       }} />}
-      {goal && <GoalDialog map={map} studentId={studentId} onClose={() => setGoal(false)} onDone={(e, msg) => { setGoal(false); toast(msg); markNew(e.id); setSelected(e.id); }} />}
+      {goal && <GoalDialog map={map} studentId={studentId} prefill={goal === true ? null : goal} onClose={() => setGoal(false)} onDone={(e, msg) => { setGoal(false); toast(msg); markNew(e.id); setSelected(e.id); }} />}
       {review && <TermReview map={map} studentId={studentId} toast={toast} onClose={() => setReview(false)} onOpen={(id) => { setReview(false); setSelected(id); }} />}
       {phone && <PhoneCapture map={map} studentId={studentId} onClose={() => setPhone(false)} onSent={() => { setPhone(false); go(persona.id, 'inbox'); }} />}
       {adding && (

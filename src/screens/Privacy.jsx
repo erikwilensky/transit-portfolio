@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { applyLens, consentOnFile, exportRecord, getPrivacy, remindParent, getStudentMap, setPrivacy, setVisibility, TODAY } from '../api.js';
 import { VIS_LABEL } from '../format.js';
-import { exportUrl, isPilot } from '../auth.js';
+import { exportUrl, isPilot, leaverArchive } from '../auth.js';
+import { FamilyNotesSwitch } from '../components/FamilyNotes.jsx';
 
 const VIEWERS = [['advisor', 'My advisor'], ['school', 'School staff'], ['public', 'Anyone with a link']];
 const count = (m) => ({ st: m.events.length, rf: m.events.reduce((n, e) => n + e.reflections.length, 0) + m.events.filter((e) => e.type === 'reflection').length });
@@ -79,10 +80,25 @@ export default function Privacy({ studentId, drafts, toast, go, persona, version
             : <><p><span className="status s-ok"><i>✓</i>Parent consent on file</span></p><p className="fineprint">Recorded in the SIS when you joined. Under Thailand's PDPA you can ask the school to correct or delete your data at any time{isPilot() ? ': ask the pilot admin, who can remove your record' : ''}.</p></>}
         </div>
 
+        {isPilot() && <div className="card-sec pv-screens">
+          <h3>School screens</h3>
+          <p className="fineprint">At open evenings, in the library or on a lobby TV, the school may show moments you made publishable, with your first name and Year.</p>
+          <label className="pv-row"><span>Don't show my moments on school screens</span>
+            <input type="checkbox" checked={p.screens === false} onChange={(e) => { setPrivacy(studentId, { screens: !e.target.checked }); toast(e.target.checked ? 'Your moments will not be shown on school screens.' : 'Your publishable moments may be shown on school screens.'); }} />
+          </label>
+        </div>}
+
+        {isPilot() && <div className="card-sec pv-family-notes">
+          <h3>Notes from family</h3>
+          <p className="fineprint">Your family can leave a short kind note on moments they can see. Your advisor and teachers can read them too.</p>
+          <FamilyNotesSwitch studentId={studentId} onChange={(on) => { setPrivacy(studentId, { familyNotes: on }); toast(on ? 'Your family can leave notes again.' : 'Notes from family are off. You can turn them on again here.'); }} />
+        </div>}
+
         <div className="card-sec pv-export">
           <h3>Take your map with you</h3>
           <p>When you graduate, or whenever you like, download your whole record. It is yours.</p>
           <div className="pv-btns">
+            {isPilot() && persona.kind === 'student' && <a className="ghost pv-archive" href={`${leaverArchive.mine}?student=${encodeURIComponent(studentId)}`} download onClick={() => setDone('archive')}>Download my archive: my journey as a PDF, my files and my data (ZIP)</a>}
             {isPilot() && <button className="primary" onClick={() => { location.href = exportUrl(); setDone('zip'); }}>Download everything the school holds about me (ZIP)</button>}
             <button className={isPilot() ? 'ghost' : 'primary'} onClick={exportJson}>Download my record (JSON)</button>
             <button className="ghost" onClick={exportHtml}>Download my presentations (HTML)</button>
@@ -90,7 +106,7 @@ export default function Privacy({ studentId, drafts, toast, go, persona, version
           </div>
           {isPilot() && <p className="fineprint">Under Thailand's PDPA you have the right to a copy of your data and to have it removed. For removal, ask the pilot admin or the school's data protection officer.</p>}
           {studentId === 'st-01' && <p className="fineprint">After you graduate the map keeps going. <button className="linkish" onClick={() => go('maya-alum', 'journey')}>Preview Maya in 2029, two years after NIST</button></p>}
-          {done && <p className="fineprint">{done === 'zip' ? 'Saved: your record, every station and reflection, endorsements, presentations and share links, inbox, activity, requests, comments, notifications and your uploaded files, with a README explaining each file.' : done === 'json' ? 'Saved: every station, line, reflection and endorsement, plus your activity log.' : 'Saved: a static copy of each presentation that works offline.'}</p>}
+          {done && <p className="fineprint">{done === 'archive' ? 'Saved: a ZIP with my-journey.pdf (every moment and reflection, by line and date), your photos, documents and voice notes, your leaver portfolio if you made one, a copy of your data and a README.' : done === 'zip' ? 'Saved: your record, every station and reflection, endorsements, presentations and share links, inbox, activity, requests, comments, notifications and your uploaded files, with a README explaining each file.' : done === 'json' ? 'Saved: every station, line, reflection and endorsement, plus your activity log.' : 'Saved: a static copy of each presentation that works offline.'}</p>}
         </div>
       </section>
     </div>

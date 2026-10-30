@@ -3,6 +3,7 @@ import { answersCsv, declineRequest, endorse, promptReview, REVIEW_LABEL, snapsh
 import { fmtDate } from '../format.js';
 import { CHIPS } from '../screens/TeacherQueue.jsx';
 import './class-answers.css';
+import PhraseTools from './Phrases.jsx';
 
 // Review answers: one class question's answers, endorsed in bulk with one shared note (api.endorse with many ids,
 // one change), "Ask for more" per answer (api.declineRequest), and a CSV of every student asked. #/<p>/classes/<class>~answers~<prompt>.
@@ -79,6 +80,7 @@ export default function ClassAnswers({ promptId, teacherId, back, version, toast
             <label><input type="checkbox" checked={sel.length === waiting.length} onChange={() => setPicked(sel.length === waiting.length ? [] : waiting.map((r) => r.request.id))} /> Select all waiting</label>
             <input className="ca-note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="A note for every answer you endorse (optional)" aria-label="Shared note" />
           </div>
+          <PhraseTools value={note} onChange={setNote} kind="praise" />
           <div className="q-chips">{CHIPS.map((c) => { const on = chips.includes(c); return <button key={c} className={on ? 'on' : ''} aria-pressed={on} onClick={() => setChips(on ? chips.filter((x) => x !== c) : [...chips, c])}>{c}</button>; })}</div>
           <div className="ca-bar-row">
             <details className="kbd-hint"><summary>Keyboard shortcuts</summary><kbd>Tab</kbd> to an answer, then <kbd>J</kbd> <kbd>K</kbd> to move, <kbd>X</kbd> to select, <kbd>E</kbd> to endorse, <kbd>A</kbd> to ask for more.</details>
@@ -106,6 +108,7 @@ export default function ClassAnswers({ promptId, teacherId, back, version, toast
                     <input value={more[rid]} onChange={(e) => setMore({ ...more, [rid]: e.target.value })} placeholder={DEFAULT_MORE} aria-label={`What you need from ${r.student?.name || 'the student'}`} onKeyDown={(e) => { if (e.key === 'Enter') askMore(r); if (e.key === 'Escape') setMore(({ [rid]: _, ...m }) => m); }} />
                     <button className="ghost" onClick={() => setMore(({ [rid]: _, ...m }) => m)}>Cancel</button>
                     <button className="primary" onClick={() => askMore(r)}>Send</button>
+                    <PhraseTools value={more[rid]} onChange={(v) => setMore({ ...more, [rid]: v })} first={r.student?.name?.split(' ')[0] || null} kind="next" />
                   </div>
                   : <div className="q-actions"><span className="spacer" /><button className="ghost" onClick={() => setMore({ ...more, [rid]: '' })}>Ask for more</button><button className="primary" onClick={() => doEndorse([rid])}>Endorse</button></div>)}
               </div>

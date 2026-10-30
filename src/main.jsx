@@ -10,6 +10,8 @@ import { OfflineBar } from './components/OfflineBar.jsx';
 import { useLiveDate } from './api.js';
 import './styles.css';
 import './print.css';
+import './a11y.css';
+import './a11y.js'; // display options on <html> before the first paint
 import { keepShell, registerServiceWorker } from './pwa.js';
 import { UpdateBar } from './components/PhoneApp.jsx';
 import { RefusedBar } from './components/Refused.jsx';
@@ -17,7 +19,7 @@ import { PreviewBar } from './components/PreviewBar.jsx';
 import { previewTarget, startPreview, watchPreviewLinks } from './preview.js';
 
 // Pilot mode: sign in first (public share, verify and family links stay open). Demo mode: straight into the app.
-const isPublic = () => /^#\/?(s|v|p)(\/|$)/.test(location.hash);
+const isPublic = () => /^#\/?(s|v|p|l)(\/|$)/.test(location.hash);
 const setupToken = () => location.hash.match(/^#\/?setup\/([^/?]+)/)?.[1];
 const familyToken = () => location.hash.match(/^#\/?family\/([\w-]{16,64})$/)?.[1]; // a family letter's link
 // After signing in, start the page afresh so the record loads for this person.
@@ -44,8 +46,14 @@ const mayShare = () => { const a = getAuth(); return a.server && (a.mode !== 'pi
 // Offline capture: the signed-in account's changes not sent yet are taken up again; with no connection, this device's copy.
 const sync = () => { const a = getAuth(); if (a.mode === 'pilot' && a.user) keepShell(); return startSync({ user: a.mode === 'pilot' ? a.user?.id : null, offline: !!a.offline }); };
 const render = () => createRoot(document.getElementById('root')).render(<><PreviewBar /><Root /><UpdateBar /><RefusedBar /><OfflineBar /></>);
+// An exhibition screen (#/x/<token>, src/screens/Kiosk.jsx): on its own, signed out, never the record.
+const kioskToken = location.hash.match(/^#\/?x\/([A-Za-z0-9_-]{32,128})$/)?.[1];
 registerServiceWorker(); // the phone app (src/pwa.js)
-loadAuth().then(() => {
+// An outside supervisor confirming CAS hours (#/c or #/c/<code>, src/components/Cas.jsx): on its own, signed out, never the record.
+const casCode = location.hash.match(/^#\/?c(?:\/([A-Za-z0-9-]{0,20}))?$/);
+if (casCode) import('./components/Cas.jsx').then(({ CasCodePage }) => { document.documentElement.dataset.theme ||= window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; createRoot(document.getElementById('root')).render(<CasCodePage code={casCode[1] || ''} />); });
+else if (kioskToken) import('./screens/Kiosk.jsx').then(({ default: Kiosk }) => { keepShell(); createRoot(document.getElementById('root')).render(<Kiosk token={kioskToken} />); });
+else loadAuth().then(() => {
   if (getAuth().mode === 'pilot') useLiveDate(); // a pilot runs on the real calendar, like its server
   if (!mayShare()) return render();
   // Admin "See as" (src/preview.js): that person's copy, read-only, and no sync. If it cannot start, the admin's own view.
