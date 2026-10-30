@@ -30,20 +30,23 @@ const fail = (msg) => { throw new UploadError(msg); };
 // Remembered after the first try, so a static demo asks only once.
 let noServer = false;
 
-export async function uploadFile(file, { onProgress } = {}) {
+// purpose (a class photo drop, 'photo-drop:<draft>'): photos only, scaled to `max` pixels, never held for later.
+export async function uploadFile(file, { onProgress, purpose, max = 2000 } = {}) {
   if (!file) fail('No file was chosen.');
   if (!OK_TYPE.test(file.type || '') && !OK_EXT.test(file.name || '')) fail('That kind of file cannot be added. Use a photo, PDF, office document, audio or video.');
   if (file.size > MAX_BYTES && !/^image\//.test(file.type)) fail(`That file is ${fmtSize(file.size)}. The limit is 25 MB.`);
+  if (purpose && !/^image\//.test(file.type || '') && !/\.(jpe?g|png|gif|webp|heic|heif|avif)$/i.test(file.name || '')) fail('Only photos can be added here.');
   onProgress?.(0);
   if (!noServer) {
-    const body = /^image\//.test(file.type) ? await shrink(file, 2000, 0.85) : file;
+    const body = /^image\//.test(file.type) ? await shrink(file, max, 0.85) : file;
     if (body.size > MAX_BYTES) fail(`That file is ${fmtSize(body.size)}. The limit is 25 MB.`);
-    const r = await send(body, body.name || file.name, onProgress);
+    const r = await send(body, body.name || file.name, onProgress, purpose);
     if (r.ok) { onProgress?.(1); return { ...r.data, url: r.data.url.replace(/^\//, '') }; }
     if (r.error) fail(r.error);
     // Nothing answered. If the server is there after all, say so rather than filling the shared record.
     if (!r.none && await serverIsUp()) fail('The file could not reach the school server. Check the connection and try again.');
     // Offline with the school server (src/outbox.js): kept on this device and uploaded when the connection is back.
+    if (purpose && !r.none && serverMode()) fail('No connection to the school server. Try again when you are back online.');
     const held = !r.none && serverMode() && holdUpload(body, body.name || file.name || 'photo', body.type || file.type);
     if (held) { onProgress?.(1); return { url: held, name: body.name || file.name || 'file', size: body.size, type: body.type || file.type || 'application/octet-stream', pending: true }; }
     noServer = true;
@@ -60,12 +63,13 @@ export const evidenceFor = (f, caption) => ({ kind: fileKind(f.type, f.url) === 
 
 // POST the raw file. Resolves { ok, data } on success, { error } for a real refusal from the
 // server, or {} when there is no server to talk to (network error, 404, an HTML page back).
-function send(body, name, onProgress) {
+function send(body, name, onProgress, purpose) {
   return new Promise((resolve) => {
     const x = new XMLHttpRequest();
     x.open('POST', new URL('api/upload', location.href).href);
     x.setRequestHeader('content-type', body.type || 'application/octet-stream');
     x.setRequestHeader('x-filename', encodeURIComponent(name || 'file'));
+    if (purpose) x.setRequestHeader('x-purpose', purpose);
     x.upload.onprogress = (e) => e.lengthComputable && onProgress?.(Math.min(0.99, e.loaded / e.total));
     x.onerror = () => resolve({});
     x.onload = () => {

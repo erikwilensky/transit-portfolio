@@ -2384,6 +2384,146 @@ const reEsc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 export const phraseFrom = (text, first) => (first && first.length > 1 ? String(text).replace(new RegExp(`\\b${reEsc(first)}\\b`, 'g'), FIRST_NAME) : String(text)).trim();
 export const canPublishPhrases = (p) => !!p && (p.kind === 'coordinator' || p.kind === 'leadership' || p.kind === 'admin' || !!p.admin);
 
+// ── Class photo drop: a teacher sends photos from a lesson, trip or practical to the students in them (src/components/PhotoDrop.jsx) ──
+// store.photoDrops: { id: 'pd-…', classId, teacherId, title, date (the day of the lesson), lineId, note, at, draft, photos:
+// [{ id: 'ph-…', url, name, studentIds, removed? }] } (only photos given to someone; the server deletes the rest, by `draft`).
+// Each student gets one spotted offer (store.spotted, with dropId, on: the drop's date, photos: [{ id, url }]): they keep
+// some with a sentence (acceptSpotted(id, studentId, { photos, text }): a moment, endorsed by the teacher) or say "Not for me".
+export const DROP_MAX = 40, DROP_KEEP_DAYS = 7;
+const drops = () => (store.photoDrops ||= []);
+export const getPhotoDrop = (id) => drops().find((d) => d.id === id);
+export const dropPhotoById = (photoId) => { for (const d of drops()) { const p = d.photos.find((x) => x.id === photoId); if (p) return { d, p }; } return null; };
+const DROP_URL = /^(\/?api\/files\/[a-f0-9]{32}\.(jpg|png|gif|webp|heic|heif|avif)|data:image\/(jpeg|png|gif|webp);base64,[A-Za-z0-9+/=]+)$/;
+const dropShown = (x) => (x.status === 'accepted' ? 'added' : x.status === 'declined' ? 'not for me' : spotOpen(x) ? 'waiting' : 'not added');
+// A teacher's photo drops for one class (or all), newest first, with each student's answer.
+export const photoDropsBy = (teacherId, classId) => drops().filter((d) => d.teacherId === teacherId && (!classId || d.classId === classId))
+  .sort((a, b) => b.at.localeCompare(a.at) || b.id.localeCompare(a.id))
+  .map((d) => {
+    const rows = spots().filter((x) => x.dropId === d.id).map((x) => ({ spot: x, student: getStudent(x.studentId) || null, shown: dropShown(x), photos: (x.photos || []).length, kept: (x.kept || []).length }))
+      .sort((a, b) => (a.student?.name || '').localeCompare(b.student?.name || ''));
+    const n = (k) => rows.filter((r) => r.shown === k).length;
+    return { ...d, line: lineById(d.lineId) || null, rows, counts: { added: n('added'), waiting: n('waiting'), no: n('not for me'), expired: n('not added') } };
+  });
+// The students a drop's photo is given to, by its file name (null: not a drop photo). For server/files.mjs.
+export function dropPhotoStudents(fileName) {
+  for (const d of drops()) for (const p of d.photos) if (p.url && p.url.endsWith(`/${fileName}`)) return p.studentIds.filter((sid) => getStudent(sid));
+  return null;
+}
+export function dropPhotos(classId, teacherId, { title = '', date = '', lineId, note = '', photos = [], draft = null } = {}) {
+  const t = teacherById[teacherId], c = classById(classId);
+  if (!t) throw spotErr('No such teacher');
+  if (!c) throw spotErr('No such class', 404);
+  if (!(c.teacherIds || []).includes(teacherId)) throw spotErr('This class is not one of yours', 403);
+  if (!getSchoolLines().some((l) => l.id === lineId)) throw spotErr('Pick a line');
+  const kids = new Set(nowIn(classId));
+  const list = [].concat(photos || []).filter((p) => p && typeof p === 'object');
+  if (list.length > DROP_MAX) throw spotErr(`At most ${DROP_MAX} photos at once`);
+  if (list.some((p) => !DROP_URL.test(String(p.url || '')))) throw spotErr('Only photos can be added');
+  if (list.some((p) => [].concat(p.studentIds || []).some((sid) => !kids.has(sid)))) throw spotErr('Only students in this class can get these photos');
+  const given = list.map((p) => ({ url: String(p.url), name: String(p.name || 'Photo').slice(0, 120), studentIds: [...new Set([].concat(p.studentIds || []))] })).filter((p) => p.studentIds.length);
+  if (!given.length) throw spotErr('Give at least one photo to a student');
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(date) && date <= TODAY ? date : TODAY;
+  const name = String(title || '').trim().slice(0, 120) || `Photos from ${c.subject || c.name}`;
+  const at = nowIso(), expires = new Date(Date.parse(TODAY) + SPOT_DAYS * 864e5).toISOString().slice(0, 10);
+  const d = { id: uid('pd-'), classId, teacherId, title: name, date: day, lineId, note: String(note || '').trim().slice(0, 500), at,
+    draft: /^[a-z0-9-]{6,40}$/.test(String(draft || '')) ? draft : null, photos: given.map((p) => ({ id: uid('ph-'), ...p })) };
+  drops().push(d);
+  const who = [...new Set(d.photos.flatMap((p) => p.studentIds))].sort();
+  for (const sid of who) {
+    const mine = d.photos.filter((p) => p.studentIds.includes(sid)).map((p) => ({ id: p.id, url: p.url }));
+    spots().push({ id: uid('sp-'), studentId: sid, teacherId, classId, lineId, title: name, note: d.note, image: mine[0].url, photos: mine, dropId: d.id, on: day, date: TODAY, at, expires, status: 'open' });
+    notify(toStudent(sid), `${shortName(t.name)} added photos from “${name}”`, { persona: toStudent(sid), screen: 'map' }, 'spotted');
+  }
+  emit();
+  return d;
+}
+// Keeping photos: the chosen ones (at least one) become a moment on the line, dated the day of the lesson, in the student's
+// words, endorsed by the teacher. Offers without photos (spotMoment) are answered as before.
+const acceptSpottedOne = acceptSpotted;
+acceptSpotted = function acceptSpotted(id, studentId, { photos = [], text = '' } = {}) {
+  const x = getSpotted(id);
+  if (!x?.dropId) return acceptSpottedOne(id, studentId);
+  mySpot(id, studentId);
+  const want = new Set([].concat(photos || [])), keep = x.photos.filter((p) => want.has(p.id));
+  if (!keep.length) throw spotErr('Pick at least one photo to keep');
+  const s = getStudent(studentId), t = teacherById[x.teacherId], words = String(text || '').trim().slice(0, 300);
+  const e = addStation(studentId, { title: x.title, date: x.on || TODAY, summary: words || x.note, lineIds: [laneFor(s, x.lineId)], type: 'project', visibility: 'school', via: 'Class photos',
+    evidence: keep.map((p) => ({ kind: 'image', url: p.url, caption: 'Photo', type: 'image/jpeg' })) });
+  e.spotted = { id: x.id, teacherId: x.teacherId, dropId: x.dropId };
+  if (t) {
+    store.endorsements.push({ id: uid('en-x'), eventId: e.id, teacherId: x.teacherId, note: x.note || `Photos from ${t.name}.`, date: TODAY, live: true });
+    e.verification = 'teacher-endorsed';
+    notify(toTeacher(x.teacherId), `${s.name.split(' ')[0]} kept ${keep.length === 1 ? '1 photo' : `${keep.length} photos`} from “${x.title}”`, { persona: toTeacher(x.teacherId), screen: 'classes', param: x.classId }, 'spotted');
+  }
+  Object.assign(x, { status: 'accepted', decidedAt: nowIso(), eventId: e.id, kept: keep.map((p) => p.id) });
+  emit();
+  return e;
+};
+// Safeguarding: reportItem({ photoId, studentId }, …) on a photo in a drop (a student it was given to, as 'student'; staff
+// as themselves). The moderators' answer is 'photo' (it leaves every offer and moment and the file is deleted) or 'none'.
+const reportItemDrop = reportItem, moderateReportDrop = moderateReport;
+const photoTarget = (photoId, sid) => {
+  const f = dropPhotoById(photoId); if (f) return f;
+  const x = spots().find((y) => y.dropId && y.studentId === sid && (y.photos || []).some((p) => p.id === photoId));
+  const p = x?.photos.find((q) => q.id === photoId);
+  return p ? { d: { id: x.dropId, title: x.title, teacherId: x.teacherId }, p: { ...p, studentIds: [sid] } } : null;
+};
+reportItem = function reportItem(target, reason, note, from) {
+  if (!target?.photoId) return reportItemDrop(target, reason, note, from);
+  // The batch is only in its teacher's copy (and the server's); a student's copy has the photo on their own offer.
+  const f = photoTarget(target.photoId, target.studentId);
+  if (!f || !f.p.url) throw cmErr('That photo is gone.', 404);
+  const sid = target.studentId || f.p.studentIds[0];
+  if (!f.p.studentIds.includes(sid) || !getStudent(sid)) throw cmErr('This photo is not for you.', 404);
+  if (!REPORT_REASONS[reason]) throw cmErr('Pick a reason.');
+  const who = reporter(from, { studentId: sid });
+  if (who.role === 'Family') throw cmErr('Families do not see these photos.');
+  const at = nowIso(), list = (store.reports ||= []);
+  const open = list.find((r) => r.from.key === who.key && r.status === 'open' && r.photoId === f.p.id);
+  if (open) return open;
+  if (list.filter((r) => r.from.key === who.key && Date.parse(at) - Date.parse(r.at) < 3600e3).length >= REPORT_LIMIT) throw cmErr('You have sent a lot of reports. Try again later, or speak to a teacher.', 429);
+  const r = { id: uid('rp-'), kind: 'photo', photoId: f.p.id, dropId: f.d.id, url: f.p.url, title: f.d.title, teacherId: f.d.teacherId, studentId: sid, reason, note: String(note ?? '').trim().slice(0, 1000), at, from: who, status: 'open', history: [] };
+  list.push(r);
+  for (const k of MODERATOR_KINDS) notify(toRole(k), `New report: a photo from “${f.d.title}” (${getStudent(sid).name}). ${REPORT_REASONS[reason]}.`, { persona: toRole(k), screen: 'reports', param: r.id });
+  emit();
+  return r;
+};
+moderateReport = function moderateReport(id, action, note, by) {
+  const r = getReport(id);
+  if (!r?.photoId) return moderateReportDrop(id, action, note, by);
+  if (action !== 'photo' && action !== 'none') throw cmErr('For a photo: remove it, or no action needed.');
+  if (by && !teacherById[by]) throw cmErr('No such teacher.');
+  // A moderator's copy has the report, not the batch: the server (which has it) takes the photo off everywhere.
+  const f = dropPhotoById(r.photoId), at = nowIso(), name = by ? teacherById[by].name : 'Pilot admin';
+  if (action === 'photo' && !r.url) throw cmErr('That photo is gone.', 404);
+  if (action === 'photo' && f) {
+    if (!f.p.url) throw cmErr('That photo is gone.', 404);
+    const url = f.p.url, told = new Set();
+    for (const x of spots()) if (x.dropId === f.d.id && x.photos.some((p) => p.id === f.p.id)) {
+      x.photos = x.photos.filter((p) => p.id !== f.p.id);
+      if (x.image === url) x.image = x.photos[0]?.url || null;
+      if (x.status === 'open' && !x.photos.length) x.status = 'removed';
+      told.add(x.studentId);
+    }
+    for (const e of store.events) if (e.spotted?.dropId === f.d.id && e.evidence.some((v) => v.url === url)) e.evidence = e.evidence.filter((v) => v.url !== url);
+    Object.assign(f.p, { url: null, removed: { at, by: name } });
+    for (const sid of told) notify(toStudent(sid), `A teacher has removed a photo from “${f.d.title}”.`, { persona: toStudent(sid), screen: 'map' });
+  }
+  const entry = { action, note: String(note ?? '').trim().slice(0, 1000), at, by: name };
+  for (const x of store.reports) if (x.photoId === r.photoId) { x.history.push({ ...entry }); x.status = REPORT_STATUS[action]; if (action === 'photo') x.url = null; }
+  emit();
+  return r;
+};
+// PDPA erasure: the student leaves every photo they were given; a photo given to nobody else leaves the drop (its file is
+// deleted with the student's files, server/routes/50-pdpa.mjs, since nothing uses it any more).
+const eraseStudentDrop = eraseStudent;
+eraseStudent = function eraseStudent(sid, alsoTo = []) {
+  if (getStudent(sid)) for (const d of drops()) {
+    for (const p of d.photos) p.studentIds = p.studentIds.filter((x) => x !== sid);
+    d.photos = d.photos.filter((p) => p.studentIds.length || !p.url);
+  }
+  return eraseStudentDrop(sid, alsoTo);
+};
 // ── Year handover: a new year's class lists move students to new advisors (docs/pilot-server.md) ──
 // importRoster notes each change of advisor in store.handovers ({ id, studentId, from, to, date, at, fromYear, year,
 // newYear }) and, when the academic year changes, store.yearStart ({ year, fromYear, date, at }). The outgoing
@@ -3825,6 +3965,7 @@ addMomentComment = act('addMomentComment', addMomentComment); editMomentComment 
 reportItem = act('reportItem', reportItem); moderateReport = act('moderateReport', moderateReport);
 spotMoment = act('spotMoment', spotMoment); acceptSpotted = act('acceptSpotted', acceptSpotted); declineSpotted = act('declineSpotted', declineSpotted);
 addPhrase = act('addPhrase', addPhrase); editPhrase = act('editPhrase', editPhrase); deletePhrase = act('deletePhrase', deletePhrase); movePhrase = act('movePhrase', movePhrase); usePhrase = act('usePhrase', usePhrase);
+dropPhotos = act('dropPhotos', dropPhotos);
 setHandoverNote = act('setHandoverNote', setHandoverNote); carryOverGoal = act('carryOverGoal', carryOverGoal); closeGoal = act('closeGoal', closeGoal);
 setPeerFeedback = act('setPeerFeedback', setPeerFeedback); givePeerFeedback = act('givePeerFeedback', givePeerFeedback); thankPeerFeedback = act('thankPeerFeedback', thankPeerFeedback); hidePeerFeedback = act('hidePeerFeedback', hidePeerFeedback); setPeerFeedbackYear = act('setPeerFeedbackYear', setPeerFeedbackYear);
 openReflectionWindow = act('openReflectionWindow', openReflectionWindow); closeReflectionWindow = act('closeReflectionWindow', closeReflectionWindow); saveTermReflection = act('saveTermReflection', saveTermReflection); finishTermReflection = act('finishTermReflection', finishTermReflection);

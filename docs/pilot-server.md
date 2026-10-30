@@ -2166,3 +2166,75 @@ Demo and pilot (the demo record has no rounds, so nothing shows until one is ope
   A4 page; axe on each screen; each account in its own browser context). `thai-students.cjs` sweeps the prep, Conference mode and
   the note in Thai. Screenshots and a PDF: `tp-slc-*` in `SCRATCH` or the temp folder.
 - Not done: a round's prep cannot be copied into the next round; the conference note is not on the printed sheet.
+## Class photo drop (`src/api.js`, `src/components/PhotoDrop.jsx`, `server/routes/71-photo-drop.mjs`)
+
+A teacher takes photos in a lesson, on a trip or in a practical and gives each one to the students in it. Each student
+picks which to keep and says what they did; what they keep becomes a moment the teacher has already endorsed. Built on
+spotted moments (the student's card and inbox are the same; see "Spotted moments").
+
+- **Teacher** (My classes, class page, "Drop photos"): drag photos onto the dialog or "Choose photos" (`multiple`,
+  `accept="image/*"`, so a phone offers its camera roll); up to `DROP_MAX` (40), three uploads at a time. Optional title
+  (default "Photos from <subject>"), date (default today, never later), line (default the class's line, `spotLineFor`)
+  and a short note. Each photo has the class list as chips (toggle buttons with `aria-pressed`, full name as `title`),
+  "Same students as previous", "Clear" and "Remove photo N"; everything is a button, so Tab and Space/Enter do it all.
+  A reminder at the top: each student sees every photo they are given, other students' faces included. The footer counts
+  photos and students, and says photos given to nobody are deleted on send. Closing keeps a draft on this device
+  (`localStorage['tp-photo-drop:<teacherId>:<classId>']`, file addresses and choices only) for 7 days; "Discard all"
+  deletes the uploads at once. Under the class table, "Class photos" lists each batch (newest first): date, photos, line,
+  "N added · N waiting · N said no", thumbnails, and per student Added (kept K of N) / Waiting / Not for me / Not added
+  (expired, or every photo removed). Class photos are left out of the "Spotted moments" list there.
+- **Student** (the spotted card at the top of the home, every level; big at Simple): "Mr Coultas added photos from …",
+  the note, the date and line, the photos as big toggle cards (all picked to start: "✓ Keeping" / "Not keeping"), "Say
+  what you did" (optional, up to 300 characters), "Keep N photos" and "Not for me". Under each photo, "Something wrong with
+  this photo?" opens a report (reasons as for moments). Thai: its own block at the end of `src/i18n.js`.
+- **Record**: `store.photoDrops[] { id: 'pd-…', classId, teacherId, title, date, lineId, note, at, draft, photos: [{ id: 'ph-…',
+  url, name, studentIds, removed? }] }` (only photos given to someone). One `store.spotted` item per student given a photo,
+  as for spotted moments plus `dropId`, `on` (the drop's date), `photos: [{ id, url }]` (theirs only), `image` (the first)
+  and, once kept, `kept: [photoId]`. The kept moment: `addStation` (type project, visibility school, via "Class photos",
+  dated `on`, summary = their sentence or else the note, the kept photos as evidence), `spotted: { id, teacherId, dropId }`,
+  an endorsement by the teacher (the note, else "Photos from <teacher>.").
+- **Mutators** (replayed like the rest): `dropPhotos(classId, teacherId, { title, date, lineId, note, photos: [{ url, name,
+  studentIds }], draft })`: the teacher must be in the class's `teacherIds` (403), every student a current member of the
+  class, every url an uploaded photo (`api/files/<id>.<jpg|png|gif|webp|heic|heif|avif>`) or, without a server, an image
+  data URL; at least one photo given; notifies each student once, "Mr Coultas added photos from “…”" (kind `spotted`, in the
+  student's "Teacher replies and endorsements" group). `acceptSpotted(id, studentId, { photos: [photoId], text })` on a drop
+  offer: at least one of their photos (400); tells the teacher "Aaron kept 1 photo from “…”" (kind `spotted`, staff "Spotted
+  replies"). `declineSpotted` as before (nobody is told; the teacher sees "Not for me"). Offers expire after `SPOT_DAYS` (30).
+  Reads: `photoDropsBy(teacherId, classId)`, `getPhotoDrop`, `dropPhotoById`, `dropPhotoStudents(fileName)`.
+- **Safeguarding**: `reportItem({ photoId, studentId }, reason, note, from)` → a report `{ kind: 'photo', photoId, dropId, url,
+  title, teacherId, studentId, … }` to the moderators ("New report: a photo from “…” (Student). Reason."). Reports shows the
+  photo, "Class photo from <teacher>", and "Remove photo" / "No action needed" (hide does not apply). Remove takes it off
+  every offer and every moment kept from it, sets the batch's photo `url: null, removed`, clears `url` on its reports, tells
+  each student it was given to "A teacher has removed a photo from “…”." (kind `safeguarding`), and the server deletes the
+  file. An offer left with no photos becomes `removed` ("Not added").
+- **canAct** (`dropOk` in `server/auth.mjs`): `dropPhotos`: staff (or an admin with a staff record) in the class's
+  `teacherIds`, as themselves; whole-school roles only for a class they teach. Keeping and "Not for me": only that student
+  (`spotOk`). Reporting a photo: the student it was given to while they still hold it (open, or kept), as `'student'`;
+  staff who reach a student it was given to, as themselves; admins. Never families.
+- **Files** (pilot): uploads go through `POST /api/upload` with `x-purpose: photo-drop:<draft>` (`uploadFile(file, { purpose,
+  max: 1600 })` in `src/upload.js`: photos only, scaled on the device to 1600 px, never held offline): the route refuses
+  anything but an image (415) and over 15 MB (413), and keeps `purpose` and `draft` in the `.json`. Who opens a photo
+  (`server/files.mjs`): its uploader; each student given it, through their own copy (after "Not for me" or expiry their
+  copy keeps no photos, after keeping only the kept ones, so a photo they turned down stops opening for them); staff who
+  reach any student given it (`dropPhotoStudents` + `reachOf`); moderators through the report; and, once kept, whoever may
+  read that moment. Everyone else gets the usual 404.
+- **Deleting** (`server/routes/71-photo-drop.mjs`): when a batch is sent, every upload of that draft by that account that no
+  student was given; `POST /api/photo-drops/discard { files: [name] }` → `{ deleted }` (the caller's own photo-drop uploads
+  that the record does not use; 401 signed out; logged as `photo-discard` with the count); any batch photo the record stops
+  using (removed by a moderator, a student erased); and unsent photo-drop uploads older than `DROP_KEEP_DAYS` (7), checked
+  shortly after start and every `PHOTO_DROP_TICK_MS` (1 hour; heartbeat `photo-drop` on System health).
+- **Scope**: `photoDrops` goes only to the teacher who sent it. `spotted` drop offers go to the student (their own) and that
+  teacher (who sees "declined" as it is, not "closed"); nobody else, whole-school roles included. A student's own photo
+  reports keep their `photoId`. **Activity log**: `dropPhotos` names the students given photos and the teacher.
+- **PDPA**: offers are the student's own (copy and erasure, with their photo files); erasure also takes them out of every
+  batch photo, and a photo given only to them leaves the batch, so its file is deleted with theirs. `FILE_RE` in
+  `server/routes/50-pdpa.mjs` now also matches addresses saved without the leading slash (as the browser saves them),
+  so every uploaded file a student's data uses is in the copy and in an erasure.
+- Tests: `server/test/photo-drop.test.mjs`; browser: `node scripts/checks/photo-drop.cjs` (the real roster, skipped without
+  it): Mr David Coultas drops 4 photos on C-392000 (photo 1 Aaron Torres; photo 2 Aaron and a classmate, by "Same students as
+  previous" and a chip by keyboard; photo 3 a second classmate; photo 4 nobody, deleted on send). The second classmate, a
+  teacher with no reach and a signed-out browser get 404 for Aaron's photo, each in its own context. Aaron at Simple on a
+  phone keeps one photo with a sentence; the other then stops opening for him. The first classmate says "Not for me"; the
+  second reports her photo; the teacher sees Added / Not for me / Waiting; a coordinator removes the photo from Reports and
+  the file is deleted. Axe on each screen. Thai: `scripts/checks/thai-students.cjs` walks Aaron's card and report dialog.
+- Not done: a teacher cannot edit a batch after sending it (add students or photos); faces are not detected.

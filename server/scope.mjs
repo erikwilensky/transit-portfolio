@@ -235,6 +235,19 @@ export function scopedSnapshot(user) {
   store.casHours = parent ? [] : (full.casHours || []).filter((x) => (self ? x.studentId === self : casCoord || (!!tid && x.supervisor?.kind === 'staff' && x.supervisor.teacherId === tid))).map(casOut);
   Object.assign(store, familyNotesScope(full, store, { user, all, self, parent, tid, shown, moderator }));
   Object.assign(store, schoolEventScope(full, { all, self, parent, staff, tid, inReach, shown }));
+  // Class photo drop (api.dropPhotos): the batch goes only to the teacher who sent it. In their spotted copy a "Not for me"
+  // stays declined (they see who said no). A student's answered offer keeps only the photos they kept (none after "Not for
+  // me" or expiry), so a photo they turned down no longer opens for them. Their own photo reports keep the photo id.
+  store.photoDrops = tid ? (full.photoDrops || []).filter((d) => d.teacherId === tid) : [];
+  const spotFull = new Map((full.spotted || []).filter((x) => x.dropId).map((x) => [x.id, x]));
+  store.spotted = store.spotted.map((x) => {
+    if (!x.dropId) return x;
+    if (!self) return spotFull.get(x.id);
+    if (x.status === 'open' && x.expires >= api.TODAY) return x;
+    const photos = (x.photos || []).filter((p) => x.status === 'accepted' && (x.kept || []).includes(p.id));
+    return { ...x, photos, image: photos[0]?.url || null };
+  });
+  if (!moderator) { const ph = new Map((full.reports || []).filter((r) => r.photoId).map((r) => [r.id, r.photoId])); store.reports = store.reports.map((r) => (ph.has(r.id) ? { ...r, photoId: ph.get(r.id) } : r)); }
   // Everything else (school lines' settings, integrations, rollout, family language, classes, keys other features add).
   for (const [k, v] of Object.entries(full)) if (!(k in store)) store[k] = generic(v, inReach);
   // Counts the whole-school screens show for what they may not open.
@@ -411,3 +424,5 @@ Object.assign(TOUCHES, {
   addSchoolEvent: (a) => T([], [a[1]]), editSchoolEvent: (a) => T([], [a[2]]), removeSchoolEvent: (a) => T([], [a[1]]), importSchoolEvents: (a) => T([], [a[1]]),
   remindSchoolEvent: (a) => T([], [a[1]]), dismissSchoolEvent: (a) => T([api.getSchoolEvent(a[0])?.studentIds.includes(a[1]) ? a[1] : '?']),
 });
+// Class photo drop: the students given a photo, as the sending teacher (canAct's own rules are dropOk in auth.mjs).
+Object.assign(TOUCHES, { dropPhotos: (a) => T([...new Set([].concat(a[2]?.photos || []).flatMap((p) => [].concat(p?.studentIds || [])))], [a[1] ?? '?']) });

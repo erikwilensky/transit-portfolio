@@ -3,6 +3,7 @@ import { acceptSpotted, declineSpotted, getSchoolLines, shortName, snapshot, spo
 import { fmtDate } from '../format.js';
 import { evidenceFor } from '../upload.js';
 import { UploadStatus, useUpload } from './FileAttach.jsx';
+import { DropOffer } from './PhotoDrop.jsx';
 import './spotted.css';
 import PhraseTools, { phraseBox } from './Phrases.jsx';
 
@@ -56,8 +57,9 @@ export function SpotDialog({ students, teacherId, classId = null, onClose, toast
 }
 
 const SHOWN = { waiting: 'Waiting', added: 'Added', 'not added': 'Not added' };
+// Class photos (dropId) are listed by PhotoDropList instead.
 export function SpottedList({ teacherId, classId, studentId, version, title = 'Spotted moments' }) {
-  const list = useMemo(() => spottedBy(teacherId, { classId, studentId }), [teacherId, classId, studentId, version]); // eslint-disable-line react-hooks/exhaustive-deps
+  const list = useMemo(() => spottedBy(teacherId, { classId, studentId }).filter((x) => !x.dropId), [teacherId, classId, studentId, version]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!list.length) return null;
   return (
     <section className="spot-list" aria-label={title}>
@@ -78,6 +80,7 @@ export function SpottedForMe({ studentId, simple, toast, version }) {
   const [err, setErr] = useState(null);
   if (!list.length) return null;
   const x = list[0], who = x.teacher ? shortName(x.teacher.name) : 'A teacher';
+  if (x.dropId) return <DropOffer key={x.id} x={x} more={list.length} studentId={studentId} simple={simple} toast={toast} />;
   const add = () => { try { acceptSpotted(x.id, studentId); setErr(null); toast?.(`Added to your journey${x.line ? ` on ${x.line.name}` : ''}.`); } catch (e) { setErr(e.message); } };
   const no = () => { try { declineSpotted(x.id, studentId); setErr(null); toast?.('Okay, it is not added.'); } catch (e) { setErr(e.message); } };
   return (
