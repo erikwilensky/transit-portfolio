@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { carryDate, carryOverGoal, closeGoal, getStudents, getHandoverNote, getLine, getStore, goalsToReview, HANDOVER_PROMPT, lastYearOf, newToAdvisor, setHandoverNote, shortName, snapshot } from '../api.js';
 import { fmtDate, inkOn } from '../format.js';
 import './year-handover.css';
+import { MovingUpCount, MovingUpForStaff } from './MovingUp.jsx';
 
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const Avatar = ({ s }) => <span className="pres-avatar sm" style={{ background: s.avatar?.colour || '#4F529B', color: inkOn(s.avatar?.colour || '#4F529B') }}>{s.avatar?.initials || '?'}</span>;
@@ -17,7 +18,7 @@ export function HandoverNotes({ advisorId, version, toast, onClose }) {
     <section className="card-sec yh-notes" aria-labelledby="yh-notes-h">
       <div className="yh-head">
         <div><h2 id="yh-notes-h">Write handover notes</h2>
-          <p className="fineprint">For the advisor who has your students next year. Only staff read these: never the student or their family. {done} of {cohort.length} written.</p></div>
+          <p className="fineprint">For the advisor who has your students next year. Only staff read these: never the student or their family. {done} of {cohort.length} written.</p><MovingUpCount advisorId={advisorId} version={version} /></div>
         <button className="ghost" onClick={onClose}>Close</button>
       </div>
       <div className="yh-prompt"><b>A few lines each:</b><ul>{HANDOVER_PROMPT.map((p) => <li key={p}>{p}</li>)}</ul></div>
@@ -81,6 +82,7 @@ export function LastYear({ studentId, version }) {
       {byLine.length > 0 && <ul className="yh-lines">{byLine.map(({ line, n }) => <li key={line.id}><i style={{ background: line.colour }} />{line.name}<b>{n}</b></li>)}</ul>}
       {carried.length > 0 && <><p className="yh-count"><b>{plural(carried.length, 'goal')}</b> carried over</p>
         <ul className="yh-goals">{carried.map((e) => <li key={e.id}>{e.title}<small>{fmtDate(e.carriedOver.from)} → {fmtDate(e.date)}</small></li>)}</ul></>}
+      <MovingUpForStaff studentId={studentId} version={version} inLastYear />
     </section>
   );
 }

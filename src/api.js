@@ -2069,7 +2069,7 @@ export function nudgeStudent(studentId, advisorId, text, about) {
   const msg = String(text ?? '').trim().slice(0, 500) || NUDGE_TEXT;
   const n = { id: uid('nu-'), studentId, from: advisorId, text: msg, date: TODAY, ts: nowIso(), ...(about ? { about: String(about).slice(0, 60) } : {}) };
   (store.nudges ||= []).push(n);
-  notify(toStudent(studentId), `${shortName(t.name)}: ${msg}`, { persona: toStudent(studentId), screen: 'map', param: about ? 'reflect' : 'add' }, 'teacher');
+  notify(toStudent(studentId), `${shortName(t.name)}: ${msg}`, { persona: toStudent(studentId), screen: 'map', param: about ? (String(about).startsWith('movingup:') ? 'movingup' : 'reflect') : 'add' }, 'teacher');
   log(studentId, t.name, 'nudge', 'Sent a nudge to add something');
   emit();
   return n;
@@ -2727,6 +2727,137 @@ export function advisoryReflection(advisorId) {
   const mine = new Set(store.students.filter((s) => s.advisorId === advisorId).map((s) => s.id));
   const w = getReflectionWindows().filter((x) => x.studentIds.some((id) => mine.has(id)) && (x.closedOn || x.closes) >= daysBefore(30)).sort((a, b) => b.opens.localeCompare(a.opens) || b.at.localeCompare(a.at))[0];
   return w ? reflectionProgress(w.id, advisorId) : null;
+}
+
+// ── Moving-up summaries: "Where I've been, where I'm going" (src/components/MovingUp.jsx) ──
+// At the end of Year 9 (on to IB MYP Years 10–11) and Year 11 (on to the IB Diploma) an advisor (their advisees) or
+// whole-school staff (a whole Year) open a window, as for a term reflection. Each student picks up to MU_PICKS moments of
+// the stage, says who they are and what they are proud of, how they learn best and what helps, and one or two hopes for
+// the next stage (a hope can become a goal); Year 11 also says which DP subjects and CAS ideas they have in mind. Kept
+// as a draft until they finish; the summary stays on their record for their next advisor (the "Last year" panel).
+// store.movingUpWindows: { id: 'mw-…', title, opens, closes, studentIds, advisorId, year, by, at, closedOn? }
+// store.movingUp: { id: 'mu-…', windowId, studentId, stage (9 | 11), status: 'draft' | 'done', step, picks, who, proud,
+// learn, helps, hopes: [{ text, goal, lineId }], dp, cas, family (true | false | null), startedAt, savedAt, doneAt,
+// moments: [{ eventId, title, date, lineIds }] (at finish), goalIds }. Both made on first use.
+export const MU_PICKS = 5, MU_HOPES = 2, MU_STAGES = [9, 11];
+export const MU_MAX = { who: 600, proud: 600, learn: 600, helps: 600, dp: 400, cas: 400, hope: 160 };
+export const muStageOf = (s) => (s && MU_STAGES.includes(s.grade + 1) ? s.grade + 1 : null);
+export const muTitle = (stage) => (stage === 11 ? 'Moving up to the IB Diploma' : 'Moving up to Year 10');
+export const getMovingUpWindows = () => store.movingUpWindows || [];
+export const getMovingUpWindow = (id) => getMovingUpWindows().find((w) => w.id === id) || null;
+export const movingUpRecord = (windowId, studentId) => (store.movingUp || []).find((r) => r.windowId === windowId && r.studentId === studentId) || null;
+export const getMovingUp = (id) => (store.movingUp || []).find((r) => r.id === id) || null;
+// The stage's moments start in August: Years 7–9 for a Year 9 summary, Years 10–11 for a Year 11 one.
+export const muStageStart = (stage, d = TODAY) => { const y = +d.slice(0, 4) - (+d.slice(5, 7) < 8 ? 1 : 0); return `${y - (stage === 11 ? 1 : 2)}-08-01`; };
+const muStudents = ({ advisorId, year }) => store.students.filter((s) => !s.cohortOnly && muStageOf(s) && (advisorId ? s.advisorId === advisorId : s.grade + 1 === Number(year)));
+export function openMovingUp({ title, opens = TODAY, closes, advisorId = null, year = null } = {}, by = null) {
+  if (by && !teacherById[by]) throw trErr('No such teacher');
+  if (!advisorId === !year) throw trErr('Pick an advisory or a Year');
+  if (year && !MU_STAGES.includes(Number(year))) throw trErr('Moving-up summaries are for Year 9 and Year 11');
+  if (advisorId && !teacherById[advisorId]) throw trErr('No such advisor');
+  if (!isDay(opens) || !isDay(closes) || closes < opens || closes < TODAY) throw trErr('Pick when it opens and closes');
+  const busy = new Set(getMovingUpWindows().filter(windowLive).flatMap((w) => w.studentIds));
+  const all = muStudents({ advisorId, year }), ids = all.map((s) => s.id).filter((id) => !busy.has(id));
+  if (!ids.length) throw trErr(all.length ? 'These students already have a summary open' : 'No students in Year 9 or Year 11 to ask', all.length ? 409 : 400);
+  const name = String(title || '').trim().slice(0, 80) || muTitle(muStageOf(getStudent(ids[0])));
+  const w = { id: uid('mw-'), title: name, opens, closes, studentIds: ids, advisorId: advisorId || null, year: year ? Number(year) : null, by: by || null, at: nowIso() };
+  (store.movingUpWindows ||= []).push(w);
+  if (opens <= TODAY) for (const sid of ids) notify(toStudent(sid), `${name} is open: write a short summary for your next advisor`, { persona: toStudent(sid), screen: 'map', param: 'movingup' }, 'system');
+  emit();
+  return w;
+}
+export function closeMovingUp(id) {
+  const w = getMovingUpWindow(id);
+  if (!w) throw trErr('No such summary', 404);
+  w.closedOn = TODAY;
+  emit();
+  return w;
+}
+// A student's open window that they have not finished yet, with their draft.
+export function myMovingUp(studentId) {
+  const w = getMovingUpWindows().filter((x) => windowOpen(x) && x.studentIds.includes(studentId) && movingUpRecord(x.id, studentId)?.status !== 'done').sort((a, b) => a.closes.localeCompare(b.closes))[0];
+  if (!w) return null;
+  const record = movingUpRecord(w.id, studentId);
+  return { window: w, record, stage: record?.stage || muStageOf(getStudent(studentId)) || 9 };
+}
+// The moments to pick from: the stage's own (never private: the summary is for the next advisor), newest first, at most 30.
+export function stageMoments(studentId, stage) {
+  const from = muStageStart(stage || muStageOf(getStudent(studentId)) || 9);
+  return getStudentMap(studentId, 'student').events.filter((e) => e.type !== 'goal' && e.type !== 'reflection' && e.visibility !== 'private' && e.date >= from && e.date <= TODAY)
+    .sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30);
+}
+const muClip = (v, n) => String(v ?? '').slice(0, n);
+function muClean(studentId, stage, d = {}) {
+  const mine = new Set(store.events.filter((e) => e.studentId === studentId && e.type !== 'goal' && e.type !== 'reflection' && e.visibility !== 'private').map((e) => e.id));
+  const picks = [...new Set([].concat(d.picks || []))].filter((id) => mine.has(id)).slice(0, MU_PICKS);
+  const hopes = [].concat(d.hopes || []).filter((h) => h && typeof h === 'object').slice(0, MU_HOPES)
+    .map((h) => ({ text: muClip(h.text, MU_MAX.hope), goal: !!h.goal, lineId: typeof h.lineId === 'string' ? h.lineId : null }));
+  const out = { picks, hopes, family: typeof d.family === 'boolean' ? d.family : stage === 9 ? true : null, step: Number.isInteger(d.step) ? Math.max(0, Math.min(20, d.step)) : 0 };
+  for (const k of ['who', 'proud', 'learn', 'helps', ...(stage === 11 ? ['dp', 'cas'] : [])]) out[k] = muClip(d[k], MU_MAX[k]);
+  return out;
+}
+function muOpenFor(windowId, studentId) {
+  const w = getMovingUpWindow(windowId), s = getStudent(studentId);
+  if (!w || !s || !w.studentIds.includes(studentId)) throw trErr('This summary is not for you', 404);
+  if (!windowOpen(w)) throw trErr('This summary is closed', 410);
+  const r = movingUpRecord(windowId, studentId);
+  if (r?.status === 'done') throw trErr('You already finished this', 409);
+  return { w, s, r };
+}
+export function saveMovingUp(windowId, studentId, draft) {
+  const { s } = muOpenFor(windowId, studentId);
+  let r = movingUpRecord(windowId, studentId);
+  const at = nowIso();
+  if (!r) (store.movingUp ||= []).push(r = { id: uid('mu-'), windowId, studentId, stage: muStageOf(s) || 9, status: 'draft', startedAt: at });
+  Object.assign(r, muClean(studentId, r.stage, draft), { savedAt: at });
+  emit();
+  return r;
+}
+// What is missing before it can be finished (null when ready): the screens and the server share it.
+export function movingUpProblem(stage, d) {
+  if (!(d.who?.trim() || d.proud?.trim())) return 'Say a little about who you are or what you are proud of';
+  if (!(d.learn?.trim() || d.helps?.trim())) return 'Say how you learn best or what helps you';
+  const hopes = (d.hopes || []).filter((h) => h.text?.trim());
+  if (!hopes.length) return 'Write one hope for next year';
+  if (hopes.some((h) => h.goal && (h.text.trim().length < 3 || !lineById(h.lineId)))) return 'Pick a line for the hope that becomes a goal';
+  if (stage === 11 && typeof d.family !== 'boolean') return 'Choose whether your family can see it';
+  return null;
+}
+export function finishMovingUp(windowId, studentId, draft) {
+  const { w, s } = muOpenFor(windowId, studentId);
+  const stage = movingUpRecord(windowId, studentId)?.stage || muStageOf(s) || 9;
+  const f = muClean(studentId, stage, draft);
+  f.hopes = f.hopes.filter((h) => h.text.trim());
+  const why = movingUpProblem(stage, f); if (why) throw trErr(why);
+  const goalIds = f.hopes.filter((h) => h.goal).map((h) => addGoal(studentId, { title: h.text.trim().slice(0, 120), date: nextTermEnd(), lineId: laneFor(s, h.lineId), summary: `A hope for ${stage === 11 ? 'the IB Diploma' : 'Year 10'}, from my moving-up summary.`, checkIn: true }).id);
+  const r = saveMovingUp(windowId, studentId, f);
+  const moments = f.picks.map(getEvent).map((e) => ({ eventId: e.id, title: e.title, date: e.date, lineIds: e.lineIds }));
+  Object.assign(r, { status: 'done', doneAt: nowIso(), moments, goalIds });
+  log(studentId, s.name, 'reflection', `Finished “${w.title}”`);
+  emit();
+  return r;
+}
+// The student chooses, any time after finishing, whether their family sees it.
+export function setMovingUpFamily(studentId, id, on) {
+  const r = getMovingUp(id);
+  if (!r || r.studentId !== studentId || r.status !== 'done') throw trErr('No such summary', 404);
+  r.family = !!on;
+  emit();
+  return r;
+}
+export const movingUpSummaries = (studentId) => (store.movingUp || []).filter((r) => r.studentId === studentId && r.status === 'done').sort((a, b) => String(b.doneAt).localeCompare(String(a.doneAt)));
+export const latestMovingUp = (studentId) => movingUpSummaries(studentId)[0] || null;
+export function movingUpProgress(windowId, advisorId) {
+  const w = getMovingUpWindow(windowId); if (!w) return null;
+  const rows = w.studentIds.map(getStudent).filter((s) => s && (!advisorId || s.advisorId === advisorId)).sort((a, b) => a.name.localeCompare(b.name))
+    .map((s) => { const r = movingUpRecord(w.id, s.id); return { student: s, record: r, status: r?.status === 'done' ? 'done' : r ? 'started' : 'not started' }; });
+  return { window: w, rows, total: rows.length, done: rows.filter((x) => x.status === 'done').length, started: rows.filter((x) => x.status === 'started').length };
+}
+// My advisory: the latest window over this advisor's advisees, open now or closed in the last 60 days.
+export function advisoryMovingUp(advisorId) {
+  const mine = new Set(store.students.filter((s) => s.advisorId === advisorId).map((s) => s.id));
+  const w = getMovingUpWindows().filter((x) => x.studentIds.some((id) => mine.has(id)) && (x.closedOn || x.closes) >= daysBefore(60)).sort((a, b) => b.opens.localeCompare(a.opens) || b.at.localeCompare(a.at))[0];
+  return w ? movingUpProgress(w.id, advisorId) : null;
 }
 
 // ── Kind feedback from classmates (pilot, Year 9 and up; src/components/PeerFeedback.jsx) ──
@@ -3970,6 +4101,7 @@ setHandoverNote = act('setHandoverNote', setHandoverNote); carryOverGoal = act('
 setPeerFeedback = act('setPeerFeedback', setPeerFeedback); givePeerFeedback = act('givePeerFeedback', givePeerFeedback); thankPeerFeedback = act('thankPeerFeedback', thankPeerFeedback); hidePeerFeedback = act('hidePeerFeedback', hidePeerFeedback); setPeerFeedbackYear = act('setPeerFeedbackYear', setPeerFeedbackYear);
 openReflectionWindow = act('openReflectionWindow', openReflectionWindow); closeReflectionWindow = act('closeReflectionWindow', closeReflectionWindow); saveTermReflection = act('saveTermReflection', saveTermReflection); finishTermReflection = act('finishTermReflection', finishTermReflection);
 markMilestonesSeen = act('markMilestonesSeen', markMilestonesSeen);
+openMovingUp = act('openMovingUp', openMovingUp); closeMovingUp = act('closeMovingUp', closeMovingUp); saveMovingUp = act('saveMovingUp', saveMovingUp); finishMovingUp = act('finishMovingUp', finishMovingUp); setMovingUpFamily = act('setMovingUpFamily', setMovingUpFamily);
 createExhibition = act('createExhibition', createExhibition); removeExhibitionSlide = act('removeExhibitionSlide', removeExhibitionSlide); pauseExhibition = act('pauseExhibition', pauseExhibition); revokeExhibition = act('revokeExhibition', revokeExhibition);
 saveLeaver = act('saveLeaver', saveLeaver); shareLeaver = act('shareLeaver', shareLeaver); revokeLeaver = act('revokeLeaver', revokeLeaver); commentLeaver = act('commentLeaver', commentLeaver); doneLeaverComment = act('doneLeaverComment', doneLeaverComment);
 checkInGoal = act('checkInGoal', checkInGoal); snoozeCheckins = act('snoozeCheckins', snoozeCheckins); sendEncouragement = act('sendEncouragement', sendEncouragement);

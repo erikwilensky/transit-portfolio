@@ -10,6 +10,7 @@ import { isPilot } from '../auth.js';
 import { ConferenceSheets } from '../components/ConferenceSheets.jsx';
 import { SpotDialog, SpottedList } from '../components/Spotted.jsx';
 import { LastYear } from '../components/YearHandover.jsx';
+import { MovingUpForStaff } from '../components/MovingUp.jsx';
 import { AdvisorStudentMilestones } from '../components/Milestones.jsx';
 import { LeaverForStaff } from '../components/Leaver.jsx';
 
@@ -65,6 +66,7 @@ export default function AdvisorStudent({ studentId, version, toast, go, persona,
           {spotting && <SpotDialog students={[s]} teacherId={persona.teacherId} toast={toast} onClose={() => setSpotting(false)} />}
           <SpottedList teacherId={persona.teacherId} studentId={studentId} version={version} title="You spotted" />
           <LastYear studentId={studentId} version={version} />
+          <MovingUpForStaff studentId={studentId} version={version} />
           <AdvisorStudentMilestones studentId={studentId} version={version} onOpen={setSelected} />
           <LeaverForStaff studentId={studentId} version={version} persona={persona} toast={toast} />
           <section className="card-sec">

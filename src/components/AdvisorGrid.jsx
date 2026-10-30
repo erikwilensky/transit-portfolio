@@ -10,6 +10,7 @@ import { AdvisorProgress } from './SignupProgress.jsx';
 import { AdvisoryConference } from './ConferenceSheets.jsx';
 import { HandoverNotes, NewToYou, isNewTo } from './YearHandover.jsx';
 import { AdvisoryReflection } from './TermReflection.jsx';
+import { AdvisoryMovingUp } from './MovingUp.jsx';
 import { AdvisoryMilestones } from './Milestones.jsx';
 import { StuckFlags } from './GoalCheckins.jsx';
 import { AdvisoryBooking } from './ConferenceBooking.jsx';
@@ -41,6 +42,7 @@ export default function AdvisorGrid({ advisorId, onOpen, toast, version, persona
       {isPilot() && <AdvisorFamily toast={toast} />}
       <AdvisoryConference advisorId={advisorId} cohort={cohort} group={group.name} />
       <AdvisoryReflection advisorId={advisorId} toast={toast} version={version} />
+      <AdvisoryMovingUp advisorId={advisorId} toast={toast} version={version} />
       <StuckFlags teacherId={advisorId} toast={toast} version={version} onOpen={onOpen} />
       <AdvisoryBooking advisorId={advisorId} persona={persona} toast={toast} version={version} focus={focus} />
       <QuietGroup advisorId={advisorId} toast={toast} version={version} />

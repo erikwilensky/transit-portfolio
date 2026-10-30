@@ -1,6 +1,7 @@
 // Thai for students on the real class lists: starts a clean pilot (TP_START=empty; needs `npm run build` first), imports
 // the real roster and gives three students something on every screen: Aaron Torres (Year 8, Simple, on a phone), a Year 10
-// student (Standard) and a Year 12 student (Full, with a leaver portfolio), each in their own browser context. Teachers set
+// student (Standard) and a Year 12 student (Full, with a leaver portfolio), each in their own browser context; then a Year 9
+// (Simple, phone) and a Year 11 student (Standard) write their moving-up summaries. Teachers set
 // a class task, ask the class a question, spot a moment, open a term reflection, comment and send encouragement; a
 // classmate gives kind feedback. Each student switches to ไทย in the display menu, then every screen and flow they can
 // reach is walked and fails if visible English interface text remains (people's names, line names and codes, the
@@ -373,12 +374,48 @@ let srv;
     await audit(f, 'Year 12, leaver portfolio builder in Thai');
     await f.screenshot({ path: path.join(SH, 'y12-leaver.png'), fullPage: true });
 
+    // ═══ Moving-up summaries: a Year 9 student at Simple on a phone, a Year 11 student at Standard ═══
+    const muPages = [];
+    for (const [year, level, phone] of [[9, 'simple', true], [11, 'standard', false]]) {
+      const st = roster.students.find((x) => x.year === year && links[x.email] && roster.teachers.find((t) => t.id === x.advisorId && links[t.email]));
+      const L = `Year ${year} (moving up)`, sTk = await tokOf(st.id), advTk = await tokOf(st.advisorId);
+      await act(sTk, 'completeOnboarding', [st.id, ['science', 'art'], 'classic']); await act(sTk, 'setIntensity', [st.id, level]);
+      await act(sTk, 'addStation', [st.id, { title: 'Science fair poster', lineIds: ['science'], date: day(-30), type: 'project', visibility: 'advisor' }]);
+      await act(advTk, 'openMovingUp', [{ title: '', opens: day(0), closes: day(14), advisorId: st.advisorId }, st.advisorId]);
+      const p = await ctx(st.id, phone); muPages.push([L, p]);
+      await p.goto(`${U}/#/me/map`); await p.waitForSelector('.mu-card'); await toThai(p); await p.waitForTimeout(500);
+      await sweep(p, st.id, `${L}: the card`);
+      await p.click('.mu-card .primary'); await p.waitForSelector('.mu-flow');
+      if (phone) {
+        await p.locator('.mu-flow .tr-pick').first().click(); await sweep(p, st.id, `${L}: look back`);
+        const next = async (label) => { await p.click('.mu-flow .sh-next .primary'); await p.waitForTimeout(200); await sweep(p, st.id, `${L}: ${label}`); };
+        await next('about you'); await p.fill('#mu-who', 'I like science.');
+        await next('for your next advisor'); await p.fill('#mu-learn', 'By doing.');
+        await next('hopes'); await p.fill('#mu-hope-0', 'Join a club'); await p.check('.mu-hope .mu-goal input'); await sweep(p, st.id, `${L}: a hope becomes a goal`);
+        await p.locator('.mu-hope .sh-lines button').first().click();
+        await next('can your family see it'); await next('review');
+        await audit(p, `${L}, review in Thai`, ['.mu-flow']);
+        await p.click('.mu-flow .tr-finish'); await p.waitForTimeout(400); await sweep(p, st.id, `${L}: well done`);
+      } else {
+        await sweep(p, st.id, `${L}: the page`);
+        await p.locator('.mu-flow .mu-q textarea').nth(0).fill('I like science.'); await p.locator('.mu-flow .mu-q textarea').nth(2).fill('By doing.');
+        await p.fill('#mu-hope-0', 'Try HL Physics'); await p.check('.mu-hope .mu-goal input'); await p.locator('.mu-flow .mu-fams button').first().click();
+        await sweep(p, st.id, `${L}: the page, filled in`);
+        await audit(p, `${L}, the page in Thai`, ['.mu-flow']);
+        await p.click('.mu-flow .tr-foot .primary'); await p.waitForSelector('.mu-flow .mu-sum'); await sweep(p, st.id, `${L}: review`);
+        await p.click('.mu-flow .tr-finish'); await p.waitForTimeout(400); await sweep(p, st.id, `${L}: saved`);
+      }
+      await close(p); await p.reload(); await p.waitForSelector('.mu-mine'); await sweep(p, st.id, `${L}: my summary`);
+      await p.click('.mu-mine .ghost'); await p.waitForSelector('.mu-sheet'); await sweep(p, st.id, `${L}: the summary sheet`);
+      await p.keyboard.press('Escape');
+    }
+
     // ── Back to English: nothing Thai is left behind ──
     await s.goto(`${U}/#/me/map`); await s.waitForSelector('.home');
     await s.click('.view-btn'); await s.click('.view-menu button[lang="en"]'); await s.waitForFunction(() => document.documentElement.lang === 'en');
     const en = (await s.locator('#main').innerText());
     ok(!THAI.test(en), 'back in English: the map has no Thai left');
-    for (const [n, p] of [['Aaron', a], ['Year 10', s], ['Year 12', f]]) ok(!p.errs.length, `${n}: no page errors${p.errs.length ? `: ${p.errs.join(' | ')}` : ''}`);
+    for (const [n, p] of [['Aaron', a], ['Year 10', s], ['Year 12', f], ...muPages]) ok(!p.errs.length, `${n}: no page errors${p.errs.length ? `: ${p.errs.join(' | ')}` : ''}`);
   } finally {
     fs.writeFileSync(path.join(SH, 'leftovers.json'), JSON.stringify(leftovers, null, 1));
     console.log('INFO leftovers and screenshots in', SH);

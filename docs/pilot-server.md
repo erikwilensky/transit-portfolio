@@ -2238,3 +2238,53 @@ spotted moments (the student's card and inbox are the same; see "Spotted moments
   second reports her photo; the teacher sees Added / Not for me / Waiting; a coordinator removes the photo from Reports and
   the file is deleted. Axe on each screen. Thai: `scripts/checks/thai-students.cjs` walks Aaron's card and report dialog.
 - Not done: a teacher cannot edit a batch after sending it (add students or photos); faces are not detected.
+
+## Moving-up summaries (`src/api.js`, `src/components/MovingUp.jsx`, builds on "Term reflection" and "Year handover")
+
+At the end of Year 9 (moving on to IB MYP Years 10–11) and Year 11 (moving on to the IB Diploma, Years 12–13) each student
+writes "Where I’ve been, where I’m going" for their next advisor. The window works as for a term reflection. Demo and pilot.
+
+- **Record** (made on first use): `store.movingUpWindows = [{ id: 'mw-…', title, opens, closes, studentIds, advisorId | null,
+  year | null, by, at, closedOn? }]` and `store.movingUp = [{ id: 'mu-…', windowId, studentId, stage: 9 | 11, status: 'draft' |
+  'done', step, picks (≤ 5 event ids, never private), who, proud, learn, helps, hopes: [{ text, goal, lineId }] (≤ 2), dp, cas
+  (Year 11 only), family: true | false | null, startedAt, savedAt, doneAt, moments: [{ eventId, title, date, lineIds }] (copied
+  at finish), goalIds }]`. A separate collection from term reflections, so a student can have both open.
+- **Mutators**: `openMovingUp({ title, opens, closes, advisorId | year }, by)` (the advisory's Year 9 and Year 11 students, or a
+  whole Year 9 or 11; students in a live window are left out, 409 when none are left; title defaults to "Moving up to Year 10" /
+  "Moving up to the IB Diploma"; each student is notified, kind `system`, `go: map/movingup`); `closeMovingUp(id)`;
+  `saveMovingUp(windowId, studentId, draft)` (cleaned: own non-private moments only; family defaults to yes in Year 9 and is
+  left unset in Year 11; 410 once closed, 409 once done); `finishMovingUp(windowId, studentId, draft)` (refused with a plain
+  reason from `movingUpProblem`: who/proud, learn/helps, one hope, a line for a hope that becomes a goal, and in Year 11 the
+  family answer; each hope marked as a goal becomes a goal through `addGoal`, by the end of next term, with a check-in);
+  `setMovingUpFamily(studentId, id, on)` (the student changes the family choice later). Reads: `myMovingUp(sid)`,
+  `stageMoments(sid, stage)` (from August of Year 7, or of Year 10; newest 30), `movingUpProgress(windowId, advisorId?)`,
+  `advisoryMovingUp(advisorId)`, `latestMovingUp(sid)`, `movingUpSummaries(sid)`, `muStageOf(student)`.
+- **Reminders**: `nudgeStudent(sid, tid, text, 'movingup:<windowId>')`, the existing nudge (7-day gap); its notification opens
+  the summary (`#/<persona>/map/movingup`).
+- **canAct** (`MU_FNS` in `server/auth.mjs`): open: an advisor for `advisorId` = their own `teacherId`, whole-school staff for
+  any advisory or Year, as themselves; admins. Close: whoever opened it, its advisor, whole-school staff, admins. Save, finish
+  and the family choice: only the student, their own, in a window that includes them (never staff, admins or families).
+- **Scope** (`movingUpScope` in `server/scope.mjs`): windows as for term reflections (never families). A student gets their own
+  records whole. Whole-school roles and the student's current advisor get a finished summary (picked moments only those they
+  receive) and a draft only as `{ id, windowId, studentId, stage, status, startedAt }`; subject teachers and other staff get
+  nothing. A family gets a finished summary only when `family: true`, without moments the family view does not show. After the
+  class-list import moves the student, the new advisor is the current advisor and receives it; the previous one no longer does.
+  PDPA: `movingUp` is in the copy and goes with erasure (a window keeps only the other students' ids).
+- **Activity log**: every change is logged as usual (`change` with `fn` and the student, ok or refused); never the words.
+- **Screens**: the student's home (every level): "Where I’ve been, where I’m going" with Start / Carry on. Simple: one screen at a
+  time (look back as big cards, up to 5; about you; for your next advisor; hopes, each can be a goal on a line; Year 11: the IB
+  Diploma in plain words, subjects and CAS ideas; can your family see it; review; finish). Standard and Full: one page with "Save
+  and finish later", then Review and Finish. After finishing: "My moving-up summary" with "Let my family see it" and Open (the
+  sheet), shown until they move up (or for 60 days). My advisory: "Moving-up summaries" (open with title and dates), "Summaries:
+  N of M done", "Who hasn't finished", "Remind the rest (N)" and "Read the summaries (N)"; "Write handover notes" shows the same
+  count. The advisor's student page shows the latest summary; after a handover it is inside the "Last year" panel instead.
+  School overview: "Moving-up summaries" (open for Year 9 or 11; each window's done count; close). Family view: the child's
+  summary when shared, labels in the family's language (`muWords(lang)` in `src/i18n.js`), the student's words as written.
+- **Paper**: `MovingUpSheet` prints one A4 page per summary (`@page movingup`, fixed 297 mm height; text is capped at 600
+  characters a part, 160 a hope).
+- Tests: `server/test/moving-up.test.mjs`; browser: `node scripts/checks/moving-up.cjs` (real roster: a Year 9 advisor opens it
+  for their homeroom; one student finishes at Simple on a phone; a classmate's draft; "1 of N done", reminders, the sheet as a
+  one-page PDF; a subject teacher and an unrelated teacher get nothing; the family in Thai, then not after the student says no;
+  activity log; the next year's import shows it to the new advisor in Last year). Thai: `scripts/checks/thai-students.cjs`
+  walks a Year 9 (Simple) and a Year 11 (Standard) summary. Screenshots `tp-mu-*`.
+- Not done: the summary is not part of the leaver archive PDF or the conference sheet.

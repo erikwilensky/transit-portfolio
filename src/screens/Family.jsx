@@ -10,6 +10,7 @@ import { FamilyBooking } from '../components/ConferenceBooking.jsx';
 import { FamilyNotesHint } from '../components/FamilyNotes.jsx';
 import { schoolEventName } from '../api.js';
 import { FamilyConfNotes } from '../components/StudentLed.jsx';
+import { FamilyMovingUp } from '../components/MovingUp.jsx';
 
 // N1: a parent's own screens, in English or Thai. One parent, two children:
 // Ploy (Year 11) decides what her family sees; Pim (Year 7) needs her parent's consent first.
@@ -121,6 +122,7 @@ function FamilyMap({ persona, childId, go, lang, version, toast }) {
       <Head persona={persona} childId={childId} screen="family" go={go} lang={lang} title={say.homeT(s.name)} lede={youngStudent(s) ? say.homeYoung(f) : say.homeOld(f)} />
       <FamilyBooking persona={persona} lang={lang} version={version} toast={toast} />
       <FamilyConfNotes persona={persona} lang={lang} version={version} toast={toast} />
+      <FamilyMovingUp childId={childId} lang={lang} version={version} />
       {empty ? (
         <div className="card-sec fam-empty">
           <p>{say.empty(f)}</p>

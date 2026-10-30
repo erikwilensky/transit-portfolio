@@ -3,6 +3,7 @@ import { overview } from '../auth.js';
 import '../auth.css';
 import './overview.css';
 import { YearReflections } from '../components/TermReflection.jsx';
+import { YearMovingUp } from '../components/MovingUp.jsx';
 import { YearBooking } from '../components/ConferenceBooking.jsx';
 import { PeerYears } from '../components/PeerFeedback.jsx';
 
@@ -71,6 +72,7 @@ export default function Overview({ persona, version, toast }) {
         <WeekBars weeks={r.weeks} />
       </section>
       <YearReflections persona={persona} version={version} toast={toast} />
+      <YearMovingUp persona={persona} version={version} toast={toast} />
       <YearBooking persona={persona} version={version} toast={toast} />
       <PeerYears persona={persona} version={version} toast={toast} />
     </div>

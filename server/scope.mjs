@@ -235,6 +235,7 @@ export function scopedSnapshot(user) {
   store.casHours = parent ? [] : (full.casHours || []).filter((x) => (self ? x.studentId === self : casCoord || (!!tid && x.supervisor?.kind === 'staff' && x.supervisor.teacherId === tid))).map(casOut);
   Object.assign(store, familyNotesScope(full, store, { user, all, self, parent, tid, shown, moderator }));
   Object.assign(store, schoolEventScope(full, { all, self, parent, staff, tid, inReach, shown }));
+  Object.assign(store, movingUpScope(full, { user, all, self, parent, tid, inReach, shown }));
   // Class photo drop (api.dropPhotos): the batch goes only to the teacher who sent it. In their spotted copy a "Not for me"
   // stays declined (they see who said no). A student's answered offer keeps only the photos they kept (none after "Not for
   // me" or expiry), so a photo they turned down no longer opens for them. Their own photo reports keep the photo id.
@@ -426,3 +427,22 @@ Object.assign(TOUCHES, {
 });
 // Class photo drop: the students given a photo, as the sending teacher (canAct's own rules are dropOk in auth.mjs).
 Object.assign(TOUCHES, { dropPhotos: (a) => T([...new Set([].concat(a[2]?.photos || []).flatMap((p) => [].concat(p?.studentIds || [])))], [a[1] ?? '?']) });
+// ── Moving-up summaries (api.openMovingUp, finishMovingUp): a window goes to whole-school roles whole, to staff when it
+// covers a student in reach (only those ids) and to a student it covers (only their own id); never to families. A student
+// gets their own summaries whole. Whole-school roles and the student's current advisor get a finished summary (its picked
+// moments only as far as they receive them) and only whether a draft is started; other staff nothing. A family gets a
+// finished summary only when the student said yes (family: true), with only the moments the family view shows. ──
+function movingUpScope(full, { user, all, self, parent, tid, inReach, shown }) {
+  const movingUpWindows = parent ? [] : (full.movingUpWindows || []).flatMap((w) => { const ids = w.studentIds.filter((x) => (self ? x === self : inReach(x))); return all ? [w] : ids.length ? [{ ...w, studentIds: ids }] : []; });
+  const kids = new Set(parent ? user.children || [] : []);
+  const advises = (sid) => all || (!!tid && inReach(sid) && api.getStudent(sid)?.advisorId === tid);
+  const done = ({ step, ...r }) => ({ ...r, picks: (r.picks || []).filter((id) => shown.has(id)), moments: (r.moments || []).filter((m) => shown.has(m.eventId)) });
+  const movingUp = (full.movingUp || []).flatMap((r) => {
+    if (self) return r.studentId === self ? [r] : [];
+    if (parent) return kids.has(r.studentId) && r.status === 'done' && r.family === true ? [(({ goalIds, savedAt, startedAt, ...x }) => x)(done(r))] : [];
+    if (!advises(r.studentId)) return [];
+    return [r.status === 'done' ? done(r) : { id: r.id, windowId: r.windowId, studentId: r.studentId, stage: r.stage, status: r.status, startedAt: r.startedAt, doneAt: null }];
+  });
+  return { movingUpWindows, movingUp };
+}
+Object.assign(TOUCHES, { openMovingUp: (a) => T([], [a[1]]), closeMovingUp: () => T([]), saveMovingUp: (a) => T([a[1]]), finishMovingUp: (a) => T([a[1]]), setMovingUpFamily: (a) => T([a[0]]) });

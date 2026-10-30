@@ -381,7 +381,7 @@ const STU = {
   'Your family does not see comments.': 'ครอบครัวของคุณไม่เห็นความคิดเห็น', 'Change your comment': 'แก้ไขความคิดเห็นของคุณ', ' · edited': ' · แก้ไขแล้ว',
   'spotted something you did': 'สังเกตเห็นสิ่งที่คุณทำ', 'Add to my journey': 'เพิ่มลงเส้นทางของฉัน', 'Okay, it is not added.': 'ได้เลย ไม่เพิ่มแล้ว', 'Photo from your teacher': 'รูปจากครู',
   'Your browser turns what you say into words. This app does not record or keep your voice.': 'เบราว์เซอร์จะแปลงเสียงพูดของคุณเป็นตัวหนังสือ แอปนี้ไม่ได้อัดหรือเก็บเสียงของคุณ', OK: 'ตกลง',
-  Record: 'อัดเสียง', Stop: 'หยุด', 'Play again': 'เล่นอีกครั้ง', 'Record again': 'อัดใหม่', 'No voice note': 'ไม่ใช้ข้อความเสียง', 'Say it instead of typing': 'พูดแทนการพิมพ์',
+  Record: 'อัดเสียง', Stop: 'หยุด', 'Play again': 'เล่นอีกครั้ง', 'Record again': 'อัดใหม่', 'No voice note': 'ไม่ใช้ข้อความเสียง', 'Say it instead of typing': 'พูดเลย แทนการพิมพ์',
   'Speaking to type does not work in this browser. You can type instead.': 'เบราว์เซอร์นี้พูดแทนการพิมพ์ไม่ได้ พิมพ์แทนได้นะ', 'The microphone is not allowed here. You can type instead.': 'หน้านี้ยังไม่ได้รับอนุญาตให้ใช้ไมโครโฟน พิมพ์แทนได้นะ',
   'I did not hear anything. Try again, a bit closer.': 'ไม่ได้ยินเสียงเลย ลองอีกครั้ง พูดใกล้ ๆ หน่อย', 'The microphone could not start. You can type instead.': 'เปิดไมโครโฟนไม่ได้ พิมพ์แทนได้นะ',
   'Stop listening': 'หยุดฟัง', 'Listening… tap to stop': 'กำลังฟัง… แตะเพื่อหยุด', 'Say it': 'พูดเลย', 'Read this out loud': 'อ่านออกเสียง', 'Stop reading': 'หยุดอ่าน',
@@ -901,3 +901,65 @@ STU_RE.push(
   [/^· (\d+) to look at$/, (m) => `· ดูอีก ${m[1]} รายการ`],
   [/^[A-Z0-9][A-Za-z0-9 ]+(, [A-Z0-9][A-Za-z0-9 ]+)+$/, (m) => { const p = m[0].split(', ').map((x) => studentThai(x)); return p.every((x) => x != null) ? p.join(', ') : null; }],
 );
+// ── Moving-up summaries (src/components/MovingUp.jsx): the summary's labels and the sheet, in the reader's language
+// (families get Thai from here; students' screens are English, matched below), then the student's flow. ──
+const MU = {
+  en: {
+    head: 'Where I’ve been, where I’m going', moments: 'Moments I picked', who: 'Who I am', proud: 'What I’m proud of', learn: 'How I learn best',
+    helps: 'What helps me', hopes: 'My hopes for Year 10', hopesDp: 'My hopes for the IB Diploma', goal: 'Now a goal on my journey',
+    dp: 'IB Diploma subjects I’m thinking about', cas: 'CAS ideas: creative, active, helping others', onePage: 'One A4 page. Print it or save it as a PDF.',
+    print: 'Print', close: 'Close', stage9: 'Year 9, moving up to Year 10 (IB MYP)', stage11: 'Year 11, moving up to the IB Diploma (Years 12 and 13)',
+    forNext: 'For my next advisor', written: (d) => `Written on ${d}`, famYes: 'My family can see it', famNo: 'Not shown to my family',
+    famHead: (f) => `${f}’s moving-up summary`, famIntro: (f, y) => `${f} wrote this at the end of Year ${y} for their next advisor, and chose to share it with you.`,
+  },
+  th: {
+    head: 'เส้นทางที่ผ่านมา และก้าวต่อไปของฉัน', moments: 'ช่วงเวลาที่ฉันเลือก', who: 'ฉันเป็นคนแบบไหน', proud: 'สิ่งที่ฉันภูมิใจ', learn: 'วิธีที่ฉันเรียนรู้ได้ดีที่สุด',
+    helps: 'สิ่งที่ช่วยฉันได้', hopes: 'ความหวังของฉันใน Year 10', hopesDp: 'ความหวังของฉันใน IB Diploma', goal: 'เป็นเป้าหมายบนเส้นทางแล้ว',
+    dp: 'วิชา IB Diploma ที่ฉันกำลังคิดจะเลือก', cas: 'ไอเดีย CAS: สร้างสรรค์ ออกกำลัง และช่วยเหลือผู้อื่น', onePage: 'หนึ่งหน้า A4 พิมพ์ออกมาหรือบันทึกเป็น PDF ได้',
+    print: 'พิมพ์', close: 'ปิด', stage9: 'Year 9 กำลังขึ้น Year 10 (IB MYP)', stage11: 'Year 11 กำลังขึ้น IB Diploma (Year 12 และ 13)',
+    forNext: 'ถึงครูที่ปรึกษาคนต่อไปของฉัน', written: (d) => `เขียนเมื่อ ${d}`, famYes: 'ครอบครัวของฉันเห็นได้', famNo: 'ไม่ได้แสดงให้ครอบครัวเห็น',
+    famHead: (f) => `สรุปก่อนขึ้นชั้นของ ${f}`, famIntro: (f, y) => `${f} เขียนสรุปนี้ตอนจบ Year ${y} ถึงครูที่ปรึกษาคนต่อไป และเลือกแบ่งปันให้คุณได้อ่าน`,
+  },
+};
+export const muWords = (lang) => MU[lang === 'th' ? 'th' : 'en'];
+for (const k of Object.keys(MU.en)) if (typeof MU.en[k] === 'string') STU[MU.en[k]] ??= MU.th[k];
+for (const [k, v] of Object.entries({
+  'You are moving up to the IB Diploma. Tell your next advisor about you: a few moments, how you learn best and your hopes.': 'คุณกำลังขึ้น IB Diploma เล่าเรื่องของคุณให้ครูที่ปรึกษาคนต่อไปฟัง: ช่วงเวลาสองสามอย่าง วิธีที่คุณเรียนรู้ได้ดีที่สุด และความหวังของคุณ',
+  'You are moving up to Year 10. Tell your next advisor about you: a few moments, how you learn best and your hopes.': 'คุณกำลังขึ้น Year 10 เล่าเรื่องของคุณให้ครูที่ปรึกษาคนต่อไปฟัง: ช่วงเวลาสองสามอย่าง วิธีที่คุณเรียนรู้ได้ดีที่สุด และความหวังของคุณ',
+  'My moving-up summary': 'สรุปก่อนขึ้นชั้นของฉัน', 'Let my family see it': 'ให้ครอบครัวของฉันเห็น',
+  'Your advisor, next year’s advisor and your family can see it.': 'ครูที่ปรึกษา ครูที่ปรึกษาปีหน้า และครอบครัวของคุณเห็นได้',
+  'Your advisor and next year’s advisor can see it.': 'ครูที่ปรึกษาและครูที่ปรึกษาปีหน้าเห็นได้',
+  'Your family can see it now.': 'ตอนนี้ครอบครัวของคุณเห็นได้แล้ว', 'Your family cannot see it now.': 'ตอนนี้ครอบครัวของคุณเห็นไม่ได้แล้ว',
+  'Nothing on your journey to pick yet. That is fine: you can still write your summary.': 'ยังไม่มีอะไรบนเส้นทางให้เลือก ไม่เป็นไร คุณยังเขียนสรุปได้',
+  'Who are you? What are you like?': 'คุณเป็นใคร เป็นคนแบบไหน', 'What are you proud of?': 'คุณภูมิใจในเรื่องอะไร', 'How do you learn best?': 'คุณเรียนรู้ได้ดีที่สุดแบบไหน',
+  'What helps you when things are hard?': 'อะไรช่วยคุณได้เวลาเจอเรื่องยาก', 'What could you do for CAS?': 'คุณจะทำอะไรสำหรับ CAS ได้บ้าง',
+  'I am…': 'ฉันเป็นคน…', 'People say I am…': 'คนอื่นบอกว่าฉัน…', 'I really like…': 'ฉันชอบ…มาก', 'I kept going with…': 'ฉันไม่ยอมแพ้กับ…',
+  'I learn best when…': 'ฉันเรียนรู้ได้ดีที่สุดเมื่อ…', 'I like to…': 'ฉันชอบ…', 'It helps me to see…': 'มันช่วยฉันได้ถ้าได้เห็น…', 'It helps when…': 'มันช่วยได้เมื่อ…',
+  'Please…': 'ช่วย…ด้วย', 'I work well with…': 'ฉันทำงานได้ดีกับ…', 'I could start…': 'ฉันอาจเริ่ม…', 'I would like to help…': 'ฉันอยากช่วย…', 'I want to try…': 'ฉันอยากลอง…',
+  'A hope for next year': 'ความหวังสำหรับปีหน้า', 'Another hope': 'ความหวังอีกข้อ', 'e.g. Join the debate club': 'เช่น เข้าชมรมโต้วาที',
+  'Make it a goal on my journey': 'ตั้งเป็นเป้าหมายบนเส้นทางของฉัน', 'Add a second hope': 'เพิ่มความหวังข้อที่สอง', Line: 'สาย',
+  'Yes, my family can see it': 'ได้ ครอบครัวของฉันเห็นได้', 'No, only my advisors': 'ไม่ ให้เห็นแค่ครูที่ปรึกษา',
+  'Your family sees it on their family page. You can change this later.': 'ครอบครัวของคุณจะเห็นในหน้าครอบครัว เปลี่ยนใจภายหลังได้',
+  'You choose. Your family sees it on their family page. You can change this later.': 'คุณเป็นคนเลือก ครอบครัวของคุณจะเห็นในหน้าครอบครัว เปลี่ยนใจภายหลังได้',
+  'Can your family see it?': 'ครอบครัวของคุณเห็นได้ไหม', 'Look back at Years 7 to 9': 'มองย้อน Year 7 ถึง 9', 'Look back at Years 10 and 11': 'มองย้อน Year 10 และ 11',
+  'Tap up to 5 moments that show who you are.': 'แตะเลือกได้สูงสุด 5 ช่วงเวลาที่บอกว่าคุณเป็นใคร', 'About you': 'เกี่ยวกับคุณ', 'For your next advisor': 'ถึงครูที่ปรึกษาคนต่อไป',
+  'How you learn': 'วิธีที่คุณเรียนรู้', 'Your hopes for the IB Diploma': 'ความหวังของคุณใน IB Diploma', 'Your hopes for Year 10': 'ความหวังของคุณใน Year 10',
+  'One or two. A hope can become a goal on your journey.': 'หนึ่งหรือสองข้อ ความหวังเป็นเป้าหมายบนเส้นทางได้', 'The IB Diploma': 'IB Diploma',
+  'In Years 12 and 13 you choose six subjects. You also do CAS: something creative, something active, and helping others.': 'ใน Year 12 และ 13 คุณจะเลือกเรียนหกวิชา และทำ CAS ด้วย: งานสร้างสรรค์ การออกกำลัง และการช่วยเหลือผู้อื่น',
+  'Which subjects are you thinking about?': 'คุณกำลังคิดจะเลือกวิชาอะไร', 'e.g. Biology, English, Visual Arts': 'เช่น ชีววิทยา ภาษาอังกฤษ ทัศนศิลป์',
+  'Pick up to 5 moments that show who you are. Private moments are not here.': 'เลือกได้สูงสุด 5 ช่วงเวลาที่บอกว่าคุณเป็นใคร ช่วงเวลาส่วนตัวไม่แสดงที่นี่',
+})) STU[k] ??= v;
+STU_RE.push(
+  [/^Your summary is saved for your next advisor\. (.+)$/, (m, t) => `บันทึกสรุปของคุณไว้ให้ครูที่ปรึกษาคนต่อไปแล้ว ${t(m[1])}`],
+  [/^Saved for your next advisor\. (.+)$/, (m, t) => `บันทึกไว้ให้ครูที่ปรึกษาคนต่อไปแล้ว ${t(m[1])}`],
+  [/^Check it over, then finish\. (.+)$/, (m, t) => `ตรวจดูอีกครั้งแล้วกดเสร็จ ${t(m[1])}`],
+  [/^For your next advisor\. Open until (.+)\. Your progress is kept: save and come back any time\.$/, (m) => `ถึงครูที่ปรึกษาคนต่อไป เปิดถึง ${thaiDates(m[1])} ระบบเก็บสิ่งที่ทำไว้ บันทึกแล้วกลับมาทำต่อได้ทุกเมื่อ`],
+  [/^(\d)\. (Look back at Years .+|About you|How you learn|Your hopes for .+|The IB Diploma|Can your family see it\?)$/, (m, t) => `${m[1]}. ${t(m[2])}`],
+  [/^Written on (.+) · (My family can see it|Not shown to my family)$/, (m) => `เขียนเมื่อ ${thaiDates(m[1])} · ${MU.th[m[2] === 'My family can see it' ? 'famYes' : 'famNo']}`],
+);
+NOTE_TH.push([/^(.+) is open: write a short summary for your next advisor$/, (m) => `${m[1]} เปิดแล้ว เขียนสรุปสั้น ๆ ถึงครูที่ปรึกษาคนต่อไปของคุณ`]);
+for (const [k, v] of Object.entries({
+  'Say a little about who you are or what you are proud of': 'เล่าสักนิดว่าคุณเป็นใคร หรือภูมิใจในเรื่องอะไร', 'Say how you learn best or what helps you': 'บอกว่าคุณเรียนรู้ได้ดีที่สุดแบบไหน หรืออะไรช่วยคุณได้',
+  'Write one hope for next year': 'เขียนความหวังสำหรับปีหน้าหนึ่งข้อ', 'Pick a line for the hope that becomes a goal': 'เลือกสายให้ความหวังที่จะเป็นเป้าหมาย',
+  'Choose whether your family can see it': 'เลือกว่าครอบครัวของคุณเห็นได้หรือไม่', 'This summary is not for you': 'สรุปนี้ไม่ใช่ของคุณ', 'This summary is closed': 'สรุปนี้ปิดแล้ว', 'No such summary': 'ไม่พบสรุปนี้',
+})) ERR_TH[k] ??= v;
