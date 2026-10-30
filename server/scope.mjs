@@ -355,3 +355,5 @@ Object.assign(TOUCHES, {
   logCasExperience: own0, logCasHours: (a) => T([a[0], ev(a[1])]), withdrawCasHours: (a) => T([casOwner(a[0])]), setCasCode: (a) => T([casOwner(a[0])]),
   confirmCasHours: (a) => T([casOwner(a[0])], [a[1]]), returnCasHours: (a) => T([casOwner(a[0])], [a[1]]), setCasCoordinator: (a) => T([], [a[0]]),
 });
+// Notification settings: "Clear read" in your own bell (canAct checks the keys).
+Object.assign(TOUCHES, { clearReadNotifications: () => T([]) });

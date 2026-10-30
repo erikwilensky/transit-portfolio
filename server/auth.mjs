@@ -217,7 +217,7 @@ export function canAct(user, fn, args = []) {
   if (COMMENT_FNS.has(fn)) { try { return commentOk(user, fn, args); } catch { return false; } }
   if (SAFE_FNS.has(fn)) { try { return safeOk(user, fn, args); } catch { return false; } }
   // Only your own bell: every key must be one of yours (st:…, t:…, fam:…, role:…, or your record's demo persona id).
-  if (fn === 'markNotificationsRead') { const mine = new Set(api.notifyKeys({ kind: user.kind, studentId: user.studentId, teacherId: user.teacherId, children: user.children })); return [].concat(args[0] ?? []).every((k) => mine.has(k)); }
+  if (fn === 'markNotificationsRead' || fn === 'clearReadNotifications') { const mine = new Set(api.notifyKeys({ kind: user.kind, studentId: user.studentId, teacherId: user.teacherId, children: user.children })); return [].concat(args[0] ?? []).every((k) => mine.has(k)); }
   try {
     // A nudge: the student's own advisor, or whole-school staff, as themselves.
     if (fn === 'nudgeStudent') return STAFF.includes(user.kind) && !!user.teacherId && args[1] === user.teacherId && (reachOf(user) === null || api.getStudent(args[0])?.advisorId === user.teacherId);
@@ -265,10 +265,11 @@ function commentOk(user, fn, [target, by]) {
 
 // ── Per-person settings (POST /api/auth/prefs): each account's own language, kept on the account ──
 export const LANGS = ['en', 'th'];
-export function setPrefs(a, { lang, display }) {
-  if ((lang !== undefined || !display) && !LANGS.includes(lang)) return 'Pick English or Thai.';
+export function setPrefs(a, { lang, display, notify }) {
+  if ((lang !== undefined || (!display && !notify)) && !LANGS.includes(lang)) return 'Pick English or Thai.';
   if (lang !== undefined) a.lang = lang;
   if (display) a.display = display; // already checked (routes/19-prefs.mjs)
+  if (notify) a.notify = notify; // notification settings, checked there too
   saveAccounts();
   return null;
 }
