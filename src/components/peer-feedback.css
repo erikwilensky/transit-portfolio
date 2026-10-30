@@ -1,0 +1,48 @@
+/* Kind feedback from classmates (PeerFeedback.jsx): the home list, the dialog, the moment section, the Year switches. */
+.pf-classes { margin: 0; display: grid; gap: 8px; }
+.pf-head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.pf-head h2 { font-size: 17px; margin: 0; font-weight: 600; }
+.pf-head small { color: var(--muted); font-size: 13px; }
+.pf-classes ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.pf-moment { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; gap: 12px; align-items: center; background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; padding: 8px 12px; }
+.pf-moment img, .pf-ph { width: 56px; height: 44px; border-radius: 8px; object-fit: cover; }
+.pf-ph { display: grid; place-items: center; background: var(--surface-2); color: var(--navy); font-size: 18px; }
+.pf-what { display: grid; gap: 2px; min-width: 0; }
+.pf-what b { font-weight: 600; } .pf-what small { color: var(--muted); font-size: 12px; }
+.pf-mine { font-size: 13px; color: var(--ink); } .pf-mine em { font-style: normal; color: var(--navy); font-weight: 600; }
+.pf-classes.big .pf-moment { grid-template-columns: 72px minmax(0, 1fr); padding: 14px; border-radius: 16px; border-width: 2px; }
+.pf-classes.big .pf-moment img, .pf-classes.big .pf-ph { width: 72px; height: 56px; }
+.pf-classes.big .pf-moment button { grid-column: 1 / -1; font-size: 17px; padding: 12px; border-radius: 14px; }
+.pf-classes.big .pf-head h2 { font-size: 20px; }
+@media (max-width: 640px) { .pf-moment { grid-template-columns: 56px minmax(0, 1fr); } .pf-moment button { grid-column: 1 / -1; } }
+
+.pf-dialog { display: grid; gap: 10px; }
+.pf-dialog h2 { margin: 0; }
+.pf-big { max-width: 100%; max-height: 180px; border-radius: 10px; justify-self: start; }
+.pf-phrases { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pf-phrases button { padding: 12px 10px; border-radius: 12px; border: 2px solid var(--rule); background: var(--surface); color: var(--ink); font-weight: 600; font-size: 14px; text-align: left; }
+.pf-phrases button.on { border-color: var(--navy); background: var(--navy); color: #fff; }
+.pf-phrases button:disabled { opacity: .5; }
+.pf-finish { display: grid; gap: 4px; font-size: 14px; font-weight: 600; }
+.pf-finish input { font: inherit; font-weight: 400; padding: 10px; border: 1px solid var(--rule); border-radius: 10px; background: var(--surface); color: var(--ink); }
+.pf-count { color: var(--muted); font-size: 12px; } .pf-count.over { color: #b3261e; font-weight: 600; }
+.pf-dialog.big .pf-phrases button { font-size: 16px; padding: 16px 12px; }
+@media (max-width: 480px) { .pf-phrases { grid-template-columns: 1fr; } }
+
+.pf-on { margin: 14px 0; display: grid; gap: 8px; }
+.pf-on h3 { margin: 0; }
+.pf-switch { display: flex; gap: 8px; align-items: center; font-size: 14px; cursor: pointer; }
+.pf-switch input { width: 18px; height: 18px; accent-color: var(--navy); }
+.pf-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.pf-list li { border: 1px solid var(--rule); border-radius: 12px; padding: 10px 12px; background: var(--surface); }
+.pf-list p { margin: 4px 0; font-size: 14px; }
+.pf-who { display: flex; gap: 8px; align-items: baseline; } .pf-who b { font-weight: 600; } .pf-who small { color: var(--muted); font-size: 12px; }
+.pf-acts { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
+.pf-thanked { font-size: 13px; color: var(--navy); font-weight: 600; }
+.pf-on.big .pf-switch { font-size: 17px; } .pf-on.big .pf-switch input { width: 24px; height: 24px; }
+
+.pf-years { display: grid; gap: 8px; }
+.pf-years h2 { margin: 0; }
+.pf-yrs { display: flex; gap: 16px; flex-wrap: wrap; }
+:root[data-theme="dark"] .pf-phrases button.on { background: var(--b-sky); border-color: var(--b-sky); color: var(--navy); }
+:root[data-theme="dark"] .pf-thanked, :root[data-theme="dark"] .pf-mine em, :root[data-theme="dark"] .pf-ph { color: var(--b-sky); }

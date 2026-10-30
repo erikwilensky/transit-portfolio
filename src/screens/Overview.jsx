@@ -3,6 +3,7 @@ import { overview } from '../auth.js';
 import '../auth.css';
 import './overview.css';
 import { YearReflections } from '../components/TermReflection.jsx';
+import { PeerYears } from '../components/PeerFeedback.jsx';
 
 // School overview (server/routes/63-overview.mjs): counts by Year and by line, a weekly chart and quiet homerooms.
 // The server sends counts only; a group of 1 to 4 students arrives as "fewer than 5".
@@ -69,6 +70,7 @@ export default function Overview({ persona, version, toast }) {
         <WeekBars weeks={r.weeks} />
       </section>
       <YearReflections persona={persona} version={version} toast={toast} />
+      <PeerYears persona={persona} version={version} toast={toast} />
     </div>
   );
 }

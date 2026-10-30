@@ -921,6 +921,8 @@ export function studentData(sid, alsoTo = []) {
   }
   // Reports about them: reasons and outcomes, never who reported (moderateReport).
   if (own.reports) own.reports = own.reports.map(({ from, ...x }) => x);
+  // Kind feedback they received: the classmate's first name, not their id.
+  if (own.peerFeedback) own.peerFeedback = own.peerFeedback.map(({ fromId, ...x }) => (fromId === sid ? { fromId, ...x } : x));
   return { format: 'nist-transit-portfolio/pdpa-copy/v1', studentId: sid, recordDate: TODAY, student: structuredClone(student), own, mentioned, activity: getActivity(sid) };
 }
 // Removes the student and everything above from the record. Admin only (server/auth.mjs ADMIN_ONLY); the
@@ -2140,6 +2142,129 @@ export function advisoryReflection(advisorId) {
   return w ? reflectionProgress(w.id, advisorId) : null;
 }
 
+// ── Kind feedback from classmates (pilot, Year 9 and up; src/components/PeerFeedback.jsx) ──
+// A student opts a school-visible moment in (e.peerFeedback); classmates in a current class give feedback from set
+// phrases. store.peerFeedback [{ id: 'pf-…', eventId, studentId (the owner), fromId, fromName, classId, parts:
+// [{ phrase, text }], at, thanked?, hidden? }] and store.peerSettings { offYears: [British Years] }, made on first use.
+// A pilot browser holds store.peerMoments (server/scope.mjs): the classmates' opted-in moments it may see.
+export const PEER_PHRASES = { liked: 'I liked how…', think: 'This made me think about…', question: 'A question I have…', try: 'You could try…' };
+export const PEER_MIN_GRADE = 8; // Year 9
+export const PEER_NOTE_MAX = 200;
+export const PEER_DAY_LIMIT = 10;
+const PEER_VIS = ['school', 'publishable'];
+const pfErr = (message, status = 400) => Object.assign(new Error(message), { status });
+const bkkDay = (iso) => new Date(iso).toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
+export const peerYearOff = (year) => (store.peerSettings?.offYears || []).includes(Number(year));
+export const peerEligible = (sid) => { const s = getStudent(sid); return !!s && s.grade >= PEER_MIN_GRADE && !peerYearOff(s.grade + 1); };
+export const peerQualifies = (e) => !!e && e.type !== 'goal' && PEER_VIS.includes(e.visibility) && !e.hidden;
+export const peerOpen = (e) => !!e?.peerFeedback && peerQualifies(e) && peerEligible(e.studentId);
+const peerClasses = (sid) => new Set(getEnrolments().filter((n) => n.studentId === sid && !(n.to && n.to < TODAY)).map((n) => n.classId));
+export function sharedClasses(a, b) { const mine = peerClasses(a); return a === b ? [] : [...peerClasses(b)].filter((c) => mine.has(c)).sort(); }
+export const getPeerFeedback = (id) => (store.peerFeedback || []).find((f) => f.id === id);
+export const peerFeedbackOn = (eventId) => (store.peerFeedback || []).filter((f) => f.eventId === eventId).sort((a, b) => a.at.localeCompare(b.at));
+export const peerGivenBy = (sid) => (store.peerFeedback || []).filter((f) => f.fromId === sid);
+export const peerText = (p) => `${PEER_PHRASES[p.phrase].replace(/…$/, '')} ${p.text}`;
+export const peerGivenToday = (sid) => peerGivenBy(sid).filter((f) => bkkDay(f.at) === bkkDay(new Date().toISOString())).length;
+// Classmates' opted-in moments a student may see: title, first photo, first name, the class they share.
+export function peerMomentsFor(sid) {
+  if (!peerEligible(sid)) return [];
+  if (store.peerMoments) return store.peerMoments;
+  const mine = peerClasses(sid); if (!mine.size) return [];
+  const mates = new Map();
+  for (const n of getEnrolments()) if (mine.has(n.classId) && n.studentId !== sid && !(n.to && n.to < TODAY) && !mates.has(n.studentId)) mates.set(n.studentId, n.classId);
+  return store.events.filter((e) => mates.has(e.studentId) && peerOpen(e)).sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id)).slice(0, 40).map((e) => {
+    const c = getClasses().find((x) => x.id === mates.get(e.studentId));
+    return { eventId: e.id, studentId: e.studentId, name: getStudent(e.studentId).name.split(' ')[0], title: e.title, image: e.evidence?.find(isPhoto)?.url || null, classId: c?.id || null, className: c?.name || '', date: e.date };
+  });
+}
+export function setPeerFeedback(eventId, on) {
+  const e = getEvent(eventId); if (!e) throw pfErr('No such moment.', 404);
+  if (on) {
+    if (!peerEligible(e.studentId)) throw pfErr('Kind feedback is not on for your Year.', 409);
+    if (!peerQualifies(e)) throw pfErr('Only moments the school can see can have feedback from classmates.');
+    e.peerFeedback = true;
+  } else delete e.peerFeedback;
+  emit();
+}
+export function givePeerFeedback(eventId, fromId, parts) {
+  const from = getStudent(fromId); if (!from) throw pfErr('No such student.', 404);
+  if (!peerEligible(fromId)) throw pfErr('Kind feedback is not on for your Year.', 409);
+  const e = getEvent(eventId);
+  if (e?.studentId === fromId) throw pfErr('This is your own moment.');
+  const m = e ? (peerOpen(e) ? { studentId: e.studentId, title: e.title, classId: sharedClasses(e.studentId, fromId)[0] } : null) : (store.peerMoments || []).find((x) => x.eventId === eventId);
+  if (!m) throw pfErr('This moment is not open for feedback.', 409);
+  if (!m.classId) throw pfErr('You can give feedback only to classmates in your classes.', 403);
+  const list = [].concat(parts || []).map((p) => ({ phrase: p?.phrase, text: String(p?.text ?? '').replace(/\s+/g, ' ').trim() }));
+  if (!list.length || list.length > 2 || new Set(list.map((p) => p.phrase)).size !== list.length || list.some((p) => !PEER_PHRASES[p.phrase] || !p.text)) throw pfErr('Pick one or two phrases and finish each one.');
+  if (list.reduce((n, p) => n + p.text.length, 0) > PEER_NOTE_MAX) throw pfErr(`Keep it to ${PEER_NOTE_MAX} characters.`);
+  const at = nowIso();
+  if (peerGivenBy(fromId).filter((f) => bkkDay(f.at) === bkkDay(at)).length >= PEER_DAY_LIMIT) throw pfErr(`You have given ${PEER_DAY_LIMIT} pieces of feedback today. Try again tomorrow.`, 429);
+  const f = { id: uid('pf-'), eventId, studentId: m.studentId, fromId, fromName: from.name.split(' ')[0], classId: m.classId, parts: list, at };
+  (store.peerFeedback ||= []).push(f);
+  notify(toStudent(m.studentId), `${f.fromName} gave you kind feedback on “${m.title}”.`, { persona: toStudent(m.studentId), screen: 'map', param: eventId });
+  emit();
+  return f;
+}
+const ownPeer = (id) => { const f = getPeerFeedback(id); if (!f) throw pfErr('That feedback is gone.', 404); return f; };
+export function thankPeerFeedback(id) {
+  const f = ownPeer(id);
+  if (f.hidden) throw pfErr('That feedback is hidden.', 409);
+  if (f.thanked) return f;
+  f.thanked = nowIso();
+  const e = getEvent(f.eventId);
+  if (f.fromId) notify(toStudent(f.fromId), `${getStudent(f.studentId)?.name.split(' ')[0] || 'A classmate'} said thank you for your feedback on “${e?.title || 'a moment'}”.`, { persona: toStudent(f.fromId), screen: 'map' });
+  emit();
+  return f;
+}
+export function hidePeerFeedback(id) {
+  const f = ownPeer(id);
+  f.hidden = { at: nowIso(), by: 'student' };
+  emit();
+}
+export function setPeerFeedbackYear(year, on, by) {
+  const y = Number(year);
+  if (!(y >= PEER_MIN_GRADE + 1 && y <= 13)) throw pfErr('Pick Year 9 to 13.');
+  const s = (store.peerSettings ||= { offYears: [] }), off = new Set(s.offYears || []);
+  if (on) off.delete(y); else off.add(y);
+  s.offYears = [...off].sort((a, b) => a - b);
+  s.by = by || null; s.at = nowIso();
+  emit();
+}
+// Safeguarding: reportItem({ feedbackId }, …) and moderateReport on such a report (hide, unhide, none).
+const reportItemBase = reportItem, moderateReportBase = moderateReport;
+reportItem = function reportItem(target, reason, note, from) {
+  if (!target?.feedbackId) return reportItemBase(target, reason, note, from);
+  const f = ownPeer(target.feedbackId), e = getEvent(f.eventId); if (!e) throw pfErr('No such moment.', 404);
+  if (!REPORT_REASONS[reason]) throw pfErr('Pick a reason.');
+  const who = reporter(from, e);
+  if (who.role === 'Family') throw pfErr('Families do not see feedback.');
+  const at = nowIso(), list = (store.reports ||= []);
+  const open = list.find((r) => r.from.key === who.key && r.status === 'open' && r.feedbackId === f.id);
+  if (open) return open;
+  if (list.filter((r) => r.from.key === who.key && Date.parse(at) - Date.parse(r.at) < 3600e3).length >= REPORT_LIMIT) throw pfErr('You have sent a lot of reports. Try again later, or speak to a teacher.', 429);
+  const r = { id: uid('rp-'), kind: 'feedback', eventId: e.id, feedbackId: f.id, studentId: e.studentId, reason, note: String(note ?? '').trim().slice(0, 1000), at, from: who, status: 'open', history: [] };
+  list.push(r);
+  for (const k of MODERATOR_KINDS) notify(toRole(k), `New report: kind feedback on “${e.title}” (${getStudent(e.studentId).name}). ${REPORT_REASONS[reason]}.`, { persona: toRole(k), screen: 'reports', param: r.id });
+  emit();
+  return r;
+};
+moderateReport = function moderateReport(id, action, note, by) {
+  const r = getReport(id);
+  if (!r?.feedbackId) return moderateReportBase(id, action, note, by);
+  if (!REPORT_STATUS[action]) throw pfErr('Pick what to do.');
+  if (action === 'photo') throw pfErr('Feedback has no photo.');
+  if (by && !teacherById[by]) throw pfErr('No such teacher.');
+  const f = getPeerFeedback(r.feedbackId), e = getEvent(r.eventId);
+  if (action !== 'none' && !f) throw pfErr('That feedback is gone.', 404);
+  const at = nowIso(), name = by ? teacherById[by].name : 'Pilot admin', to = toStudent(r.studentId), go = e ? { persona: to, screen: 'map', param: e.id } : undefined;
+  if (action === 'hide') { f.hidden = { at, by: name }; notify(to, `A teacher has hidden kind feedback on “${e?.title}”.`, go); }
+  if (action === 'unhide') { delete f.hidden; notify(to, `A teacher has finished looking at kind feedback on “${e?.title}”. It is shown again.`, go); }
+  const entry = { action, note: String(note ?? '').trim().slice(0, 1000), at, by: name };
+  for (const x of store.reports) if (x.feedbackId === r.feedbackId) { x.history.push({ ...entry }); x.status = REPORT_STATUS[action]; }
+  emit();
+  return r;
+};
+
 // ── Shared record: with the pilot server, every change is replayed there ──
 // A screen calls a change below; it runs here at once (instant UI) while recording the ids and
 // times it made. The hook (src/sync.js) posts { fn, args, rec } to /api/action, and the server runs
@@ -2196,6 +2321,7 @@ addMomentComment = act('addMomentComment', addMomentComment); editMomentComment 
 reportItem = act('reportItem', reportItem); moderateReport = act('moderateReport', moderateReport);
 spotMoment = act('spotMoment', spotMoment); acceptSpotted = act('acceptSpotted', acceptSpotted); declineSpotted = act('declineSpotted', declineSpotted);
 setHandoverNote = act('setHandoverNote', setHandoverNote); carryOverGoal = act('carryOverGoal', carryOverGoal); closeGoal = act('closeGoal', closeGoal);
+setPeerFeedback = act('setPeerFeedback', setPeerFeedback); givePeerFeedback = act('givePeerFeedback', givePeerFeedback); thankPeerFeedback = act('thankPeerFeedback', thankPeerFeedback); hidePeerFeedback = act('hidePeerFeedback', hidePeerFeedback); setPeerFeedbackYear = act('setPeerFeedbackYear', setPeerFeedbackYear);
 openReflectionWindow = act('openReflectionWindow', openReflectionWindow); closeReflectionWindow = act('closeReflectionWindow', closeReflectionWindow); saveTermReflection = act('saveTermReflection', saveTermReflection); finishTermReflection = act('finishTermReflection', finishTermReflection);
 // Undo puts a whole earlier copy back, and reset goes back to the seed (sync.js sends it to /api/reset).
 restore = act('restore', restore); resetDemo = act('resetDemo', resetDemo);

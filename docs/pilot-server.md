@@ -1220,3 +1220,44 @@ A signed-in pilot account can add moments (photos too) with no connection; they 
   `node scripts/checks/offline-capture.cjs` (real roster from `TP_ROSTER`; `context.setOffline`): Aaron Torres on a
   phone adds a moment with a photo offline, reloads offline, comes back; Mr David Coultas, in his own context, sees the
   moment and the photo; the sign-out warning; a second account on the same browser never sends Aaron's queue.
+## Kind feedback from classmates (`src/api.js`, `src/components/PeerFeedback.jsx`, pilot only)
+
+A student in Year 9 or above can let classmates give kind feedback on a moment. Off by default, per moment. Pilot only (the
+screens check `isPilot()`); no route of its own: it runs on `/api/action` like any change.
+
+- **Record** (made on first use): `e.peerFeedback = true` on an opted-in station; `store.peerFeedback = [{ id: 'pf-…', eventId,
+  studentId (the owner), fromId, fromName (first name), classId (a current class they share), parts: [{ phrase, text }], at,
+  thanked?, hidden?: { at, by } }]`; `store.peerSettings = { offYears: [British Years], by, at }`. Phrases (`PEER_PHRASES`):
+  `liked` "I liked how…", `think` "This made me think about…", `question` "A question I have…", `try` "You could try…".
+- **Who takes part**: `peerEligible(sid)`: `grade >= PEER_MIN_GRADE` (8, so Year 9; the UI shows grade + 1) and the Year not
+  switched off. A moment qualifies (`peerQualifies`) when it is not a goal, is `school` or `publishable` and not hidden;
+  `peerOpen(e)` adds the switch and the owner's eligibility. Classmates: `sharedClasses(a, b)` (enrolments without an ended `to`).
+- **Mutators**: `setPeerFeedback(eventId, on)` (409 when the Year is off; 400 on a moment the school cannot see);
+  `givePeerFeedback(eventId, fromId, parts)` (one or two different phrases, each finished, 200 characters in all
+  (`PEER_NOTE_MAX`); 403 no shared class, 409 not open, 429 after `PEER_DAY_LIMIT` = 10 in a Bangkok day; notifies the owner
+  "Mei gave you kind feedback on “…”"); `thankPeerFeedback(id)` (notifies the giver); `hidePeerFeedback(id)`;
+  `setPeerFeedbackYear(year, on, by)` (Years 9 to 13). No replies, no free text beyond finishing a phrase. Reads:
+  `peerMomentsFor(sid)`, `peerFeedbackOn(eventId)`, `peerGivenBy(sid)`, `peerGivenToday(sid)`, `peerText(part)`.
+- **Safeguarding**: `reportItem({ feedbackId }, reason, note, from)` makes a `kind: 'feedback'` report (`studentId` = the
+  moment's owner, same limits and moderator notifications); `moderateReport` on it: `hide`, `unhide`, `none` (`photo` is
+  refused) and sets `hidden` on the feedback. Reports shows "Kind feedback from a classmate (name)" and the text.
+- **canAct** (`PF_FNS` and `peerOk` in `server/auth.mjs`, before the admin rule): opting in, thanking and hiding: only the
+  moment's owner. Giving: only a student, as themselves, on a moment whose owner shares a current class with them; never
+  staff or admins. Year switch: coordinators and leadership as themselves, admins. Reporting feedback: the owner
+  (`'student'`), staff who read it (the class's teachers, either student's advisor, whole-school roles) as themselves, admins.
+- **Scope** (`server/scope.mjs`): a student gets `store.peerMoments` (classmates' open moments: `{ eventId, studentId, name
+  (first), title, image (first photo), classId, className, date }`, at most 40, never the summary or anything else), the
+  feedback they gave (without `hidden`), and the not-hidden feedback on their own moments without `fromId`. Staff: the class's
+  teachers, the owner's and the giver's advisors and whole-school roles get it whole. Families: nothing. A student's own
+  feedback report keeps its `feedbackId`. Files (`server/files.mjs`): a student may open the photo of a moment in their
+  `peerMomentsFor` list.
+- **PDPA**: `peerFeedback.json` in the copy holds feedback given and received (received ones with the first name, not the
+  id); erasure removes the student's given and received feedback (and the switch goes with their stations).
+- **Screens**: student home at every level, "From your classes" (title, photo, first name, class, what you said and the
+  thank-you; "Give kind feedback" opens the phrase picker). Station panel (and the Simple moment card): the owner's
+  "Let classmates in my classes give kind feedback" switch and the feedback with "Say thank you", "Hide", "Report"; staff
+  read it with full names and can report. My classes, class page: "Kind feedback in this class". School overview: "Kind
+  feedback from classmates" with a switch per Year 9 to 13.
+- Tests: `server/test/peer-feedback.test.mjs`; browser: `node scripts/checks/peer-feedback.cjs` (the real roster from
+  `TP_ROSTER`: two Year 9+ students sharing a class taught by a plain teacher; an outsider; Aaron Torres; a coordinator;
+  screenshots `tp-peer-*.png`).

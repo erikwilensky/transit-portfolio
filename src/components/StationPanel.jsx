@@ -3,6 +3,7 @@ import { VerifyBadge } from './Badge.jsx';
 import RecordInspector from './RecordInspector.jsx';
 import MomentComments, { commentViewer } from './MomentComments.jsx';
 import { HiddenNotice, ReportButton } from './Report.jsx';
+import { PeerOnMoment } from './PeerFeedback.jsx';
 import { ATL, LEARNER_PROFILE, setTags, addCheckIn, addReflection, completeGoal, deleteStation, editStation, getTeacher, getTeachers, requestEndorsement, getEvent, requestFor, resubmit, setVisibility, snapshot, TODAY, endorserChoices } from '../api.js';
 import { createPortal } from 'react-dom';
 import EvidenceDoc, { docLabel } from './EvidenceDoc.jsx';
@@ -86,6 +87,7 @@ export default function StationPanel({ event, map, onClose, readOnly = false, on
           ))}
 
           {!(readOnly && commentViewer(event)?.me === 'student') && <MomentComments key={`c-${event.id}`} event={event} toast={toast} />}
+          <PeerOnMoment key={`pf-${event.id}`} event={event} toast={toast} />
 
           <dl className="meta">
             <dt>{t('Source')}</dt><dd>{event.source.system}{event.source.ref ? ` · ${event.source.ref}` : ''}</dd>

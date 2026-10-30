@@ -6,6 +6,7 @@ import StationPanel from '../components/StationPanel.jsx';
 import { AskClassDialog, ClassQuestions } from '../components/ClassPrompts.jsx';
 import ClassAnswers from '../components/ClassAnswers.jsx';
 import { SpotDialog, SpottedList } from '../components/Spotted.jsx';
+import { PeerClassList } from '../components/PeerFeedback.jsx';
 import './classes.css';
 
 // Pilot: a teacher's classes from the class lists. #/<persona>/classes, /classes/<classId>,
@@ -115,6 +116,7 @@ function ClassPage({ classId, teacherId, go, persona, version, toast }) {
         </table>
       )}
       <SpottedList teacherId={teacherId} classId={c.id} version={version} />
+      <PeerClassList classId={c.id} version={version} />
     </div>
   );
 }
