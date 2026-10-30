@@ -14,6 +14,7 @@ const ACTIONS = {
   'pdpa-copy': 'Downloaded a data copy', 'pdpa-erase': 'Erased a student',
   'leaver-archive': 'Downloaded a leaver archive', 'erasure-schedule': 'Scheduled an erasure', 'erasure-cancel': 'Withdrew an erasure',
   'file-refused': 'Files refused', 'family-join': 'Family joined', 'family-remove': 'Family member removed', 'family-letters': 'Made family letters',
+  'report-export': 'Downloaded report comments', 'report-limits': 'Set report comment length',
   'cas-code': 'Made a CAS confirmation code', 'cas-confirm': 'Outside supervisor answered CAS hours',
 };
 const KIND = { student: 'Student', advisor: 'Advisor', teacher: 'Teacher', counsellor: 'Counsellor', coordinator: 'Coordinator', leadership: 'Leadership', parent: 'Family', admin: 'Admin' };

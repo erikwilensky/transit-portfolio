@@ -12,6 +12,7 @@ import * as A from '../auth.mjs';
 import { zip } from '../zip.mjs';
 import { feedbackOf, eraseFeedbackOf } from '../feedback.mjs';
 import * as L from '../audit.mjs';
+import { draftsAbout, eraseDraftsAbout } from '../report-comments.mjs';
 
 const UPLOADS = path.join(DATA_DIR, 'uploads');
 const AUDIT = path.join(DATA_DIR, 'audit.log');
@@ -63,7 +64,7 @@ const ABOUT = {
   peerFeedback: 'Kind feedback you gave classmates, and feedback classmates gave you (with their first name), whether it was thanked or hidden.',
   handIns: 'Tasks teachers set your classes that you handed in (or were given more time or a reminder for): when, which moment, what you ticked.',
 };
-const README = (s, files, accounts, when) => [
+const README = (s, files, accounts, when, rc) => [
   `Everything NIST Transit Portfolio holds about ${s.name} (student id ${s.id})`,
   `Made on ${when.slice(0, 10)} at ${when.slice(11, 16)} UTC, under Thailand's Personal Data Protection Act (the right to a copy).`,
   '',
@@ -74,6 +75,7 @@ const README = (s, files, accounts, when) => [
   ...files.map(([f, about]) => `${f.padEnd(20)}${about}`),
   accounts ? 'accounts.json       Your sign-in account and the family accounts linked to you. Passwords are never kept in a readable form and are not included.' : null,
   'feedback.json       Feedback you sent with the Feedback button, with the screen you were on and your browser.',
+  rc ? 'report-comments.json Report comments teachers and your advisor were drafting about you (not yet final), with who wrote each and when.' : null,
   'mentions.json       Other people\'s items that list you (a class task you handed in), with only your entry.',
   'files/              The files you uploaded as evidence. manifest.json gives each one\'s original name.',
   'manifest.json       A list of every file in this copy.',
@@ -82,7 +84,9 @@ const README = (s, files, accounts, when) => [
 ].filter((l) => l !== null).join('\r\n');
 
 // The copy as ZIP entries: [{ name, data }].
-export function buildCopy(sid) {
+// reportComments: teachers' private report comment drafts about the student (server/report-comments.mjs). Only in a copy an
+// admin makes (a formal PDPA request), never in the student's or family's own download or the leaver archive.
+export function buildCopy(sid, { reportComments = false } = {}) {
   const accounts = [...studentAccounts(sid), ...familyAccounts(sid)];
   const d = api.studentData(sid, studentAccounts(sid).map((a) => a.id));
   if (!d) return null;
@@ -96,6 +100,8 @@ export function buildCopy(sid) {
     described.push([`${k}.json`, ABOUT[k] || 'Other records about you.']);
   }
   if (accounts.length) entries.push({ name: 'accounts.json', data: json(accounts.map((a) => accountCopy(a, sid))) });
+  const rc = reportComments ? draftsAbout(sid).map((x) => ({ kind: x.kind, class: x.kind === 'subject' ? api.getClasses().find((c) => c.id === x.group)?.name || x.group : 'Advisor comment', teacherId: x.teacherId, teacher: api.getTeacher(x.teacherId)?.name || null, text: x.text, done: x.done, updatedAt: x.updatedAt })) : null;
+  if (rc) entries.push({ name: 'report-comments.json', data: json(rc) });
   entries.push({ name: 'mentions.json', data: json(d.mentioned) });
   const fb = feedbackOf(sid, studentAccounts(sid).map((a) => a.id));
   entries.push({ name: 'feedback.json', data: json(fb) });
@@ -104,14 +110,14 @@ export function buildCopy(sid) {
     let meta = {}; try { meta = JSON.parse(fs.readFileSync(path.join(UPLOADS, `${f}.json`), 'utf8')); } catch { /* no meta */ }
     try { entries.push({ name: `files/${f}`, data: fs.readFileSync(path.join(UPLOADS, f)) }); files.push({ file: `files/${f}`, name: meta.name || f, type: meta.type, size: meta.size, added: meta.at }); } catch { files.push({ file: null, name: meta.name || f, missing: true }); }
   }
-  entries.unshift({ name: 'README.txt', data: README(d.student, described, accounts.length, when) });
+  entries.unshift({ name: 'README.txt', data: README(d.student, described, accounts.length, when, !!rc) });
   entries.push({ name: 'manifest.json', data: json({ format: d.format, studentId: sid, madeAt: when, files: entries.map((e) => e.name).concat('manifest.json'), uploads: files }) });
   return { entries, student: d.student };
 }
 
 const slug = (s) => String(s).normalize('NFKD').replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-').toLowerCase() || 'student';
 function sendCopy(req, res, sid) {
-  const copy = buildCopy(sid);
+  const copy = buildCopy(sid, { reportComments: A.isAdmin(req.user) });
   if (!copy) throw fail(404, 'No such student.');
   audit({ action: 'copy', by: req.user?.id || null, studentId: sid });
   L.log(req, { action: 'pdpa-copy', target: L.studentsTarget([sid]) });
@@ -128,6 +134,7 @@ export function eraseStudent(sid, by) {
   const files = filesIn({ d: api.studentData(sid, own.map((a) => a.id)), fb: feedbackOf(sid, own.map((a) => a.id)) });
   const removed = api.eraseStudent(sid, own.map((a) => a.id));
   const feedback = eraseFeedbackOf(sid, own.map((a) => a.id)).length;
+  eraseDraftsAbout(sid); // report comment drafts about them
   changed({ fn: 'eraseStudent', by, erased: { studentId: sid, accounts: gone } });
   // Their files, unless another record still points to one (a station copied to a class page, for instance).
   const rest = api.snapshot();
