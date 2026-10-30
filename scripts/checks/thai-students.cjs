@@ -261,6 +261,9 @@ let srv;
       ok(THAI.test(await a.locator('.sh-flow textarea').inputValue()), 'a Simple starter writes Thai in “How did it go?”');
       await a.click('.sh-flow .sh-next .primary'); await a.waitForTimeout(400); await sweep(a, AARON, 'Aaron: after I did it');
     }
+    // Year sign-off (YearSignoff.jsx): Ms Altemen signs off his year; the card, and its notification in the bell below.
+    await act(alT, 'signOffYear', [AARON, ALTEMEN, {}]);
+    await a.reload(); await a.waitForSelector('.ys-card'); await sweep(a, AARON, 'Aaron: his advisor signed off his year');
     await a.click('.bell'); await sweep(a, AARON, 'Aaron: notifications'); await a.click('.bell');
     await a.click('.view-btn'); await sweep(a, AARON, 'Aaron: display menu'); await a.click('.view-btn');
     await a.click('.fb-simple button'); await a.waitForTimeout(300); await sweep(a, AARON, 'Aaron: tell us something'); await close(a);

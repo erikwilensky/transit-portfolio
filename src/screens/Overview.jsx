@@ -5,6 +5,7 @@ import './overview.css';
 import { YearReflections } from '../components/TermReflection.jsx';
 import { YearBooking } from '../components/ConferenceBooking.jsx';
 import { PeerYears } from '../components/PeerFeedback.jsx';
+import { SignoffProgress } from '../components/YearSignoff.jsx';
 
 // School overview (server/routes/63-overview.mjs): counts by Year and by line, a weekly chart and quiet homerooms.
 // The server sends counts only; a group of 1 to 4 students arrives as "fewer than 5".
@@ -73,6 +74,7 @@ export default function Overview({ persona, version, toast }) {
       <YearReflections persona={persona} version={version} toast={toast} />
       <YearBooking persona={persona} version={version} toast={toast} />
       <PeerYears persona={persona} version={version} toast={toast} />
+      {(persona?.admin || persona?.kind === 'leadership') && <SignoffProgress persona={persona} version={version} toast={toast} />}
     </div>
   );
 }

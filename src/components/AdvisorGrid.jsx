@@ -13,6 +13,7 @@ import { AdvisoryReflection } from './TermReflection.jsx';
 import { AdvisoryMilestones } from './Milestones.jsx';
 import { StuckFlags } from './GoalCheckins.jsx';
 import { AdvisoryBooking } from './ConferenceBooking.jsx';
+import { AdvisorSignoff } from './YearSignoff.jsx';
 
 export default function AdvisorGrid({ advisorId, onOpen, toast, version, persona, focus }) {
   const cohort = useMemo(() => getCohort(advisorId), [advisorId, version]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -41,6 +42,7 @@ export default function AdvisorGrid({ advisorId, onOpen, toast, version, persona
       {isPilot() && <AdvisorFamily toast={toast} />}
       <AdvisoryConference advisorId={advisorId} cohort={cohort} group={group.name} />
       <AdvisoryReflection advisorId={advisorId} toast={toast} version={version} />
+      {isPilot() && <AdvisorSignoff advisorId={advisorId} toast={toast} version={version} onOpen={onOpen} />}
       <StuckFlags teacherId={advisorId} toast={toast} version={version} onOpen={onOpen} />
       <AdvisoryBooking advisorId={advisorId} persona={persona} toast={toast} version={version} focus={focus} />
       <QuietGroup advisorId={advisorId} toast={toast} version={version} />

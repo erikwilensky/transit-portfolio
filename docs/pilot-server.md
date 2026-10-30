@@ -2238,3 +2238,57 @@ spotted moments (the student's card and inbox are the same; see "Spotted moments
   second reports her photo; the teacher sees Added / Not for me / Waiting; a coordinator removes the photo from Reports and
   the file is deleted. Axe on each screen. Thai: `scripts/checks/thai-students.cjs` walks Aaron's card and report dialog.
 - Not done: a teacher cannot edit a batch after sending it (add students or photos); faces are not detected.
+## Advisor year sign-off (`src/api.js`, `src/components/YearSignoff.jsx`, pilot screens)
+
+Near the end of the school year each advisor checks every advisee's year against a short checklist and signs it off;
+leadership sees how far along each Year is. No new route: everything goes through `/api/action`, and the CSV is made in
+the browser from the leadership copy of the record.
+
+- **School year**: `schoolYearOf(date)` (August to July, `'2026-27'`), `schoolYearStart()` (1 August). Every record and the
+  closing date belong to one school year; a new year starts with no sign-offs and no lock.
+- **Checklist** (`signoffChecklist(sid)` → `{ student, year, items, met, total, record }`), worked out from the record as an
+  advisor reads it (`getStudentMap(sid, 'advisor')`: private moments never count), each item with `label`, `what` (what
+  counts), `met`, `detail` and `eventId` (the moment it links to, or null for the map): moments on at least N lines since
+  1 August; at least one endorsed moment; a term reflection done (a finished `termReflections` row this year, or a reflection
+  station); a goal set (open, dated this year or later) or met (`wasGoal`); Years 9 and 11, a **moving-up summary**, shown only
+  when the record has `store.movingUp` (or `movingUpSummaries`/`movingUps`): an array of `{ studentId, status | doneAt … }` or
+  an object keyed by studentId; done when `status` is done/ready/shared/finished/sent/final or a `doneAt`, `finishedAt`,
+  `sharedAt` or `readyAt` is set (`movingUpOf(sid)`, a loose hook for that feature); Years 12–13, **CAS on track**: all three
+  strands and at least `casHours` confirmed hours (default 50, Year 13 100; `signoffCasHours`); then the manual items the
+  advisor ticks (default "Talked through the year together").
+- **Settings**: `store.signoffSettings = { years: { [British Year]: { lines, endorsed, reflection, goal, movingUp, cas,
+  casHours, manual: [{ id, label }] (≤ 5) } }, closes: { year, on, by, at } | null }`; `signoffSettingsFor(year)` fills the
+  defaults (`SIGNOFF_DEFAULT`). `setSignoffYear(year, settings | null, by)` (null: back to the usual), `setSignoffClose(date |
+  null, by)` (a day in this school year). After `closes.on` the year is locked (`signoffLocked()`): no ticks, sign-offs,
+  "Not this year" or undo (409).
+- **Records**: `store.yearSignoffs = [{ id: 'ys-…', studentId, year, advisorId, status: 'open' | 'signed' | 'notyet', ticks:
+  { [manualId]: true }, reason, celebrated, at, by }]`, one per student per school year. Mutators: `tickSignoff(sid, itemId, on,
+  by)`, `signOffYear(sid, by, { note? })`, `markNotThisYear(sid, by, reason)` (the reason is private to the advisor, ≤ 500),
+  `undoSignoff(sid, by)` (back to open, until the year closes). Signing off stores `celebrated` (`{ lines, endorsed,
+  reflection, goalsMet, goalsSet, movingUp, casHours }`, only what went well, never a gap) and tells the student in the app
+  ("Ms Altemen signed off your year. Well done!", kind `milestone`, Thai in `NOTE_TH`). The **note for next year's advisor**
+  is the advisor's handover note (`setHandoverNote`, see "Year handover"): the sign-off form shows it and changes it only when
+  the text changed, so "Last year" and "Write handover notes" show the same note. Reads: `getSignoff(sid)`, `mySignoff(sid)`,
+  `signoffProgress()` (per Year and homeroom: students, signed, notyet), `signoffCsv()`.
+- **canAct** (`signoffOk` in `server/auth.mjs`): ticking, signing off, "Not this year" and undo only by the student's current
+  advisor, as themselves (never leadership, admins, another advisor, the student or a family). Settings and the closing
+  date: leadership as themselves, admins (as themselves, or null). **Activity log**: every change names the student and the
+  advisor (`TOUCHES`); no note or reason is logged.
+- **Scope** (`signoffScope` in `server/scope.mjs`): the current advisor gets their advisees' records whole and, for Years
+  12–13, `store.signoffCas = { [sid]: confirmed hours }` (the hours entries themselves stay with CAS coordinators); leadership
+  and admins every record as `{ id, studentId, year, status, at }` (counts, no ticks, notes or reasons); the student only their
+  own once signed, as `{ id, studentId, year, advisorId, status, at, celebrated }` ("Not this year" is never sent to them);
+  families and other staff nothing. `signoffSettings` goes to staff only. PDPA: the records carry `studentId` (copy and erasure).
+- **Screens**: My advisory (pilot): "Year sign-off" with "Signed off: n of 23"; "Open year sign-off" lists each advisee with
+  "k of N checks" and a status; "Check" shows the items (what counts, what the record has, "Open it" or "Open the map"), the
+  ticks, the note for next year's advisor, "Sign off" (allowed with gaps, which it counts) or "Not this year" with a private
+  reason; then "Undo sign-off" until the year closes. School overview (leadership and admins): "Year sign-off" by Year with a
+  bar, each Year opening its homerooms, "Download as CSV" and "Checklist and closing date" (the date, and each Year's checklist).
+  Student home (every level, after the conference card): "Your advisor has signed off your year", "<advisor> looked back at
+  your year. What stood out:" and the celebrated lines, with "Hide" (remembered on that device). Thai: its own block at the
+  end of `src/i18n.js`. Families get nothing new.
+- Tests: `server/test/year-signoff.test.mjs`; browser: `node scripts/checks/year-signoff.cjs` (real roster: Ms Jane Altemen
+  checks and signs off Aaron Torres for 8C with a note; leadership sees 8C 1 of 23, downloads the CSV, sets the closing date;
+  another advisor, leadership and Aaron are refused; Aaron's card at Simple on a phone; his family's copy has nothing; the
+  activity log; axe). `thai-students.cjs` sweeps the card and the notification.
+- Not done: no reminder to advisors who have not signed off; a closed year cannot be reopened for one student.

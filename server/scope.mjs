@@ -248,6 +248,7 @@ export function scopedSnapshot(user) {
     return { ...x, photos, image: photos[0]?.url || null };
   });
   if (!moderator) { const ph = new Map((full.reports || []).filter((r) => r.photoId).map((r) => [r.id, r.photoId])); store.reports = store.reports.map((r) => (ph.has(r.id) ? { ...r, photoId: ph.get(r.id) } : r)); }
+  Object.assign(store, signoffScope(full, { user, self, parent, staff, tid }));
   // Everything else (school lines' settings, integrations, rollout, family language, classes, keys other features add).
   for (const [k, v] of Object.entries(full)) if (!(k in store)) store[k] = generic(v, inReach);
   // Counts the whole-school screens show for what they may not open.
@@ -426,3 +427,24 @@ Object.assign(TOUCHES, {
 });
 // Class photo drop: the students given a photo, as the sending teacher (canAct's own rules are dropOk in auth.mjs).
 Object.assign(TOUCHES, { dropPhotos: (a) => T([...new Set([].concat(a[2]?.photos || []).flatMap((p) => [].concat(p?.studentIds || [])))], [a[1] ?? '?']) });
+
+// ── Advisor year sign-off (api.signOffYear): the student's current advisor gets their advisees' records whole (ticks and
+// the private "Not this year" reason) and, for Years 12 and 13, each advisee's confirmed CAS hours (store.signoffCas) for
+// the checklist. Leadership and admins get every record as a status only (no ticks, no reason): counts. A student gets
+// their own only once signed off, with what was celebrated. Families and other staff get nothing. Settings: staff. ──
+function signoffScope(full, { user, self, parent, staff, tid }) {
+  const lead = isAdmin(user) || user?.kind === 'leadership';
+  const mine = (sid) => !!tid && api.getStudent(sid)?.advisorId === tid;
+  const yearSignoffs = parent ? [] : (full.yearSignoffs || []).flatMap((r) => {
+    if (self) return r.studentId === self && r.status === 'signed' ? [{ id: r.id, studentId: r.studentId, year: r.year, advisorId: r.advisorId, status: r.status, at: r.at, celebrated: r.celebrated }] : [];
+    if (mine(r.studentId)) return [r];
+    return lead ? [{ id: r.id, studentId: r.studentId, year: r.year, status: r.status, at: r.at }] : [];
+  });
+  const signoffCas = {};
+  if (tid) for (const s of full.students) if (s.advisorId === tid && s.grade >= 11) signoffCas[s.id] = api.casSum(api.casHoursOf(s.id), 'confirmed');
+  return { yearSignoffs, signoffCas, signoffSettings: staff ? full.signoffSettings : undefined };
+}
+Object.assign(TOUCHES, {
+  tickSignoff: (a) => T([a[0]], [a[3] ?? '?']), signOffYear: (a) => T([a[0]], [a[1] ?? '?']), markNotThisYear: (a) => T([a[0]], [a[1] ?? '?']),
+  undoSignoff: (a) => T([a[0]], [a[1] ?? '?']), setSignoffYear: (a) => T([], [a[2]]), setSignoffClose: (a) => T([], [a[1]]),
+});

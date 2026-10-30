@@ -3908,6 +3908,187 @@ moderateReport = function moderateReport(id, action, note, by) {
   return r;
 };
 
+// ── Advisor year sign-off (src/components/YearSignoff.jsx; docs/pilot-server.md "Advisor year sign-off") ──
+// Near the end of the year an advisor checks each advisee's year against a short checklist and signs it off. The checks
+// are worked out from the record (as an advisor reads it), plus ticks for what the record cannot show. Settings per
+// British Year by admins and leadership: store.signoffSettings = { years: { [Y]: { lines, endorsed, reflection, goal,
+// movingUp, cas, casHours, manual: [{ id, label }] } }, closes: { year, on, by, at } | null }. Records: store.yearSignoffs =
+// [{ id: 'ys-…', studentId, year ('2026-27'), advisorId, status: 'open' | 'signed' | 'notyet', ticks: { [manualId]: true },
+// reason (private to the advisor), celebrated, at, by }]. Both made on first use.
+const ysErr = (m, status = 400) => Object.assign(new Error(m), { status });
+export const SIGNOFF_MANUAL_MAX = 5;
+export const SIGNOFF_DEFAULT = { lines: 3, endorsed: true, reflection: true, goal: true, movingUp: true, cas: true, casHours: 50, manual: [{ id: 'talk', label: 'Talked through the year together' }] };
+// The school year a date falls in (August to July): '2026-27', and its first day.
+export const schoolYearOf = (d = TODAY) => { const y = +d.slice(0, 4) - (+d.slice(5, 7) < 8 ? 1 : 0); return `${y}-${String((y + 1) % 100).padStart(2, '0')}`; };
+export const schoolYearStart = (d = TODAY) => `${schoolYearOf(d).slice(0, 4)}-08-01`;
+export const getSignoffSettings = () => store.signoffSettings || { years: {}, closes: null };
+export function signoffSettingsFor(year) {
+  const y = getSignoffSettings().years?.[year] || {};
+  return { ...SIGNOFF_DEFAULT, ...(Number(year) === 13 ? { casHours: 100 } : {}), ...y, manual: y.manual || SIGNOFF_DEFAULT.manual };
+}
+export const signoffCloses = () => { const c = getSignoffSettings().closes; return c && c.year === schoolYearOf() ? c : null; };
+export const signoffLocked = () => { const c = signoffCloses(); return !!c && TODAY > c.on; };
+export const getSignoffs = () => store.yearSignoffs || [];
+export const getSignoff = (sid, year = schoolYearOf()) => getSignoffs().find((r) => r.studentId === sid && r.year === year) || null;
+// Moving-up summaries are another feature (Years 9 and 11): the item shows only once such data exists in the record.
+const MOVING_UP_KEYS = ['movingUp', 'movingUpSummaries', 'movingUps'];
+export function movingUpOf(sid) {
+  const k = MOVING_UP_KEYS.find((x) => store[x] !== undefined); if (!k) return undefined;
+  const m = store[k], x = Array.isArray(m) ? m.filter((r) => r?.studentId === sid).at(-1) : m?.[sid];
+  return x ? { ...x, done: !!(['done', 'ready', 'shared', 'finished', 'sent', 'final'].includes(x.status) || x.doneAt || x.finishedAt || x.sharedAt || x.readyAt) } : null;
+}
+// Confirmed CAS hours: from the hours entries, or (an advisor's copy, server/scope.mjs) the total sent for this purpose.
+export const signoffCasHours = (sid) => { const own = casHoursOf(sid); return own.length ? casSum(own, 'confirmed') : store.signoffCas?.[sid] ?? 0; };
+const ysPlural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+// The checklist, worked out from the record as the advisor reads it (never private moments). Each item: { id, label,
+// what (what counts), met, detail, eventId (where to look) | null, manual? }.
+export function signoffChecklist(sid) {
+  const s = getStudent(sid); if (!s) return null;
+  const year = s.grade + 1, cfg = signoffSettingsFor(year), from = schoolYearStart(), rec = getSignoff(sid);
+  const map = getStudentMap(sid, 'advisor');
+  const seen = new Set(map.events.map((e) => e.id));
+  const evs = map.events.filter((e) => e.date >= from && e.date <= TODAY && e.type !== 'goal' && e.type !== 'reflection');
+  const items = [];
+  if (cfg.lines > 0) {
+    const lines = map.lines.filter((l) => evs.some((e) => e.lineIds.includes(l.id)));
+    items.push({ id: 'lines', label: `Moments on at least ${ysPlural(cfg.lines, 'line')} this year`, what: 'Moments since 1 August that the advisor can see, on any line.', met: lines.length >= cfg.lines, n: lines.length,
+      detail: lines.length ? `${ysPlural(lines.length, 'line')}: ${lines.map((l) => l.name).join(', ')}` : 'No moments this year yet', eventId: evs.at(-1)?.id || null });
+  }
+  if (cfg.endorsed) {
+    const en = evs.filter((e) => e.endorsements.length);
+    items.push({ id: 'endorsed', label: 'At least one endorsed moment', what: 'A moment this year that a teacher endorsed.', met: en.length > 0, n: en.length,
+      detail: en.length ? `${ysPlural(en.length, 'endorsed moment')}, latest “${en.at(-1).title}”` : 'None endorsed yet', eventId: en.at(-1)?.id || null });
+  }
+  if (cfg.reflection) {
+    const tr = (store.termReflections || []).filter((r) => r.studentId === sid && r.status === 'done' && (r.doneAt || '') >= from);
+    const st = map.events.filter((e) => e.type === 'reflection' && e.date >= from && e.date <= TODAY);
+    const ev = [...tr.map((r) => r.eventId), ...st.map((e) => e.id)].reverse().find((id) => seen.has(id));
+    const n = tr.length || st.length;
+    items.push({ id: 'reflection', label: 'A term reflection done', what: 'A finished term reflection this year, or another look-back reflection on the map.', met: n > 0, n,
+      detail: n ? (ev ? `“${getEvent(ev).title}”` : 'Finished (only the student can see it)') : 'Not done yet', eventId: ev || null });
+  }
+  if (cfg.goal) {
+    const met = map.events.filter((e) => e.wasGoal && e.date >= from), set = map.events.filter((e) => e.type === 'goal' && e.date >= from);
+    const g = met.at(-1) || set.at(-1);
+    items.push({ id: 'goal', label: 'A goal set or met', what: 'A goal this year that is still open, or one marked as done.', met: !!g, goalsMet: met.length, goalsSet: set.length,
+      detail: g ? `${[met.length && `${ysPlural(met.length, 'goal')} met`, set.length && `${ysPlural(set.length, 'goal')} set`].filter(Boolean).join(', ')}: “${g.title}”` : 'No goal this year yet', eventId: g?.id || null });
+  }
+  if (cfg.movingUp && (year === 9 || year === 11)) {
+    const m = movingUpOf(sid);
+    if (m !== undefined) items.push({ id: 'movingUp', label: 'Moving-up summary', what: `The summary written before moving up to Year ${year + 1}.`, met: !!m?.done, detail: m?.done ? 'Done' : m ? 'Started, not finished' : 'Not started', eventId: seen.has(m?.eventId) ? m.eventId : null });
+  }
+  if (cfg.cas && year >= 12) {
+    const ex = map.events.filter((e) => e.cas), strands = Object.keys(CAS_STRANDS).filter((k) => ex.some((e) => e.cas.strand === k)), hrs = signoffCasHours(sid);
+    items.push({ id: 'cas', label: 'CAS on track', what: `Experiences in all three strands (Creativity, Activity, Service) and at least ${cfg.casHours} confirmed hours.`, met: strands.length === 3 && hrs >= cfg.casHours, hours: hrs,
+      detail: `${ysPlural(hrs, 'hour')} confirmed; ${strands.length ? strands.map((k) => CAS_STRANDS[k]).join(', ') : 'no strands yet'}`, eventId: ex.at(-1)?.id || null });
+  }
+  for (const m of cfg.manual) items.push({ id: m.id, label: m.label, what: 'Ticked by the advisor: the record cannot show it.', met: !!rec?.ticks?.[m.id], manual: true, detail: rec?.ticks?.[m.id] ? 'Ticked' : 'Not ticked yet', eventId: null });
+  return { student: s, year, items, met: items.filter((i) => i.met).length, total: items.length, record: rec };
+}
+// What the student is told was celebrated: only what went well, never a gap.
+function ysCelebrated(sid) {
+  const c = signoffChecklist(sid), get = (id) => c.items.find((i) => i.id === id) || {};
+  const out = {};
+  if (get('lines').n) out.lines = get('lines').n;
+  if (get('endorsed').n) out.endorsed = get('endorsed').n;
+  if (get('reflection').met) out.reflection = true;
+  if (get('goal').goalsMet) out.goalsMet = get('goal').goalsMet;
+  if (get('goal').goalsSet) out.goalsSet = get('goal').goalsSet;
+  if (get('movingUp').met) out.movingUp = true;
+  if (get('cas').hours) out.casHours = get('cas').hours;
+  return out;
+}
+function ysOpen(sid, by) {
+  const s = getStudent(sid); if (!s) throw ysErr('No such student', 404);
+  if (!teacherById[by]) throw ysErr('No such teacher');
+  if (s.advisorId !== by) throw ysErr('Only the student’s advisor signs off their year', 403);
+  if (signoffLocked()) throw ysErr('The year is closed: sign-offs are locked', 409);
+  let r = getSignoff(sid);
+  if (!r) (store.yearSignoffs ||= []).push(r = { id: uid('ys-'), studentId: sid, year: schoolYearOf(), advisorId: by, status: 'open', ticks: {}, reason: '', celebrated: null, at: nowIso(), by });
+  return { s, r };
+}
+export function tickSignoff(studentId, itemId, on, by) {
+  const { s, r } = ysOpen(studentId, by);
+  if (!signoffSettingsFor(s.grade + 1).manual.some((m) => m.id === itemId)) throw ysErr('No such item');
+  if (on) r.ticks[itemId] = true; else delete r.ticks[itemId];
+  Object.assign(r, { at: nowIso(), by });
+  emit();
+  return r;
+}
+// note: the note for next year's advisor, kept as this advisor's handover note (Year handover); left out, it is not touched.
+export function signOffYear(studentId, by, { note } = {}) {
+  const { r } = ysOpen(studentId, by);
+  if (r.status === 'signed') throw ysErr('Already signed off', 409);
+  if (typeof note === 'string' && note.trim() !== (getHandoverNote(studentId, by)?.text || '')) setHandoverNote(studentId, note, by);
+  Object.assign(r, { status: 'signed', reason: '', celebrated: ysCelebrated(studentId), at: nowIso(), by, advisorId: by });
+  notify(toStudent(studentId), `${shortName(teacherById[by].name)} signed off your year. Well done!`, { persona: toStudent(studentId), screen: 'map' }, 'milestone');
+  emit();
+  return r;
+}
+export function markNotThisYear(studentId, by, reason) {
+  const { r } = ysOpen(studentId, by);
+  Object.assign(r, { status: 'notyet', reason: String(reason ?? '').trim().slice(0, 500), celebrated: null, at: nowIso(), by, advisorId: by });
+  emit();
+  return r;
+}
+// Takes back a sign-off or "Not this year", until the year closes.
+export function undoSignoff(studentId, by) {
+  const { r } = ysOpen(studentId, by);
+  Object.assign(r, { status: 'open', reason: '', celebrated: null, at: nowIso(), by });
+  emit();
+  return r;
+}
+const ysClean = (y = {}) => ({
+  lines: Math.max(0, Math.min(9, Math.round(Number(y.lines) || 0))), endorsed: !!y.endorsed, reflection: !!y.reflection, goal: !!y.goal, movingUp: !!y.movingUp, cas: !!y.cas,
+  casHours: Math.max(0, Math.min(500, Math.round(Number(y.casHours) || 0))),
+  manual: (Array.isArray(y.manual) ? y.manual : []).map((m) => ({ id: typeof m?.id === 'string' && /^[\w-]{1,40}$/.test(m.id) ? m.id : uid('ym-'), label: String(m?.label ?? '').trim().slice(0, 100) })).filter((m) => m.label).slice(0, SIGNOFF_MANUAL_MAX),
+});
+// One Year's checklist (null: back to the defaults).
+export function setSignoffYear(year, settings, by = null) {
+  const y = Number(year); if (!(y >= 7 && y <= 13)) throw ysErr('Pick a Year');
+  if (by && !teacherById[by]) throw ysErr('No such teacher');
+  store.signoffSettings ||= { years: {}, closes: null };
+  if (settings) store.signoffSettings.years[y] = ysClean(settings); else delete store.signoffSettings.years[y];
+  emit();
+  return signoffSettingsFor(y);
+}
+// The last day of this school year's sign-offs: after it they lock (null: never).
+export function setSignoffClose(date, by = null) {
+  if (by && !teacherById[by]) throw ysErr('No such teacher');
+  if (date != null && date !== '' && !/^\d{4}-\d{2}-\d{2}$/.test(String(date))) throw ysErr('Pick a date');
+  if (date && schoolYearOf(date) !== schoolYearOf()) throw ysErr('Pick a date in this school year');
+  store.signoffSettings ||= { years: {}, closes: null };
+  store.signoffSettings.closes = date ? { year: schoolYearOf(), on: date, by: by || null, at: nowIso() } : null;
+  emit();
+  return store.signoffSettings.closes;
+}
+// Leadership's progress: per British Year and homeroom, students, signed off and not this year. Counts only.
+export function signoffProgress() {
+  const year = schoolYearOf(), rows = new Map();
+  const status = new Map(getSignoffs().filter((r) => r.year === year).map((r) => [r.studentId, r.status]));
+  for (const s of getStudents()) {
+    const k = `${s.grade + 1}|${s.homeroom || ''}`;
+    const row = rows.get(k) || rows.set(k, { year: s.grade + 1, homeroom: s.homeroom || '', students: 0, signed: 0, notyet: 0 }).get(k);
+    row.students++; const st = status.get(s.id); if (st === 'signed') row.signed++; else if (st === 'notyet') row.notyet++;
+  }
+  const homerooms = [...rows.values()].sort((a, b) => a.year - b.year || a.homeroom.localeCompare(b.homeroom, 'en', { numeric: true }));
+  const sum = (list) => list.reduce((o, r) => ({ students: o.students + r.students, signed: o.signed + r.signed, notyet: o.notyet + r.notyet }), { students: 0, signed: 0, notyet: 0 });
+  const years = [...new Set(homerooms.map((r) => r.year))].map((y) => ({ year: y, ...sum(homerooms.filter((r) => r.year === y)), homerooms: homerooms.filter((r) => r.year === y) }));
+  return { schoolYear: year, years, total: sum(homerooms), closes: signoffCloses(), locked: signoffLocked() };
+}
+const ysCell = (v) => { const s = String(v ?? ''); const t = /^[=+\-@]/.test(s) ? `'${s}` : s; return /[",\r\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
+export function signoffCsv() {
+  const p = signoffProgress();
+  const rows = [['School year', 'Year', 'Homeroom', 'Students', 'Signed off', 'Not this year', 'Not yet']];
+  for (const y of p.years) for (const h of y.homerooms) rows.push([p.schoolYear, y.year, h.homeroom, h.students, h.signed, h.notyet, h.students - h.signed - h.notyet]);
+  return `${rows.map((r) => r.map(ysCell).join(',')).join('\r\n')}\r\n`;
+}
+// The student's own signed-off year, with what was celebrated (never the checklist).
+export function mySignoff(sid) {
+  const r = getSignoff(sid);
+  return r?.status === 'signed' ? { ...r, advisor: teacherById[r.advisorId] || null } : null;
+}
+
 // ── Shared record: with the pilot server, every change is replayed there ──
 // A screen calls a change below; it runs here at once (instant UI) while recording the ids and
 // times it made. The hook (src/sync.js) posts { fn, args, rec } to /api/action, and the server runs
@@ -3979,6 +4160,7 @@ setSubjectPrompts = act('setSubjectPrompts', setSubjectPrompts); clearSubjectPro
 logCasExperience = act('logCasExperience', logCasExperience); logCasHours = act('logCasHours', logCasHours); withdrawCasHours = act('withdrawCasHours', withdrawCasHours); confirmCasHours = act('confirmCasHours', confirmCasHours); returnCasHours = act('returnCasHours', returnCasHours); setCasCode = act('setCasCode', setCasCode); setCasCoordinator = act('setCasCoordinator', setCasCoordinator);
 addFamilyNote = act('addFamilyNote', addFamilyNote); editFamilyNote = act('editFamilyNote', editFamilyNote); deleteFamilyNote = act('deleteFamilyNote', deleteFamilyNote); thankFamilyNote = act('thankFamilyNote', thankFamilyNote); setFamilyNoteHidden = act('setFamilyNoteHidden', setFamilyNoteHidden);
 addSchoolEvent = act('addSchoolEvent', addSchoolEvent); editSchoolEvent = act('editSchoolEvent', editSchoolEvent); removeSchoolEvent = act('removeSchoolEvent', removeSchoolEvent); importSchoolEvents = act('importSchoolEvents', importSchoolEvents); dismissSchoolEvent = act('dismissSchoolEvent', dismissSchoolEvent); remindSchoolEvent = act('remindSchoolEvent', remindSchoolEvent);
+tickSignoff = act('tickSignoff', tickSignoff); signOffYear = act('signOffYear', signOffYear); markNotThisYear = act('markNotThisYear', markNotThisYear); undoSignoff = act('undoSignoff', undoSignoff); setSignoffYear = act('setSignoffYear', setSignoffYear); setSignoffClose = act('setSignoffClose', setSignoffClose);
 // Undo puts a whole earlier copy back, and reset goes back to the seed (sync.js sends it to /api/reset).
 restore = act('restore', restore); resetDemo = act('resetDemo', resetDemo);
 export const MUTATORS = Object.keys(ACTIONS);

@@ -901,3 +901,18 @@ STU_RE.push(
   [/^· (\d+) to look at$/, (m) => `· ดูอีก ${m[1]} รายการ`],
   [/^[A-Z0-9][A-Za-z0-9 ]+(, [A-Z0-9][A-Za-z0-9 ]+)+$/, (m) => { const p = m[0].split(', ').map((x) => studentThai(x)); return p.every((x) => x != null) ? p.join(', ') : null; }],
 );
+// ── Advisor year sign-off (src/components/YearSignoff.jsx): the student's card and its notification ──
+for (const [k, v] of Object.entries({
+  'Your advisor has signed off your year': 'ครูที่ปรึกษารับรองปีการศึกษานี้ของคุณแล้ว', 'Well done on your year.': 'ปีนี้คุณทำได้ดีมาก',
+  'Your term reflection': 'การทบทวนภาคเรียนของคุณ', 'A goal to work towards': 'เป้าหมายที่กำลังมุ่งไป', 'Your moving-up summary': 'สรุปก่อนเลื่อนชั้นของคุณ',
+  'Moments on 1 line': 'เรื่องราวบน 1 สาย', '1 endorsed moment': 'เรื่องราวที่ครูรับรอง 1 เรื่อง', '1 goal met': 'ทำเป้าหมายสำเร็จ 1 อย่าง',
+  '1 hour of CAS confirmed': 'ชั่วโมง CAS ที่ยืนยันแล้ว 1 ชั่วโมง', Hide: 'ซ่อน',
+})) STU[k] ??= v;
+STU_RE.push(
+  [/^(.+) looked back at your year\. What stood out:$/, (m) => `${m[1]} มองย้อนดูปีนี้ของคุณแล้ว สิ่งที่โดดเด่นคือ:`],
+  [/^Moments on (\d+) lines$/, (m) => `เรื่องราวบน ${m[1]} สาย`],
+  [/^(\d+) endorsed moments$/, (m) => `เรื่องราวที่ครูรับรอง ${m[1]} เรื่อง`],
+  [/^(\d+) goals met$/, (m) => `ทำเป้าหมายสำเร็จ ${m[1]} อย่าง`],
+  [/^(\d+) hours of CAS confirmed$/, (m) => `ชั่วโมง CAS ที่ยืนยันแล้ว ${m[1]} ชั่วโมง`],
+);
+NOTE_TH.push([/^(.+) signed off your year\. Well done!$/, (m) => `${m[1]} รับรองปีการศึกษานี้ของคุณแล้ว เก่งมาก!`]);

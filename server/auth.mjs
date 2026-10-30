@@ -216,6 +216,7 @@ export function canAct(user, fn, args = []) {
   if (PH_FNS.has(fn)) { try { return phraseOk(user, fn, args); } catch { return false; } }
   if (FN_FNS.has(fn) || (fn === 'reportItem' && args[0]?.familyNoteId)) { try { return familyNoteOk(user, fn, args); } catch { return false; } }
   if (SE_FNS.has(fn)) { try { return schoolEventOk(user, fn, args); } catch { return false; } }
+  if (YS_FNS.has(fn)) { try { return signoffOk(user, fn, args); } catch { return false; } }
   if (isAdmin(user)) return true;
   if (ADMIN_ONLY.has(fn)) return false;
   if (ANYONE.has(fn)) return true;
@@ -588,4 +589,18 @@ function dropOk(user, fn, args) {
   if (!STAFF.includes(user.kind) || !user.teacherId || key !== user.teacherId) return false;
   const reach = reachOf(user);
   return reach === null || reach.has(sid);
+}
+
+// ── Advisor year sign-off (api.tickSignoff, signOffYear, markNotThisYear, undoSignoff, setSignoffYear, setSignoffClose) ──
+// Ticking, signing off, "Not this year" and taking it back: only the student's current advisor, as themselves (admins,
+// leadership and other advisors never sign off for them). The checklist settings and the closing date: leadership as
+// themselves, and admins (as themselves, or null with no staff record). Students and families never.
+const YS_FNS = new Set(['tickSignoff', 'signOffYear', 'markNotThisYear', 'undoSignoff', 'setSignoffYear', 'setSignoffClose']);
+const YS_BY = { tickSignoff: 3, signOffYear: 1, markNotThisYear: 1, undoSignoff: 1, setSignoffYear: 2, setSignoffClose: 1 };
+export const manageSignoff = (u) => !!u && (isAdmin(u) || (u.kind === 'leadership' && !!u.teacherId));
+function signoffOk(user, fn, a) {
+  const by = a[YS_BY[fn]] ?? null;
+  if (fn === 'setSignoffYear' || fn === 'setSignoffClose') return manageSignoff(user) && by === (user.teacherId ?? null);
+  if (!(STAFF.includes(user.kind) || isAdmin(user)) || !user.teacherId || by !== user.teacherId) return false;
+  return typeof a[0] === 'string' && api.getStudent(a[0])?.advisorId === user.teacherId;
 }
