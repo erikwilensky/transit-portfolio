@@ -1220,3 +1220,37 @@ A signed-in pilot account can add moments (photos too) with no connection; they 
   `node scripts/checks/offline-capture.cjs` (real roster from `TP_ROSTER`; `context.setOffline`): Aaron Torres on a
   phone adds a moment with a photo offline, reloads offline, comes back; Mr David Coultas, in his own context, sees the
   moment and the photo; the sign-out warning; a second account on the same browser never sends Aaron's queue.
+
+## Voice for younger students (`src/voice.js`, `src/components/Voice.jsx`)
+
+Speak to type, read aloud and short voice notes, for the Simple level first and wherever the same flows appear at
+Standard. Every part is feature-detected: a browser without it shows no button and no error. No new mutator, route or
+server change.
+- **Speak to type** (`MicButton`, `SayIt`): a "Say it" mic under the text boxes of the Simple add-a-moment flow (what,
+  what did you learn), Simple goals (what, and "How did it go?"), answers to a question (`AskFlow`), class answers
+  (`ClassPrompts.jsx`'s `AnswerFlow`, every level) and the term reflection (Simple screens and the Standard/Full page). It
+  uses the browser's `SpeechRecognition` / `webkitSpeechRecognition` with `lang` `en-GB`, or `th-TH` when the person's
+  language (`getLang()`) is Thai, `interimResults` and `continuous`. Words appear as they are said, joined to what was
+  typed (`joinSpoken`), and stay editable; typing while it listens keeps the typed words. The first time (per device,
+  `localStorage['tp-mic-note']`) a note under the mic says the browser turns speech into words and the app does not record
+  or keep the voice. Nothing is sent by the app: recognition is the browser's own. A button with `aria-label` and
+  `aria-pressed`; Enter or Space starts and stops it.
+- **Read aloud** (`SpeakButton`, `Said`): a speaker beside each Simple flow's question, the class question card on the
+  home and in its answer flow, and the term reflection's questions; `speechSynthesis`, `en-GB` (or `th-TH` for Thai words,
+  `voiceLangOf`). The display menu has **Read questions aloud** (Off / On, in Thai too; this device only,
+  `localStorage['tp-read-aloud']`): when on, each question is read out as its screen opens.
+- **Voice notes** (`VoiceRecorder`, `VoiceNotes`): one big Record, then Stop (or 60 seconds, `MAX_SECS`), Play again,
+  Record again, Use this. `MediaRecorder` (`audio/webm`, else `audio/mp4` or `audio/ogg`). "Use this" uploads it with
+  `uploadFile` (`POST /api/upload`, `audio/webm` is kept as `.weba`), so offline it goes through `holdUpload` and is sent
+  when the phone is back (see "Offline capture"). Offered in the Simple add flow's "What did you learn?" step (saved with
+  `addStation(..., { files: [voice] })`) and on a student-added moment (`editStation`, the moment's evidence). The record
+  holds an ordinary evidence item `{ kind: 'file', type: 'audio/…', url, caption: 'Voice note' }`, so `/api/files` serves it
+  only to those who may read the moment (see "Protected uploaded files"). Shown as an audio player in the Simple moment
+  view, in the station panel (as before), and on the teacher's Endorsements card (`FileLinks`).
+- Tests: `src/voice.test.mjs` (`npm test`: feature detection, languages, joining words, results, file names, the
+  settings with and without storage, speaking); browser: `node scripts/checks/voice.cjs` (real roster from `TP_ROSTER`;
+  Chromium with `--use-fake-ui-for-media-stream --use-fake-device-for-media-stream`): Aaron Torres on a phone speaks to type
+  with the keyboard (a stand-in recogniser), hears a question read out and turns on Read questions aloud, records a voice
+  note on a moment and asks Mr David Coultas, adds a second one offline; Mr Coultas, in his own context, plays both on his
+  queue (200 from `/api/files`); a signed-out context gets 404; with `SpeechRecognition` stubbed out there is no mic and
+  no error. Screenshots `tp-voice-*.png`.

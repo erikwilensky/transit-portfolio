@@ -77,7 +77,7 @@ export function FileView({ ev, compact = false }) {
 export function FileLinks({ evidence = [] }) {
   const files = evidence.filter((ev) => isUploaded(ev) && ev.kind !== 'image');
   if (!files.length) return null;
-  return <ul className="file-links">{files.map((ev, i) => <li key={i}><FileLink ev={ev} /></li>)}</ul>;
+  return <ul className="file-links">{files.map((ev, i) => <li key={i}><FileLink ev={ev} />{evKind(ev) === 'audio' && <audio className="vc-inline" controls preload="metadata" src={ev.url} aria-label={ev.caption || 'Voice note'} />}</li>)}</ul>;
 }
 function FileLink({ ev }) {
   const url = useMemo(() => viewUrl(ev.url), [ev.url]);

@@ -4,6 +4,7 @@ import { fmtDate } from '../format.js';
 import { evidenceFor } from '../upload.js';
 import { UploadStatus, useUpload } from './FileAttach.jsx';
 import './class-prompts.css';
+import { Said, SayIt, SpeakButton } from './Voice.jsx';
 
 // Class prompts (api.askClass, answerPrompt): a teacher asks a whole class one question; each student answers it
 // from the top of their home. Teacher side: AskClassDialog and ClassQuestions (My classes). Student side: OpenPrompts.
@@ -90,6 +91,7 @@ export function OpenPrompts({ studentId, simple, toast, version }) {
           <span><small>{who} asked {p.className || 'your class'}{list.length > 1 ? ` · ${list.length} questions` : ''}</small><b>{p.question}</b>{p.due && <small>Answer by {fmtDate(p.due)}</small>}</span>
           <span className="cp-go">Answer</span>
         </button>
+        <SpeakButton text={p.question} auto={false} label="Read the question out loud" />
       </div>}
       {answering && <AnswerFlow p={answering} who={whoOf(answering)} studentId={studentId} onClose={() => setAnswering(null)}
         onDone={(skipped) => { setAnswering(null); toast?.(skipped ? 'Okay, it is hidden.' : `Sent. ${whoOf(answering)} can read your answer.`); }} />}
@@ -114,15 +116,16 @@ function AnswerFlow({ p, who, studentId, onClose, onDone }) {
         <div className="sh-steps" aria-label={`Step ${step + 1} of 4`}>{[0, 1, 2, 3].map((i) => <i key={i} className={i <= step ? 'on' : ''} />)}</div>
         {step === 0 && <>
           <p className="sh-sub">{who} asked {p.className || 'your class'}{p.context ? ` · ${p.context}` : ''}</p>
-          <div className="cp-big"><h2>{p.question}</h2></div>
+          <div className="cp-big"><Said text={p.question} /></div>
           {p.due && <p className="sh-sub">Answer by {fmtDate(p.due)}</p>}
           <div className="sh-next"><button className="ghost" onClick={skip}>Not for me</button><button className="primary" onClick={() => setStep(1)}>Answer it</button></div>
         </>}
         {step === 1 && <>
-          <h2>{p.question}</h2>
+          <Said text={p.question} />
           <p className="sh-sub">One or two sentences is plenty.</p>
           <div className="sh-starters">{STARTERS.map((s) => <button key={s} onClick={() => setText(`${text ? `${text} ` : ''}${s.replace('…', ' ')}`)}>{s}</button>)}</div>
           <textarea className="sh-input" rows={4} autoFocus value={text} onChange={(e) => setText(e.target.value)} aria-label="Your answer" />
+          <SayIt value={text} onChange={setText} />
           <div className="sh-next"><button className="ghost" onClick={() => setStep(0)}>Back</button><button className="primary" disabled={text.trim().length < 3} onClick={() => setStep(2)}>Next</button></div>
         </>}
         {step === 2 && <>

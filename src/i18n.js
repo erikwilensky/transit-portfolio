@@ -41,6 +41,8 @@ const TH = {
   'Family view': 'มุมมองครอบครัว', Consent: 'การให้ความยินยอม', 'Weekly digest': 'สรุปประจำสัปดาห์',
   // the header, for a signed-in family
   'Signed in': 'เข้าสู่ระบบแล้ว', 'Seeing as': 'กำลังดูในฐานะ', 'Display settings': 'การแสดงผล', Language: 'ภาษา', Theme: 'ธีม', Light: 'สว่าง', Dark: 'มืด',
+  // voice (src/components/Voice.jsx)
+  'Read questions aloud': 'อ่านคำถามออกเสียง', Off: 'ปิด', On: 'เปิด', 'Questions will be read out loud.': 'จะอ่านคำถามออกเสียงให้ฟัง',
 };
 
 // Line names, translated part by part ("Science · Biology").

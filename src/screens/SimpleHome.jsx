@@ -10,6 +10,8 @@ import { SpottedForMe } from '../components/Spotted.jsx';
 import MomentComments, { NewBadge, useUnread } from '../components/MomentComments.jsx';
 import './simple-goals.css';
 import { HiddenNotice, ReportButton } from '../components/Report.jsx';
+import { Said, SayIt, VoiceNotes, VoiceRecorder } from '../components/Voice.jsx';
+import { canRecord } from '../voice.js';
 
 // Simple: the student interface for Years 7 and 8 (and anyone who picks it). Not the full app with parts hidden,
 // but its own calmer design: one question per screen, big buttons, plain words, and a map drawn as a few
@@ -162,7 +164,8 @@ export function QuickAdd({ map, studentId, toast, onClose, camera = false }) {
 }
 function AddFlow({ map, studentId, onClose, onDone, camera }) {
   const [step, setStep] = useState(camera ? -1 : 0);
-  const [f, setF] = useState({ title: '', image: null, imageCaption: 'Photo', line: null, reflection: '' });
+  const [f, setF] = useState({ title: '', image: null, imageCaption: 'Photo', line: null, reflection: '', voice: null });
+  const [recording, setRecording] = useState(false);
   const [more, setMore] = useState(false);
   const lines = map.lines.filter((l) => l.status !== 'ended');
   const set = (p) => setF((x) => ({ ...x, ...p }));
@@ -171,7 +174,7 @@ function AddFlow({ map, studentId, onClose, onDone, camera }) {
   const who = useMemo(() => (f.line ? checkers(studentId, f.line) : []), [studentId, f.line]);
   const save = (teacher) => {
     const snap = snapshot();
-    const e = addStation(studentId, { title: f.title.trim(), lineIds: [f.line], type: 'project', image: f.image, imageCaption: f.imageCaption, reflection: f.reflection.trim() || null, visibility: 'advisor', via: 'Simple add', requestFrom: teacher?.id || null });
+    const e = addStation(studentId, { title: f.title.trim(), lineIds: [f.line], type: 'project', image: f.image, imageCaption: f.imageCaption, files: f.voice ? [f.voice] : [], reflection: f.reflection.trim() || null, visibility: 'advisor', via: 'Simple add', requestFrom: teacher?.id || null });
     onDone(e, teacher, snap);
   };
   return (
@@ -180,7 +183,7 @@ function AddFlow({ map, studentId, onClose, onDone, camera }) {
         <button className="panel-close" onClick={onClose} aria-label="Close">×</button>
         <Steps n={(who.length ? 4 : 3) + (camera ? 1 : 0)} at={step + (camera ? 1 : 0)} />
         {step === -1 && <>
-          <h2>Take a photo</h2>
+          <Said text="Take a photo" />
           <p className="sh-sub">Of something you did, made or took part in. Then say what it was.</p>
           <div className="sh-shoot snap">
             <label className="sh-photo-btn"><span aria-hidden="true">▣</span>Open the camera<input type="file" accept="image/*" capture="environment" onChange={(e) => { pickPhoto(e); setStep(0); }} /></label>
@@ -189,28 +192,33 @@ function AddFlow({ map, studentId, onClose, onDone, camera }) {
           <div className="sh-next"><button className="ghost" onClick={() => setStep(0)}>No photo, just write it</button></div>
         </>}
         {step === 0 && <>
-          <h2>What did you do?</h2>
-          <input className="sh-input" autoFocus value={f.title} onChange={(e) => set({ title: e.target.value })} placeholder="e.g. Joined the robotics club" onKeyDown={(e) => e.key === 'Enter' && f.title.trim() && !photo.busy && setStep(1)} />
+          <Said text="What did you do?" />
+          <input className="sh-input" autoFocus value={f.title} onChange={(e) => set({ title: e.target.value })} placeholder="e.g. Joined the robotics club" aria-label="What did you do?" onKeyDown={(e) => e.key === 'Enter' && f.title.trim() && !photo.busy && setStep(1)} />
+          <SayIt value={f.title} onChange={(title) => set({ title })} />
           <p className="sh-sub">Add a photo if you have one</p>
           <PhotoPick f={f} set={set} photo={photo} pickPhoto={pickPhoto} />
           <div className="sh-next"><button className="primary" disabled={!f.title.trim() || photo.busy} onClick={() => setStep(1)}>{photo.busy ? 'Wait for the photo…' : 'Next'}</button></div>
         </>}
         {step === 1 && <>
-          <h2>Which colour does it go with?</h2>
+          <Said text="Which colour does it go with?" />
           <div className="sh-lines">{lines.map((l) => <button key={l.id} style={{ '--c': l.colour }} className={f.line === l.id ? 'on' : ''} onClick={() => { set({ line: l.id }); setMore(false); setStep(2); }}><i />{l.name}</button>)}</div>
           <div className="sh-next"><button className="ghost" onClick={() => setStep(0)}>Back</button></div>
         </>}
         {step === 2 && <>
-          <h2>What did you learn?</h2>
+          <Said text="What did you learn?" />
           <p className="sh-sub">One or two sentences is plenty. You can skip this.</p>
           <div className="sh-starters">{STARTERS.map((s) => <button key={s} onClick={() => set({ reflection: `${f.reflection ? `${f.reflection} ` : ''}${s.replace('…', ' ')}` })}>{s}</button>)}</div>
-          <textarea className="sh-input" rows={3} value={f.reflection} onChange={(e) => set({ reflection: e.target.value })} />
+          <textarea className="sh-input" rows={3} value={f.reflection} onChange={(e) => set({ reflection: e.target.value })} aria-label="What did you learn?" />
+          <SayIt value={f.reflection} onChange={(reflection) => set({ reflection })} />
+          {f.voice ? <div className="sh-voice"><VoiceNotes evidence={[f.voice]} /><button type="button" className="ghost" onClick={() => set({ voice: null })}>Remove voice note</button></div>
+            : recording ? <VoiceRecorder onAdded={(voice) => { set({ voice }); setRecording(false); }} onCancel={() => setRecording(false)} />
+            : <VoiceStart onClick={() => setRecording(true)} />}
           <div className="sh-next"><button className="ghost" onClick={() => setStep(1)}>Back</button>
             {who.length ? <button className="primary" onClick={() => setStep(3)}>{f.reflection.trim() ? 'Next' : 'Skip'}</button> : <button className="primary" onClick={() => save(null)}>{f.reflection.trim() ? 'Add it' : 'Skip and add it'}</button>}</div>
           {!who.length && <p className="sh-note">Only you and your advisor can see it at first.</p>}
         </>}
         {step === 3 && who.length > 0 && <>
-          <h2>Ask a teacher to check it?</h2>
+          <Said text="Ask a teacher to check it?" />
           <p className="sh-sub">A teacher can say it really happened. You can skip this.</p>
           <div className="sh-who">
             <button className="sh-ask" onClick={() => save(who[0].t)}><b>Ask {who[0].t.name}</b>{who[0].why && <small>{who[0].why}</small>}</button>
@@ -286,19 +294,20 @@ function GoalFlow({ map, studentId, onClose, onDone }) {
         <button className="panel-close" onClick={onClose} aria-label="Close">×</button>
         <Steps n={!f.line || who.length ? 4 : 3} at={step} />
         {step === 0 && <>
-          <h2>What do you want to do?</h2>
-          <input className="sh-input" autoFocus value={f.title} onChange={(e) => set({ title: e.target.value })} placeholder="e.g. Enter the science fair" onKeyDown={(e) => e.key === 'Enter' && f.title.trim().length > 3 && setStep(1)} />
+          <Said text="What do you want to do?" />
+          <input className="sh-input" autoFocus value={f.title} onChange={(e) => set({ title: e.target.value })} placeholder="e.g. Enter the science fair" aria-label="What do you want to do?" onKeyDown={(e) => e.key === 'Enter' && f.title.trim().length > 3 && setStep(1)} />
+          <SayIt value={f.title} onChange={(title) => set({ title })} />
           {ideas.length > 0 && <><p className="sh-sub">Some ideas</p>
             <div className="sh-starters">{ideas.map(([t, l]) => <button key={t} className="sh-idea" style={{ '--c': l.colour }} onClick={() => { set({ title: t, line: l.id }); setStep(1); }}>{t}</button>)}</div></>}
           <div className="sh-next"><button className="primary" disabled={f.title.trim().length < 4} onClick={() => setStep(1)}>Next</button></div>
         </>}
         {step === 1 && <>
-          <h2>Which colour does it go with?</h2>
+          <Said text="Which colour does it go with?" />
           <div className="sh-lines">{lines.map((l) => <button key={l.id} style={{ '--c': l.colour }} className={f.line === l.id ? 'on' : ''} onClick={() => { set({ line: l.id }); setMore(false); setStep(2); }}><i />{l.name}</button>)}</div>
           <div className="sh-next"><button className="ghost" onClick={() => setStep(0)}>Back</button></div>
         </>}
         {step === 2 && <>
-          <h2>When do you want to do it by?</h2>
+          <Said text="When do you want to do it by?" />
           <div className="sh-when">{whens().map(([label, d]) => <button key={label} onClick={() => when(d)}><b>{label}</b><small>By {fmtDate(d)}</small></button>)}
             {pick
               ? <label className="sh-date">Pick a date<input type="date" autoFocus min={addDays(1)} value={f.date || ''} onChange={(e) => set({ date: e.target.value })} /></label>
@@ -306,7 +315,7 @@ function GoalFlow({ map, studentId, onClose, onDone }) {
           <div className="sh-next"><button className="ghost" onClick={() => setStep(1)}>Back</button>{pick && <button className="primary" disabled={!f.date || f.date <= TODAY} onClick={() => when(f.date)}>Next</button>}</div>
         </>}
         {step === 3 && who.length > 0 && <>
-          <h2>Want a teacher to help you with it?</h2>
+          <Said text="Want a teacher to help you with it?" />
           <p className="sh-sub">They can give you tips along the way, and say it really happened when you do it.</p>
           <div className="sh-who">
             <button className="sh-ask" onClick={() => save(who[0].t)}><b>Ask {who[0].t.name}</b>{who[0].why && <small>{who[0].why}</small>}</button>
@@ -363,16 +372,17 @@ function DoneFlow({ id, studentId, toast, onClose }) {
         <button className="panel-close" onClick={finish} aria-label="Close">×</button>
         <Steps n={2} at={step} />
         {step === 0 && <>
-          <h2>You did it! Add a photo?</h2>
+          <Said text="You did it! Add a photo?" />
           <p className="sh-sub">Of “{e.title}”. You can skip this.</p>
           <PhotoPick f={f} set={set} photo={photo} pickPhoto={pickPhoto} />
           <div className="sh-next"><button className="primary" disabled={photo.busy} onClick={() => setStep(1)}>{photo.busy ? 'Wait for the photo…' : f.image ? 'Next' : 'Skip'}</button></div>
         </>}
         {step === 1 && <>
-          <h2>How did it go?</h2>
+          <Said text="How did it go?" />
           <p className="sh-sub">One sentence is plenty.</p>
           <div className="sh-starters">{STARTERS.map((s) => <button key={s} onClick={() => set({ text: `${f.text ? `${f.text} ` : ''}${s.replace('…', ' ')}` })}>{s}</button>)}</div>
-          <textarea className="sh-input" rows={3} autoFocus value={f.text} onChange={(ev) => set({ text: ev.target.value })} />
+          <textarea className="sh-input" rows={3} autoFocus value={f.text} onChange={(ev) => set({ text: ev.target.value })} aria-label="How did it go?" />
+          <SayIt value={f.text} onChange={(text) => set({ text })} />
           <div className="sh-next"><button className="ghost" onClick={() => setStep(0)}>Back</button><button className="primary" onClick={finish}>{f.text.trim() ? 'Save' : 'Skip and finish'}</button></div>
           {sp && <p className="sh-note">{sp} helped with this, so it goes to them to check.</p>}
         </>}
@@ -388,9 +398,10 @@ function AskFlow({ q, studentId, onClose, onDone }) {
       <div className="modal sh-flow" role="dialog" aria-label="Answer a question" onClick={(e) => e.stopPropagation()}>
         <button className="panel-close" onClick={onClose} aria-label="Close">×</button>
         <p className="sh-sub">About “{q.event.title}”</p>
-        <h2>{q.prompt}</h2>
+        <Said text={q.prompt} />
         <div className="sh-starters">{STARTERS.map((s) => <button key={s} onClick={() => setText(`${text ? `${text} ` : ''}${s.replace('…', ' ')}`)}>{s}</button>)}</div>
-        <textarea className="sh-input" rows={4} autoFocus value={text} onChange={(e) => setText(e.target.value)} />
+        <textarea className="sh-input" rows={4} autoFocus value={text} onChange={(e) => setText(e.target.value)} aria-label="Your answer" />
+        <SayIt value={text} onChange={setText} />
         <div className="sh-next"><button className="primary" disabled={text.trim().length < 5} onClick={() => { addReflection({ studentId, eventId: q.event.id, prompt: q.prompt, text: text.trim(), visibility: 'advisor', signal: q.signal }); onDone(); }}>Save my answer</button></div>
       </div>
     </div>
@@ -398,7 +409,11 @@ function AskFlow({ q, studentId, onClose, onDone }) {
 }
 
 const Unread = ({ e }) => <NewBadge n={useUnread(e)} />;
+// Opens the voice recorder (only where the browser can record).
+const VoiceStart = ({ onClick, label = 'Or say it: record a voice note' }) => (canRecord()
+  ? <button type="button" className="sh-photo-btn cam sh-voice-btn" onClick={onClick}><span aria-hidden="true">●</span>{label}</button> : null);
 function Moment({ e, map, onClose, onReflect, toast }) {
+  const [recording, setRecording] = useState(false);
   const img = e.evidence.find((v) => v.kind === 'image');
   const l = lineOf(map, e.lineIds[0]);
   return (
@@ -412,6 +427,10 @@ function Moment({ e, map, onClose, onReflect, toast }) {
         <p className="sh-sub">{fmtDate(e.date)} · <Badge e={e} /></p>
         {e.summary && <p>{e.summary}</p>}
         {e.reflections?.map((r) => <blockquote key={r.id}>{r.text}</blockquote>)}
+        <VoiceNotes evidence={e.evidence} />
+        {e.verification === 'student-added' && (recording
+          ? <VoiceRecorder onAdded={(ev) => { editStation(e.id, { evidence: [...(getEvent(e.id)?.evidence || []), ev] }); setRecording(false); toast('Your voice note is on this moment.'); }} onCancel={() => setRecording(false)} />
+          : <VoiceStart onClick={() => setRecording(true)} label="Add a voice note" />)}
         <div className="sh-next"><button className="primary" onClick={onReflect}>{e.reflections?.length ? 'Add another thought' : 'What did I learn?'}</button></div>
         <MomentComments key={`c-${e.id}`} event={e} simple toast={toast} />
         <ReportButton event={e} simple toast={toast} />

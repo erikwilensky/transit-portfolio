@@ -1,0 +1,29 @@
+/* Voice (Voice.jsx): speak to type, read aloud, voice notes. */
+.vc-say { display: flex; justify-content: flex-start; margin: -4px 0 4px; }
+.vc-mic-wrap { display: inline-grid; gap: 6px; justify-items: start; }
+.vc-mic { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 16px; border-radius: 999px; border: 2px solid var(--navy); background: var(--surface); color: var(--navy); font: inherit; font-size: 16px; font-weight: 600; cursor: pointer; }
+.vc-mic.on { background: var(--b-red); border-color: var(--b-red); color: #fff; }
+.vc-mic:focus-visible, .vc-speak:focus-visible, .vc-big:focus-visible { outline: 3px solid var(--b-sky); outline-offset: 2px; }
+.vc-note { max-width: 46ch; font-size: 13px; color: var(--muted); }
+.vc-said { display: flex; align-items: flex-start; gap: 8px; }
+.vc-said > span { flex: 1; }
+.vc-speak { flex: none; display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--rule); background: var(--surface); color: var(--navy); cursor: pointer; }
+.vc-speak.on { border-color: var(--navy); background: var(--navy); color: #fff; }
+.vc-rec { display: grid; gap: 12px; justify-items: center; padding: 8px 0; }
+.vc-big { display: inline-flex; align-items: center; justify-content: center; gap: 12px; min-width: 220px; min-height: 72px; padding: 16px 28px; border-radius: 16px; border: 2px solid var(--navy); background: var(--surface); color: var(--navy); font: inherit; font-size: 21px; font-weight: 600; cursor: pointer; }
+.vc-big.stop { background: var(--b-red); border-color: var(--b-red); color: #fff; }
+.vc-dot { width: 18px; height: 18px; border-radius: 50%; background: var(--b-red); }
+.vc-sq { width: 16px; height: 16px; border-radius: 3px; background: #fff; }
+.vc-time { margin: 0; font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; } .vc-time small { font-size: 14px; font-weight: 400; color: var(--muted); }
+.vc-play { width: 100%; max-width: 420px; }
+.vc-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; } .vc-row button { font-size: 17px; padding: 12px 18px; border-radius: 14px; }
+.vc-notes { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 8px; }
+.vc-notes li { display: flex; align-items: center; gap: 8px; } .vc-notes audio { flex: 1; min-width: 0; max-width: 420px; }
+.file-links .vc-inline { display: block; margin-top: 4px; max-width: 360px; width: 100%; }
+:root[data-theme="dark"] :is(.vc-mic, .vc-speak, .vc-big) { color: var(--b-sky); border-color: var(--b-sky); }
+:root[data-theme="dark"] :is(.vc-mic.on, .vc-big.stop) { color: #fff; border-color: var(--b-red); }
+:root[data-theme="dark"] .vc-speak.on { background: var(--b-sky); color: var(--navy); }
+@media (max-width: 520px) { .vc-big { min-width: 0; width: 100%; } }
+.sh-voice-btn { width: 100%; margin: 4px 0; } .sh-voice-btn span { font-size: 18px; color: var(--b-red); }
+.sh-voice { display: grid; gap: 6px; justify-items: start; }
+.cp-open:has(> .vc-speak) { display: flex; gap: 8px; align-items: center; } .cp-open > .cp-card { flex: 1; min-width: 0; }

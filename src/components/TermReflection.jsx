@@ -1,12 +1,13 @@
 // Term reflection (api.openReflectionWindow … finishTermReflection): the card and guided flow on a student's home, the
 // advisory page's "Reflections: 12 of 23 done", and the whole-Year panel on the school overview.
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { advisoryOf, advisoryReflection, canNudge, closeReflectionWindow, familyViewer, finishTermReflection, getReflectionWindows, getStudentMap,
   getTeacher, lastNudge, myReflection, nextTermEnd, nudgeAge, nudgeStudent, openReflectionWindow, reflectionProgress, saveTermReflection, shortName, snapshot,
   termMoments, termName, TODAY, TR_PICKS, windowOpen } from '../api.js';
 import { fmtDate, inkOn } from '../format.js';
 import { ideasFor, Steps } from '../screens/SimpleHome.jsx';
 import './term-reflection.css';
+import { Said, SayIt, SpeakButton } from './Voice.jsx';
 
 const Q = [['did', 'What did you do?', ['I made…', 'I helped…', 'I took part in…', 'I tried…']], ['learned', 'What did you learn?', ['I learned that…', 'I got better at…', 'It was hard when…']], ['next', 'What next?', ['Next time I will…', 'I want to try…', 'I will keep…']]];
 const HINT = { did: 'What you did, in a sentence or two', learned: 'A skill, something about yourself, or something that surprised you', next: 'What you will do differently, or try next' };
@@ -100,7 +101,7 @@ function SimpleFlow({ w, studentId, rec, toast, onClose }) {
         </> : <>
           <Steps n={screens.length} at={at} />
           {cur === 'look' && <>
-            <h2>Look back at this term</h2>
+            <Said text="Look back at this term" />
             <p className="sh-sub">Tap up to {TR_PICKS} things you are proud of.</p>
             <LookBack moments={moments} f={f} set={set} lines={lines} simple />
             <div className="sh-next"><button className="primary" disabled={moments.length > 0 && !f.picks.length} onClick={() => go(1)}>Next</button></div>
@@ -109,18 +110,20 @@ function SimpleFlow({ w, studentId, rec, toast, onClose }) {
             <h2>{cur === '_' ? 'Your term' : `“${ev(cur)?.title}”`}</h2>
             {Q.map(([k, label, starters]) => (
               <div key={k} className="tr-q">
-                <label htmlFor={`tr-${k}`}>{label}</label>
+                <div className="vc-said"><label htmlFor={`tr-${k}`}>{label}</label><SpeakButton text={label} auto={false} /></div>
                 <div className="sh-starters">{starters.map((s) => <button key={s} onClick={() => setAns(cur, { [k]: `${ans(cur)[k] ? `${ans(cur)[k].trimEnd()} ` : ''}${s.replace('…', ' ')}` })}>{s}</button>)}</div>
                 <textarea id={`tr-${k}`} className="sh-input" rows={2} value={ans(cur)[k] || ''} onChange={(e) => setAns(cur, { [k]: e.target.value })} />
+                <SayIt value={ans(cur)[k] || ''} onChange={(v) => setAns(cur, { [k]: v })} />
               </div>
             ))}
             <div className="sh-next"><button className="ghost" onClick={() => go(at - 1)}>Back</button><button className="primary" disabled={!hasText(ans(cur))} onClick={() => go(at + 1)}>Next</button></div>
           </>}
           {cur === 'goal' && <>
-            <h2>One thing to do next term</h2>
+            <Said text="One thing to do next term" />
             {goals.length > 0 && <div className="sh-who">{goals.slice(0, 3).map((e) => <button key={e.id} className={`sh-ask other${f.goal?.goalId === e.id ? ' on' : ''}`} onClick={() => save({ goal: { goalId: e.id }, step: at + 1 })}><b>Keep going: {e.title}</b><small>By {fmtDate(e.date)}</small></button>)}</div>}
             <p className="sh-sub">{goals.length ? 'Or something new:' : 'What do you want to do?'}</p>
-            <input className="sh-input" value={g?.title || ''} onChange={(e) => set({ goal: { ...g, title: e.target.value, date: due } })} placeholder="e.g. Enter the science fair" />
+            <input className="sh-input" value={g?.title || ''} onChange={(e) => set({ goal: { ...g, title: e.target.value, date: due } })} placeholder="e.g. Enter the science fair" aria-label="My goal" />
+            <SayIt value={g?.title || ''} onChange={(title) => set({ goal: { ...g, title, date: due } })} />
             {ideas.length > 0 && <div className="sh-starters">{ideas.map(([t, l]) => <button key={t} className="sh-idea" style={{ '--c': l.colour }} onClick={() => set({ goal: { title: t, lineId: l.id, date: due } })}>{t}</button>)}</div>}
             <p className="sh-sub">Which colour does it go with?</p>
             <div className="sh-lines">{lines.map((l) => <button key={l.id} style={{ '--c': l.colour }} className={g?.lineId === l.id ? 'on' : ''} onClick={() => set({ goal: { ...g, lineId: l.id, date: due } })}><i />{l.name}</button>)}</div>
@@ -176,7 +179,8 @@ function PageFlow({ w, studentId, rec, toast, onClose }) {
             <LookBack moments={moments} f={f} set={set} lines={lines} /></section>
           {keys.length > 0 && <section className="tr-sec"><h3>2. What it meant</h3>
             {keys.map((k) => <fieldset key={k} className="tr-moment"><legend>{k === '_' ? 'This term' : ev(k)?.title}</legend>
-              {Q.map(([x, label]) => <label key={x}><span>{label}</span><textarea rows={2} value={ans(k)[x] || ''} placeholder={HINT[x]} onChange={(e) => setAns(k, { [x]: e.target.value })} /></label>)}
+              {Q.map(([x, label]) => <Fragment key={x}><label><span>{label}</span><textarea rows={2} value={ans(k)[x] || ''} placeholder={HINT[x]} onChange={(e) => setAns(k, { [x]: e.target.value })} /></label>
+                <SayIt value={ans(k)[x] || ''} onChange={(v) => setAns(k, { [x]: v })} /></Fragment>)}
             </fieldset>)}</section>}
           <section className="tr-sec"><h3>{keys.length ? 3 : 2}. One goal for next term</h3>
             <div className="tr-goal" role="radiogroup" aria-label="Goal for next term">
