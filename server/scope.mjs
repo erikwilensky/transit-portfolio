@@ -229,6 +229,7 @@ export function scopedSnapshot(user) {
   const casOut = ({ code, ...x }) => ({ ...x, ...(code ? { code: { expires: code.expires } } : {}), ...(self ? {} : { about: api.casAbout(x) }) });
   store.casHours = parent ? [] : (full.casHours || []).filter((x) => (self ? x.studentId === self : casCoord || (!!tid && x.supervisor?.kind === 'staff' && x.supervisor.teacherId === tid))).map(casOut);
   Object.assign(store, familyNotesScope(full, store, { user, all, self, parent, tid, shown, moderator }));
+  Object.assign(store, schoolEventScope(full, { all, self, parent, staff, tid, inReach, shown }));
   // Everything else (school lines' settings, integrations, rollout, family language, classes, keys other features add).
   for (const [k, v] of Object.entries(full)) if (!(k in store)) store[k] = generic(v, inReach);
   // Counts the whole-school screens show for what they may not open.
@@ -384,4 +385,23 @@ const famNote = (id) => api.getFamilyNote(id)?.studentId ?? '?';
 Object.assign(TOUCHES, {
   addFamilyNote: (a) => T([ev(a[0])]), editFamilyNote: (a) => T([famNote(a[0])]), deleteFamilyNote: (a) => T([famNote(a[0])]),
   thankFamilyNote: (a) => T([famNote(a[0])]), setFamilyNoteHidden: (a) => T([famNote(a[0])]),
+});
+
+// ── School events (api.addSchoolEvent, dismissSchoolEvent): whole-school roles get every event and row whole. A student
+// gets the events for them (studentIds: just themselves) and their own rows; a family their children's events (only
+// their ids), no rows; an advisor or teacher the events with a student they advise or teach (only those ids) and those
+// students' rows, the moment's id only when they receive the moment (a private one is just counted). ──
+function schoolEventScope(full, { all, self, parent, staff, tid, inReach, shown }) {
+  if (all) return { schoolEvents: full.schoolEvents || [], schoolEventAdds: full.schoolEventAdds || [] };
+  const see = staff ? api.staffStudentsOf(tid) : null;
+  const mine = (sid) => (self ? sid === self : parent ? inReach(sid) : !!see?.has(sid) && inReach(sid));
+  const schoolEvents = (full.schoolEvents || []).flatMap((x) => { const ids = x.studentIds.filter(mine); return ids.length ? [{ ...x, studentIds: ids }] : []; });
+  const kept = new Set(schoolEvents.map((x) => x.id));
+  const schoolEventAdds = parent ? [] : (full.schoolEventAdds || []).filter((r) => kept.has(r.eventId) && mine(r.studentId))
+    .map((r) => (self || !r.momentId || shown.has(r.momentId) ? r : { ...r, momentId: null, added: r.added && !!api.getEvent(r.momentId) }));
+  return { schoolEvents, schoolEventAdds };
+}
+Object.assign(TOUCHES, {
+  addSchoolEvent: (a) => T([], [a[1]]), editSchoolEvent: (a) => T([], [a[2]]), removeSchoolEvent: (a) => T([], [a[1]]), importSchoolEvents: (a) => T([], [a[1]]),
+  remindSchoolEvent: (a) => T([], [a[1]]), dismissSchoolEvent: (a) => T([api.getSchoolEvent(a[0])?.studentIds.includes(a[1]) ? a[1] : '?']),
 });

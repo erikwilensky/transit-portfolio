@@ -181,6 +181,8 @@ export function personaFor(user) {
   if (['advisor', 'teacher', 'counsellor', 'coordinator', 'leadership'].includes(kind) || user.admin) p.nav = [...(p.nav || NAV[kind]), ['phrases', 'My phrases']];
   // Report comments (src/screens/ReportComments.jsx): anyone who teaches or advises; progress for coordinators, leadership, admins.
   if (kind === 'teacher' || kind === 'advisor' || also.length || kind === 'coordinator' || kind === 'leadership' || user.admin) p.nav = [...(p.nav || NAV[kind]), ['reportcomments', 'Report comments']];
+  // School events (src/components/SchoolEvents.jsx): every member of staff and admins (adding them: admins, coordinators, leadership).
+  if (['advisor', 'teacher', 'counsellor', 'coordinator', 'leadership'].includes(kind) || user.admin) p.nav = [...(p.nav || NAV[kind]), ['events', 'School events']];
   // System health (src/screens/SystemHealth.jsx): admins only.
   if (user.admin) p.nav = [...(p.nav || NAV[kind]), ['health', 'System health']];
   return p;

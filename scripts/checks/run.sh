@@ -52,4 +52,5 @@ echo "== thai-students (starts its own clean pilot server on the real roster)"; 
 echo "== comment-bank (starts its own clean pilot server on the real roster)"; node comment-bank.cjs || fail=1
 echo "== report-comments (starts its own clean pilot server on the real roster)"; node report-comments.cjs || fail=1
 echo "== family-notes (starts its own clean pilot server on the real roster)"; node family-notes.cjs || fail=1
+echo "== school-events (starts its own clean pilot server on the real roster)"; node school-events.cjs || fail=1
 echo "== tours";node tours.cjs | grep -E "end url|ERRS|soon|boom|empty|hs" ; exit $fail

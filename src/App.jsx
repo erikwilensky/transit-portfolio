@@ -95,6 +95,7 @@ import { clearReadNotifications } from './api.js';
 import { useStudentThai } from './thai.js';
 import { recordWords } from './api.js';
 import ReportComments from './screens/ReportComments.jsx';
+import SchoolEventsScreen from './components/SchoolEvents.jsx';
 
 // Routes: #/<persona>/<screen>/<param>, plus public #/s/<token>, #/v/<code> and #/p/<student>[/th] (parent link).
 // A screen set this persona uses: their own kind, or another hat they wear in the pilot (persona.also).
@@ -411,7 +412,8 @@ export default function App() {
           {pilot && route.screen === 'prompts' && (persona.admin || persona.kind === 'coordinator' || persona.kind === 'leadership') && <SubjectPromptsScreen {...ctx} />}
           {pilot && route.screen === 'phrases' && phraseWriter() && <PhrasesScreen {...ctx} />}
           {pilot && route.screen === 'reportcomments' && (persona.teacherId || persona.admin || persona.kind === 'coordinator' || persona.kind === 'leadership') && <ReportComments {...ctx} param={route.param} />}
-          {route.screen !== 'phrases' && route.screen !== 'reportcomments' && route.screen !== 'prompts' && route.screen !== 'health' && route.screen !== 'screens' && route.screen !== 'accounts' && route.screen !== 'usage' && route.screen !== 'reports' && route.screen !== 'overview' && route.screen !== 'week' && route.screen !== 'activitylog' && route.screen !== 'leaver' && route.screen !== 'cas' && route.screen !== 'casconfirm' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} persona={persona} />}
+          {pilot && route.screen === 'events' && persona.kind !== 'student' && persona.kind !== 'parent' && <SchoolEventsScreen {...ctx} />}
+          {route.screen !== 'phrases' && route.screen !== 'events' && route.screen !== 'reportcomments' && route.screen !== 'prompts' && route.screen !== 'health' && route.screen !== 'screens' && route.screen !== 'accounts' && route.screen !== 'usage' && route.screen !== 'reports' && route.screen !== 'overview' && route.screen !== 'week' && route.screen !== 'activitylog' && route.screen !== 'leaver' && route.screen !== 'cas' && route.screen !== 'casconfirm' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} persona={persona} />}
           {pilot && route.screen === 'health' && persona.admin && <SystemHealth {...ctx} />}
           </ErrorBoundary>
           {pilot && level === 'simple' && <div className="fb-simple"><button onClick={() => setFbOpen(true)}>Something not working? Tell us</button></div>}

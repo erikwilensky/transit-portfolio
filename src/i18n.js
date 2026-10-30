@@ -800,3 +800,19 @@ export function studentThai(s) {
   const d = thaiDates(s); if (d !== s && !/[A-Za-z]{2,}/.test(d)) return d;
   return null;
 }
+
+// ── School events (src/components/SchoolEvents.jsx): the cards after an event, Coming up, the event's name on a moment ──
+for (const [k, v] of Object.entries({ 'School event': 'กิจกรรมของโรงเรียน' })) TH[k] ??= v;
+for (const [k, v] of Object.entries({
+  'School event': 'กิจกรรมของโรงเรียน', 'From a school event': 'จากกิจกรรมของโรงเรียน', 'Not for me': 'ไม่ใช่สำหรับฉัน', 'Add it': 'เพิ่มเลย',
+  'After school events': 'หลังกิจกรรมของโรงเรียน', 'On now': 'กำลังจัดอยู่', 'Set a goal': 'ตั้งเป้าหมาย', today: 'วันนี้', tomorrow: 'พรุ่งนี้',
+  'Hidden. You can still add it any time.': 'ซ่อนแล้ว คุณยังเพิ่มได้ทุกเมื่อ', 'Coming up': 'สิ่งที่กำลังจะมา',
+})) STU[k] ??= v;
+for (const [k, v] of DAY_FULL.map((d, i) => [d, DAY_TH_FULL[i]])) STU[k] ??= v;
+ERR_TH['This event is not for you'] ??= 'กิจกรรมนี้ไม่ใช่สำหรับคุณ';
+STU_RE.push(
+  [/^Add something from “(.+)” to your journey$/, (m) => `เพิ่มเรื่องราวจาก “${m[1]}” ลงในเส้นทางของคุณ`],
+  [/^Add something from (.+)$/, (m) => `เพิ่มเรื่องราวจาก ${m[1]}`],
+  [/^(\d{1,2} \w{3} \d{4}) to (\d{1,2} \w{3} \d{4})$/, (m) => `${D(m[1])} ถึง ${D(m[2])}`],
+  [/^(.+\?) \(optional\)$/, (m) => `${m[1]} (ไม่บังคับ)`],
+);

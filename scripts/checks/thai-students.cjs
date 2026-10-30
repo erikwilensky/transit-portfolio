@@ -169,11 +169,15 @@ let srv;
     await act(cT, 'spotMoment', [[AARON], COULTAS, { title: 'Helped tidy the lab', note: 'Thank you for staying behind.', lineId: 'science', classId: CLASS }]);
     await act(alT, 'openReflectionWindow', [{ title: 'Term 1 reflection', opens: day(0), closes: day(14), advisorId: ALTEMEN }, ALTEMEN]);
     await act(alT, 'addMomentComment', [m1.id, ALTEMEN, 'Brilliant engineering, Aaron.']);
+    // School events (SchoolEvents.jsx): a card after Sports day (Year 8), and Week Without Walls coming up for Years 8 and 10.
+    await act(adminTok, 'addSchoolEvent', [{ title: 'Sports day', start: day(-1), end: day(-1), for: { kind: 'years', years: [8] }, lineId: 'sport', question: 'What was your best moment?' }, null]);
+    await act(adminTok, 'addSchoolEvent', [{ title: 'Week Without Walls', start: day(6), end: day(9), for: { kind: 'years', years: [8, 10] }, lineId: 'service' }, null]);
     await a.reload(); await a.waitForSelector('.simple .sh-actions');
     await a.waitForTimeout(800);
     ok(await a.evaluate(() => document.documentElement.lang) === 'th', '<html lang="th"> while Aaron reads Thai');
     const ms = a.locator('.ms-x'); if (await ms.count()) { await sweep(a, AARON, 'Aaron: a milestone celebration'); await ms.first().click(); }
     await sweep(a, AARON, 'Aaron: Simple home');
+    if (await openSweep(a, AARON, '.se-card .primary', 'Aaron: add something from Sports day')) { await a.click('.sh-flow .sh-next .primary'); await sweep(a, AARON, 'Aaron: Sports day, its question'); await close(a); }
     ok(/\d{1,2} (ม\.ค\.|ก\.พ\.|มี\.ค\.|เม\.ย\.|พ\.ค\.|มิ\.ย\.|ก\.ค\.|ส\.ค\.|ก\.ย\.|ต\.ค\.|พ\.ย\.|ธ\.ค\.) 20\d\d/.test(await a.locator('.sh-feed').innerText()), 'dates: Thai month names, Gregorian years');
     await audit(a, 'Aaron, Simple home in Thai');
     await a.screenshot({ path: path.join(SH, 'aaron-home.png'), fullPage: true });
@@ -258,6 +262,7 @@ let srv;
     await s.goto(`${U}/#/me/map`); await s.waitForSelector('.home');
     await toThai(s); await s.waitForTimeout(500);
     await sweep(s, Y10.id, 'Year 10: map');
+    if (await openSweep(s, Y10.id, '.se-coming .ghost', 'Year 10: a goal for a school event coming up')) await close(s);
     await audit(s, 'Year 10, map in Thai');
     await s.screenshot({ path: path.join(SH, 'y10-map.png') });
     await s.goto(`${U}/#/me/map/${r1.id}`); await s.waitForSelector('.station-panel.open');

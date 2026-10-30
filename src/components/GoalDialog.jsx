@@ -5,12 +5,12 @@ const addDays = (d, n) => new Date(new Date(d).getTime() + n * 86400000).toISOSt
 
 // S5: plan a goal as a dashed station. Optionally invite a teacher to sponsor it before it starts,
 // so work outside any school system can still end up endorsed.
-export default function GoalDialog({ map, studentId, by, onClose, onDone }) {
+export default function GoalDialog({ map, studentId, by, onClose, onDone, prefill = null }) {
   const lines = map.lines.filter((l) => l.status !== 'ended');
   const teachers = endorserChoices(studentId, ['t-01', 't-02', 't-03', 't-04', 't-05', 't-06', 't-07', 't-08']);
-  const [title, setTitle] = useState('');
-  const [date, setDate] = useState(addDays(TODAY, 90));
-  const [lineId, setLineId] = useState(lines[0]?.id || '');
+  const [title, setTitle] = useState(prefill?.title || ''); // prefill: a school event coming up (SchoolEvents.jsx)
+  const [date, setDate] = useState(prefill?.date || addDays(TODAY, 90));
+  const [lineId, setLineId] = useState((prefill?.lineId && lines.some((l) => l.id === prefill.lineId) && prefill.lineId) || lines[0]?.id || '');
   const [summary, setSummary] = useState('');
   const [checkIn, setCheckIn] = useState(!by);
   const [sponsor, setSponsor] = useState('');

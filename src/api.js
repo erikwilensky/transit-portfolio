@@ -678,8 +678,9 @@ export function addStation(studentId, f) {
     ...(f.cas ? { cas: f.cas } : {}),
     ...(f.promptId ? { promptId: String(f.promptId).slice(0, 80) } : {}), // written with subject prompts (getPromptsFor)
   };
+  const se = f.schoolEvent ? linkSchoolEvent(e, f.schoolEvent) : null; // school events: a moment from one
   store.events.push(e);
-  if (f.reflection) store.reflections.push({ id: uid('rf-x'), eventId: e.id, text: f.reflection, prompt: 'Quick reflection', date: e.date, visibility: f.visibility || 'advisor' });
+  if (f.reflection) store.reflections.push({ id: uid('rf-x'), eventId: e.id, text: f.reflection, prompt: se?.question || 'Quick reflection', date: e.date, visibility: f.visibility || 'advisor' });
   const who = getStudent(studentId).name;
   log(studentId, who, 'station', `Added “${e.title}”${f.via ? ` from ${f.via}` : ''}`);
   if (f.requestFrom) requestEndorsement(e.id, f.requestFrom, f.requestNote);
@@ -1836,6 +1837,203 @@ export function remindDueTasks() {
   }
   if (n) emit();
   return n;
+}
+
+// ── School events: sports day, a trip, a concert. Students it was for get a card on their home afterwards ──
+// store.schoolEvents [{ id: 'se-…', title, start, end, for: { kind: 'school' | 'years' | 'homerooms' | 'classes', years,
+// homerooms, classIds }, lineId (a school line, or null), photo (url or null), question, by (teacher id or null), at,
+// studentIds (who it was for, when it was saved), reminded: { date, at, by, n } | null, editedAt }].
+// store.schoolEventAdds [{ id: 'sx-…', eventId, studentId, momentId, added, dismissed, date, at }]: one row per student who
+// added a moment from it (addStation with schoolEvent) or dismissed its card. Both made on first use.
+// Card: from the day after the event ends, for SE_CARD_DAYS days (and 3 days after a reminder). Coming up: from
+// SE_SOON_DAYS before it starts until it ends.
+export const SE_CARD_DAYS = 5, SE_SOON_DAYS = 28;
+const seList = () => (store.schoolEvents ||= []);
+const seRows = () => (store.schoolEventAdds ||= []);
+const seErr = (message, status = 400) => Object.assign(new Error(message), { status });
+const seDay = (d, n) => new Date(Date.parse(d) + n * 864e5).toISOString().slice(0, 10);
+export const getSchoolEvent = (id) => seList().find((x) => x.id === id);
+export const getSchoolEvents = () => seList();
+export const SE_KINDS = { school: 'Whole school', years: 'Some Years', homerooms: 'Some homerooms', classes: 'Some classes' };
+// Who an event is for, from the record now: students (never cohort-only records) by Year, homeroom or current class place.
+export function schoolEventStudents(f = {}) {
+  const kids = store.students.filter((s) => !s.cohortOnly);
+  if (f.kind === 'years') { const ys = new Set((f.years || []).map(Number)); return kids.filter((s) => ys.has(s.grade + 1)).map((s) => s.id); }
+  if (f.kind === 'homerooms') { const hs = new Set(f.homerooms || []); return kids.filter((s) => hs.has(s.homeroom)).map((s) => s.id); }
+  if (f.kind === 'classes') { const { out } = currentPlaces(new Set(f.classIds || [])); const ids = new Set([...out.values()].flat()); return kids.filter((s) => ids.has(s.id)).map((s) => s.id); }
+  return kids.map((s) => s.id);
+}
+export const homeroomsOf = () => [...new Set(store.students.filter((s) => !s.cohortOnly && s.homeroom).map((s) => s.homeroom))].sort((a, b) => a.localeCompare(b, 'en', { numeric: true }));
+function seFor(f) {
+  const kind = f?.kind || 'school';
+  if (!SE_KINDS[kind]) throw seErr('Pick who it is for');
+  const years = kind === 'years' ? [...new Set((f.years || []).map(Number).filter((y) => y >= 7 && y <= 13))].sort((a, b) => a - b) : [];
+  const homerooms = kind === 'homerooms' ? [...new Set((f.homerooms || []).map((h) => String(h).trim()).filter(Boolean))].slice(0, 80) : [];
+  const classIds = kind === 'classes' ? [...new Set((f.classIds || []).filter((id) => classById(id)))].slice(0, 80) : [];
+  if ((kind === 'years' && !years.length) || (kind === 'homerooms' && !homerooms.length) || (kind === 'classes' && !classIds.length)) throw seErr('Pick who it is for');
+  return { kind, years, homerooms, classIds };
+}
+function seFields(f = {}, old = {}) {
+  const title = String(f.title ?? old.title ?? '').trim().slice(0, 80);
+  if (title.length < 3) throw seErr('Give the event a name');
+  const start = f.start ?? old.start, end = f.end || (f.start ? f.start : old.end);
+  if (!ymd.test(start || '') || !ymd.test(end || '')) throw seErr('Pick the date');
+  if (end < start) throw seErr('The last day is before the first');
+  const lineId = f.lineId !== undefined ? f.lineId || null : old.lineId ?? null;
+  if (lineId && (!lineById(lineId) || lineById(lineId).studentId)) throw seErr('Pick a school line');
+  const photo = f.photo !== undefined ? f.photo || null : old.photo ?? null;
+  if (photo && (typeof photo !== 'string' || photo.length > 300 || !/^(\/?api\/files\/|https:\/\/)/.test(photo))) throw seErr('That photo did not upload');
+  return { title, start, end, for: seFor(f.for ?? old.for), lineId, photo, question: String(f.question ?? old.question ?? '').trim().slice(0, 200) };
+}
+export function addSchoolEvent(f = {}, by = null) {
+  if (by && !teacherById[by]) throw seErr('No such teacher');
+  const x = { id: uid('se-'), ...seFields(f), by: by || null, at: nowIso(), reminded: null, editedAt: null };
+  x.studentIds = schoolEventStudents(x.for);
+  if (!x.studentIds.length) throw seErr('No students match who it is for');
+  seList().push(x);
+  emit();
+  return x;
+}
+export function editSchoolEvent(id, f = {}, by = null) {
+  const x = getSchoolEvent(id);
+  if (!x) throw seErr('No such event', 404);
+  const next = seFields(f, x), ids = schoolEventStudents(next.for);
+  if (!ids.length) throw seErr('No students match who it is for');
+  Object.assign(x, next, { studentIds: ids, editedAt: nowIso(), editedBy: by || null });
+  emit();
+  return x;
+}
+// Moments added from it keep its name (their source), so a family still sees it after the event is removed.
+export function removeSchoolEvent(id, by = null) { // eslint-disable-line no-unused-vars
+  const i = seList().findIndex((x) => x.id === id);
+  if (i < 0) throw seErr('No such event', 404);
+  const [x] = seList().splice(i, 1);
+  store.schoolEventAdds = seRows().filter((r) => r.eventId !== id);
+  emit();
+  return x;
+}
+// A CSV list (parseEventsCsv in the browser): every row is checked first, then all are added, or none.
+export function importSchoolEvents(rows = [], by = null) {
+  if (!Array.isArray(rows) || !rows.length) throw seErr('There are no events in the file');
+  if (rows.length > 200) throw seErr('Up to 200 events at a time');
+  rows.forEach((r, i) => { try { seFields(r); if (!schoolEventStudents(seFor(r.for)).length) throw seErr('No students match who it is for'); } catch (e) { throw seErr(`Row ${i + 2}: ${e.message}`); } });
+  return rows.map((r) => addSchoolEvent(r, by));
+}
+// title,start,end,years,line (a header row first; columns in any order). Years: "8", "7-9", "8;9" or empty (whole school).
+// Dates: 2026-11-20 or 20/11/2026. line: a school line's name, or empty. → { rows, errors }
+export function parseEventsCsv(text) {
+  const recs = [];
+  let row = [], cell = '', q = false;
+  const src = String(text || '').replace(/^﻿/, '');
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i];
+    if (q) { if (c === '"' && src[i + 1] === '"') { cell += '"'; i++; } else if (c === '"') q = false; else cell += c; continue; }
+    if (c === '"') q = true; else if (c === ',') { row.push(cell); cell = ''; } else if (c === '\n' || c === '\r') { if (c === '\r' && src[i + 1] === '\n') i++; row.push(cell); recs.push(row); row = []; cell = ''; } else cell += c;
+  }
+  if (cell || row.length) { row.push(cell); recs.push(row); }
+  const lines = recs.filter((r) => r.some((x) => x.trim()));
+  if (!lines.length) return { rows: [], errors: ['The file is empty'] };
+  const head = lines[0].map((h) => h.trim().toLowerCase());
+  const col = (n) => head.indexOf(n);
+  if (col('title') < 0 || col('start') < 0) return { rows: [], errors: ['The first row needs the column names: title, start, end, years, line'] };
+  const day = (v) => { const s = String(v || '').trim(); if (ymd.test(s)) return s; const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); return m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : s ? null : ''; };
+  const lineOf = (v) => { const n = String(v || '').trim().toLowerCase(); if (!n) return null; return getSchoolLines().find((l) => l.name.toLowerCase() === n)?.id; };
+  const rows = [], errors = [];
+  lines.slice(1).forEach((r, i) => {
+    const at = (k) => (col(k) >= 0 ? String(r[col(k)] ?? '').trim() : '');
+    const n = i + 2, title = at('title'), start = day(at('start')), endRaw = day(at('end')), end = endRaw || start, lineId = lineOf(at('line'));
+    const ys = at('years').replace(/years?/gi, '').trim();
+    let years = [];
+    if (ys && !/^(all|whole school)$/i.test(ys)) {
+      for (const part of ys.split(/[;|/ ]+|,/).filter(Boolean)) { const m = part.match(/^(\d{1,2})(?:-(\d{1,2}))?$/); if (!m) { years = null; break; } for (let y = Number(m[1]); y <= Number(m[2] || m[1]); y++) years.push(y); }
+    }
+    if (!title) errors.push(`Row ${n}: no title`);
+    else if (!start) errors.push(`Row ${n}: the start date is not a date (use 2026-11-20)`);
+    else if (endRaw === null) errors.push(`Row ${n}: the end date is not a date`);
+    else if (end < start) errors.push(`Row ${n}: it ends before it starts`);
+    else if (years === null || years.some((y) => y < 7 || y > 13)) errors.push(`Row ${n}: Years should be 7 to 13, like 8 or 7-9`);
+    else if (lineId === undefined) errors.push(`Row ${n}: no school line called “${at('line')}”`);
+    else rows.push({ title: title.slice(0, 80), start, end, for: years.length ? { kind: 'years', years: [...new Set(years)] } : { kind: 'school' }, lineId });
+  });
+  return { rows, errors };
+}
+const seRow = (eventId, studentId) => seRows().find((r) => r.eventId === eventId && r.studentId === studentId);
+// addStation(…, { schoolEvent }): only for a student it was for; the moment keeps the event's name as its source.
+function linkSchoolEvent(e, id) {
+  const x = getSchoolEvent(id), s = getStudent(e.studentId);
+  if (!x || !s || !x.studentIds.includes(e.studentId)) return null;
+  e.schoolEvent = x.id;
+  e.source = { system: 'School event', ref: x.title };
+  e.lineIds = e.lineIds.map((l) => laneFor(s, l)).filter(Boolean);
+  const r = seRow(x.id, e.studentId);
+  if (r) Object.assign(r, { momentId: r.added && getEvent(r.momentId) ? r.momentId : e.id, added: true });
+  else seRows().push({ id: uid('sx-'), eventId: x.id, studentId: e.studentId, momentId: e.id, added: true, dismissed: false, date: TODAY, at: nowIso() });
+  return x;
+}
+export function dismissSchoolEvent(id, studentId) {
+  const x = getSchoolEvent(id);
+  if (!x || !x.studentIds.includes(studentId)) throw seErr('This event is not for you', 404);
+  const r = seRow(id, studentId);
+  if (r) r.dismissed = true;
+  else seRows().push({ id: uid('sx-'), eventId: id, studentId, momentId: null, added: false, dismissed: true, date: TODAY, at: nowIso() });
+  emit();
+}
+export const schoolEventName = (e) => (e?.schoolEvent && getSchoolEvent(e.schoolEvent)?.title) || (e?.source?.system === 'School event' ? e.source.ref : null);
+const seUntil = (x) => [seDay(x.end, SE_CARD_DAYS), x.reminded ? seDay(x.reminded.date, 3) : ''].sort().at(-1);
+// The student's lane for the event's line, without changing anything (addStation puts it on the map).
+const seLane = (s, lineId) => (lineId && (s.laneOrder.find((l) => l === lineId || lineById(l)?.parentLineId === lineId) || lineId)) || null;
+const sePrefill = (x, s) => ({ title: x.title, date: x.start <= TODAY ? x.start : TODAY, lineIds: x.lineId ? [seLane(s, x.lineId)] : [], schoolEvent: x.id, question: x.question || '' });
+// A student's home: cards to add something from events that ended (not added or dismissed yet), and what is coming up.
+export function schoolEventsFor(studentId) {
+  const s = getStudent(studentId);
+  if (!s) return { cards: [], coming: [] };
+  const mine = seList().filter((x) => x.studentIds.includes(studentId));
+  const cards = mine.filter((x) => TODAY > x.end && TODAY <= seUntil(x) && !seRow(x.id, studentId)).sort((a, b) => b.end.localeCompare(a.end)).map((x) => ({ ...x, prefill: sePrefill(x, s) }));
+  const coming = mine.filter((x) => x.end >= TODAY && x.start <= seDay(TODAY, SE_SOON_DAYS)).sort((a, b) => a.start.localeCompare(b.start) || a.title.localeCompare(b.title))
+    .map((x) => ({ ...x, now: x.start <= TODAY, line: lineById(x.lineId) || null, goal: { title: x.title, date: x.start, lineId: x.lineId ? seLane(s, x.lineId) : null } }));
+  return { cards, coming };
+}
+// Staff: the students this teacher sees for events (advisees and current class places).
+export function staffStudentsOf(teacherId) {
+  const mine = getClasses().filter((c) => teacherId && c.teacherIds?.includes(teacherId)).map((c) => c.id);
+  const ids = new Set([...currentPlaces(new Set(mine)).out.values()].flat());
+  for (const s of store.students) if (teacherId && s.advisorId === teacherId) ids.add(s.id);
+  return ids;
+}
+const seAdded = (r) => !!r?.added && (!r.momentId || !!getEvent(r.momentId));
+// Per event: how many of the students it was for added something, by homeroom. whole: every student, else teacherId's.
+export function schoolEventProgress(id, { teacherId = null, whole = true } = {}) {
+  const x = getSchoolEvent(id);
+  if (!x) return null;
+  const see = whole ? null : staffStudentsOf(teacherId);
+  const ids = x.studentIds.filter((sid) => getStudent(sid) && (!see || see.has(sid)));
+  const groups = new Map();
+  for (const sid of ids) {
+    const s = getStudent(sid), r = seRow(id, sid), k = s.homeroom || '—', added = seAdded(r);
+    const g = groups.get(k) || groups.set(k, { homeroom: k, total: 0, added: 0, dismissed: 0, students: [] }).get(k);
+    g.total++; if (added) g.added++; else if (r?.dismissed) g.dismissed++;
+    g.students.push({ id: sid, name: s.name, added, dismissed: !added && !!r?.dismissed, momentId: added ? r.momentId : null });
+  }
+  const homerooms = [...groups.values()].sort((a, b) => a.homeroom.localeCompare(b.homeroom, 'en', { numeric: true }));
+  for (const g of homerooms) g.students.sort((a, b) => a.name.localeCompare(b.name));
+  return { event: x, total: ids.length, added: homerooms.reduce((n, g) => n + g.added, 0), homerooms, ended: TODAY > x.end, open: TODAY > x.end && TODAY <= seUntil(x) };
+}
+// The list a member of staff sees: every event (whole school) or those with any of their students, newest first.
+export function schoolEventsForStaff({ teacherId = null, whole = true } = {}) {
+  const see = whole ? null : staffStudentsOf(teacherId);
+  return seList().filter((x) => !see || x.studentIds.some((sid) => see.has(sid))).sort((a, b) => b.start.localeCompare(a.start) || a.title.localeCompare(b.title));
+}
+// One reminder per event, after it ends: to each student it was for who has not added something or dismissed it.
+export function remindSchoolEvent(id, by = null) {
+  const x = getSchoolEvent(id);
+  if (!x) throw seErr('No such event', 404);
+  if (TODAY <= x.end) throw seErr('You can send a reminder once the event is over');
+  if (x.reminded) throw seErr('A reminder was already sent for this event', 409);
+  const to = x.studentIds.filter((sid) => getStudent(sid) && !seRow(id, sid));
+  for (const sid of to) notify(toStudent(sid), `Add something from “${x.title}” to your journey`, { persona: toStudent(sid), screen: 'map', param: `se~${x.id}` }, 'class');
+  x.reminded = { date: TODAY, at: nowIso(), by: by || null, n: to.length };
+  emit();
+  return to.length;
 }
 
 // ── Advisor nudges: a friendly note to an advisee who has gone quiet ──
@@ -3530,6 +3728,7 @@ openConferenceRound = act('openConferenceRound', openConferenceRound); editConfe
 setSubjectPrompts = act('setSubjectPrompts', setSubjectPrompts); clearSubjectPrompts = act('clearSubjectPrompts', clearSubjectPrompts); answerExampleAsk = act('answerExampleAsk', answerExampleAsk);
 logCasExperience = act('logCasExperience', logCasExperience); logCasHours = act('logCasHours', logCasHours); withdrawCasHours = act('withdrawCasHours', withdrawCasHours); confirmCasHours = act('confirmCasHours', confirmCasHours); returnCasHours = act('returnCasHours', returnCasHours); setCasCode = act('setCasCode', setCasCode); setCasCoordinator = act('setCasCoordinator', setCasCoordinator);
 addFamilyNote = act('addFamilyNote', addFamilyNote); editFamilyNote = act('editFamilyNote', editFamilyNote); deleteFamilyNote = act('deleteFamilyNote', deleteFamilyNote); thankFamilyNote = act('thankFamilyNote', thankFamilyNote); setFamilyNoteHidden = act('setFamilyNoteHidden', setFamilyNoteHidden);
+addSchoolEvent = act('addSchoolEvent', addSchoolEvent); editSchoolEvent = act('editSchoolEvent', editSchoolEvent); removeSchoolEvent = act('removeSchoolEvent', removeSchoolEvent); importSchoolEvents = act('importSchoolEvents', importSchoolEvents); dismissSchoolEvent = act('dismissSchoolEvent', dismissSchoolEvent); remindSchoolEvent = act('remindSchoolEvent', remindSchoolEvent);
 // Undo puts a whole earlier copy back, and reset goes back to the seed (sync.js sends it to /api/reset).
 restore = act('restore', restore); resetDemo = act('resetDemo', resetDemo);
 export const MUTATORS = Object.keys(ACTIONS);
