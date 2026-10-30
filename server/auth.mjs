@@ -204,6 +204,7 @@ export function canAct(user, fn, args = []) {
   if (TR_FNS.has(fn)) { try { return termReflectionOk(user, fn, args); } catch { return false; } }
   if (PF_FNS.has(fn) || (fn === 'reportItem' && args[0]?.feedbackId)) { try { return peerOk(user, fn, args); } catch { return false; } }
   if (fn === 'markMilestonesSeen') return milestonesOk(user, args); // only the student, never staff, admins or families
+  if (LV_FNS.has(fn)) { try { return leaverOk(user, fn, args); } catch { return false; } }
   if (isAdmin(user)) return true;
   if (ADMIN_ONLY.has(fn)) return false;
   if (ANYONE.has(fn)) return true;
@@ -340,3 +341,13 @@ function peerOk(user, fn, args) {
 }
 // ── Milestones (api.markMilestonesSeen): a student marks their own celebrations seen; nobody does it for them. ──
 const milestonesOk = (user, args) => user.kind === 'student' && !!user.studentId && args[0] === user.studentId;
+// ── Leaver portfolio (api.saveLeaver, shareLeaver, revokeLeaver, doneLeaverComment, commentLeaver) ──
+// Building, sharing, withdrawing and ticking comments: only the student, on their own (never staff, admins or families).
+// Commenting: the student's advisor or whole-school staff, as themselves, once there is a portfolio.
+const LV_FNS = new Set(['saveLeaver', 'shareLeaver', 'revokeLeaver', 'doneLeaverComment', 'commentLeaver']);
+function leaverOk(user, fn, [sid, by]) {
+  if (fn !== 'commentLeaver') return user.kind === 'student' && !!user.studentId && sid === user.studentId;
+  if (!STAFF.includes(user.kind) || !user.teacherId || by !== user.teacherId || !api.getLeaver(sid)) return false;
+  const reach = reachOf(user);
+  return reach === null || (reach.has(sid) && api.getStudent(sid)?.advisorId === user.teacherId);
+}

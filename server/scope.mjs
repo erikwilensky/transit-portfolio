@@ -193,6 +193,10 @@ export function scopedSnapshot(user) {
   if (!moderator) { const fb = new Map((full.reports || []).filter((r) => r.feedbackId).map((r) => [r.id, r.feedbackId])); store.reports = store.reports.map((r) => (fb.has(r.id) ? { ...r, feedbackId: fb.get(r.id) } : r)); }
   // Milestones (api.markMilestonesSeen): which celebrations a student has seen, for that student only.
   store.milestonesSeen = self ? pickBy(full.milestonesSeen, (sid) => sid === self) : {};
+  // Leaver portfolio (api.saveLeaver): the student's own whole; staff in reach without the share links' tokens; never families
+  // (they read it only through a link the student gives them).
+  store.leaver = parent ? {} : Object.fromEntries(Object.entries(full.leaver || {}).filter(([sid]) => inReach(sid))
+    .map(([sid, p]) => [sid, sid === self ? p : { ...p, links: (p.links || []).map(({ token, ...l }) => l) }]));
   // Everything else (school lines' settings, integrations, rollout, family language, classes, keys other features add).
   for (const [k, v] of Object.entries(full)) if (!(k in store)) store[k] = generic(v, inReach);
   // Counts the whole-school screens show for what they may not open.
@@ -279,3 +283,4 @@ Object.assign(TOUCHES, {
   thankPeerFeedback: (a) => T([api.getPeerFeedback(a[0])?.studentId ?? '?']), hidePeerFeedback: (a) => T([api.getPeerFeedback(a[0])?.studentId ?? '?']),
 });
 Object.assign(TOUCHES, { markMilestonesSeen: (a) => T([a[0]]) });
+Object.assign(TOUCHES, { saveLeaver: own0, shareLeaver: own0, revokeLeaver: own0, doneLeaverComment: own0, commentLeaver: (a) => T([a[0]], [a[1] ?? '?']) });

@@ -17,7 +17,7 @@ import { PreviewBar } from './components/PreviewBar.jsx';
 import { previewTarget, startPreview, watchPreviewLinks } from './preview.js';
 
 // Pilot mode: sign in first (public share, verify and family links stay open). Demo mode: straight into the app.
-const isPublic = () => /^#\/?(s|v|p)(\/|$)/.test(location.hash);
+const isPublic = () => /^#\/?(s|v|p|l)(\/|$)/.test(location.hash);
 const setupToken = () => location.hash.match(/^#\/?setup\/([^/?]+)/)?.[1];
 const familyToken = () => location.hash.match(/^#\/?family\/([\w-]{16,64})$/)?.[1]; // a family letter's link
 // After signing in, start the page afresh so the record loads for this person.
