@@ -492,3 +492,9 @@ function casOk(user, fn, args) {
   if (via === 'supervisor') return x.supervisor?.kind === 'staff' && x.supervisor.teacherId === user.teacherId;
   return via === 'coordinator' && api.isCasCoordinator({ kind: user.kind, teacherId: user.teacherId });
 }
+
+// ── System health (routes/69-health.mjs): how many sessions are live, and for how many people ──
+export function liveSessions() {
+  const now = Date.now(), live = Object.values(sessions).filter((s) => s.expiresAt >= now && accountById(s.userId));
+  return { sessions: live.length, people: new Set(live.map((s) => s.userId)).size };
+}

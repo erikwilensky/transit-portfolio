@@ -15,7 +15,10 @@ RUN npm run build
 # (If a server/ module ever imports a package, add: COPY package-lock.json ./ and
 #  RUN npm ci --omit=dev --no-audit --no-fund before the COPY --from=build lines.)
 FROM node:22-alpine
-ENV NODE_ENV=production \
+# The commit, for System health and /api/health (docker-compose.yml passes it from scripts/deploy-mac.sh).
+ARG GIT_COMMIT=
+ENV GIT_COMMIT=$GIT_COMMIT \
+    NODE_ENV=production \
     DATA_DIR=/data \
     PORT=8080 \
     TP_MODE=demo

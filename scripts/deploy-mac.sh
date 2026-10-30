@@ -39,6 +39,7 @@ if [ "$PULL" = 1 ]; then
   git pull --ff-only || die "git pull failed (local changes or a diverged branch). Fix it, or run with --no-pull."
 fi
 echo "Commit: $(git log -1 --format='%h %s' 2>/dev/null || echo unknown)"
+GIT_COMMIT=$(git rev-parse --short=12 HEAD 2>/dev/null || true); export GIT_COMMIT  # baked into the image (System health)
 
 # ── 2. Settings and data folders ──
 if [ ! -f .env ]; then
@@ -54,6 +55,7 @@ if [ "$PILOT" = 1 ]; then
   PDATA=$(setting TP_PILOT_DATA ../transit-pilot-data)
   mkdir -p "$PDATA"
   echo "Pilot data: $(cd "$PDATA" && pwd)"
+  mkdir -p "$(setting BACKUP_DIR ../transit-portfolio-backups)"  # mounted read-only for System health
 fi
 
 # ── 3. Build first, so the site stays up while the image builds ──

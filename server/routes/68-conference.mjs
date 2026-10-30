@@ -4,6 +4,7 @@
 // CONF_REMIND_MS (default 10 minutes) and shortly after start. No email.
 import { api, changed } from '../store.mjs';
 import { allAccounts } from '../auth.mjs';
+import { beat } from '../health.mjs';
 
 const F = api.PERSONA_OF_FAMILY;
 api.setSiblingsOf((sid) => {
@@ -21,7 +22,8 @@ export function remindConferences() {
 }
 
 export default () => {
-  const t = () => { try { remindConferences(); } catch (e) { console.error('Conference reminders:', e.message); } };
+  const every = Number(process.env.CONF_REMIND_MS) || 600_000;
+  const t = () => { try { remindConferences(); beat('conference-reminders', { every }); } catch (e) { console.error('Conference reminders:', e.message); beat('conference-reminders', { every, error: e }); } };
   setTimeout(t, 2000).unref();
-  setInterval(t, Number(process.env.CONF_REMIND_MS) || 600_000).unref();
+  setInterval(t, every).unref();
 };

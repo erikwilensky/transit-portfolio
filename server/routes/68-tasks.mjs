@@ -3,14 +3,16 @@
 // repeating it changes nothing. It runs through act(), so undo history replays it like any other change.
 import { api, changed } from '../store.mjs';
 import { MODE } from '../auth.mjs';
+import { beat } from '../health.mjs';
+
+const MS = Math.max(1000, Number(process.env.TASK_TICK_MS) || 10 * 60_000);
 
 export function tick() {
-  try { const n = api.remindDueTasks(); if (n) changed({ fn: 'remindDueTasks', by: 'server' }); return n; } catch (e) { console.error('Task reminders:', e); return 0; }
+  try { const n = api.remindDueTasks(); if (n) changed({ fn: 'remindDueTasks', by: 'server' }); beat('class-tasks', { every: MS }); return n; } catch (e) { console.error('Task reminders:', e); beat('class-tasks', { every: MS, error: e }); return 0; }
 }
 
 export default () => {
   if (MODE !== 'pilot') return;
-  const ms = Math.max(1000, Number(process.env.TASK_TICK_MS) || 10 * 60_000);
   setTimeout(tick, 2000).unref();
-  setInterval(tick, ms).unref();
+  setInterval(tick, MS).unref();
 };

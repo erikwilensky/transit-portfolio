@@ -17,7 +17,7 @@ const routes = [];
 const add = (method) => (pattern, handler) => {
   const keys = [];
   const re = new RegExp(`^${pattern.replace(/:(\w+)/g, (_, k) => (keys.push(k), '([^/]+)'))}$`);
-  routes.push({ method, re, keys, handler });
+  routes.push({ method, re, keys, handler, pattern });
 };
 export const app = { get: add('GET'), post: add('POST'), put: add('PUT'), delete: add('DELETE') };
 export { routes };

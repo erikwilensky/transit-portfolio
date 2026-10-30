@@ -1,0 +1,20 @@
+/* System health (src/screens/SystemHealth.jsx) */
+.syh-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.syh-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; color: #fff; white-space: nowrap; }
+.syh-ok { background: #00704A; } .syh-check { background: #8A5300; } .syh-problem { background: #B3261E; }
+.syh-overall { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 16px 0 6px; padding: 12px 16px; border: 1px solid var(--rule); border-left-width: 6px; border-radius: var(--radius); background: var(--surface); font-weight: 500; }
+.syh-overall small { color: var(--muted); font-weight: 400; flex-basis: 100%; }
+.syh-b-ok { border-left-color: #00704A; } .syh-b-check { border-left-color: #C77700; } .syh-b-problem { border-left-color: #B3261E; }
+.syh-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; margin-top: 14px; }
+.syh-sec { border-left-width: 6px; min-width: 0; }
+.syh-sec-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 6px; }
+.syh-sec-head h2 { font-size: 16px; margin: 0; }
+.syh-summary { margin: 0 0 8px; }
+.syh-todo { margin: 0 0 8px; padding: 8px 10px; border-radius: 8px; background: var(--surface-2); }
+.syh-facts { display: grid; grid-template-columns: 1fr; gap: 2px; margin: 8px 0 0; font-size: 13.5px; }
+.syh-facts div { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; border-top: 1px solid var(--rule); }
+.syh-facts dt { color: var(--muted); }
+.syh-facts dd { margin: 0; text-align: right; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.syh-errors { margin-top: 10px; } .syh-errors summary { cursor: pointer; font-weight: 500; }
+.syh-errors td { font-size: 13px; overflow-wrap: anywhere; } .syh-errors code { font-size: 12px; }
+@media (max-width: 640px) { .syh-grid { grid-template-columns: minmax(0, 1fr); } .syh-actions { width: 100%; } .syh-actions > * { flex: 1; text-align: center; } }

@@ -1738,3 +1738,46 @@ Builds on the demo's CAS material: an experience is a station with `e.cas = { st
   or 13 student and a teacher who neither teaches nor advises them; the student logs, the teacher confirms, the coordinator's grid
   updates live, an outside supervisor confirms by code on a phone, the coordinator confirms one on a supervisor's behalf; axe on
   every new screen).
+
+## System health (`server/health.mjs`, `server/routes/69-health.mjs`, `src/screens/SystemHealth.jsx`, pilot only)
+
+Admins get **System health** in the nav: is the pilot server well, in plain words. Each part says **OK**, **Check this** or
+**Problem**, what it means, and what to do. The page checks again every minute and on **Check again**.
+
+| Part | What it shows | Check this / Problem when |
+| --- | --- | --- |
+| Server | version (`GIT_COMMIT`, else `git rev-parse` in a checkout, else the package version), started, uptime, Node | never |
+| Disk space | data folder size, free disk space (`fs.statfsSync`) | under 5 GB or 10% free / under 1 GB or 5% |
+| The record | `state.json` size, changes saved since start, revision | no `state.json` yet; over 100 MB |
+| Uploaded files | count and total size of `DATA_DIR/uploads` | never |
+| Backups | newest `<folder>-YYYYMMDD-HHMMSS.tar.gz` in `BACKUP_DIR`: its time and size; `backup.log` | older than 26 hours (Problem after 3 days); the log ends with an error; under 1 KB / no folder or no backups |
+| Class list sync | `server/sis.mjs` status: last check, last good check, last error | not checked for 26 hours with a nightly time / the last check failed |
+| Reminders | class task and conference reminders: last run, last error (heartbeats) | not run since start (after 15 min), or late / failed last time |
+| Server errors | the last 50 errors (time, route pattern, short message) | any in 24 hours / 10 or more in the last hour |
+| Sign-in | from the activity log, last 24 hours: sign-ins, wrong passwords, blocks | 30+ wrong or any block / 200+ wrong or 10+ accounts blocked |
+| Signed in | live sessions and people | never |
+
+- **Routes**: `GET /api/admin/health` → `{ at, mode, overall, version: { commit, package, label }, uptimeS, sections:
+  [{ id, title, status: 'ok' | 'check' | 'problem', summary, todo, facts: [{ label, value, type?: 'bytes' | 'time' |
+  'count', private? }] }] }` (the errors part also has `errors: [{ at, route, message }]`). Admins only (401 signed out,
+  403 anyone else, 403 in the demo). `?format=diagnostics` is the same as a `transit-diagnostics-YYYY-MM-DD.json`
+  download for support, without the private facts (folder paths); it is logged as `health-diagnostics`. Neither ever holds
+  names, emails, account or student ids, IP addresses, request bodies or tokens: sign-ins are counts only.
+- `GET /api/health` (public) now includes `version`.
+- **Errors** (`server/health.mjs`): `index.mjs` notes every unhandled error and every 5xx with the route's pattern
+  (`POST /api/admin/sis/reports/:id/apply`, never the real path); messages are cut to 200 characters with email addresses
+  and token-like strings replaced. In memory only, so a restart clears them.
+- **Heartbeats**: `beat(name, { every, error? })` from any background job; `heartbeats()` lists them. Class tasks
+  (`68-tasks.mjs`) and conference reminders (`68-conference.mjs`) beat on each run. A new job beats and adds itself to
+  `JOBS` in `69-health.mjs`.
+- **Backups folder**: `BACKUP_DIR`, read as `scripts/backup.sh` does (relative to the repo, default
+  `../transit-portfolio-backups`). In Docker, `docker-compose.yml` mounts `${BACKUP_DIR:-../transit-portfolio-backups}`
+  read-only at `/backups` in the pilot container and sets `BACKUP_DIR=/backups`; `scripts/deploy-mac.sh` creates the
+  folder. If you put backups elsewhere, set `BACKUP_DIR` in `.env` too, so the mount follows.
+- **Version**: `scripts/deploy-mac.sh` exports `GIT_COMMIT`; compose passes it as a build argument and the Dockerfile
+  bakes it into the image's environment.
+- `auth.mjs` `liveSessions()` → `{ sessions, people }`.
+- Tests: `server/test/system-health.test.mjs` (admin only, contents, a 3-day-old backup in a temp folder then a fresh one,
+  a real 500, sign-in blocks from the activity log, diagnostics without secrets, not in the demo);
+  `node scripts/checks/system-health.cjs` (fixture class lists; admin nav and page, backup warning, diagnostics download,
+  axe light, dark, high contrast and phone; a teacher has no nav entry, the address does not open it, 403).

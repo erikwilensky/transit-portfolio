@@ -5,6 +5,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { ROOT, DATA_DIR, PORT, app, routes, middleware, send, serveStatic, securityHeaders, logRequest, shutdownHooks } from './lib.mjs';
+import { noteError } from './health.mjs';
 
 // Fail at start, with a clear message, when the data folder cannot be written (a bind mount owned by
 // another user, for instance), rather than on the first save.
@@ -40,11 +41,12 @@ const server = http.createServer(async (req, res) => {
     for (const r of routes) {
       if (r.method !== req.method) continue;
       const m = url.pathname.match(r.re);
-      if (m) return await r.handler(req, res, Object.fromEntries(r.keys.map((k, i) => [k, decodeURIComponent(m[i + 1])])));
+      if (m) { req.route = r.pattern; return await r.handler(req, res, Object.fromEntries(r.keys.map((k, i) => [k, decodeURIComponent(m[i + 1])]))); }
     }
     send(res, 404, { error: 'Not found' });
   } catch (e) {
     if (!e.status) console.error(e);
+    if (!e.status || e.status >= 500) noteError(`${req.method} ${req.route || (req.url || '').split('?')[0].replace(/[^/]{20,}/g, ':id')}`, e);
     if (!res.headersSent) send(res, e.status || 500, { error: e.status ? e.message : 'Server error' });
     else res.destroy();
   }
