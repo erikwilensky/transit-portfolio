@@ -1925,3 +1925,59 @@ number on the bell.
   Full each switch to ไทย, walk every student screen and dialog, fail on visible English UI left over, axe on each with
   `lang="th"`, then switch back to English).
 - Not done: teacher and family screens beyond what the Thai family work covers; a พ.ศ. toggle in the menu.
+
+## Report comments: a writing helper for end-of-term reports (`src/report-comments.js`, `src/screens/ReportComments.jsx`, `server/report-comments.mjs`, `server/routes/71-report-comments.mjs`, pilot only)
+
+Teachers and advisors write each student's report comment beside what that student did this term, then copy it into
+the school's report system. This tool sends nothing anywhere, and writes nothing for them: no AI, no generated text.
+
+- **Screen** (`#/<persona>/reportcomments`, in the nav of anyone who teaches or advises, and of coordinators, leadership
+  and admins): "Your comments" lists the person's current classes (subject comment) and their advisory (advisor comment)
+  with "N of M done". `#/<persona>/reportcomments/subject~<classId>` or `advisor~<teacherId>`: a date range (default this
+  term: `termStartOf(TODAY)` to today; "This term" resets it), "Hide done", "Download all as CSV", and one row per student:
+  - left, compact: counts (moments, endorsements, class answers, "3 of 4 tasks handed in"), then each moment newest first
+    (date, title, a tag: Spotted by …, Class question, Task hand-in, Term reflection; Endorsed), the student's own words
+    (their reflections), each endorsement's note, and the teacher's own spotted suggestions not added. Subject: moments on
+    the class's line (a sub-line counts), plus answers, hand-ins and spotted moments made for that class. Advisor: every line,
+    plus the latest term reflection (finished or not, with its words when the station reaches the advisor) and goals (with
+    the last weekly check-in). Gathered in the browser from the person's scoped record (`momentsFor`, `groupsOf`,
+    `groupStudents`), at the advisor visibility level the server already sends staff; nothing new is sent.
+  - right: the draft box, "17 / 150 words · 112 / 1000 characters" (red when over), the checks (`src/report-checks.js`:
+    over the word or character limit; short, under 30% of the word limit; the student's first name used or not; another
+    student of the class or advisory named, matched with its capital letter: "Mentions Maya: is this the right student?"),
+    Copy (clipboard) and Mark done. Saved 0.8 s after typing stops, on blur and on leaving ("Saved").
+  - **Comment bank hook**: `reportHooks.phrasePicker` (exported from `src/report-comments.js`), null here. Set it to a
+    component and each draft box renders it under the text with `{ student, kind, classId, text, insert(str) }`; `insert`
+    puts a phrase at the cursor and saves as typing does.
+- **Drafts are private to the writer**: kept outside the shared record, in `DATA_DIR/report-comments.json` (`{ limits,
+  drafts: [{ id, by: accountId, teacherId, kind: subject|advisor, group: classId|teacherId, studentId, text, done, updatedAt,
+  doneAt }] }`), so no snapshot, Undo, history, See as or other account carries them. Only the writing account reads its
+  own; students, families, other teachers, coordinators and admins never do (See as shows "Drafts belong to the person
+  writing them"). Nightly backups hold the file with the rest of `DATA_DIR`.
+- **Routes** (signed in; 401 otherwise):
+  - `GET /api/report-comments` → `{ limits, drafts }` (this account's own only).
+  - `PUT /api/report-comments/:kind/:group/:studentId { text, done }` → `{ draft }` (null when text is empty and not done:
+    the draft is removed). subject: `group` a class whose `teacherIds` has the account's `teacherId`, the student currently
+    enrolled; advisor: `group` is the account's own `teacherId`, the student's `advisorId` is it. 403 otherwise (students,
+    families, accounts with no teacher record), 413 over 4,000 characters.
+  - `GET /api/report-comments/export?kind=&group=` → CSV (UTF-8 with BOM; `Student ID,Name,Comment`; every current student
+    by name, empty comment when none; cells starting `= + - @` get a `'`). Writes one `report-export` line to the activity
+    log: the class (`target.id`, label) and counts `{ kind, rows, written, done }`, never text.
+  - `GET /api/report-comments/progress` (coordinators, leadership, admins) → `{ limits, teachers: [{ teacherId, name,
+    classes: [{ id, name, students, drafted, done }], subject: { classes, students, drafted, done }, advisor: { students,
+    drafted, done } | null }] }`, counts only, for the current students of each group. Shown as "Progress by teacher"
+    ("Only those who have started").
+  - `POST /api/admin/report-comments/limits { kind, words, chars }` (admins) → `{ limits }`; 0 is no limit. Defaults: subject
+    150 words / 1,000 characters, advisor 200 / 1,300. Logged as `report-limits`. Shown as "Comment length" for admins.
+- **PDPA (decision)**: a draft is about the student, so it is their personal data. It is **in the copy an admin makes**
+  (`GET /api/admin/students/:id/export`, or `/api/me/export?student=` by an admin): `report-comments.json` with each
+  writer's name, the class, the text, done and when. It is **not** in the student's or family's own self-service download,
+  nor in the leaver archive: those would show unfinished comments while teachers are still writing them. A formal PDPA
+  request goes through the admin, who gets everything. Erasure (`eraseStudent`, also the leaver erasure) removes every
+  draft about the student.
+- Tests: `server/test/report-comments.test.mjs`, `src/report-checks.test.mjs`; browser: `node scripts/checks/report-comments.cjs`
+  (real roster: Mr David Coultas writes for C-392000, Aaron Torres's row shows his endorsed moment with his words and a
+  spotted one; the checks catch a classmate's name; Saved, Mark done, 1 of 17, Copy, CSV; reload keeps it. Ms Jane Altemen
+  writes Aaron's advisor comment for 8C. Another teacher, Aaron, a coordinator and the admin get neither draft and cannot
+  write them; the coordinator's progress shows counts only; the admin sets 15 words and Mr Coultas sees 2 over; the export
+  is in the activity log; axe; phone width).

@@ -177,6 +177,8 @@ export function personaFor(user) {
   if (['advisor', 'teacher', 'counsellor', 'coordinator', 'leadership'].includes(kind) || user.admin) p.nav = [...(p.nav || NAV[kind]), ['screens', 'School screens']];
   // Subject prompts for every line (src/components/SubjectPrompts.jsx): coordinators, leadership and admins.
   if (kind === 'coordinator' || kind === 'leadership' || user.admin) p.nav = [...(p.nav || NAV[kind]), ['prompts', 'Subject prompts']];
+  // Report comments (src/screens/ReportComments.jsx): anyone who teaches or advises; progress for coordinators, leadership, admins.
+  if (kind === 'teacher' || kind === 'advisor' || also.length || kind === 'coordinator' || kind === 'leadership' || user.admin) p.nav = [...(p.nav || NAV[kind]), ['reportcomments', 'Report comments']];
   // System health (src/screens/SystemHealth.jsx): admins only.
   if (user.admin) p.nav = [...(p.nav || NAV[kind]), ['health', 'System health']];
   return p;
