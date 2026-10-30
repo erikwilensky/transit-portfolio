@@ -125,6 +125,23 @@ test('a teacher marked as CAS coordinator: Years 12 and 13 in reach, every entry
   assert.equal(api.getCasEntry(h2.id), null);
 });
 
+test('the CAS grid’s nudge with a comment-bank phrase: a coordinator (or a teacher marked as one) uses a school phrase and nudges', () => {
+  const ph = api.addPhrase('school', 'T104', { text: 'Hi {first name}, could you add a reflection?', kind: 'next' });
+  const text = api.fillPhrase(ph.text, 'Fern');
+  assert.equal(text, 'Hi Fern, could you add a reflection?');
+  assert.ok(canAct(coord, 'usePhrase', [ph.id, 'T104']) && canAct(coord, 'casNudge', ['S2001', 'your CAS hours', text, 'Ms Fong']));
+  api.setCasCoordinator('T101', true);
+  assert.ok(canAct(carter, 'usePhrase', [ph.id, 'T101']), 'a teacher marked as CAS coordinator uses the school bank');
+  assert.ok(canAct(carter, 'casNudge', ['S2002', 'LO1', text, 'Mr Carter']), 'and nudges a Year 12 student they do not teach');
+  api.setCasCoordinator('T101', false);
+  assert.ok(!canAct(carter, 'casNudge', ['S2002', 'LO1', text, 'Mr Carter']), 'not once unmarked');
+  for (const u of [fern, parent]) assert.ok(!canAct(u, 'usePhrase', [ph.id, 'T104']), `${u.kind}: never`);
+  api.usePhrase(ph.id, 'T104'); api.casNudge('S2001', 'your CAS hours', text, 'Ms Fong');
+  assert.equal(api.getStore().phraseUses.T104[ph.id], 1);
+  assert.equal(api.getCasNudges('S2001').at(-1).text, text, 'sent as written, with her name filled in');
+  assert.deepEqual(scopedSnapshot(fern).store.phrases, [], 'the student never gets the bank');
+});
+
 test('casCohort: strands, outcomes, hours and flags', () => {
   const row = (sid) => api.casCohort().find((r) => r.student.id === sid);
   const f = row('S2001');

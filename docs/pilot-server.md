@@ -1963,7 +1963,9 @@ sent until the teacher sends it as before. Students and families never receive a
   box's kind. Shown only to a signed-in member of staff or admin in a pilot. Placed on: the Endorsements note and its
   "Ask for more", moment comments (staff), "Want to see more?" in the station panel, Review answers (the shared note
   and "Ask for more"), class task hand-ins (shared note and "Ask for more"), I spotted something (the note),
-  encouragement on goal check-ins, and CAS "Not right" send-backs. The report writing helper's draft boxes get it
+  encouragement on goal check-ins, CAS "Not right" send-backs, and on the CAS coordinator's grid (CAS outcomes,
+  `src/screens/CasDashboard.jsx`) the side panel's "Nudge <first name>" box (kind `next`, `{first name}` filled) beside its
+  "Not right" send-backs. The report writing helper's draft boxes get it
   through `reportHooks.phrasePicker` when that feature is present (`import.meta.glob`, so nothing breaks without it).
 - **Screen**: "My phrases" (`#/<persona>/phrases`) for every member of staff and admins: add, edit, delete and reorder
   your own; the school bank by kind, editable by coordinators, leadership and admins, read only for others.
