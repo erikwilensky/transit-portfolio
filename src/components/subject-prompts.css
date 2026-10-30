@@ -1,0 +1,67 @@
+/* Subject prompts (SubjectPrompts.jsx): ideas when adding a moment, the Simple questions, and the teachers' cards. */
+.sp-ideas { border: 1px solid var(--rule); border-radius: var(--radius); padding: 10px 14px; background: var(--surface); }
+.sp-ideas summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+.sp-ideas summary small { font-weight: 400; color: var(--muted); margin-left: 6px; }
+.sp-ideas[open] { display: grid; gap: 8px; }
+.sp-note { margin: 0; font-size: 14px; color: var(--ink); border-left: 3px solid var(--navy); padding-left: 10px; }
+.sp-qs { margin: 0; padding-left: 20px; display: grid; gap: 3px; font-size: 14px; }
+.sp-starters { display: flex; flex-wrap: wrap; gap: 6px; }
+.sp-starters button { font-size: 13px; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--rule); background: var(--bg); color: var(--ink); }
+.sp-starters button:hover { border-color: var(--navy); }
+.sp-examples summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--navy); }
+.sp-examples ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 8px; }
+.sp-examples li { border: 1px solid var(--rule); border-radius: 10px; padding: 8px 12px; background: var(--bg); }
+.sp-examples li b { font-weight: 600; } .sp-examples li p { margin: 2px 0; font-size: 14px; white-space: pre-wrap; }
+.sp-examples li small { color: var(--muted); font-size: 12.5px; }
+.sp-examples.big summary { font-size: 16px; } .sp-examples.big li p { font-size: 15.5px; }
+:root[data-theme="dark"] .sp-examples summary { color: var(--b-sky); }
+
+/* Simple: one question per screen */
+.sp-from { margin: 0; font-size: 14px; font-weight: 600; color: var(--muted); }
+.sh-flow .sp-note { font-size: 16px; }
+.sp-help { justify-self: start; padding: 6px 12px; font-size: 15px; }
+/* The questions make the Simple flow taller: keep its buttons clear of the offline bar (OfflineBar.jsx). */
+body:has(.ob-bar) .modal-back { padding-bottom: 76px; }
+.sp-skip { justify-self: center; font-size: 15px; }
+
+/* A student is asked about an example */
+.sp-ask { display: flex; gap: 14px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 12px 16px; border-radius: 14px; border: 2px solid var(--navy); background: var(--surface); margin: 0 0 12px; }
+.sp-ask > div:first-child { display: grid; gap: 3px; min-width: 0; flex: 1 1 280px; }
+.sp-ask b { font-weight: 600; } .sp-ask small { color: var(--muted); font-size: 13px; }
+.sp-ask-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.sp-ask.big { padding: 18px 20px; border-radius: 20px; } .sp-ask.big b { font-size: 18px; } .sp-ask.big small { font-size: 14.5px; }
+.sp-ask.big .sp-ask-acts button { font-size: 17px; padding: 12px 20px; }
+
+/* Teachers */
+.sp-card { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); padding: 12px 16px; display: grid; gap: 8px; margin: 14px 0; }
+.sp-card header { display: flex; gap: 14px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+.sp-card header > div { display: grid; gap: 2px; min-width: 0; flex: 1 1 260px; }
+.sp-card h2 { font-size: 17px; margin: 0; display: flex; align-items: center; gap: 8px; }
+.sp-card small { color: var(--muted); font-size: 13px; }
+.sp-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--c, var(--navy)); flex: none; }
+.sp-preview summary { cursor: pointer; font-size: 14px; }
+.sp-shown { display: grid; gap: 6px; margin-top: 6px; }
+.sp-st, .sp-classes { margin: 0; font-size: 13.5px; } .sp-st span, .sp-classes span { color: var(--muted); }
+.sp-exlist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.sp-exlist li { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 14px; border-top: 1px solid var(--rule); padding-top: 6px; }
+.sp-exlist li b { font-weight: 600; }
+.sp-exlist em { font-style: normal; font-size: 12.5px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--rule); color: var(--ink); }
+.sp-exlist .ghost { margin-left: auto; padding: 4px 10px; font-size: 13px; }
+.sp-st-yes { border-color: var(--b-green, #008A60) !important; }
+.sp-lines { display: grid; gap: 0; }
+.sp-page .sp-card { margin: 10px 0; }
+
+/* The editor */
+.sp-edit { display: grid; gap: 12px; max-width: 640px; }
+.sp-edit label { display: grid; gap: 4px; font-size: 14px; font-weight: 600; }
+.sp-edit label small, .sp-edit legend small { font-weight: 400; color: var(--muted); }
+.sp-edit label small { display: block; } .sp-edit legend small { margin-left: 6px; }
+.sp-edit fieldset { border: 1px solid var(--rule); border-radius: var(--radius); padding: 10px 12px; margin: 0; display: grid; gap: 8px; min-width: 0; }
+.sp-edit legend { font-size: 14px; font-weight: 600; padding: 0 4px; }
+.sp-edit input, .sp-edit textarea, .sp-edit select { font: inherit; font-size: 14px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--rule); background: var(--bg); color: var(--ink); width: 100%; min-width: 0; }
+.sp-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.sp-row > input { flex: 1 1 220px; }
+.sp-row .ghost { padding: 6px 10px; font-size: 13px; }
+.sp-pick { flex: 1 1 240px; font-weight: 400 !important; }
+.sp-add { justify-self: start; padding: 6px 12px; font-size: 13px; }
+.sp-own { display: grid; gap: 8px; }

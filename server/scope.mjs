@@ -200,6 +200,13 @@ export function scopedSnapshot(user) {
   // (they read it only through a link the student gives them).
   store.leaver = parent ? {} : Object.fromEntries(Object.entries(full.leaver || {}).filter(([sid]) => inReach(sid))
     .map(([sid, p]) => [sid, sid === self ? p : { ...p, links: (p.links || []).map(({ token, ...l }) => l) }]));
+  // Subject prompts (api.setSubjectPrompts): school guidance every student and member of staff receives, families never. An
+  // example from a student's moment goes whole (ids, status) to that student and to staff who reach them; anyone else gets
+  // it only once the student said yes and while it is still publishable, as its title, a line of it and the Year.
+  store.subjectPrompts = parent ? [] : (full.subjectPrompts || []).map((p) => ({ ...p, examples: (p.examples || []).flatMap((x) => {
+    if (!x.eventId || x.studentId === self || (staff && inReach(x.studentId))) return [x];
+    const v = api.exampleView(x, p.lineId); return v ? [v] : [];
+  }) }));
   // Everything else (school lines' settings, integrations, rollout, family language, classes, keys other features add).
   for (const [k, v] of Object.entries(full)) if (!(k in store)) store[k] = generic(v, inReach);
   // Counts the whole-school screens show for what they may not open.
@@ -291,3 +298,7 @@ Object.assign(TOUCHES, {
   pauseExhibition: (a) => T([], [a[2]]), revokeExhibition: (a) => T([], [a[1]]),
 });
 Object.assign(TOUCHES, { saveLeaver: own0, shareLeaver: own0, revokeLeaver: own0, doneLeaverComment: own0, commentLeaver: (a) => T([a[0]], [a[1] ?? '?']) });
+Object.assign(TOUCHES, {
+  setSubjectPrompts: (a) => T([].concat(a[1]?.examples || []).filter((x) => x?.eventId).map((x) => ev(x.eventId) ?? '?'), [a[2]]),
+  clearSubjectPrompts: (a) => T([], [a[1]]), answerExampleAsk: (a) => T([a[2]]),
+});

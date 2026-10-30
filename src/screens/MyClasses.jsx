@@ -7,6 +7,7 @@ import { AskClassDialog, ClassQuestions } from '../components/ClassPrompts.jsx';
 import ClassAnswers from '../components/ClassAnswers.jsx';
 import { SpotDialog, SpottedList } from '../components/Spotted.jsx';
 import { PeerClassList } from '../components/PeerFeedback.jsx';
+import { ClassPromptsCard } from '../components/SubjectPrompts.jsx';
 import './classes.css';
 
 // Pilot: a teacher's classes from the class lists. #/<persona>/classes, /classes/<classId>,
@@ -91,6 +92,7 @@ function ClassPage({ classId, teacherId, go, persona, version, toast }) {
       </header>
       {asking && <AskClassDialog c={c} teacherId={teacherId} toast={toast} onClose={() => setAsking(false)} />}
       <ClassQuestions c={c} teacherId={teacherId} go={go} persona={persona} version={version} toast={toast} />
+      <ClassPromptsCard c={c} teacherId={teacherId} version={version} toast={toast} />
       {spotting && <SpotDialog students={spotting} teacherId={teacherId} classId={c.id} toast={toast} onClose={() => { setSpotting(null); setTicked([]); }} />}
       {c.students.length > 0 && <div className="mc-spot-bar">
         <span>{ticked.length ? `${plural(ticked.length, 'student')} ticked` : 'Tick students to add the same spotted moment to each.'}</span>

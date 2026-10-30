@@ -1525,3 +1525,50 @@ their map; the server refuses the mutators).
   rely on the CSS colour fix in `a11y.css` rather than their own markup. axe cannot judge everything, and nothing has
   been tried yet with a real screen reader (VoiceOver, NVDA, TalkBack). The Thai words for the new
   options are in `src/i18n.js`; the sign-in page has no display menu (it uses this device's last choice).
+
+## Subject prompts: what to write on each line (`src/api.js`, `src/components/SubjectPrompts.jsx`)
+
+When a student adds a moment on a line they get help on what to write: a short "what makes a good moment here" note, 3 to
+6 guiding questions, sentence starters, and sometimes an example. A class's own prompts win over the line's, and the
+line's over the built-in ones (`DEFAULT_PROMPTS`, one set per school line, British English).
+- **Students**: Simple: after picking the line, a teacher's prompts (class or line) go one question per screen (who they
+  are from and the note on the first, its starters, Say it, read aloud through `Said`, "See an example", the voice note on
+  the last, "Skip the questions" any time); the answers are saved as the reflection, each under its question. With only the
+  built-in prompts the usual "What did you learn?" screen shows the line's note and starters, and "Help me with questions"
+  opens the same one-per-screen questions. Standard/Full: "Ideas for this line" (a `<details>`) under the line choice in
+  the add dialog, open for a teacher's prompts and closed for the built-in ones; a starter goes into the reflection.
+  "Can your moment be an example?" (yes / no thanks) sits at the top of the home when a teacher picks one of their moments.
+- **Teachers**: a class page in My classes has "Prompts for students" (what students see, "Write prompts for this class" /
+  "Edit prompts", examples with each student's answer, "Use the line's prompts instead", "N moments written with them").
+  Coordinators, leadership and admins: "Subject prompts" (`#/<persona>/prompts`, pilot): each school line's prompts
+  (written or built-in, uses of each, the classes with their own and their uses), "Write the line's prompts", "Go back
+  to the built-in prompts". The editor starts from what students see now.
+- **Record**: `store.subjectPrompts [{ id: 'sp-…', lineId, classId | null, by, at, note, questions, starters, examples }]`,
+  one per class and one per line (rewriting keeps the id). Examples: `{ id, title, text, status: 'teacher' }` or
+  `{ id, eventId, studentId, status: 'asked' | 'yes' | 'no', askedAt, answeredAt }` (a student's moment: copied nowhere, read
+  from the moment while it is publishable, not hidden and on the line). A moment written with prompts has `promptId` (the
+  prompts' id, or `sp-default-<line>`): set by the Simple flow when the questions or a starter were used, by the add dialog
+  when the panel was open or a starter used (`addStation(…, { promptId })`).
+- **Mutators**: `setSubjectPrompts({ classId } | { lineId }, { note, questions, starters, examples: [{ eventId } | { keep:
+  exampleId } | { title, text }] }, by)` (400: fewer than 3 or more than 6 questions, a class off the map, not a school
+  line, an example that is not a publishable moment on the line or, for a class, not of a student in it now; a new student
+  example notifies the student); `clearSubjectPrompts(promptId, by)`; `answerExampleAsk(promptId, exampleId, studentId, yes)`
+  (notifies the writer).
+- **Reads**: `getPromptsFor(studentId, lineId, classId?)` → `{ id, source: 'class' | 'line' | 'default', lineId, line,
+  classId, className, by, teacher, note, questions, starters, examples: [{ id, title, text, year }] }` or null off the
+  school lines (a sub-line counts for its line; `classId` lets class tasks name their class; without it, the student's
+  current class on that line with prompts, newest first). `promptsAdmin({ classId } | { lineId })`, `promptUses(id)`,
+  `exampleChoices(lineId, classId?)`, `exampleAsksFor(studentId)`, `exampleView(example, lineId)`, `schoolLines()`.
+- **canAct**: a class's prompts: a teacher in its `teacherIds` (any staff kind), as themselves; a line's: coordinators and
+  leadership as themselves; admins either (as themselves, or `by` null). Student examples only from students in the
+  writer's reach. `answerExampleAsk`: only that student, for themselves. Everyone else (other teachers, advisors,
+  counsellors, families): 403.
+- **Scope**: everyone but families gets `subjectPrompts`. A student example goes whole to that student and to staff who
+  reach them; anyone else gets it only after a yes and while it is still publishable, as `{ id, status, title, text, year }`
+  (no name, student id or moment id). Families get none.
+- Tests: `server/test/subject-prompts.test.mjs`; `node scripts/checks/subject-prompts.cjs` (real roster, skipped when
+  missing; separate browser contexts: Mr David Coultas writes prompts for C-392000; Aaron Torres at Simple adds a Science
+  moment through them step by step, with read aloud, and at Standard sees them open in the add dialog; a Year 8 student of
+  another Science class gets the built-in ones; a coordinator's Subject prompts screen; axe on each).
+- Not done: Thai versions of the built-in prompts; prompts per Year group; class tasks do not show them yet (they can
+  call `getPromptsFor(studentId, lineId, classId)`).
