@@ -10,6 +10,7 @@ import GoalDialog from '../components/GoalDialog.jsx';
 import TermReview from '../components/TermReview.jsx';
 import { OpenPrompts } from '../components/ClassPrompts.jsx';
 import { SpottedForMe } from '../components/Spotted.jsx';
+import { PeerFromClasses } from '../components/PeerFeedback.jsx';
 import { MapLegend, VerifyBadge, VerifyLegend } from '../components/Badge.jsx';
 import { fmtDate, fmtTerm, TYPE_LABEL, VERIFY_LABEL, inkOn } from '../format.js';
 import { TOUR_REFLECTION, TOUR_STATION, tourEvent } from '../tourStory.js';
@@ -105,6 +106,7 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
       <div className="home-head">
         <OpenPrompts studentId={studentId} simple={simple} toast={toast} version={version} />
         <SpottedForMe studentId={studentId} simple={simple} toast={toast} version={version} />
+        <PeerFromClasses studentId={studentId} simple={simple} toast={toast} version={version} />
         <div className="who">
           <span className="pres-avatar" style={{ background: s.avatar.colour, color: inkOn(s.avatar.colour) }}>{s.avatar.initials}</span>
           <div>

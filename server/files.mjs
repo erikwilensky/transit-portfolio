@@ -73,6 +73,8 @@ export function canSeeFile(user, name, meta = {}) {
   if (publicFiles().has(name)) return true;
   if (!user) return false;
   if ((A.isAdmin(user) || user.kind === 'leadership') && F.allFeedback().some((f) => f.screenshot?.url?.endsWith(`/${name}`))) return true;
+  // Kind feedback: the photo on a classmate's moment opened for feedback (api.peerMomentsFor).
+  if (user.kind === 'student' && user.studentId && api.peerMomentsFor(user.studentId).some((m) => m.image?.includes(`api/files/${name}`))) return true;
   const refs = fileIndex().get(name);
   if (!refs) return false; // not attached to anything yet: the uploader only
   return [user, ...(A.isAdmin(user) ? previewed(user) : [])].some((u) => viaRecord(u, name, refs));

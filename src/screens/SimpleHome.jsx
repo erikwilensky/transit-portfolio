@@ -7,6 +7,7 @@ import { UploadStatus, useUpload } from '../components/FileAttach.jsx';
 import { SUGGEST } from '../components/AddStation.jsx';
 import { OpenPrompts } from '../components/ClassPrompts.jsx';
 import { SpottedForMe } from '../components/Spotted.jsx';
+import { PeerFromClasses, PeerOnMoment } from '../components/PeerFeedback.jsx';
 import MomentComments, { NewBadge, useUnread } from '../components/MomentComments.jsx';
 import './simple-goals.css';
 import { HiddenNotice, ReportButton } from '../components/Report.jsx';
@@ -72,6 +73,7 @@ export default function SimpleHome({ map, studentId, toast, version, addRequest,
 
       <OpenPrompts studentId={studentId} simple toast={toast} version={version} />
       <SpottedForMe studentId={studentId} simple toast={toast} version={version} />
+      <PeerFromClasses studentId={studentId} simple toast={toast} version={version} />
 
       <div className="sh-actions">
         <button className="sh-card add" onClick={() => setAdding(true)}><span className="sh-ic" aria-hidden="true">＋</span><b>Add something I did</b><small>A club, a project, a match, anything</small></button>
@@ -433,6 +435,7 @@ function Moment({ e, map, onClose, onReflect, toast }) {
           : <VoiceStart onClick={() => setRecording(true)} label="Add a voice note" />)}
         <div className="sh-next"><button className="primary" onClick={onReflect}>{e.reflections?.length ? 'Add another thought' : 'What did I learn?'}</button></div>
         <MomentComments key={`c-${e.id}`} event={e} simple toast={toast} />
+        <PeerOnMoment key={`pf-${e.id}`} event={e} simple toast={toast} />
         <ReportButton event={e} simple toast={toast} />
       </div>
     </div>

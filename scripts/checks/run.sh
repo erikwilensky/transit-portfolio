@@ -32,4 +32,5 @@ echo "== activity-log (starts its own clean pilot server on the real roster)"; n
 echo "== term-reflection (starts its own clean pilot server on the real roster)"; node term-reflection.cjs || fail=1
 echo "== offline-capture (starts its own clean pilot server on the real roster)"; node offline-capture.cjs || fail=1
 echo "== voice (starts its own clean pilot server on the real roster, fake microphone)"; node voice.cjs || fail=1
+echo "== peer-feedback (starts its own clean pilot server on the real roster)"; node peer-feedback.cjs || fail=1
 echo "== tours"; node tours.cjs | grep -E "end url|ERRS|soon|boom|empty|hs" ; exit $fail
