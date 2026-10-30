@@ -787,3 +787,9 @@ STU_RE.push(
   [/^Keep (\d+) photos$/, (m) => `เก็บ ${m[1]} รูป`], [/^Photo (\d+) from your teacher$/, (m) => `รูปที่ ${m[1]} จากครู`], [/^(\d+) more after this$/, (m) => `มีอีก ${m[1]} รายการ`],
   [/^A teacher has removed a photo from “(.+)”\.$/, (m) => `ครูลบรูปหนึ่งออกจาก “${m[1]}” แล้ว`],
 );
+STU_RE.push(
+  // A second spotted card or a class photos card waiting (Spotted.jsx), and a label listing interface strings some of which
+  // are patterns ("First spotted moment added, 5 moments"): every part must be known, else it stays as written.
+  [/^· (\d+) to look at$/, (m) => `· ดูอีก ${m[1]} รายการ`],
+  [/^[A-Z0-9][A-Za-z0-9 ]+(, [A-Z0-9][A-Za-z0-9 ]+)+$/, (m) => { const p = m[0].split(', ').map((x) => studentThai(x)); return p.every((x) => x != null) ? p.join(', ') : null; }],
+);
