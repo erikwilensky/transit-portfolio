@@ -176,6 +176,8 @@ export function scopedSnapshot(user) {
   store.reflectionWindows = parent ? [] : (full.reflectionWindows || []).flatMap((w) => { const ids = w.studentIds.filter((x) => (self ? x === self : inReach(x))); return all ? [w] : ids.length ? [{ ...w, studentIds: ids }] : []; });
   store.termReflections = parent ? [] : (full.termReflections || []).filter((r) => (self ? r.studentId === self : inReach(r.studentId)))
     .map((r) => (self ? r : { id: r.id, windowId: r.windowId, studentId: r.studentId, status: r.status, startedAt: r.startedAt, doneAt: r.doneAt || null, eventId: r.eventId || null }));
+  // Milestones (api.markMilestonesSeen): which celebrations a student has seen, for that student only.
+  store.milestonesSeen = self ? pickBy(full.milestonesSeen, (sid) => sid === self) : {};
   // Everything else (school lines' settings, integrations, rollout, family language, classes, keys other features add).
   for (const [k, v] of Object.entries(full)) if (!(k in store)) store[k] = generic(v, inReach);
   // Counts the whole-school screens show for what they may not open.
@@ -257,3 +259,4 @@ export function handedOverBy(tid) {
 }
 Object.assign(TOUCHES, { carryOverGoal: (a) => T([ev(a[0])]), closeGoal: (a) => T([ev(a[0])]), setHandoverNote: (a) => T([a[0]], [a[2] ?? '?']) });
 Object.assign(TOUCHES, { openReflectionWindow: (a) => T([], [a[1]]), closeReflectionWindow: () => T([]), saveTermReflection: (a) => T([a[1]]), finishTermReflection: (a) => T([a[1]]) });
+Object.assign(TOUCHES, { markMilestonesSeen: (a) => T([a[0]]) });

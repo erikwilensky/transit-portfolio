@@ -83,7 +83,7 @@ export function VerificationMark({ level, x = 0, y = 0, r = 3.6 }) {
 
 const GRADE_YEARS = (start, g) => `${start + g - 9}–${String(start + g - 8).slice(2)}`;
 
-export default function MetroMap({ map, lens, selectedId, onSelect, onSignal, mini = false, recent = false, panel = true, newIds, fitKey, duration = 450, showToday = true, className = '', print = false, aspect = 0.5 }) {
+export default function MetroMap({ map, lens, selectedId, onSelect, onSignal, mini = false, recent = false, panel = true, newIds, fitKey, duration = 450, showToday = true, className = '', print = false, aspect = 0.5, badgeIds = null }) {
   const target = useMemo(() => {
     const today = map.today || TODAY;
     if (!print) return computeLayout(map, lens, today, mini ? { laneH: 70, slotW: 40, colPad: 10, emptyW: 24, left: 20, top: 30, bottom: 30, right: 20 } : {});
@@ -273,6 +273,7 @@ export default function MetroMap({ map, lens, selectedId, onSelect, onSignal, mi
                 ? <rect x={s.x - 9} y={s.capsule.y1} width={18} height={s.capsule.y2 - s.capsule.y1} rx={9} className="interchange" />
                 : <circle cx={s.x} cy={s.y} r={r} className={isGoal ? 'stop goal' : 'stop'} stroke={colour} strokeWidth={mini ? 5 : thin ? 2 : 3.5} />}
               {!mini && !thin && !isGoal && <VerificationMark level={e.verification} x={s.x + (s.interchange ? 13 : 10)} y={top - 1} r={4.6} />}
+              {badgeIds?.has(e.id) && !mini && !isNew && <g className="ms-badge" transform={`translate(${s.x - (s.interchange ? 13 : 10)} ${top - 1})`}><title>A new milestone</title><circle r={6} /><path d="M0-3.6l1 2.3 2.5.2-1.9 1.6.6 2.4L0 1.6-2.2 2.9l.6-2.4-1.9-1.6 2.5-.2z" /></g>}
               {isNew && !mini && <>
                 <circle cx={s.x} cy={s.y} r={10} className="pulse" stroke={colour} />
                 <circle cx={s.x} cy={s.y} r={14} className="new-ring" />

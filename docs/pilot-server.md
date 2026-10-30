@@ -1220,3 +1220,40 @@ A signed-in pilot account can add moments (photos too) with no connection; they 
   `node scripts/checks/offline-capture.cjs` (real roster from `TP_ROSTER`; `context.setOffline`): Aaron Torres on a
   phone adds a moment with a photo offline, reloads offline, comes back; Mr David Coultas, in his own context, sees the
   moment and the photo; the sign-out warning; a second account on the same browser never sends Aaron's queue.
+## Milestones and celebrations (`src/milestones.js`, `src/api.js`, `src/components/Milestones.jsx`)
+
+Small moments worth marking on a student's own journey, shown once to the student and quietly to their advisor and
+family. Demo and pilot. No new route, no email, no leaderboard: nothing compares one student with another.
+
+- **Derived, not stored**: `deriveMilestones(map, { today, root, line })` (pure, `src/milestones.js`) reads a map as
+  `getStudentMap` gives it. Moments are non-goal stations dated up to today. Milestones (`key`): first moment (`first`);
+  first moment on each school line, a branch counting for its line (`line:<id>`); 5, 10 and 25 moments (`count:<n>`);
+  first endorsement, dated by the endorsement (`endorsed`); first goal done (`goal`, a station with `wasGoal`); a term
+  reflection finished (`reflection`, a `termReflection` station); moments on one line in 3 different months
+  (`steady:<id>`, "Steady on Art"); first spotted moment accepted (`spotted`). Each is `{ key, kind, n?, date, eventId,
+  eventTitle, lineId, lineName, colour, teacher? }`, dated by the moment that made it happen. `milestoneTitle(m, lang)`
+  (English, Thai), `milestoneCheer(m)` (the student's words), `newestFirst`, `since(list, day)`.
+- **Per viewer**: `api.milestonesOf(studentId, viewer)` derives from what that viewer may read, so an advisor's come
+  only from advisor-level moments and a family's (`api.familyMilestones`) only from moments the family view shows (never
+  private or hidden ones). `api.recentMilestones(sid, viewer, days = 14)`.
+- **Seen, once, on any device**: `store.milestonesSeen[studentId] = { [key]: at }`, written by the mutator
+  `markMilestonesSeen(studentId, keys)` (keeps the first time, ignores repeats; replayed with `nowIso()`). The student's
+  page marks a new milestone seen as soon as it sees it and keeps it to show for that page load, so a reload or a second
+  device never shows it again. A record from before milestones (no seen state, milestones already there) is marked seen
+  quietly the first time, without celebrating old ones. Never in a See as preview.
+- **canAct**: `markMilestonesSeen` only by the student, for their own (`milestonesOk` in `server/auth.mjs`, before the
+  admin rule): never staff, admins or families. **Scope**: `milestonesSeen` goes to that student only. PDPA: part of the
+  copy and erased with the student (keyed by student id).
+- **Screens**: the student's home at every level shows the celebration and "My milestones" (newest first). Simple: a
+  big friendly card in the line's colour with a small station arriving on a line (still under
+  `prefers-reduced-motion`), "Yay!" closes it. Standard and Full: a quiet toast at the top right and a badge (a small
+  star) on the map's station for milestones of the last 14 days (`badgeIds` on `MetroMap`). My advisory: "Recent
+  milestones" (advisees, last 14 days, advisor level; a tap opens the student page at that station). The advisor's
+  student page: "Milestones". This week: a "Milestones" block in Celebrate (advisees at advisor level, class students at
+  school level, dated in the week). Family home: "Milestones" (Thai too). Families get no celebration of their own.
+- Tests: `src/milestones.test.mjs` (derivation, `npm test`), `server/test/milestones.test.mjs` (per viewer, seen,
+  replay, canAct, scope, PDPA); browser: `node scripts/checks/milestones.cjs` (real roster from `TP_ROSTER`, in
+  `run.sh`): Aaron Torres adds his first moments at Simple on a phone and sees "First moment" once (not after a reload,
+  not on a second device, which gets "5 moments" live and still under reduced motion); a classmate at Standard gets the
+  toast and the station badge; refusals for advisor, admin and classmate; Ms Jane Altemen sees it on My advisory, his
+  page and This week; his family sees milestones but none from a private moment. Screenshots `tp-ms-*.png`.

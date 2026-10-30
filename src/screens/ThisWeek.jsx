@@ -4,6 +4,7 @@ import { weekLabel } from '../week.js';
 import { progress } from '../auth.js';
 import { fmtDate, inkOn } from '../format.js';
 import { QuietGroup } from '../components/Nudges.jsx';
+import { WeekMilestones } from '../components/Milestones.jsx';
 import './classes.css';
 import './this-week.css';
 
@@ -106,6 +107,7 @@ export default function ThisWeek({ persona, go, version, toast, param }) {
           })}</ul>
         )}
         <p className="fineprint">Up to five moments your students shared with the school, photos and endorsed ones first.</p>
+        <WeekMilestones summary={s} version={version} link={(m) => studentLink(m.student.id, m.eventId, s.classes.find((c) => c.studentIds.includes(m.student.id))?.id)} />
       </section>
     </div>
   );
