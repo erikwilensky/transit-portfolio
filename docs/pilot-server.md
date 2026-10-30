@@ -2226,9 +2226,8 @@ the browser from the leadership copy of the record.
   counts), `met`, `detail` and `eventId` (the moment it links to, or null for the map): moments on at least N lines since
   1 August; at least one endorsed moment; a term reflection done (a finished `termReflections` row this year, or a reflection
   station); a goal set (open, dated this year or later) or met (`wasGoal`); Years 9 and 11, a **moving-up summary**, shown only
-  when the record has `store.movingUp` (or `movingUpSummaries`/`movingUps`): an array of `{ studentId, status | doneAt … }` or
-  an object keyed by studentId; done when `status` is done/ready/shared/finished/sent/final or a `doneAt`, `finishedAt`,
-  `sharedAt` or `readyAt` is set (`movingUpOf(sid)`, a loose hook for that feature); Years 12–13, **CAS on track**: all three
+  when the record has `store.movingUp` (see "Moving-up summaries"); done when the student's latest summary is finished
+  (`movingUpOf(sid)`); Years 12–13, **CAS on track**: all three
   strands and at least `casHours` confirmed hours (default 50, Year 13 100; `signoffCasHours`); then the manual items the
   advisor ticks (default "Talked through the year together").
 - **Settings**: `store.signoffSettings = { years: { [British Year]: { lines, endorsed, reflection, goal, movingUp, cas,
@@ -2332,7 +2331,7 @@ anyone. Demo and pilot. No route of its own, no notifications, no messages: tagg
 - **Reads** (not mutators): `SKILLS` (the 10 + 5, IB order), `SKILL_WORDS` (plain words: Inquirer "Asking questions",
   Social "Working with others"…; Thai `SKILL_WORDS_TH` in `src/i18n.js`), `SKILL_MAX` = 3, `skillField(k)`,
   `chosenSkills(e)`, `chooseSkills(eventId, keys)` (calls `setTags`, so the change sent is `setTags`),
-  `schoolYearOf(d)` (1 August to 31 July), `termIndex(d)` (Term 1 Aug–Nov, 2 Dec–Mar, 3 Apr–Jul, as the map counts them),
+  `skillsYearOf(d)` (1 August to 31 July, `{ from, to, label }`), `termIndex(d)` (Term 1 Aug–Nov, 2 Dec–Mar, 3 Apr–Jul, as the map counts them),
   `skillsGrowth(events, today)` → `{ year, term, rows: [{ k, field, terms: [t1, t2, t3], ids, n }], moments, tagged,
   untagged }` (goals and earlier years left out), `skillsReader(persona, sid)` (advisor, a teacher of a current class, or
   a whole-school role).
