@@ -205,3 +205,14 @@ export const sisSync = {
   apply: (id, opts = {}) => call('POST', `/api/admin/sis/reports/${encodeURIComponent(id)}/apply`, opts), // opts: { pauseLeavers }
   dismiss: (id) => call('POST', `/api/admin/sis/reports/${encodeURIComponent(id)}/dismiss`),
 };
+// Leaver archive (server/routes/52-archive.mjs): a ZIP per leaving student; erasure scheduled, confirmed by an admin on the day.
+const enc = encodeURIComponent;
+export const leaverArchive = {
+  list: () => call('GET', '/api/admin/leavers'),
+  schedule: (id) => call('POST', `/api/admin/leavers/${enc(id)}/erasure`),
+  cancel: (id) => call('DELETE', `/api/admin/leavers/${enc(id)}/erasure`),
+  erase: (id, confirm) => call('POST', `/api/admin/leavers/${enc(id)}/erase`, { confirm }),
+  url: (ids) => (ids.length === 1 ? `/api/admin/students/${enc(ids[0])}/archive` : `/api/admin/leavers/archive?ids=${ids.map(enc).join(',')}`),
+  allUrl: '/api/admin/leavers/archive?all=1',
+  mine: '/api/me/archive',
+};

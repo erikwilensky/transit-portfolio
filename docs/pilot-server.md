@@ -1696,3 +1696,40 @@ line's over the built-in ones (`DEFAULT_PROMPTS`, one set per school line, Briti
   another Science class gets the built-in ones; a coordinator's Subject prompts screen; axe on each).
 - Not done: Thai versions of the built-in prompts; prompts per Year group; class tasks do not show them yet (they can
   call `getPromptsFor(studentId, lineId, classId)`).
+
+## Leaver archive (`server/archive.mjs`, `server/routes/52-archive.mjs`, `server/pdf.mjs`, `src/components/LeaverArchive.jsx`, pilot)
+
+At the end of the year each leaving student gets their whole journey as a ZIP to keep. One builder for the admin and the
+student (`buildArchive(sid)`):
+- **The ZIP**: `README.txt` (what each part is, in English and Thai), `my-journey.pdf` (A4; every moment and reflection the
+  student can see, private and hidden ones too: `api.getStudentMap(sid, 'student')`, by line in their lane order, then by
+  date, with endorsements and where each file is in the archive), `my-journey.html` (the same, every letter exactly),
+  `leaver-portfolio.pdf` (from `api.leaverView`, only when they made one), `photos/`, `documents/`, `voice-notes/` (their
+  uploads by original name, by type) and `data/` (the PDPA copy, `buildCopy` in `routes/50-pdpa.mjs`, without its `files/`;
+  `data/manifest.json` gives each upload's `inArchive` path).
+- **PDF** (`server/pdf.mjs`, no dependency): Helvetica in WinAnsi, so Western letters only. Other letters (Thai) show as
+  `[?]`; the README then says so and points to `my-journey.html`. To put Thai in the PDF, embed a TTF there.
+- **Streaming** (`zipStream(res)` in `server/zip.mjs`): stored entries written as they come, waiting for the socket, so a
+  combined download holds one student's archive in memory at a time. No ZIP64: one download stays under 4 GB and 65,535 entries.
+- **Who is leaving** (`leavers()`): Year 13 (`grade === 12`); students in `store.rosterImport.summary.missingFromFile` (the last
+  class-list import or applied SIS sync); `sis-sync.json` `gone`; and the waiting SIS report's `leaving.students`.
+- **Routes**: `GET /api/admin/leavers` (admin) → `{ students: [{ id, name, year, homeroom, why: [...], hasAccount, moments,
+  leaverPortfolio, downloaded: { at, by } | null, erasure: { due, at, by } | null }], due: [the same, due today or earlier],
+  today, eraseDays: 90 }`. `GET /api/admin/students/:id/archive` (admin) → one ZIP. `GET /api/admin/leavers/archive?ids=a,b`
+  or `?all=1` (admin) → one streamed ZIP holding `<name>-<id>.zip` per student and a README. `GET /api/me/archive` → a
+  student's own (`?student=` only their own id; admins any); parents and staff → 403.
+- **Erasure** (never automatic): `POST /api/admin/leavers/:id/erasure` (409 until an admin has downloaded their archive)
+  records `due = today + 90`; `DELETE` withdraws it. On or after the day the student is listed under "erasures due";
+  `POST /api/admin/leavers/:id/erase { confirm: <name> }` (409 before the day or when not scheduled, 400 for a wrong name)
+  runs the PDPA erase (`eraseStudent`). Kept in `DATA_DIR/leaver-archive.json { downloads, erasures }`, outside the record.
+- **Activity log**: `leaver-archive` (one line per student archive; `detail.how` admin or self, `detail.combined` = how many in
+  that ZIP), `erasure-schedule`, `erasure-cancel` (`detail.due`), `pdpa-erase` with `detail.scheduled`. Each archive also
+  writes `{ action: 'archive' }` to `audit.log`, like the PDPA copy.
+- **Screens**: Accounts › End of year: leaver archive (a summary; the list opens on request: a checkbox each, Choose all,
+  Download archives, "Schedule erasure in 90 days" after a download, Withdraw; erasures due, with Erase… and the name typed).
+  Privacy › Take your map with you: "Download my archive" (students).
+- Tests: `server/test/leaver-archive.test.mjs` (the streaming writer under backpressure, the PDF writer, the ZIP's contents
+  with `unzip -t` when present, permissions, a combined ZIP, erasure only on the day); `node scripts/checks/leaver-archive.cjs`
+  (real roster, separate contexts: the admin downloads two Year 13 archives, schedules, confirms on the day; the student
+  downloads their own from Privacy; a teacher gets 403; axe on the panel and Privacy).
+- Not done: Thai letters inside the PDF (see above); photos are listed in the PDF, not drawn.
