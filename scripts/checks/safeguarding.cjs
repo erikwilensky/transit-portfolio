@@ -93,6 +93,10 @@ let srv;
     await p.waitForSelector('.page.family'); await p.waitForTimeout(600);
     ok((await p.locator('.page.family').innerText()).includes(TITLE), 'the parent (joined by the family letter) sees the moment');
     const pTok = (await p.context().cookies()).find((c) => c.name === 'tp_session').value;
+    await p.locator('.page.family .pv-intro li button', { hasText: TITLE }).first().click(); await p.waitForTimeout(400);
+    ok(await p.locator('.sg-report').count() === 0, 'families have no Report button (since 30 October 2026: they speak to the school by email)');
+    ok((await act(pTok, 'reportItem', [{ eventId: ev.id }, 'other', '', { key: `fam:${STUDENT}`, name: 'Maria Torres' }])).status === 403, 'and reporting from a family account is refused (403)');
+    await p.keyboard.press('Escape');
 
     // ── Mr Coultas reports it from My classes ──
     const t = await ctx(tTok);
@@ -152,7 +156,7 @@ let srv;
     ok(!(await p.locator('.page.family').innerText()).includes(TITLE), 'the family view no longer shows it');
     const ps = await state(pTok);
     ok(!ps.events.some((e) => e.id === ev.id) && !JSON.stringify(ps).includes(TITLE), 'nor does the parent’s copy of the record');
-    ok((await act(pTok, 'reportItem', [{ eventId: ev.id }, 'other', '', { key: `fam:${STUDENT}`, name: 'Maria Torres' }])).status === 403, 'and the parent cannot report it any more (403)');
+    ok((await act(pTok, 'reportItem', [{ eventId: ev.id }, 'other', '', { key: `fam:${STUDENT}`, name: 'Maria Torres' }])).status === 403, 'nor after it is hidden (403)');
     await p.screenshot({ path: SH + 'family.png' });
     ok(await s.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'no sideways scroll at phone width');
     ok(!errs.length, `no page errors${errs.length ? `: ${errs.join(' | ')}` : ''}`);

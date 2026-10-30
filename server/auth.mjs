@@ -169,8 +169,8 @@ export function noteFailure(email, ip) { bump(`e:${email}`); bump(`i:${ip}`); }
 export const noteSuccess = (email) => fails.delete(`e:${email}`);
 
 // ── canAct: may this signed-in person call this api.js mutator with these arguments? ──
-// Cheap, server-side, per role. Students may only change their own record; families only answer
-// consent for their own children; whole-school staff may call any mutator except the admin-only ones;
+// Cheap, server-side, per role. Students may only change their own record; families change nothing in the record (only
+// their own bell; see PARENT_FNS); whole-school staff may call any mutator except the admin-only ones;
 // advisors and teachers only on the students they work with (reachOf in server/scope.mjs), only as
 // themselves, and not the school-wide settings. Which students a call touches: touchedBy (scope.mjs).
 // /api/action calls it in pilot mode: `if (!canAct(req.user, fn, args)) 403`. Demo mode has no accounts.
@@ -181,7 +181,7 @@ const ANYONE = new Set(['recordView']);
 const WHOLE_SCHOOL_ONLY = new Set(['addSchoolLine', 'renameLine', 'decideBranch', 'setRollout', 'matchRoster', 'setSubjectLine']);
 // The mutators a student may call, on their own record only.
 const STUDENT_FNS = new Set(['setStudentDrafts', 'setGithub', 'disconnectGithub', 'simulateWeek', 'addStation', 'addBranch', 'endLine', 'restartLine',
-  'completeOnboarding', 'capturePhone', 'setPrivacy', 'logLink', 'addGoal', 'setIntensity', 'remindParent', 'sync', 'importCandidates', 'addReflection',
+  'completeOnboarding', 'capturePhone', 'setPrivacy', 'logLink', 'addGoal', 'setIntensity', 'sync', 'importCandidates', 'addReflection',
   'setVisibility', 'editStation', 'deleteStation', 'completeGoal', 'setTags', 'requestEndorsement', 'addCheckIn', 'acceptCandidate', 'dismissCandidate',
   'restoreCandidate', 'mergeCandidate', 'resubmit', 'answerEvidence', 'acceptInterchange', 'ignoreInterchange', 'answerPrompt', 'skipPrompt']);
 // A student's own file import only, never as a school source.
@@ -199,6 +199,9 @@ export function canAct(user, fn, args = []) {
   if (!user || typeof fn !== 'string') return false;
   // Undo sends a whole copy of the record, and in a pilot every browser holds only its own part of it.
   if (fn === 'restore') return false;
+  if (REMOVED_FNS.has(fn) || (fn === 'reportItem' && args[0]?.familyNoteId) || (fn === 'moderateReport' && api.getReport(args[0])?.familyNoteId)) return false;
+  if (user.kind === 'parent') { try { return parentOk(user, fn, args); } catch { return false; } }
+  if (fn === 'recordFamilyConsent') { try { return consentOk(user, args); } catch { return false; } }
   if (SPOT_FNS.has(fn)) { try { return spotOk(user, fn, args); } catch { return false; } }
   if (fn === 'dropPhotos' || (fn === 'reportItem' && args[0]?.photoId)) { try { return dropOk(user, fn, args); } catch { return false; } }
   if (fn === 'setHandoverNote') { try { return handoverOk(user, args); } catch { return false; } }
@@ -214,7 +217,6 @@ export function canAct(user, fn, args = []) {
   if (SP_FNS.has(fn)) { try { return subjectPromptOk(user, fn, args); } catch { return false; } }
   if (CAS_FNS.has(fn)) { try { return casOk(user, fn, args); } catch { return false; } }
   if (PH_FNS.has(fn)) { try { return phraseOk(user, fn, args); } catch { return false; } }
-  if (FN_FNS.has(fn) || (fn === 'reportItem' && args[0]?.familyNoteId)) { try { return familyNoteOk(user, fn, args); } catch { return false; } }
   if (SE_FNS.has(fn)) { try { return schoolEventOk(user, fn, args); } catch { return false; } }
   if (isAdmin(user)) return true;
   if (ADMIN_ONLY.has(fn)) return false;
@@ -238,10 +240,6 @@ export function canAct(user, fn, args = []) {
       if (!STUDENT_FNS.has(fn) || (STUDENT_EXTRA[fn] && !STUDENT_EXTRA[fn](args))) return false;
       const t = touchedBy(fn, args);
       return !t.as.length && t.students.every((sid) => sid === user.studentId);
-    }
-    if (user.kind === 'parent') {
-      if (fn === 'setFamily') return true;
-      if (fn === 'answerConsent') return user.children.includes(st().consentReqs.find((r) => r.id === args[0])?.studentId);
     }
   } catch { /* malformed arguments */ }
   return false;
@@ -281,9 +279,8 @@ export function setPrefs(a, { lang, display, notify }) {
 // The demo's one shared family language (api.setLang) would change it for everybody: in a pilot only an admin may.
 ADMIN_ONLY.add('setLang');
 // ── Safeguarding (api.reportItem, api.moderateReport) ──
-// Reporting: as yourself only (from.key: 'student', your teacherId, 'fam:<child>' with your name, or admin), on what you
-// can see: a student their own moment or a comment on it; staff a student in reach; a family a child's moment as the
-// family view shows it (never a comment, never a hidden one). Moderating: coordinators, counsellors, leadership and
+// Reporting: as yourself only (from.key: 'student', your teacherId, or admin), on what you can see: a student their own
+// moment or a comment on it; staff a student in reach. Families do not report in the app (removed on 30 October 2026). Moderating: coordinators, counsellors, leadership and
 // admins, as themselves.
 const SAFE_FNS = new Set(['reportItem', 'moderateReport']);
 function safeOk(user, fn, args) {
@@ -295,7 +292,6 @@ function safeOk(user, fn, args) {
   const key = from?.key;
   if (user.kind === 'student') return key === 'student' && e.studentId === user.studentId;
   if (STAFF.includes(user.kind)) { const reach = reachOf(user); return !!user.teacherId && key === user.teacherId && (reach === null || reach.has(e.studentId)); }
-  if (user.kind === 'parent') return !c && !e.hidden && key === `fam:${e.studentId}` && (user.children || []).includes(e.studentId) && from?.name === user.name && api.VISIBLE_TO[api.familyViewer(e.studentId)].includes(e.visibility);
   return false;
 }
 
@@ -421,16 +417,14 @@ function taskOk(user, fn, a) {
 // ── Conference booking (api.openConferenceRound, editConferenceRound, closeConferenceRound, bookConference,
 // cancelConference, blockConferenceSlot) ──
 // Opening: an advisor for their own advisory, whole-school staff for any advisory or a whole Year, as themselves; admins.
-// Editing and closing: whoever opened it, its advisor, whole-school staff, admins. Booking: a family only for their own
-// children ('family'), at least api.CONF_CHANGE_H hours ahead by the server's clock, and only moving a booking that is still
-// that far off; the advisor (as themselves) for their own advisees, any time. Cancelling: the same. Blocking a slot: the
-// advisor of that grid, as themselves. Students never; reminders only the server (sendConferenceReminders).
+// Editing and closing: whoever opened it, its advisor, whole-school staff, admins. Booking and cancelling: the advisor (as
+// themselves) for their own advisees, any time; families never (removed on 30 October 2026). Blocking a slot: the advisor of
+// that grid, as themselves. Students never; reminders only the server (sendConferenceReminders).
 const CF_FNS = new Set(['openConferenceRound', 'editConferenceRound', 'closeConferenceRound', 'bookConference', 'cancelConference', 'blockConferenceSlot']);
 ADMIN_ONLY.add('sendConferenceReminders');
 function confOk(user, fn, args) {
   const admin = isAdmin(user), tid = user.teacherId || null, staff = STAFF.includes(user.kind) && !!tid;
   const whole = staff && reachOf(user) === null;
-  const soon = (d, t) => api.confTooSoon(d, t, Date.now());
   if (fn === 'openConferenceRound') {
     const [spec, by] = args;
     if (admin) return !by || by === tid;
@@ -446,32 +440,29 @@ function confOk(user, fn, args) {
     const [rid, aid, , , , by] = args, r = api.getConferenceRound(rid);
     return !!r && r.advisorIds.includes(aid) && !!tid && aid === tid && by === tid && (staff || admin);
   }
-  const parent = user.kind === 'parent', kids = user.children || [];
   if (fn === 'bookConference') {
-    const [rid, sid, slot, by] = args, r = api.getConferenceRound(rid), s = api.getStudent(sid);
+    const [rid, sid, , by] = args, r = api.getConferenceRound(rid), s = api.getStudent(sid);
     if (!r || !s || !r.studentIds.includes(sid)) return false;
-    if (parent) { const mine = api.confBookingOf(rid, sid); return by === 'family' && kids.includes(sid) && !soon(slot?.date, slot?.time) && !(mine && soon(mine.date, mine.time)); }
     return (staff || admin) && !!tid && by === tid && s.advisorId === tid;
   }
   if (fn === 'cancelConference') {
     const b = api.getConfBooking(args[0]), by = args[1];
     if (!b) return false;
-    if (parent) return by === 'family' && kids.includes(b.studentId) && !soon(b.date, b.time);
     return (staff || admin) && !!tid && by === tid && api.getStudent(b.studentId)?.advisorId === tid;
   }
   return false;
 }
 // ── Student-led conferences (api.saveConfPrep, writeConfNote) ──
-// Getting ready: only the student, on their own prep, in a round that includes them. The lines at the end: a parent for
-// their own children (the family's line, as 'family'), the student their own line (as 'student'), and the student's
-// advisor or whole-school staff either line, as themselves. Admins too, as themselves. Nobody else.
+// Getting ready: only the student, on their own prep, in a round that includes them. The line at the end (who 'student'):
+// the student as 'student', and the student's advisor or whole-school staff as themselves. Admins too, as themselves.
+// The family's line was removed on 30 October 2026: who 'family' is refused for everyone.
 const SLC_FNS = new Set(['saveConfPrep', 'writeConfNote']);
 function slcOk(user, fn, args) {
   const r = api.getConferenceRound(args[0]), sid = args[1];
   if (!r || !r.studentIds.includes(sid)) return false;
   if (fn === 'saveConfPrep') return user.kind === 'student' && !!user.studentId && sid === user.studentId;
   const [, , who, , by] = args;
-  if (user.kind === 'parent') return who === 'family' && by === 'family' && (user.children || []).includes(sid);
+  if (who !== 'student') return false;
   if (user.kind === 'student') return who === 'student' && by === 'student' && sid === user.studentId;
   const tid = user.teacherId || null;
   if (!tid || by !== tid || !(STAFF.includes(user.kind) || isAdmin(user))) return false;
@@ -553,25 +544,29 @@ export function liveSessions() {
   return { sessions: live.length, people: new Set(live.map((s) => s.userId)).size };
 }
 
-// ── Family encouragement (api.addFamilyNote, editFamilyNote, deleteFamilyNote, thankFamilyNote, setFamilyNoteHidden;
-// reportItem on { familyNoteId }) ──
-// Writing: only a family member, as their own account (`u:<id>`, their own name), on their child's moment that the family
-// view shows (not hidden), while the student has notes on. Changing or deleting: only its writer. Thanking and hiding it
-// from their own view: only the student. Reporting: the student, staff who read it (advisor, a current class's teacher,
-// whole-school roles) as themselves, admins. Never staff or admins writing as a family.
-const FN_FNS = new Set(['addFamilyNote', 'editFamilyNote', 'deleteFamilyNote', 'thankFamilyNote', 'setFamilyNoteHidden']);
-function familyNoteOk(user, fn, args) {
-  const me = user.kind === 'student' && user.studentId, fam = user.kind === 'parent' && !!user.id, key = `u:${user.id}`, kids = user.children || [];
-  if (fn === 'addFamilyNote') { const e = api.getEvent(args[0]); return fam && !!e && kids.includes(e.studentId) && api.familyShows(e) && api.familyNotesOn(e.studentId) && args[1]?.key === key && args[1]?.name === user.name; }
-  const n = api.getFamilyNote(fn === 'reportItem' ? args[0].familyNoteId : args[0]);
-  if (!n) return false;
-  if (fn === 'editFamilyNote' || fn === 'deleteFamilyNote') return fam && args[1] === key && n.by === key && kids.includes(n.studentId);
-  if (fn !== 'reportItem') return !!me && n.studentId === me && !n.hidden;
-  const k = args[3]?.key;
-  if (isAdmin(user)) return k === 'admin' || (!!user.teacherId && k === user.teacherId);
-  if (me) return k === 'student' && n.studentId === me && !n.hidden;
-  if (!STAFF.includes(user.kind) || !user.teacherId || k !== user.teacherId) return false;
-  return reachOf(user) === null || api.familyNoteReader(user.teacherId, n.studentId);
+// ── Removed on 30 October 2026 at Erik's request: no new family–school messaging paths (parents use email) ──
+// Family encouragement, a family's answer to consent and a student's reminder to their family stay registered in api.js
+// only so recorded history replays; nobody may call them. A report on a family note, or moderating one, is refused too.
+const REMOVED_FNS = new Set(['addFamilyNote', 'editFamilyNote', 'deleteFamilyNote', 'thankFamilyNote', 'setFamilyNoteHidden', 'answerConsent', 'remindParent']);
+// A family account changes nothing in the record: it reads the family view and may tidy its own bell, and a share link it
+// opens counts a view (recordView, as for anyone). Its language, display, notification settings and password are its
+// account's own (POST /api/auth/prefs, /api/auth/password), not mutators. setFamily (the demo's shared family settings) is
+// admin only.
+export const PARENT_FNS = new Set(['markNotificationsRead', 'clearReadNotifications', 'recordView']);
+ADMIN_ONLY.add('setFamily');
+function parentOk(user, fn, args) {
+  if (!PARENT_FNS.has(fn)) return false;
+  if (fn === 'recordView') return true;
+  const mine = new Set(api.notifyKeys({ kind: user.kind, children: user.children }));
+  return [].concat(args[0] ?? []).every((k) => mine.has(k));
+}
+// ── Family consent on file (api.recordFamilyConsent): an admin (as themselves, or with no staff record: by null) or the
+// student's advisor, as themselves. Nobody else, whole-school roles included. ──
+function consentOk(user, [sid, , by]) {
+  const s = api.getStudent(sid);
+  if (!s) return false;
+  if (isAdmin(user)) return !by || by === user.teacherId;
+  return STAFF.includes(user.kind) && !!user.teacherId && by === user.teacherId && s.advisorId === user.teacherId;
 }
 // ── Class photo drop (api.dropPhotos; acceptSpotted/declineSpotted answer it; reportItem on { photoId }) ──
 // Sending: a teacher of the class (whole-school staff and admins too, only for a class they teach), as themselves; the

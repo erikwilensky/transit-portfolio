@@ -7,7 +7,7 @@ import './notification-settings.css';
 // Notification settings and quiet hours, from the account menu (pilot) or the bell (demo too). See src/notify-kinds.js.
 const TH = {
   Notifications: 'การแจ้งเตือน', 'Notification settings': 'ตั้งค่าการแจ้งเตือน', On: 'เปิด', Off: 'ปิด',
-  'Weekly digest': 'สรุปรายสัปดาห์', 'Consent requests': 'คำขอความยินยอม', Conferences: 'การประชุมผู้ปกครอง',
+  'Weekly digest': 'สรุปรายสัปดาห์',
   'Your child’s milestones': 'ความสำเร็จของบุตรหลาน', 'Quiet hours': 'ช่วงเวลาเงียบ', From: 'ตั้งแต่', To: 'ถึง',
   Save: 'บันทึก', Cancel: 'ยกเลิก', Close: 'ปิด', 'Saving…': 'กำลังบันทึก…',
   'Choose what reaches your bell. Nothing is deleted.': 'เลือกสิ่งที่จะแสดงที่กระดิ่ง ไม่มีสิ่งใดถูกลบ',

@@ -1,13 +1,13 @@
 // Student-led conferences (api.saveConfPrep, writeConfNote): "Get ready for my conference" on the student's home (one
 // question a screen at Simple, one page at Standard and Full), Conference mode (full screen, one moment a screen, large
-// text, keeps working offline once open), the advisor's "Prepared: n of 23" on the round, and the lines everyone adds at
-// the end (the family's on the family page, in Thai or English).
+// text, keeps working offline once open), the advisor's "Prepared: n of 23" on the round, and the student's line at the
+// end. The family's line ("What we will try at home") was removed on 30 October 2026: no new family–school paths.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { addNote, confBookingOf, confNoteOf, conferenceDeck, daysBefore, getConferenceRounds, getLang, getStudent, getStudentMap, getTeacher, myConfPrep,
-  prepMoments, prepProgress, saveConfPrep, shortName, SLC_MAX, SLC_PICKS, TODAY, writeConfNote, youngConf } from '../api.js';
+import { addNote, confBookingOf, conferenceDeck, daysBefore, getConferenceRounds, getLang, getStudentMap, getTeacher, myConfPrep,
+  prepMoments, prepProgress, saveConfPrep, shortName, SLC_MAX, SLC_PICKS, studentConfNote, TODAY, writeConfNote, youngConf } from '../api.js';
 import { fmtDate } from '../format.js';
-import { confSlotText, errText, slcWords, studentThai } from '../i18n.js';
+import { confSlotText, studentThai } from '../i18n.js';
 import { Steps } from '../screens/SimpleHome.jsx';
 import { shown } from '../thai.js';
 import { Said, SayIt, SpeakButton } from './Voice.jsx';
@@ -43,7 +43,7 @@ export function StudentLedCard({ studentId, version, toast, simple }) {
           <p>{p?.status === 'ready' ? 'You are ready. You can still change it before the day.' : p ? 'You started this. Carry on where you left off.'
             : youngConf(studentId) ? 'Pick a few things to show your family and say what you are proud of. It takes about 5 minutes.'
             : `Pick up to ${SLC_PICKS} moments to show, say what you are proud of, one thing that was hard and one goal.`}</p>
-          <small>{b ? `Your conference: ${confSlotText(lang, b.date, b.time)}` : 'No time booked yet. Your family picks one.'}</small>
+          <small>{b ? `Your conference: ${confSlotText(lang, b.date, b.time)}` : 'No time booked yet. Your advisor will set one with your family.'}</small>
         </div>
         <div className="slc-card-btns">
           {p?.status === 'ready'
@@ -62,24 +62,23 @@ export function StudentLedCard({ studentId, version, toast, simple }) {
 // After the conference (its day has come, or someone wrote on the note), for 30 days after the round's last day.
 function afterConference(studentId) {
   const r = getConferenceRounds().filter((x) => x.studentIds.includes(studentId) && x.days.at(-1).date >= daysBefore(30))
-    .filter((x) => { const b = confBookingOf(x.id, studentId), n = confNoteOf(x.id, studentId); return (n && (n.family || n.student)) || (b && b.date <= TODAY); })
+    .filter((x) => { const b = confBookingOf(x.id, studentId); return !!studentConfNote(x.id, studentId) || (b && b.date <= TODAY); })
     .sort((a, b) => b.days[0].date.localeCompare(a.days[0].date))[0];
   return r ? { round: r, deck: conferenceDeck(r.id, studentId, 'student') } : null;
 }
 
 function StudentNote({ studentId, round: r, version, toast, simple, onShow }) {
-  const n = useMemo(() => confNoteOf(r.id, studentId), [r, studentId, version]); // eslint-disable-line react-hooks/exhaustive-deps
+  const n = useMemo(() => studentConfNote(r.id, studentId), [r, studentId, version]); // eslint-disable-line react-hooks/exhaustive-deps
   const [edit, setEdit] = useState(false);
   const [text, setText] = useState('');
-  const mine = n?.student, fam = n?.family;
+  const mine = n?.student;
   const save = () => { try { writeConfNote(r.id, studentId, 'student', text, 'student'); setEdit(false); toast('Saved on your conference note'); } catch (e) { toast(e.message); } };
-  const by = (x) => (x && x.by !== 'family' && x.by !== 'student' ? shortName(getTeacher(x.by)?.name || '') : '');
+  const by = (x) => (x && x.by !== 'student' ? shortName(getTeacher(x.by)?.name || '') : '');
   return (
     <section className={`slc-card slc-note${simple ? ' simple' : ''}`} aria-labelledby="slc-note-h">
       <div className="slc-card-text">
         <h2 id="slc-note-h">My conference note</h2>
         <dl className="slc-lines">
-          <div><dt>What we will try at home</dt><dd>{fam ? <><span lang="en">{fam.text}</span>{by(fam) && <small>{`Written by ${by(fam)}`}</small>}</> : <small>Your family adds this on their Family page.</small>}</dd></div>
           <div><dt>What I will do next</dt><dd>{mine && !edit ? <><span lang="en">{mine.text}</span>{by(mine) && <small>{`Written by ${by(mine)}`}</small>}</> : !edit ? <small>Not written yet.</small> : null}</dd></div>
         </dl>
         {edit && <div className="slc-write">
@@ -364,11 +363,10 @@ export function ConferenceMode({ roundId, studentId, by, version, onClose }) {
   );
 }
 
-// The last screen: the family's line and the student's, and (staff only) a private note.
+// The last screen: the student's line, and (staff only) a private note.
 function NextSteps({ deck, by, t }) {
   const staff = by !== 'student';
   const n = deck.note, sid = deck.student.id, r = deck.round;
-  const [fam, setFam] = useState(n?.family?.text || '');
   const [mine, setMine] = useState(n?.student?.text || '');
   const [note, setNote] = useState('');
   const [said, setSaid] = useState('');
@@ -379,14 +377,13 @@ function NextSteps({ deck, by, t }) {
       {can ? <>
         <textarea id={`slc-l-${who}`} rows={2} maxLength={SLC_MAX.line} value={value} onChange={(e) => set(e.target.value)} />
         <button className="ghost" disabled={!value.trim() || value.trim() === (n?.[who]?.text || '')} onClick={() => run(() => writeConfNote(r.id, sid, who, value, by), 'Saved on the conference note')}>{t('Save')}</button>
-      </> : <p id={`slc-l-${who}`} className="slc-mid">{n?.[who]?.text ? <span lang="en">{n[who].text}</span> : t('Your family adds this on their Family page.')}</p>}
+      </> : <p id={`slc-l-${who}`} className="slc-mid">{n?.[who]?.text ? <span lang="en">{n[who].text}</span> : t('Not written yet.')}</p>}
     </div>
   );
   return (
     <div className="slc-slide slc-next">
       <h1>{t('Our next steps')}</h1>
-      <p className="slc-mid">{t('One line each, to keep on the conference note.')}</p>
-      {line({ who: 'family', label: 'What we will try at home', value: fam, set: setFam, can: staff })}
+      <p className="slc-mid">{t('One line, to keep on the conference note.')}</p>
       {line({ who: 'student', label: 'What I will do next', value: mine, set: setMine, can: true })}
       {staff && <div className="slc-line slc-staff">
         <label htmlFor="slc-staff">Private staff note <small>Only staff see it. It goes with your advisor notes.</small></label>
@@ -422,40 +419,3 @@ export const prepMark = (roundId, studentId) => {
   const p = prepProgress(roundId).rows.find((x) => x.student.id === studentId);
   return p?.status === 'ready' ? 'Prepared' : p?.status === 'started' ? 'Preparing' : 'Not prepared yet';
 };
-
-// ── The family: the line at the end ("What we will try at home"), and the student's. Thai or English. ──
-export function FamilyConfNotes({ persona, lang, version, toast }) {
-  const rows = useMemo(() => persona.children.flatMap((sid) => {
-    const s = getStudent(sid); if (!s) return [];
-    return getConferenceRounds().filter((r) => r.studentIds.includes(sid) && r.days.at(-1).date >= daysBefore(30)).filter((r) => {
-      const b = confBookingOf(r.id, sid), n = confNoteOf(r.id, sid);
-      return (n && (n.family || n.student)) || (b && b.date <= TODAY);
-    }).map((r) => ({ r, s }));
-  }), [persona.children, version]); // eslint-disable-line react-hooks/exhaustive-deps
-  if (!rows.length) return null;
-  return rows.map(({ r, s }) => <FamilyNote key={`${r.id}-${s.id}`} r={r} s={s} lang={lang} version={version} toast={toast} />);
-}
-function FamilyNote({ r, s, lang, version, toast }) {
-  const w = slcWords(lang);
-  const n = useMemo(() => confNoteOf(r.id, s.id), [r, s, version]); // eslint-disable-line react-hooks/exhaustive-deps
-  const [edit, setEdit] = useState(false);
-  const [text, setText] = useState('');
-  const f = s.name.split(' ')[0];
-  const by = (x) => (x && x.by !== 'family' && x.by !== 'student' ? shortName(getTeacher(x.by)?.name || '') : '');
-  const save = () => { try { writeConfNote(r.id, s.id, 'family', text, 'family'); setEdit(false); toast(w.saved); } catch (e) { toast(errText(lang, e.message)); } };
-  return (
-    <section className="card-sec slc-fam" aria-labelledby={`slc-fam-${r.id}-${s.id}`}>
-      <h2 id={`slc-fam-${r.id}-${s.id}`}>{w.head(f)}</h2>
-      <p>{w.intro(f)}</p>
-      <dl className="slc-lines">
-        <div><dt>{w.home}</dt><dd>{n?.family && !edit ? <><span lang="en">{n.family.text}</span>{by(n.family) && <small>{w.by(by(n.family))}</small>}</> : !edit ? <small>{w.none}</small> : null}</dd></div>
-        <div><dt>{w.next(f)}</dt><dd>{n?.student ? <><span lang="en">{n.student.text}</span>{by(n.student) && <small>{w.by(by(n.student))}</small>}</> : <small>{w.notYet(f)}</small>}</dd></div>
-      </dl>
-      {edit ? <div className="slc-write">
-        <label htmlFor={`slc-fl-${s.id}`}>{w.home}</label>
-        <textarea id={`slc-fl-${s.id}`} rows={2} maxLength={SLC_MAX.line} placeholder={w.ph} value={text} onChange={(e) => setText(e.target.value)} />
-        <div className="cb-btns"><button className="ghost" onClick={() => setEdit(false)}>{w.cancel}</button><button className="primary" disabled={!text.trim()} onClick={save}>{w.save}</button></div>
-      </div> : <button className={n?.family ? 'ghost' : 'primary'} onClick={() => { setText(n?.family?.text || ''); setEdit(true); }}>{n?.family ? w.change : w.write}</button>}
-    </section>
-  );
-}

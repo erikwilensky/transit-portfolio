@@ -117,13 +117,15 @@ function start(port, dataDir) {
     await p2.click('button[type=submit]'); await p2.waitForSelector('.page.family', { timeout: 15000 });
     ok(/แผนที่ของ/.test(await p2.locator('.page.family').innerText()), 'parent A on a second device: Thai, from the account');
 
-    // ── Notifications: the students ask their families to look at consent; each bell in its own language ──
+    // ── Notifications: a student can no longer ask their family in the app (since 30 October 2026); a notification a
+    // family already had from before still reads in each bell's own language ──
     const kids = [meA.children[0], meB.children[0]];
     for (const sid of kids) {
       const s = roster.students.find((x) => x.id === sid);
       const sTok = cookieOf((await post('/api/auth/setup', { token: linkOf(s.email), password: 'pilot-pass-123' })).r);
-      const r = await post('/api/action', { fn: 'remindParent', args: [sid], rec: [] }, sTok);
-      ok(r.r.status === 200, `${s.name.split(' ')[0]} asks their family to look at consent`);
+      ok((await post('/api/action', { fn: 'remindParent', args: [sid], rec: [] }, sTok)).r.status === 403, `${s.name.split(' ')[0]} cannot send a consent reminder any more (403)`);
+      const r = await post('/api/action', { fn: 'addNotification', args: [`fam:${sid}`, `${s.name.split(' ')[0]} asked you to look at a consent request`, { persona: `fam:${sid}`, screen: 'consent', param: sid }], rec: [] }, adminTok);
+      ok(r.r.status === 200, `an old notification for ${s.name.split(' ')[0]}’s family (from before)`);
     }
     const bell = async (pg) => { await pg.reload(); await pg.waitForSelector('.page.family'); await pg.click('.icon-btn.bell'); await pg.waitForSelector('.bell-menu'); return pg.locator('.bell-menu').innerText(); };
     const bA = await bell(A.p); const bB = await bell(B.p);

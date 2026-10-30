@@ -152,7 +152,7 @@ test('a browser holding only its part of the record can run its normal changes',
   run(teacher('t-07', 'advisor'), () => { copy.getCohort('t-07'); copy.sendPrompt('st-01', 'ev-042', 'why?', 't-07'); copy.addNote('st-01', 'n'); copy.addGoal('st-02', { title: 'g', date: '2027-01-01', lineId: 'music' }, 't-07'); copy.growth('st-03'); copy.getActivity('st-01'); });
   run(teacher('t-06'), () => { copy.getStudentMap('st-03', 'advisor'); copy.getRequests('t-06'); });
   run(stu('st-02'), () => { const e = copy.addStation('st-02', { title: 't', lineIds: ['music'] }); copy.requestEndorsement(e.id, 't-03'); copy.addReflection({ studentId: 'st-02', eventId: e.id, text: 'x' }); copy.getActivity('st-02'); copy.getStudentMap('st-02'); copy.termReview('st-02'); copy.suggestInterchanges('st-02'); });
-  run(PARENT, () => { copy.getDigest('st-09'); copy.getStudentMap('st-06', copy.familyViewer('st-06')); copy.answerConsent('cr-1', 'approved', 'Parent'); });
+  run(PARENT, () => { copy.getDigest('st-09'); copy.getStudentMap('st-06', copy.familyViewer('st-06')); copy.getConsentReqs('st-09'); copy.consentOnFile('st-09'); copy.familyConsentOf('st-09'); });
   run(LEAD, () => { copy.auditLog(); copy.profileCoverage(); copy.getDpCore(); copy.linePairs(); copy.getStudents({ includeCohort: true }).forEach((s) => copy.getSignals(s.id)); });
 });
 
@@ -196,5 +196,5 @@ test('canAct: unknown mutators, whole-school roles, students and Undo', () => {
   assert.ok(canAct(maya, 'addCheckIn', ['ev-sp-1', 'x', 'student']) && !canAct(maya, 'addCheckIn', ['ev-sp-1', 'x', 't-01']));
   assert.ok(canAct(maya, 'importCandidates', [[{ studentId: 'st-01' }], { sourceId: 'mine' }]) && !canAct(maya, 'importCandidates', [[{ studentId: 'st-01' }], { sourceId: 'csv' }]));
   assert.ok(!canAct(maya, 'endorse', [[], 't-01']) && !canAct(maya, 'sendPrompt', ['st-01', 'ev-042', 'x', 't-07']));
-  assert.ok(canAct(PARENT, 'answerConsent', ['cr-1', 'approved']) && !canAct(PARENT, 'addStation', ['st-09', {}]));
+  assert.ok(!canAct(PARENT, 'answerConsent', ['cr-1', 'approved']) && !canAct(PARENT, 'addStation', ['st-09', {}]), 'families change nothing (since 30 October 2026)');
 });

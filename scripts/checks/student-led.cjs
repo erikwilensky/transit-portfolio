@@ -3,8 +3,8 @@
 // on a phone, gets ready (one question a screen, sentence starters, read aloud): two moments, his words, proud, hard, his
 // goal. The advisor sees "Prepared: 1 of 23", books his time and opens Conference mode from the booking list: one moment a
 // screen with its photo, then the goal; it keeps working offline (the photo and a private staff note, sent when back). Aaron
-// adds "What I will do next" in his own Conference mode; his parent joins from a family letter in Thai and adds "What we
-// will try at home". Each sees the conference note; the conference sheet carries his prep (one A4 page). axe on every new
+// adds "What I will do next" in his own Conference mode. His parent joins from a family letter in Thai and has nothing to
+// write (the family's line was removed on 30 October 2026). The conference sheet carries his prep (one A4 page). axe on every new
 // screen. Each account has its own browser context. TP_ROSTER=/path/to/transit-roster.json (default: the project mount).
 // Screenshots and a PDF: tp-slc-* in SCRATCH or the temp folder.
 const { chromium } = require('playwright');
@@ -96,7 +96,7 @@ let srv;
     await form.locator('.cb-row').nth(0).locator('label:has-text("From") input').fill(D1.from);
     await form.locator('.cb-row').nth(0).locator('label:has-text("To") input').fill(D1.to);
     await form.getByRole('textbox', { name: 'Room' }).fill('Room 8C');
-    await t.click('.cb-form button[type=submit]:has-text("Open for 23 families")');
+    await t.click('.cb-form button[type=submit]:has-text("Open for 23 students")');
     const r = await until(async () => saved().confRounds?.[0]);
     ok(r && r.studentIds.length === 23 && r.days[0].date === D1.date, `a round for the 23 advisees on ${D1.date} ${D1.from}–${D1.to} (Bangkok)`);
     await t.waitForSelector('.slc-adv');
@@ -193,7 +193,7 @@ let srv;
     await a.click('.slc-card button:has-text("Start my conference")'); await a.waitForSelector('.slc-mode');
     ok(await noScroll(a), 'Conference mode: no sideways scroll on a phone');
     for (let i = 0; i < 5; i++) await a.click('.slc-foot .primary');
-    ok(/Our next steps/.test(await a.locator('.slc-stage h1').innerText()) && await a.locator('#slc-l-family').evaluate((x) => x.tagName) === 'P', 'his last screen: his own line to write, the family’s to read');
+    ok(/Our next steps/.test(await a.locator('.slc-stage h1').innerText()) && await a.locator('#slc-l-family').count() === 0 && !/try at home/.test(await a.locator('.slc-stage').innerText()), 'his last screen: his own line to write, no family line');
     await a.fill('#slc-l-student', 'Next I will enter the bridge contest.');
     await a.locator('.slc-line', { hasText: 'What I will do next' }).locator('button:has-text("Save")').click();
     const n1 = await until(async () => saved().confNotes?.find((x) => x.studentId === AARON)?.student);
@@ -201,40 +201,27 @@ let srv;
     await audit(a, 'student: Conference mode, next steps');
     await a.click('.slc-foot .primary:has-text("Finish")');
 
-    // ── Aaron's parent joins from a family letter, in Thai, and adds the family's line ──
-    const lt = await (await post('/api/advisor/family/letters', { studentIds: [AARON, other.id] }, tTok)).json();
-    const letter = (sid) => lt.letters.find((l) => l.studentId === sid).url;
+    // ── Aaron's parent joins from a family letter, in Thai: nothing to write, and the note is not in their copy ──
+    const lt = await (await post('/api/advisor/family/letters', { studentIds: [AARON] }, tTok)).json();
     const cP = await ctx(null, { width: 390, height: 820 }, { hasTouch: true, isMobile: true }); const p = await cP.newPage(); watch(p, 'parent');
-    await p.goto(letter(AARON).replace(/^https?:\/\/[^/]+/, U)); await p.waitForSelector('#fj-h');
+    await p.goto(lt.letters[0].url.replace(/^https?:\/\/[^/]+/, U)); await p.waitForSelector('#fj-h');
     await p.click('.auth-lang button[lang="th"]');
     await p.fill('input[autocomplete=name]', 'Torres Family'); await p.fill('input[type=email]', 'torres@family.example');
     await p.fill('input[autocomplete=new-password] >> nth=0', 'family-pass-1'); await p.fill('input[autocomplete=new-password] >> nth=1', 'family-pass-1');
-    await p.click('form.auth-card button[type=submit]'); await p.waitForSelector('.slc-fam', { timeout: 15000 });
+    await p.click('form.auth-card button[type=submit]'); await p.waitForSelector('.fam-head', { timeout: 15000 }); await p.waitForTimeout(600);
     const pTok = (await cP.cookies()).find((k) => k.name === 'tp_session').value;
-    const fam = await p.locator('.slc-fam').innerText();
-    ok(/หลังการประชุมของ Aaron/.test(fam) && /สิ่งที่เราจะลองทำที่บ้าน/.test(fam) && /bridge contest/.test(fam), 'the family card is in Thai, with Aaron’s line');
-    await audit(p, 'family: after the conference (Thai, phone)');
-    await p.click('.slc-fam button.primary');
-    await p.fill('.slc-fam textarea', 'We will build something together on Saturdays.');
-    await p.click('.slc-fam .primary:has-text("บันทึก")');
-    const n2 = await until(async () => saved().confNotes?.find((x) => x.studentId === AARON)?.family);
-    ok(n2 && n2.by === 'family' && /Saturdays/.test(n2.text), 'saved on the conference note, as the family');
-    await p.waitForSelector('.slc-fam button:has-text("แก้ไขบรรทัดของเรา")');
-    ok(await noScroll(p), 'no sideways scroll at phone width (family)');
-    await p.screenshot({ path: SH + 'family.png', fullPage: true });
+    ok(await p.locator('.slc-fam, textarea').count() === 0 && !/สิ่งที่เราจะลองทำที่บ้าน/.test(await p.locator('main').innerText()), 'the family page has no conference line to write');
+    await audit(p, 'family: the family page (Thai, phone)');
     const ps = await state(pTok);
-    ok(ps.confNotes.length === 1 && !(ps.confPreps || []).length && !(ps.notes || {})[AARON], 'the family’s copy: the note, never his prep or the staff note');
-    ok(saved().notifications.some((n) => n.to === `st:${AARON}` && n.text === 'Your family wrote on your conference note') && saved().notifications.some((n) => n.to === `t:${TID}` && /family wrote on the conference note/.test(n.text)), 'Aaron and his advisor are told in the app');
-    const jq = await post('/api/family/join', { token: letter(other.id).split('/family/')[1], name: 'Second Family', email: 'second@family.example', password: 'family-pass-1' });
-    const qTok = tokOf(jq), qs = await state(qTok);
-    ok(!(qs.confNotes || []).length && !(qs.confPreps || []).length && !JSON.stringify(qs).includes('bridge contest'), 'another 8C family gets neither');
-    ok((await act(qTok, 'writeConfNote', [r.id, AARON, 'family', 'x', 'family'])).status === 403, 'and cannot write on Aaron’s note (403)');
-    ok((await act(aTok, 'writeConfNote', [r.id, AARON, 'family', 'x', 'student'])).status === 403, 'Aaron cannot write his family’s line (403)');
+    ok(!(ps.confNotes || []).length && !(ps.confPreps || []).length && !(ps.notes || {})[AARON], 'the family’s copy: no note, prep or staff note');
+    ok((await act(pTok, 'writeConfNote', [r.id, AARON, 'family', 'x', 'family'])).status === 403, 'a family line is refused (403)');
+    ok((await act(aTok, 'writeConfNote', [r.id, AARON, 'family', 'x', 'student'])).status === 403, 'Aaron cannot write one either (403)');
+    ok((await act(tTok, 'writeConfNote', [r.id, AARON, 'family', 'x', TID])).status === 403, 'nor his advisor (403)');
 
     // ── Everyone sees the note; the sheet carries his prep ──
     await a.reload(); await a.waitForSelector('.slc-note');
     const an = await a.locator('.slc-note').innerText();
-    ok(/Saturdays/.test(an) && /bridge contest/.test(an), 'Aaron’s home: both lines on his conference note');
+    ok(/bridge contest/.test(an) && !/try at home/.test(an), 'Aaron’s home: his line on his conference note, no family line');
     await audit(a, 'student: my conference note');
     await t.goto(`${U}/#/me/student/${AARON}~sheet`); await t.waitForSelector('.cf-sheet .cf-prep');
     const sp = await t.locator('.cf-sheet .cf-prep').textContent();

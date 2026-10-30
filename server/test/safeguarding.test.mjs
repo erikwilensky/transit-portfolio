@@ -42,7 +42,7 @@ test('setup: Fern has a publishable moment with an uploaded photo, shared on a l
   assert.ok(publicSnapshot('tok-sg').store.events.some((e) => e.id === robot.id));
 });
 
-test('canAct reportItem: the student their own; staff in reach; a parent only what the family view shows', () => {
+test('canAct reportItem: the student their own; staff in reach; a parent never', () => {
   const R = (t, from) => ['reportItem', [t, 'inappropriate', '', from]];
   assert.ok(canAct(fern, ...R({ eventId: robot.id }, { key: 'student' })), 'the student, own moment');
   assert.ok(canAct(fern, ...R({ commentId: cm.id }, { key: 'student' })), 'the student, a comment on it');
@@ -53,8 +53,7 @@ test('canAct reportItem: the student their own; staff in reach; a parent only wh
   assert.ok(!canAct(brook, ...R({ eventId: robot.id }, { key: 'T101' })), 'staff only as themselves');
   assert.ok(!canAct(gray, ...R({ eventId: robot.id }, { key: 'T105' })), 'staff out of reach');
   assert.ok(canAct(coord, ...R({ eventId: gusMoment.id }, { key: 'T104' })), 'whole-school staff');
-  assert.ok(canAct(parent, ...R({ eventId: robot.id }, { key: 'fam:S2001', name: 'Rose Gale' })), 'a parent, a moment the family sees');
-  assert.ok(!canAct(parent, ...R({ eventId: robot.id }, { key: 'fam:S2001', name: 'Someone' })), 'a parent only as themselves');
+  assert.ok(!canAct(parent, ...R({ eventId: robot.id }, { key: 'fam:S2001', name: 'Rose Gale' })), 'a parent never reports in the app (since 30 October 2026)');
   assert.ok(!canAct(parent, ...R({ commentId: cm.id }, { key: 'fam:S2001', name: 'Rose Gale' })), 'never a comment');
   assert.ok(!canAct(otherParent, ...R({ eventId: robot.id }, { key: 'fam:S2001', name: 'Ann Hale' })), 'not another family’s child');
   const adv = api.addStation('S2001', { title: 'Advisor only', lineIds: ['computing'], visibility: 'advisor' });
