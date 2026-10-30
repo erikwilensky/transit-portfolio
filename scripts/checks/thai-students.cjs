@@ -191,6 +191,7 @@ let srv;
     await sweep(a, AARON, 'Aaron: add, what did you learn');
     await a.locator('.sh-flow .sh-starters button').first().click();
     ok(THAI.test(await a.locator('.sh-flow textarea').inputValue()), `a Thai sentence starter writes Thai: “${await a.locator('.sh-flow textarea').inputValue()}”`);
+    await a.click('.sh-flow .sk-open'); await a.locator('.sh-flow .sk-chip').first().click(); await sweep(a, AARON, 'Aaron: add, which skills');
     const help = a.locator('.sh-flow .sp-help'); if (await help.count()) { await help.click(); await sweep(a, AARON, 'Aaron: add, built-in questions'); }
     if (await openSweep(a, AARON, '.sh-flow .mt-offer-list button', 'Aaron: add, a guide (moment template)')) { await a.locator('.mt-step .sh-starters button').first().click(); ok(THAI.test(await a.locator('.mt-step textarea').inputValue()), 'a guide’s Thai starter writes Thai'); }
     await close(a);
@@ -269,6 +270,8 @@ let srv;
     await a.click('.view-btn'); await sweep(a, AARON, 'Aaron: display menu'); await a.click('.view-btn');
     await a.click('.fb-simple button'); await a.waitForTimeout(300); await sweep(a, AARON, 'Aaron: tell us something'); await close(a);
     await a.goto(`${U}/#/me/family`); await a.waitForSelector('.sh-fam'); await sweep(a, AARON, 'Aaron: show my family');
+    await a.goto(`${U}/#/me/skills`); await a.waitForSelector('.sk-page'); await sweep(a, AARON, 'Aaron: my skills');
+    if (await openSweep(a, AARON, '.sk-totag button', 'Aaron: my skills, picking for a moment')) { await a.click('.sk-totag .sk-chip >> nth=0'); await a.click('.sk-totag .primary'); await a.waitForSelector('.sk-collect'); await sweep(a, AARON, 'Aaron: my skills, one used'); await a.click('.sk-big >> nth=0'); await sweep(a, AARON, 'Aaron: my skills, when I used it'); }
     await a.goto(`${U}/#/me/add`); await a.waitForSelector('.sh-flow'); await sweep(a, AARON, 'Aaron: the phone app’s add'); await close(a);
     await a.screenshot({ path: path.join(SH, 'aaron-family.png') });
 
@@ -326,7 +329,7 @@ let srv;
     await s.goto(`${U}/#/me/map`); await s.waitForSelector('.home');
     const fl = s.locator('.map-bar button[aria-expanded]'); if (await fl.count()) { await fl.first().click(); await sweep(s, Y10.id, 'Year 10: filters'); }
     if (await openSweep(s, Y10.id, '.tr-card .primary', 'Year 10: term reflection')) await close(s);
-    for (const k of ['studio', 'inbox', 'links', 'privacy']) {
+    for (const k of ['skills', 'studio', 'inbox', 'links', 'privacy']) {
       await s.goto(`${U}/#/me/${k}`); await s.waitForTimeout(900); await sweep(s, Y10.id, `Year 10: ${k}`);
       if (k === 'studio') for (const i of [1, 2, 3, 4]) { const au = s.locator('.studio [role=radiogroup] button, .studio .seg button').nth(i); if (await au.count()) { await au.click(); await sweep(s, Y10.id, `Year 10: studio, choice ${i}`); } }
       if (k === 'inbox') { await s.click('.integrations button.ghost:has-text("จำลองสัปดาห์หน้า"), button:has-text("จำลองสัปดาห์หน้า")').catch(() => {}); await s.waitForTimeout(1500); await sweep(s, Y10.id, 'Year 10: inbox after a week'); }

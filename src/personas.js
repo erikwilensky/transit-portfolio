@@ -37,3 +37,5 @@ export const personaById = (id) => pilot || PERSONAS.find((p) => p.id === id) ||
 // A persona may carry its own navigation (a pilot admin gets Accounts added to their role's screens).
 export const navOf = (p) => p.nav || NAV[p.kind];
 export const home = (p) => navOf(p)[0][0];
+// Skills growth: "My skills" comes second for students (src/components/SkillsGrowth.jsx).
+NAV.student.splice(1, 0, ['skills', 'My skills']);

@@ -946,3 +946,37 @@ STU_RE.push(
   [/^Ways to start: (.+)$/, (m, t) => `ลองเริ่มแบบนี้: ${t(m[1])}`],
   [/^(.+) gave you a guide:$/, (m) => `${m[1]} ให้ตัวช่วยเขียนกับคุณ:`],
 );
+// Skills growth (src/components/SkillsGrowth.jsx): My skills and picking skills for a moment; the family card uses SKILL_WORDS_TH.
+export const SKILL_WORDS_TH = { Inquirer: 'ตั้งคำถาม', Knowledgeable: 'เรียนรู้สิ่งใหม่', Thinker: 'แก้ปัญหา', Communicator: 'แบ่งปันความคิดของฉัน',
+  Principled: 'ทำในสิ่งที่ถูกต้อง', 'Open-minded': 'มองจากมุมของคนอื่น', Caring: 'ช่วยเหลือผู้อื่น', 'Risk-taker': 'ลองสิ่งใหม่', Balanced: 'ดูแลตัวเอง',
+  Reflective: 'มองย้อนกลับและเรียนรู้', Thinking: 'คิดไอเดียใหม่', Communication: 'พูดและเขียน', Social: 'ทำงานร่วมกับผู้อื่น', 'Self-management': 'จัดการตัวเอง',
+  Research: 'ค้นหาคำตอบ' };
+for (const [k, v] of Object.entries({ Inquirer: 'Asking questions', Knowledgeable: 'Learning new things', Thinker: 'Solving problems', Communicator: 'Sharing my ideas',
+  Principled: 'Doing the right thing', 'Open-minded': 'Seeing other points of view', Caring: 'Helping others', 'Risk-taker': 'Trying something new',
+  Balanced: 'Looking after myself', Reflective: 'Looking back and learning', Thinking: 'Coming up with ideas', Communication: 'Speaking and writing',
+  Social: 'Working with others', 'Self-management': 'Organising myself', Research: 'Finding things out' })) STU[v] ??= SKILL_WORDS_TH[k];
+for (const [k, v] of Object.entries({
+  'My skills': 'ทักษะของฉัน', 'Skills I’ve used': 'ทักษะที่ฉันใช้', 'When you add a moment, pick the skills you used. They collect here.': 'เมื่อเพิ่มเรื่องราว ให้เลือกทักษะที่คุณใช้ ทักษะจะมารวมกันที่นี่',
+  'No skills here yet. Pick some for a moment below.': 'ยังไม่มีทักษะ ลองเลือกให้เรื่องราวด้านล่าง', 'When I used it': 'ตอนที่ฉันใช้ทักษะนี้',
+  'Add skills to a moment': 'เพิ่มทักษะให้เรื่องราว', 'Skills to look out for': 'ทักษะที่น่าลองสังเกต', 'Moments with no skills yet': 'เรื่องราวที่ยังไม่มีทักษะ',
+  'Every moment this school year has skills. Well done.': 'ทุกเรื่องราวในปีการศึกษานี้มีทักษะแล้ว เก่งมาก', 'Add a moment and pick the skills you used.': 'เพิ่มเรื่องราวแล้วเลือกทักษะที่คุณใช้',
+  'How my skills are growing': 'ทักษะของฉันเติบโตอย่างไร', 'Skills by term': 'ทักษะแยกตามภาคเรียน',
+  'No skills picked yet. Add skills to a moment and they show up here.': 'ยังไม่ได้เลือกทักษะ เพิ่มทักษะให้เรื่องราวแล้วจะแสดงที่นี่',
+  'Moments behind it': 'เรื่องราวที่เกี่ยวข้อง', 'Learner profile': 'คุณลักษณะผู้เรียน IB', 'Approaches to learning': 'ทักษะการเรียนรู้ (ATL)',
+  'What kind of learner I was': 'ฉันเป็นผู้เรียนแบบไหน', 'What I did': 'สิ่งที่ฉันทำ', 'Show as a table': 'แสดงเป็นตาราง', 'Show as a chart': 'แสดงเป็นแผนภูมิ',
+  'Skill': 'ทักษะ', 'This school year': 'ปีการศึกษานี้', 'Terms': 'ภาคเรียน', 'Not yet': 'ยังไม่มี', 'Moments showing each skill, by term': 'เรื่องราวที่แสดงแต่ละทักษะ แยกตามภาคเรียน',
+  'Which skills did I use? (optional)': 'ฉันใช้ทักษะอะไรบ้าง (ไม่บังคับ)', 'Which skills did I use?': 'ฉันใช้ทักษะอะไรบ้าง', 'Add skills (optional)': 'เพิ่มทักษะ (ไม่บังคับ)',
+  'Skills this moment shows': 'ทักษะที่เรื่องราวนี้แสดง', 'Pick up to 3. You can skip this.': 'เลือกได้สูงสุด 3 อย่าง ข้ามได้', 'That is 3. Tap one again to change it.': 'ครบ 3 อย่างแล้ว แตะอีกครั้งเพื่อเปลี่ยน',
+  'Change skills': 'เปลี่ยนทักษะ', 'Add skills': 'เพิ่มทักษะ', 'Save skills': 'บันทึกทักษะ', 'Skills saved.': 'บันทึกทักษะแล้ว', 'Skills taken off.': 'เอาทักษะออกแล้ว',
+  'Skills I used': 'ทักษะที่ฉันใช้',
+})) STU[k] ??= v;
+STU_RE.push(
+  [/^Term (\d)$/, (m) => `ภาคเรียนที่ ${m[1]}`], [/^Term (\d) · now$/, (m) => `ภาคเรียนที่ ${m[1]} · ตอนนี้`],
+  [/^Term (\d): (\d+) moments?$/, (m) => `ภาคเรียนที่ ${m[1]}: ${m[2]} เรื่องราว`],
+  [/^\((\d+) in Term 1, (\d+) in Term 2, (\d+) in Term 3\)$/, (m) => `(ภาคเรียนที่ 1: ${m[1]}, ภาคเรียนที่ 2: ${m[2]}, ภาคเรียนที่ 3: ${m[3]})`],
+  [/^(.+) · (When I used it|Moments behind it)$/, (m) => { const a = studentThai(m[1]); return a ? `${a} · ${STU[m[2]]}` : null; }],
+  [/^This school year \((\d{4})–(\d\d)\), from the skills you picked for your moments\. It is your own picture: no scores, and nobody is compared\.$/,
+    (m) => `ปีการศึกษานี้ (${m[1]}–${m[2]}) จากทักษะที่คุณเลือกให้กับเรื่องราวของคุณ เป็นภาพของคุณเอง ไม่มีคะแนน และไม่มีการเปรียบเทียบกับใคร`],
+  [/^(\d+) moments? this school year (?:has|have) no skills picked\. Suggestions the app made are not counted until you pick them\.$/,
+    (m) => `เรื่องราว ${m[1]} รายการในปีการศึกษานี้ยังไม่ได้เลือกทักษะ ทักษะที่แอปแนะนำจะยังไม่นับจนกว่าคุณจะเลือก`],
+);
