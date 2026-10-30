@@ -200,7 +200,7 @@ export function canAct(user, fn, args = []) {
   // Undo sends a whole copy of the record, and in a pilot every browser holds only its own part of it.
   if (fn === 'restore') return false;
   if (SPOT_FNS.has(fn)) { try { return spotOk(user, fn, args); } catch { return false; } }
-  if (fn === 'dropPhotos' || (fn === 'reportItem' && args[0]?.photoId)) { try { return dropOk(user, fn, args); } catch { return false; } }
+  if (fn === 'dropPhotos' || fn === 'editPhotoDrop' || (fn === 'reportItem' && args[0]?.photoId)) { try { return dropOk(user, fn, args); } catch { return false; } }
   if (fn === 'setHandoverNote') { try { return handoverOk(user, args); } catch { return false; } }
   if (TR_FNS.has(fn)) { try { return termReflectionOk(user, fn, args); } catch { return false; } }
   if (PF_FNS.has(fn) || (fn === 'reportItem' && args[0]?.feedbackId)) { try { return peerOk(user, fn, args); } catch { return false; } }
@@ -579,6 +579,8 @@ function familyNoteOk(user, fn, args) {
 // 'student'; staff who reach a student it was given to, as themselves; admins. Never families.
 function dropOk(user, fn, args) {
   if (fn === 'dropPhotos') return (STAFF.includes(user.kind) || isAdmin(user)) && !!user.teacherId && args[1] === user.teacherId && teachesClass(user, args[0]);
+  // Editing a sent batch: as sending, and only the teacher who sent it (the mutator checks added students are in the class).
+  if (fn === 'editPhotoDrop') { const d = api.getPhotoDrop(args[0]); return (STAFF.includes(user.kind) || isAdmin(user)) && !!user.teacherId && args[1] === user.teacherId && d?.teacherId === user.teacherId && teachesClass(user, d.classId); }
   const [target, , , from] = args, f = api.dropPhotoById(target.photoId), key = from?.key;
   if (!f?.p.url) return false;
   const sid = target.studentId || f.p.studentIds[0];

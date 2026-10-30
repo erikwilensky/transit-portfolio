@@ -20,6 +20,8 @@
 .pd-chip { font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--rule); background: var(--surface); color: var(--ink); cursor: pointer; }
 .pd-chip.on { background: var(--navy); border-color: var(--navy); color: #fff; }
 .pd-chip:disabled { opacity: .5; cursor: default; }
+.pd-chip.kept:disabled { opacity: 1; background: var(--surface-2); border-color: var(--navy); color: var(--ink); }
+.pd-edit { margin: 0 0 8px; }
 .pd-chip:focus-visible, .pd-pick:focus-visible { outline: 3px solid var(--b-sky); outline-offset: 2px; }
 .pd-row { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; font-size: 13px; }
 .pd-row small { color: var(--muted); }

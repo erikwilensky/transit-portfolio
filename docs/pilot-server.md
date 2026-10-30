@@ -2249,5 +2249,22 @@ spotted moments (the student's card and inbox are the same; see "Spotted moments
   teacher with no reach and a signed-out browser get 404 for Aaron's photo, each in its own context. Aaron at Simple on a
   phone keeps one photo with a sentence; the other then stops opening for him. The first classmate says "Not for me"; the
   second reports her photo; the teacher sees Added / Not for me / Waiting; a coordinator removes the photo from Reports and
-  the file is deleted. Axe on each screen. Thai: `scripts/checks/thai-students.cjs` walks Aaron's card and report dialog.
-- Not done: a teacher cannot edit a batch after sending it (add students or photos); faces are not detected.
+  the file is deleted. He then edits the batch (new title, photo 1 also to the first classmate, photo 2 taken back from
+  both), undoes it from the toast (no file deleted), and an undo of the send is refused (Aaron kept a photo). Axe on each screen. Thai: `scripts/checks/thai-students.cjs` walks Aaron's card and report dialog.
+- **Editing a sent batch** (class page, "Class photos", "Edit “…”" in an open batch): the title, the note and each photo's
+  students. `editPhotoDrop(dropId, teacherId, { title?, note?, add: [{ photoId, studentId }], withdraw: [{ photoId,
+  studentId }] })`: canAct as for sending (staff or admin with a staff record, as themselves, still in the class's
+  `teacherIds`) and only the teacher who sent it (403); added students must be current members (400). The new title and
+  note go to the batch and to offers still waiting; a kept moment stays as the student kept it. An added student gets the
+  photo on their waiting offer, or else a new offer (also after "Not for me" or expiry), and is told as when it was sent.
+  A photo can be taken back only from a student who has not kept it (409, its chip is locked "· kept"); an offer left with
+  no photos becomes `removed`. A photo given to nobody leaves the batch. `photoDropsBy` now gives one row a student and
+  `kept: { photoId: [studentId] }`. Activity log: the students given or losing a photo, and the teacher.
+- **Undo and files**: a photo an edit leaves given to nobody keeps its file (`heldAt` in its `.json`, so a restart keeps it
+  too) until the undo window (`UNDO_WINDOW_MS`) has passed, then the hourly look deletes it; Undo of the edit brings it
+  back. Undo of a send, or of an edit, is refused (409, "Students have already kept photos from this batch…") once a
+  student has kept photos from it since: replaying without it would drop their moment and delete its files. Features add
+  such checks to `undoGuards` in `server/history.mjs`. Files are only ever deleted when nothing in the record uses them.
+  Also fixed: the class-task reminder look (`68-tasks.mjs`) left a step behind when it changed nothing, so the next change
+  started a fresh undo segment and nothing before it (a sent batch included) could be undone (`forgetDirect`).
+- Not done: faces are not detected; photos cannot be added to a batch after sending.

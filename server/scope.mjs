@@ -426,3 +426,5 @@ Object.assign(TOUCHES, {
 });
 // Class photo drop: the students given a photo, as the sending teacher (canAct's own rules are dropOk in auth.mjs).
 Object.assign(TOUCHES, { dropPhotos: (a) => T([...new Set([].concat(a[2]?.photos || []).flatMap((p) => [].concat(p?.studentIds || [])))], [a[1] ?? '?']) });
+// Editing a sent batch: the students given or losing a photo, as the sending teacher.
+Object.assign(TOUCHES, { editPhotoDrop: (a) => T([...new Set([...[].concat(a[2]?.add || []), ...[].concat(a[2]?.withdraw || [])].map((x) => x?.studentId).filter((x) => typeof x === 'string'))], [a[1] ?? '?']) });

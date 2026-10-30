@@ -4,8 +4,9 @@
 // second classmate and leaves photo 4 to nobody (deleted when he sends). Aaron, on a phone at Simple level, keeps one photo
 // with a sentence: a moment on Science, endorsed by Mr Coultas. The first classmate says "Not for me"; the second reports
 // her photo. The second classmate, a teacher with no reach and a signed-out browser cannot fetch Aaron's photo. The teacher
-// sees Added / Not for me / Waiting; a coordinator removes the reported photo from Reports. Every account has its own
-// browser context.
+// sees Added / Not for me / Waiting; a coordinator removes the reported photo from Reports. Mr Coultas then edits the sent
+// batch (title, photo 1 to the first classmate, photo 2 taken back), undoes it from the toast (no file deleted), and an
+// undo of the send itself is refused because Aaron kept a photo. Every account has its own browser context.
 //   TP_ROSTER=/path/to/transit-roster.json (default: the project mount). Not committed: the names are real-ish.
 const { chromium } = require('playwright');
 const { spawn } = require('child_process');
@@ -217,6 +218,41 @@ let srv;
     ok(after.notifications.some((n) => n.to === `st:${m2.id}` && n.text === 'A teacher has removed a photo from “Electricity practical”.' && n.kind === 'safeguarding'), 'she is told (safeguarding)');
     ok(!cErrs.length, `no coordinator page errors${cErrs.length ? `: ${cErrs.join(' | ')}` : ''}`);
     await C.c.close();
+
+    // ── Mr Coultas edits the sent batch: a new title, photo 1 also to the first classmate, photo 2 taken back from both ──
+    await t.reload(); await t.waitForSelector('.pd-list'); await t.click('.pd-list summary');
+    await t.click('.pd-list .pd-edit'); await t.waitForSelector('.pd-dialog');
+    const ed = (i) => t.locator('.pd-dialog .pd-photo').nth(i);
+    const lock = ed(0).locator('.pd-chip.kept');
+    ok(await t.locator('.pd-dialog .pd-photo').count() === 2 && await lock.count() === 1 && await lock.isDisabled() && (await lock.innerText()).includes('kept'), 'the edit dialog: the 2 photos still in the batch; Aaron’s kept photo is locked to him');
+    await audit(t, 'editing a sent batch');
+    await t.locator('.pd-dialog .pd-form input').first().fill('Circuits practical');
+    await ed(0).locator(`.pd-chip[title="${m1.name}"]`).click();
+    await ed(1).locator(`.pd-chip[title="${aaron.name}"]`).click(); await ed(1).locator(`.pd-chip[title="${m1.name}"]`).focus(); await t.keyboard.press('Space');
+    ok((await t.locator('.pd-dialog .pd-foot span').innerText()).includes('1 photo given to nobody is deleted'), 'the footer says photo 2, now given to nobody, is deleted');
+    await t.screenshot({ path: SH + 'teacher-edit.png', fullPage: true });
+    await t.click('.pd-dialog .pd-foot .primary'); await t.waitForSelector('.pd-dialog', { state: 'detached' });
+    ok(await until(async () => (await t.locator('.toast').innerText()).includes('Saved “Circuits practical”') && await t.locator('.toast .toast-undo').count() === 1, 3000), 'a toast says it is saved, with Undo');
+    const ed1 = await until(async () => { const d = saved().photoDrops[0]; return d.title === 'Circuits practical' ? d : null; });
+    ok(ed1 && !ed1.photos.some((p) => p.id === p2.id) && ed1.photos.find((p) => p.id === p1.id).studentIds.includes(m1.id), 'saved: photo 2 left the batch, photo 1 is also given to the first classmate');
+    const m1Open = saved().spotted.find((x) => x.studentId === m1.id && x.dropId === drop.id && x.status === 'open');
+    ok(m1Open && m1Open.title === 'Circuits practical' && m1Open.photos.map((p) => p.id).join() === p1.id, `${m1.name} (who had said no) gets a new offer with photo 1`);
+    ok(saved().notifications.some((n) => n.to === `st:${m1.id}` && n.text === 'Mr Coultas added photos from “Circuits practical”' && n.kind === 'spotted'), `${m1.name} is told, as when it was sent`);
+    ok(saved().events.find((e) => e.id === ev.id)?.title === 'Electricity practical', 'Aaron’s kept moment stays as he kept it');
+    ok(await until(async () => (await status(M1.p, `${U}/${p1.url}`)) === 200), `${m1.name} can now open photo 1`);
+    ok(onDisk(p2.url), 'photo 2’s file is kept while Undo could bring it back');
+    // Undo of the edit (the toast, within its 6 seconds): everything back, photo 2 included.
+    await t.click('.toast .toast-undo');
+    ok(await until(async () => { const d = saved().photoDrops[0]; return d.title === 'Electricity practical' && d.photos.some((p) => p.id === p2.id); }), 'Undo: the title and photo 2 are back');
+    ok(onDisk(p2.url) && onDisk(p1.url), 'Undo: no photo file was deleted');
+    ok(await until(async () => (await status(M1.p, `${U}/${p1.url}`)) === 404), `Undo: photo 1 no longer opens for ${m1.name}`);
+    ok((await act(oTok, 'editPhotoDrop', [drop.id, outsiderT.id, { title: 'x' }])).status === 403 && (await act(m1Tok, 'editPhotoDrop', [drop.id, TID, { title: 'x' }])).status === 403, 'another teacher or a student cannot edit it');
+    // Undo of the send is refused: Aaron has kept a photo from it, and his moment and its file stay.
+    const sendRev = fs.readFileSync(path.join(dataDir, 'history', 'log.jsonl'), 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)).find((e) => e.steps?.[0]?.fn === 'dropPhotos')?.rev;
+    const ur = await fetch(`${U}/api/undo`, { method: 'POST', headers: { ...H, cookie: `tp_session=${tTok}` }, body: JSON.stringify({ revs: [sendRev] }) });
+    ok(Number.isInteger(sendRev) && ur.status === 409 && /already kept photos/.test((await ur.json()).error), 'Undo of the send is refused once a student kept a photo (409, in plain words)');
+    ok(saved().events.some((e) => e.id === ev.id) && onDisk(p1.url) && await status(a, `${U}/${p1.url}`) === 200, 'Aaron’s moment and its photo file stay');
+    ok(!tErrs.length, `no teacher page errors after editing${tErrs.length ? `: ${tErrs.join(' | ')}` : ''}`);
     for (const x of [M1, M2, O, N]) await x.c.close();
   } finally { await b.close(); srv.p.kill(); }
 })().catch((e) => { console.error(e); srv?.p?.kill(); process.exit(1); });
