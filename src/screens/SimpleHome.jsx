@@ -13,6 +13,7 @@ import './simple-goals.css';
 import { HiddenNotice, ReportButton } from '../components/Report.jsx';
 import { Said, SayIt, VoiceNotes, VoiceRecorder } from '../components/Voice.jsx';
 import { canRecord } from '../voice.js';
+import { photoAlt } from '../a11y.js';
 
 // Simple: the student interface for Years 7 and 8 (and anyone who picks it). Not the full app with parts hidden,
 // but its own calmer design: one question per screen, big buttons, plain words, and a map drawn as a few
@@ -156,7 +157,7 @@ function Tracks({ map, onOpen }) {
 }
 
 export function Steps({ n, at }) {
-  return <div className="sh-steps" aria-label={`Step ${at + 1} of ${n}`}>{Array.from({ length: n }, (_, i) => <i key={i} className={i <= at ? 'on' : ''} />)}</div>;
+  return <div className="sh-steps" role="img" aria-label={`Step ${at + 1} of ${n}`}>{Array.from({ length: n }, (_, i) => <i key={i} className={i <= at ? 'on' : ''} />)}</div>;
 }
 
 // Adding a moment, one question at a time. Also the phone app's "Add a moment" and "Take a photo" (#/me/add,
@@ -422,7 +423,7 @@ function Moment({ e, map, onClose, onReflect, toast }) {
     <div className="modal-back" onClick={onClose}>
       <div className="modal sh-flow sh-moment" role="dialog" aria-label={e.title} onClick={(ev) => ev.stopPropagation()} style={{ '--c': l?.colour }}>
         <button className="panel-close" onClick={onClose} aria-label="Close">×</button>
-        {img && <img src={img.url} alt={img.caption} />}
+        {img && <img src={img.url} alt={photoAlt(img, e.title)} />}
         <span className="sh-line">{l?.name}</span>
         <h2>{e.title}</h2>
         <HiddenNotice item={e} />

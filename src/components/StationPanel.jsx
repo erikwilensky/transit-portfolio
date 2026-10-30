@@ -6,6 +6,7 @@ import { HiddenNotice, ReportButton } from './Report.jsx';
 import { PeerOnMoment } from './PeerFeedback.jsx';
 import { ATL, LEARNER_PROFILE, setTags, addCheckIn, addReflection, completeGoal, deleteStation, editStation, getTeacher, requestEndorsement, getEvent, requestFor, resubmit, setVisibility, snapshot, TODAY, endorserChoices } from '../api.js';
 import { createPortal } from 'react-dom';
+import { photoAlt } from '../a11y.js';
 import EvidenceDoc, { docLabel } from './EvidenceDoc.jsx';
 import { AttachButton, FileView, FILE_ICON, PendingFiles, VoiceNote, evKind, fileLabel, isUploaded } from './FileAttach.jsx';
 import { docFor, useEvidenceDocs } from '../evidence/load.js';
@@ -52,7 +53,7 @@ export default function StationPanel({ event, map, onClose, readOnly = false, on
               <h3>{t('Evidence')}</h3>
               <ul className="evidence">
                 {event.evidence.filter((ev) => ev.kind === 'image').map((ev, i) => (
-                  <li key={`img-${i}`} className="ev-image"><button className="ev-open" onClick={() => setView(ev)} aria-label={`Open ${ev.caption} full size`}><img src={ev.url} alt={ev.caption} loading="lazy" /></button><span><b>{ev.caption}</b><small>{t('image')}</small></span></li>
+                  <li key={`img-${i}`} className="ev-image"><button className="ev-open" onClick={() => setView(ev)} aria-label={`Open ${photoAlt(ev, event.title)} full size`}><img src={ev.url} alt={photoAlt(ev, event.title)} loading="lazy" /></button><span><b>{ev.caption}</b><small>{t('image')}</small></span></li>
                 ))}
                 {event.evidence.filter((ev) => ev.kind !== 'image').map((ev, i) => (
                   <li key={i}>
@@ -81,7 +82,7 @@ export default function StationPanel({ event, map, onClose, readOnly = false, on
               <div className="prompt">{t('Signal:')} {r.prompt}</div>
               {r.text && r.text.split('\n\n').map((para, i) => <p key={i}>{para}</p>)}
               {r.files?.length > 0 && <ul className="evidence rf-files">{r.files.map((ev, i) => <li key={i}>{ev.kind === 'image'
-                ? <button className="ev-open" onClick={() => setView(ev)} aria-label={`Open ${ev.caption} full size`}><img src={ev.url} alt={ev.caption} loading="lazy" /></button>
+                ? <button className="ev-open" onClick={() => setView(ev)} aria-label={`Open ${photoAlt(ev, event.title)} full size`}><img src={ev.url} alt={photoAlt(ev, event.title)} loading="lazy" /></button>
                 : <FileRow ev={ev} onOpen={() => setView(ev)} t={t} />}</li>)}</ul>}
             </section>
           ))}
@@ -201,7 +202,7 @@ function EvidenceView({ ev, event, student, doc, onClose }) {
     <div className="modal-back ev-back" onClick={onClose} onKeyDown={(k) => k.key === 'Escape' && onClose()}>
       <div className={`ev-view ${ev.kind === 'image' ? 'img' : 'doc'}${doc ? ` wide-${doc.t}` : ''}${isUploaded(ev) && ev.kind !== 'image' ? ` wide-file fk-${evKind(ev)}` : ''}`} role="dialog" aria-label={ev.caption} onClick={(x) => x.stopPropagation()}>
         <button className="panel-close" onClick={onClose} aria-label="Close" autoFocus>×</button>
-        {ev.kind === 'image' ? <img src={ev.url} alt={ev.caption} /> : isUploaded(ev) ? (
+        {ev.kind === 'image' ? <img src={ev.url} alt={photoAlt(ev, event.title)} /> : isUploaded(ev) ? (
           <div className="ev-doc">
             <div className="ev-doc-stamp">{t(event.verification === 'student-added' ? 'Added by the student' : 'Uploaded')} · {dateIn(lang, event.date)}</div>
             <h2>{ev.caption}</h2>

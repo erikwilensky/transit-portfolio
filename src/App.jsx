@@ -4,6 +4,7 @@ import SimpleHome, { ShowFamily, QuickAdd } from './screens/SimpleHome.jsx';
 import { InstallHint } from './components/PhoneApp.jsx';
 import { ReadAloudSetting } from './components/Voice.jsx';
 import IntensityControl from './components/IntensityControl.jsx';
+import DisplaySettings from './components/DisplaySettings.jsx';
 import { ensureEndorsed } from './tourStory.js';
 import { PERSONAS, KIND_LABEL, personaById, home, navOf, pilotPersona } from './personas.js';
 import Accounts from './screens/Accounts.jsx';
@@ -135,18 +136,31 @@ export default function App() {
       }
     };
     const back = [];
+    // A step that replaces the focused button (a flow's Next) would drop focus to the page: keep it in the dialog.
+    let last = null, prev = null; const fin = (e) => { prev = last; last = e.target; }; addEventListener('focusin', fin);
     const mo = new MutationObserver(() => {
       const dlg = top();
+      if (dlg?.dataset.focused && document.activeElement === document.body && last && !last.isConnected) { last = null; ([...dlg.querySelectorAll(FOCUSABLE)].find((x) => !x.classList.contains('panel-close') && x.offsetParent !== null) || dlg.querySelector(FOCUSABLE))?.focus(); }
       if (dlg && !dlg.dataset.focused) {
-        dlg.dataset.focused = '1'; back.push(document.activeElement);
+        dlg.dataset.focused = '1'; back.push(dlg.contains(document.activeElement) ? prev : document.activeElement); // autoFocus got there first
         if (!dlg.contains(document.activeElement)) (dlg.querySelector('[autofocus], input:not([type=checkbox]), textarea') || dlg.querySelector(FOCUSABLE))?.focus();
       }
       const open = document.querySelectorAll('.modal-back').length;
       while (back.length > open) { const el = back.pop(); if (el?.isConnected) el.focus(); }
     });
     mo.observe(document.body, { childList: true, subtree: true });
-    addEventListener('keydown', k); return () => { removeEventListener('keydown', k); mo.disconnect(); };
+    addEventListener('keydown', k); return () => { removeEventListener('keydown', k); removeEventListener('focusin', fin); mo.disconnect(); };
   }, []);
+  // Escape closes an open top-bar menu and puts focus back on the button that opened it.
+  useEffect(() => {
+    if (!menu) return undefined;
+    const k = (e) => {
+      if (e.key !== 'Escape' || document.querySelector('.modal-back')) return;
+      const btn = document.querySelector('.topnav .menu')?.closest('.menu-wrap')?.querySelector(':scope > button');
+      e.preventDefault(); setMenu(null); btn?.focus();
+    };
+    addEventListener('keydown', k, true); return () => removeEventListener('keydown', k, true);
+  }, [menu]);
   // F16: / or Ctrl+K opens the launcher from anywhere (except while typing).
   useEffect(() => {
     const k = (e) => {
@@ -225,6 +239,7 @@ export default function App() {
   return (
     <VerifyProvider>
       <div className={`app kind-${persona.kind}${level ? ` int-${level}` : ''}`} lang={lang}>
+        <a className="skip-link" href="#main" onClick={(e) => { e.preventDefault(); document.getElementById('main')?.focus(); }}>{T('Skip to content')}</a>
         <header className="topnav">
           <a className="brand" href={`#/${persona.id}`} aria-label="NIST Transit Portfolio home"><Logo className="brand-logo" /><span className="brand-name"><b>Transit</b> Portfolio</span></a>
           <NavBar items={nav} hrefOf={(id) => `#/${persona.id}/${id}`} isOn={(id) => route.screen === id || (id === 'advisory' && route.screen === 'student')} onGo={(id) => go(persona.id, id)} moreLabel={T('More')} />
@@ -277,13 +292,14 @@ export default function App() {
                 <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /><circle cx="16" cy="7" r="2.2" fill="none" stroke="currentColor" strokeWidth="2" /><circle cx="10" cy="17" r="2.2" fill="none" stroke="currentColor" strokeWidth="2" /></svg>
               </button>
               {menu === 'view' && (
-                <div className="menu view-menu" role="menu">
+                <div className="menu view-menu" role="group" aria-label={T('Display settings')}>
                   {level && <><div className="menu-title">How much to show</div><div className="vm-row"><IntensityControl value={level} onChange={changeLevel} /><small className="vm-note">{INTENSITY.find(([k]) => k === level)?.[2]}</small></div></>}
                   <div className="menu-title">{T('Language')}</div>
                   <div className="vm-row seg">{[['en', 'English'], ['th', 'ภาษาไทย']].map(([k, l]) => <button key={k} className={lang === k ? 'on' : ''} lang={k} onClick={() => chooseLang(k)}>{l}</button>)}</div>
                   <div className="menu-title">{T('Theme')}</div>
                   <div className="vm-row seg">{[[false, 'Light'], [true, 'Dark']].map(([k, l]) => <button key={l} className={dark === k ? 'on' : ''} onClick={() => setDark(k)}>{T(l)}</button>)}</div>
                   <ReadAloudSetting T={T} />
+                  <DisplaySettings T={T} />
                 </div>
               )}
             </div>
@@ -316,7 +332,7 @@ export default function App() {
           </div>
         </header>
 
-        <main className={`screen screen-${route.screen}`} key={`${persona.id}-${route.screen}`}>
+        <main id="main" tabIndex={-1} className={`screen screen-${route.screen}`} key={`${persona.id}-${route.screen}`}>
           <ErrorBoundary resetKey={`${persona.id}-${route.screen}-${route.param}`}>
           {persona.kind === 'student' && <StudentScreens {...ctx} screen={route.screen} param={route.param} studentId={studentId} />}
           {persona.kind === 'student' && route.screen === 'map' && !tour && !getStudent(studentId)?.onboarding && <InstallHint />}

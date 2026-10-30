@@ -1,0 +1,48 @@
+/* Readability and accessibility (src/a11y.js). Classes on <html>: a11y-large, a11y-larger, a11y-contrast, a11y-font,
+   a11y-calm (reduce motion), a11y-moving (motion on even where the device asks for less). Print ignores size and contrast. */
+@font-face { font-family: "Atkinson Hyperlegible"; font-style: normal; font-weight: 400; font-display: swap; src: url("./assets/fonts/atkinson-400.woff2") format("woff2"); }
+@font-face { font-family: "Atkinson Hyperlegible"; font-style: normal; font-weight: 600 700; font-display: swap; src: url("./assets/fonts/atkinson-700.woff2") format("woff2"); }
+
+:root { --focus-ring: #4F529B; }
+:root[data-theme="dark"], .topnav { --focus-ring: #78D5E1; }
+:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.skip-link { position: absolute; left: 8px; top: -60px; z-index: 1000; background: var(--surface); color: var(--ink); border: 2px solid var(--ink); border-radius: 8px; padding: 8px 14px; font-weight: 600; text-decoration: none; }
+.skip-link:focus { top: 8px; }
+main:focus { outline: none; }
+.station:focus-visible .hit { stroke: var(--focus-ring); stroke-width: 3; }
+
+/* Text size: CSS px font sizes are calc(Npx * var(--ts)); the metro map and other drawings keep their own sizes. */
+@media screen {
+  html.a11y-large { --ts: 1.15; }
+  html.a11y-larger { --ts: 1.3; }
+  svg { --ts: 1; }
+}
+
+/* Easy-read font: Atkinson Hyperlegible (SIL OFL, src/assets/fonts), bundled so it works offline; Thai keeps Sarabun. */
+html.a11y-font { --font: "Atkinson Hyperlegible", Verdana, Tahoma, "TH SarabunPSK", Sarabun, sans-serif; }
+html.a11y-font body { letter-spacing: .01em; word-spacing: .06em; line-height: 1.55; }
+
+/* High contrast: stronger text, borders and focus, in light and dark. */
+@media screen {
+  html.a11y-contrast { --bg: #ffffff; --surface: #ffffff; --surface-2: #e6e9ef; --ink: #000000; --muted: #262f3d; --rule: #59647a; --col-a: #ffffff; --col-b: #eef0f4; --halo: #ffffff; --focus-ring: #000000; --accent: #001a38; --ok: #005c3f; --warn: #7a3d00; }
+  html.a11y-contrast[data-theme="dark"] { --bg: #000000; --surface: #050b14; --surface-2: #162336; --ink: #ffffff; --muted: #dbe3ef; --rule: #9aabc4; --col-a: #000000; --col-b: #08111e; --halo: #000000; --focus-ring: #ffd23f; --accent: #a5ecf5; --ok: #6be0b4; --warn: #ffd23f; }
+  html.a11y-contrast .topnav { --focus-ring: #ffd23f; }
+  html.a11y-contrast :focus-visible { outline-width: 4px; }
+  html.a11y-contrast main a:not([class]), html.a11y-contrast .linkish { text-decoration: underline; }
+  html.a11y-contrast .seg button.on { box-shadow: inset 0 0 0 2px var(--ink); }
+  html.a11y-contrast ::placeholder { color: var(--muted); opacity: 1; }
+}
+
+/* Colour contrast (WCAG AA, 4.5:1 for text) where a brand colour carries small text, in normal and high contrast alike.
+   Avatars and pills keep the brand hue, a shade deeper behind white initials (inline colours from inkOn, src/format.js). */
+:root:not([data-theme="dark"]) { --ok: #006B4B; }
+:root:not([data-theme="dark"]) .atl-tag, :is(.sh-badge.v-school-verified, .sh-badge.v-teacher-endorsed) { color: var(--ok); }
+[style*="background: rgb(0, 138, 96)"][style*="color: rgb(255, 255, 255)"] { background: #007B56 !important; }
+[style*="background: rgb(231, 60, 62)"][style*="color: rgb(255, 255, 255)"], .new-pill { background: #CF3437 !important; }
+:root:not([data-theme="dark"]) .sh-badge.v-returned { color: #CF3437; } :root[data-theme="dark"] .sh-badge.v-returned { color: #FF9C9D; }
+.sh-today { opacity: 1; border-left-color: var(--rule); } .sh-today span { color: var(--muted); }
+
+/* Reduce motion. */
+html.a11y-calm *, html.a11y-calm *::before, html.a11y-calm *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+
+.a11y-opts { display: contents; }

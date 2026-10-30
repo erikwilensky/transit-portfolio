@@ -24,7 +24,12 @@ function serviceWorker() {
   };
 }
 
+// Display options (src/a11y.js): every CSS font size in px scales with --ts, set on <html> by the text-size choice.
+function textScale() {
+  return { name: 'tp-text-scale', enforce: 'pre', transform(code, id) { if (/\.css($|\?)/.test(id)) return { code: code.replace(/font-size:\s*([\d.]+)px/g, 'font-size: calc($1px * var(--ts, 1))'), map: null }; } };
+}
+
 // base './' keeps asset paths relative so dist/ works from any folder or URL path.
 // In dev, /api goes to the pilot server (npm run server, port 8787).
 // `vite preview` stands for plain static hosting (no server), so it does not proxy /api.
-export default defineConfig({ base: './', plugins: [react(), serviceWorker()], server: { proxy: { '/api': 'http://localhost:8787' } }, preview: { proxy: {} } });
+export default defineConfig({ base: './', plugins: [react(), serviceWorker(), textScale()], server: { proxy: { '/api': 'http://localhost:8787' } }, preview: { proxy: {} } });

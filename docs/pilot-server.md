@@ -1478,3 +1478,50 @@ their map; the server refuses the mutators).
 - Tests: `server/test/leaver-portfolio.test.mjs`; browser: `node scripts/checks/leaver-portfolio.cjs` (real roster, skipped
   without it): a Year 13 student and their advisor picked at runtime, 3 moments, PDF in each template (A4, ≤ 3 pages, nothing
   wider than the page), a link opened signed out (only the chosen items), withdrawn → 404; Aaron Torres (Year 8) has no feature.
+## Readability and accessibility (`src/a11y.js`, `src/a11y.css`, `src/components/DisplaySettings.jsx`, `server/routes/19-prefs.mjs`)
+
+- **Display options**, in the display menu (the sliders button, beside "How much to show", Language, Theme and "Read
+  questions aloud"; English and Thai): **Text size** Normal / Large (×1.15) / Larger (×1.3); **High contrast** Off / On
+  (black or white text, darker borders and secondary text, underlined links, a thicker focus ring; light and dark);
+  **Easy-read font** Off / On (Atkinson Hyperlegible, SIL OFL, bundled in `src/assets/fonts` with its licence, so it
+  works offline and is cached by the phone app; falls back to Verdana or Tahoma; Thai keeps Sarabun); **Reduce motion**
+  Like this device / On / Off (follows `prefers-reduced-motion` by default; On stops CSS animations and the map's eased
+  moves, `useTween`, and keeps milestone stations still; Off keeps them even where the device asks for less).
+- **How**: classes on `<html>`: `a11y-large`, `a11y-larger`, `a11y-contrast`, `a11y-font`, `a11y-calm`, `a11y-moving`.
+  No component knows about them. Text size: a small Vite plugin (`textScale` in `vite.config.js`) writes every CSS
+  `font-size: Npx` as `calc(Npx * var(--ts, 1))`, and `--ts` is set on `<html>` for screens only; `svg` resets it to 1,
+  so the metro map, its labels and other drawings keep their layout (the map zooms). High contrast and size live under
+  `@media screen`, so printing ignores both. Components that animate in JS ask `calm()`.
+- **Saved**: per device in `localStorage` (`tp-display`), applied before the first paint. In a pilot also per account:
+  `POST /api/auth/prefs { display: { size, contrast, font, motion } }` (all four keys, known values only, else 400; the
+  signed-in account's own, like `lang`, which it leaves alone). `/api/auth/me` carries `user.display`; a signed-in
+  account's choice (or the defaults) wins on every device it signs in on. Never saved from a See as preview.
+- **Keyboard and screen readers**: a "Skip to content" link (first Tab) to `<main id="main">`; a visible focus ring
+  everywhere (purple on light, sky on navy and dark, black or gold in high contrast, a ring round a focused map
+  station); Escape closes the top-bar menus and returns focus to their button; dialogs (`.modal-back`) trap Tab, close
+  on Escape and return focus to what opened them, also when the dialog focuses its own field first; a flow step that
+  replaces the focused button keeps focus in the dialog. The display menu is a group of radio groups. Map stations are
+  buttons named by title, lines, date and how checked (the label beside them is hidden from screen readers); photos
+  take their caption as alt text, or the moment's title when the caption is only a file name (`photoAlt`); the toast
+  and the save status are live regions; headings run in order on the queue and family view.
+- **Contrast fixes** (in `src/a11y.css`, light theme unless said): `--ok` is `#006B4B`; endorsed and verified badges and
+  ATL tags use it; the brand green and red behind white initials or a NEW pill are a shade deeper (`#007B56`,
+  `#CF3437`); "Today" on the Simple timeline at full strength; returned badges a deeper red (lighter in dark).
+- **Check**: `node scripts/checks/accessibility.cjs` (in `run.sh`; needs `npm run build`; axe-core 4.x is a
+  devDependency loaded into each page). Demo: first-time setup, Simple home and add flow, Standard map, station panel,
+  add a station, Full map, teacher queue, My advisory, an advisee, family view, the display menu, five screens in dark;
+  pilot on the real roster (`TP_ROSTER`, skipped without it), one browser context per account: students at Simple,
+  Standard and Full (map, station panel, add flow, ask a teacher), the science teacher (queue, My classes, This week),
+  the advisor (My advisory, the student, This week), a parent (phone), the admin (Accounts). Every screen is checked
+  again for colour contrast with high contrast on; any serious or critical finding fails. Keyboard only: Aaron Torres
+  sets Large and high contrast (saved on his account, shown on his phone), adds a moment at Simple and asks his science
+  teacher; that teacher endorses it from the queue; both outcomes are announced. Also: per-device in the demo, Larger
+  scales text 1.3× with no sideways scroll at phone width, the map labels keep their size, print ignores size and
+  contrast, Reduce motion follows the device. Server: `server/test/display-prefs.test.mjs`.
+- **Known issues**: the metro map's light line colours (sky, gold) are under 3:1 against white as strokes; each line
+  also carries its name and a code tag, but high contrast does not darken the strokes. Text sizes set inline in
+  JavaScript (the map's line codes) do not scale. The axe pass covers the screens above, not every screen (the
+  presentation studio, poster, CAS, counsellor and leadership dashboards are not yet checked), and other avatars
+  rely on the CSS colour fix in `a11y.css` rather than their own markup. axe cannot judge everything, and nothing has
+  been tried yet with a real screen reader (VoiceOver, NVDA, TalkBack). The Thai words for the new
+  options are in `src/i18n.js`; the sign-in page has no display menu (it uses this device's last choice).
