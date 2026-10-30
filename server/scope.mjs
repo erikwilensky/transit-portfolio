@@ -342,3 +342,5 @@ Object.assign(TOUCHES, {
   setSubjectPrompts: (a) => T([].concat(a[1]?.examples || []).filter((x) => x?.eventId).map((x) => ev(x.eventId) ?? '?'), [a[2]]),
   clearSubjectPrompts: (a) => T([], [a[1]]), answerExampleAsk: (a) => T([a[2]]),
 });
+// Notification settings: "Clear read" in your own bell (canAct checks the keys).
+Object.assign(TOUCHES, { clearReadNotifications: () => T([]) });

@@ -1696,3 +1696,46 @@ line's over the built-in ones (`DEFAULT_PROMPTS`, one set per school line, Briti
   another Science class gets the built-in ones; a coordinator's Subject prompts screen; axe on each).
 - Not done: Thai versions of the built-in prompts; prompts per Year group; class tasks do not show them yet (they can
   call `getPromptsFor(studentId, lineId, classId)`).
+
+## Notification settings and quiet hours (`src/notify-kinds.js`, `src/notify-prefs.js`, `src/components/NotificationSettings.jsx`)
+
+Each person chooses what reaches their bell, and when its number shows. Settings filter the bell and its count; they
+never delete a notification (the record, a PDPA copy and This week still have it). Nothing is emailed, and the app makes
+no sounds, vibration or phone banners (`public/sw.js` and `PhoneApp.jsx` have no push), so quiet hours hold back only the
+number on the bell.
+- **Kinds**: `notify(to, text, go, kind)` stores `kind` on every new notification: the one the call names, else
+  `inferKind(text, go)` (`src/notify-kinds.js`, pure: rules on the words with quoted titles emptied, so a title never
+  decides it, then the link's screen). Named in `src/api.js`: an endorsement request from a class question's answer
+  (`answers`) or a class task hand-in (`handin`), and teacher nudges (`teacher`). Older notifications without `kind` are
+  inferred the same way when read (`noteKind`). Kinds: `endorse`, `answers`, `handin`, `comment`, `report`, `spotted`,
+  `stuck`, `checkin`, `conference`, `class`, `teacher`, `kindfb`, `encourage`, `milestone`, `digest`, `consent`,
+  `system`, and the two that can't be turned off: `safeguarding` (a teacher hid, showed again or removed a photo) and
+  `security` (named by its notify() call; none are sent yet).
+- **Groups** (`GROUPS`, by `audienceOf(kind)`): staff: Endorsement requests, Class answers, Task hand-ins, Comments,
+  Reports (moderators only; On or Only in This week, never Off), Spotted replies, Stuck goals and check-ins,
+  Conferences, System (anything else); each On / Off / Only in This week. Students: Teacher replies and endorsements,
+  Comments, Class questions and tasks, Kind feedback, Milestones, Encouragement, Conferences. Families: Weekly digest,
+  Consent requests, Conferences, Your child’s milestones. Students and families have On / Off; a kind outside their
+  groups always arrives. Milestones and the weekly digest are not sent as notifications today, so those two only take
+  effect once they are.
+- **Settings**: `{ kinds: { [group]: 'off' | 'week' }, quiet: { on, from: 'HH:MM', to: 'HH:MM' } }` (`on` is left out;
+  quiet hours off by default, 21:00–07:00 Asia/Bangkok when turned on; the same two times mean never). In a pilot, per
+  account: `POST /api/auth/prefs { notify }` (checked by `notifyProblem` for the person's own groups and choices, else 400;
+  401 signed out; leaves `lang` and `display` alone); `/api/auth/me` carries `user.notify`, so every device follows it.
+  In the demo, per device and persona (`localStorage['tp-notify']`). A See as preview shows the previewed account's and
+  never saves.
+- **Bell** (`bellView` in `App.jsx`): lists what is not cleared and set to On; the number is its unread count, 0 during
+  quiet hours (re-checked every 30 seconds), and its name says "quiet hours". "Mark all as read"
+  (`markNotificationsRead`), "Clear read" (the mutator `clearReadNotifications(keys)`: sets `cleared` on read ones; canAct
+  like `markNotificationsRead`, your own keys only), "N not shown", and "Notification settings". The account menu has
+  "Notifications" too (pilot).
+- **This week**: notifications set to "Only in This week" and dated in the week are listed under "Kept for This week"
+  (`src/components/WeekNotes.jsx`). The rest of This week is made from the record, so class answers still wait there
+  even when their notifications are Off.
+- Tests: `src/notify-kinds.test.mjs` (classifier, filters, quiet hours, checks), `server/test/notification-settings.test.mjs`
+  (kinds on real mutators, Clear read and canAct, the prefs route across a restart); browser:
+  `node scripts/checks/notification-settings.cjs` (real roster from `TP_ROSTER`, in `run.sh`): Mr David Coultas turns
+  Class answers off (gone from his bell, still on This week, on his phone too), then Only in This week; Mark all as read
+  and Clear read; Aaron Torres turns everything off and sets quiet hours: at 22:30 Bangkok (Playwright clock) no number,
+  at 07:30 the number counts only the safeguarding notice, which is still in his bell; the demo keeps settings per device;
+  axe on the dialog and the bell. Screenshots `tp-ns-*.png`.

@@ -13,6 +13,8 @@ import schoolData from '../data/school.json';
 export { verifyCode } from './format.js';
 import { planRoster, parseRoster } from './imports/roster.js';
 import { weekOf } from './week.js';
+import { inferKind } from './notify-kinds.js';
+export { notifyProblem, audienceOf as notifyAudience } from './notify-kinds.js';
 // The server reads roster files with the same code (POST /api/admin/roster).
 export { parseRoster, kindOfRoles } from './imports/roster.js';
 
@@ -483,7 +485,7 @@ export function setCasProject(sid, status, title, by) {
 export const getCasNudges = (sid) => store.casNudges.filter((n) => n.studentId === sid);
 export function casNudge(sid, about, text, by) {
   store.casNudges.push({ id: uid('cn-'), studentId: sid, about, text, by, date: TODAY });
-  notify(toStudent(sid), `${by}: ${text}`, { persona: toStudent(sid), screen: 'map' });
+  notify(toStudent(sid), `${by}: ${text}`, { persona: toStudent(sid), screen: 'map' }, 'teacher');
   log(sid, by, 'prompt', `CAS nudge about ${about}: “${text}”`);
   emit();
 }
@@ -639,7 +641,8 @@ const uid = (p) => nd('i', () => `${p}${seq++}_${TAG}`);
 const nowIso = () => nd('t', () => new Date().toISOString());
 // Made during the demo (not seeded)? Only generated ids contain '_'.
 export const isLiveId = (id) => id.includes('_');
-export function notify(to, text, go) { if (!to) return; store.notifications.unshift({ id: uid('nt-'), to, text, go, ts: nowIso(), read: false }); }
+// kind: what it is about, for notification settings (src/notify-kinds.js); named here when the words alone can't tell.
+export function notify(to, text, go, kind) { if (!to) return; store.notifications.unshift({ id: uid('nt-'), to, text, go, ts: nowIso(), read: false, kind: kind || inferKind(text, go) }); }
 export function log(studentId, actor, kind, text) { store.activity.unshift({ id: uid('ac-'), studentId, actor, kind, text, ts: nowIso() }); }
 // The same two, as changes a screen can make on its own.
 export function addLog(studentId, actor, kind, text) { log(studentId, actor, kind, text); emit(); }
@@ -648,6 +651,8 @@ export function addNotification(to, text, go) { notify(to, text, go); emit(); }
 const keySet = (keys) => new Set([].concat(keys || []));
 export const getNotifications = (keys) => { const k = keySet(keys); return store.notifications.filter((n) => k.has(n.to)); };
 export function markNotificationsRead(keys) { const k = keySet(keys); store.notifications.forEach((n) => { if (k.has(n.to)) n.read = true; }); emit(); }
+// "Clear read" in the bell: read ones are kept in the record (This week, a PDPA copy) but leave the bell.
+export function clearReadNotifications(keys) { const k = keySet(keys); store.notifications.forEach((n) => { if (k.has(n.to) && n.read) n.cleared = true; }); emit(); }
 
 // ── Student actions ───────────────────────────────────────────────────
 export function addReflection({ studentId, eventId, prompt, text, visibility = 'advisor', signal, files }) {
@@ -686,7 +691,7 @@ export function requestEndorsement(eventId, teacherId, note) {
   const rq = { id: uid('rq-x'), eventId, studentId: e.studentId, teacherId, date: TODAY, source: 'student', note: note || null, status: 'pending', fresh: true };
   store.requests.unshift(rq);
   const name = getStudent(e.studentId).name;
-  notify(toTeacher(teacherId), `${name.split(' ')[0]} asked you to endorse “${e.title}”`, { persona: toTeacher(teacherId), screen: 'queue' });
+  notify(toTeacher(teacherId), `${name.split(' ')[0]} asked you to endorse “${e.title}”`, { persona: toTeacher(teacherId), screen: 'queue' }, { 'Class question': 'answers', 'Class task': 'handin' }[e.source?.system]);
   log(e.studentId, name, 'request', `Asked ${teacherById[teacherId].name} to endorse “${e.title}”`);
   emit();
   return rq;
@@ -1866,7 +1871,7 @@ export function nudgeStudent(studentId, advisorId, text, about) {
   const msg = String(text ?? '').trim().slice(0, 500) || NUDGE_TEXT;
   const n = { id: uid('nu-'), studentId, from: advisorId, text: msg, date: TODAY, ts: nowIso(), ...(about ? { about: String(about).slice(0, 60) } : {}) };
   (store.nudges ||= []).push(n);
-  notify(toStudent(studentId), `${shortName(t.name)}: ${msg}`, { persona: toStudent(studentId), screen: 'map', param: about ? 'reflect' : 'add' });
+  notify(toStudent(studentId), `${shortName(t.name)}: ${msg}`, { persona: toStudent(studentId), screen: 'map', param: about ? 'reflect' : 'add' }, 'teacher');
   log(studentId, t.name, 'nudge', 'Sent a nudge to add something');
   emit();
   return n;
@@ -3142,7 +3147,7 @@ dismissCandidate = act('dismissCandidate', dismissCandidate); restoreCandidate =
 setGithub = act('setGithub', setGithub); disconnectGithub = act('disconnectGithub', disconnectGithub); simulateWeek = act('simulateWeek', simulateWeek);
 setCasProject = act('setCasProject', setCasProject); casNudge = act('casNudge', casNudge); saveLetter = act('saveLetter', saveLetter); setLetterStatus = act('setLetterStatus', setLetterStatus);
 matchRoster = act('matchRoster', matchRoster); setRollout = act('setRollout', setRollout); addAlumStation = act('addAlumStation', addAlumStation);
-addLog = act('addLog', addLog); addNotification = act('addNotification', addNotification); markNotificationsRead = act('markNotificationsRead', markNotificationsRead);
+addLog = act('addLog', addLog); addNotification = act('addNotification', addNotification); markNotificationsRead = act('markNotificationsRead', markNotificationsRead); clearReadNotifications = act('clearReadNotifications', clearReadNotifications);
 addReflection = act('addReflection', addReflection); addStation = act('addStation', addStation); requestEndorsement = act('requestEndorsement', requestEndorsement);
 endorse = act('endorse', endorse); declineRequest = act('declineRequest', declineRequest); addNote = act('addNote', addNote); sendPrompt = act('sendPrompt', sendPrompt);
 recordView = act('recordView', recordView); logLink = act('logLink', logLink);

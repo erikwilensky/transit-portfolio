@@ -184,7 +184,7 @@ export function PasswordDialog({ onClose, toast }) {
 }
 
 // The signed-in person's own menu: who, how many devices, password, sign out (here or everywhere).
-export function AccountMenu({ persona, onPassword, onFeedback }) {
+export function AccountMenu({ persona, onPassword, onFeedback, onNotifications }) {
   const [devices, setDevices] = useState(null);
   useEffect(() => { sessionCount().then(setDevices, () => {}); }, []);
   const th = getLang() === 'th';
@@ -194,6 +194,7 @@ export function AccountMenu({ persona, onPassword, onFeedback }) {
       <div className="acct-who"><b>{persona.name}</b><small>{th && persona.kind === 'parent' ? persona.role.replace(/^Family · /, 'ครอบครัว · ') : persona.role}</small><small>{persona.account?.email}</small></div>
       {devices > 0 && <div className="acct-devices">{th ? SAY_TH.devices(devices) : `Signed in on ${devices === 1 ? 'this device only' : `${devices} devices`}`}</div>}
       <button role="menuitem" onClick={onPassword}><span><b>{t('Change password')}</b></span></button>
+      {onNotifications && <button role="menuitem" className="ns-menu" onClick={onNotifications}><span><b>{th ? 'การแจ้งเตือน' : 'Notifications'}</b><small>{th ? 'เลือกสิ่งที่แสดงและช่วงเวลาเงียบ' : 'What reaches your bell, and quiet hours'}</small></span></button>}
       {onFeedback && <button role="menuitem" className="fb-menu" onClick={onFeedback}><span><b>{t('Feedback')}</b><small>{t('Something broken, confusing, or an idea')}</small></span></button>}
       <button role="menuitem" className="sign-out" onClick={() => signOut()}><span><b>{t('Sign out')}</b></span></button>
       {devices > 1 && <button role="menuitem" className="sign-out-all" onClick={() => signOut(true)}><span><b>{t('Sign out everywhere')}</b><small>{th ? SAY_TH.all(devices) : `On all ${devices} devices, this one too`}</small></span></button>}

@@ -82,6 +82,10 @@ import { QADrawer, TourCard, TourRoute } from './components/TourCards.jsx';
 import { LeaverBuilder, PublicLeaver } from './components/Leaver.jsx';
 import { leaverAllowed } from './api.js';
 import SubjectPromptsScreen from './components/SubjectPrompts.jsx';
+import NotificationSettings, { nsT } from './components/NotificationSettings.jsx';
+import { audienceOf, bellView } from './notify-kinds.js';
+import { getNotifyPrefs, onNotifyPrefs } from './notify-prefs.js';
+import { clearReadNotifications } from './api.js';
 
 // Routes: #/<persona>/<screen>/<param>, plus public #/s/<token>, #/v/<code> and #/p/<student>[/th] (parent link).
 // A screen set this persona uses: their own kind, or another hat they wear in the pilot (persona.also).
@@ -116,6 +120,8 @@ export default function App() {
   const [qa, setQa] = useState(false);
   const [pwOpen, setPwOpen] = useState(false);
   const [fbOpen, setFbOpen] = useState(false); // pilot feedback
+  const [nsOpen, setNsOpen] = useState(false); // notification settings
+  const [, setNsTick] = useState(0); // a settings change, or quiet hours starting or ending
   // Pilot mode: the signed-in person's own persona; no switcher, tours, presenter or reset.
   const pilot = pilotPersona();
   // F18: Escape closes the top dialog, else an open station panel; Tab stays inside an open dialog;
@@ -174,6 +180,8 @@ export default function App() {
   }, []);
 
   useEffect(() => subscribe(() => setVersion((v) => v + 1)), []);
+  useEffect(() => onNotifyPrefs(() => setNsTick((x) => x + 1)), []);
+  useEffect(() => { const t = setInterval(() => setNsTick((x) => x + 1), 30000); return () => clearInterval(t); }, []);
   const drafts = getDrafts();
   // F3: #/reset puts the demo back to its seeded state (handy on a shared screen).
   useEffect(() => {
@@ -222,8 +230,10 @@ export default function App() {
   const nav = navOf(persona).filter(([id]) => !level || !INTENSITY_NAV[level] || INTENSITY_NAV[level].includes(id)).map(([id, l]) => [id, T(INTENSITY_LABEL[level]?.[id] || l)]);
   if (persona.kind === 'student' && leaverAllowed(studentId)) nav.push(['leaver', 'Leaver portfolio']); // Years 11 to 13
   const keys = notifyKeys(persona);
-  const notes = getNotifications(keys);
-  const unread = notes.filter((n) => !n.read).length;
+  const nPrefs = getNotifyPrefs(persona);
+  const bell = bellView(getNotifications(keys), nPrefs, audienceOf(persona.kind));
+  const notes = bell.shown, unread = bell.unread;
+  const NT = nsT(lang);
   const ctx = { go, toast, version, persona, drafts, setDrafts, audience, setAudience, tier, setTier, startTour: (t) => { setTourState({ tour: t, step: 0 }); TOURS[t].steps[0].run(ctx); } };
   const tour = tourState && TOURS[tourState.tour];
   const stepTo = (i) => { if (!tour || i < 0 || i >= tour.steps.length) { setAuto(false); return setTourState(null); } setTourState({ ...tourState, step: i }); tour.steps[i].run(ctx); };
@@ -254,7 +264,7 @@ export default function App() {
                 <span className="pb-text"><small>{T(inPreview() ? 'Seeing as' : pilot ? 'Signed in' : 'Viewing as')}</small><b>{persona.name}</b></span><span aria-hidden="true">▾</span>
               </button>
               {menu === 'persona' && pilot && !inPreview() && (
-                <AccountMenu persona={persona} onPassword={() => { setMenu(null); setPwOpen(true); }} onFeedback={() => { setMenu(null); setFbOpen(true); }} />
+                <AccountMenu persona={persona} onPassword={() => { setMenu(null); setPwOpen(true); }} onFeedback={() => { setMenu(null); setFbOpen(true); }} onNotifications={() => { setMenu(null); setNsOpen(true); }} />
               )}
               {menu === 'persona' && !pilot && (
                 <div className="menu persona-menu" role="menu">
@@ -272,19 +282,26 @@ export default function App() {
               )}
             </div>
             <div className="menu-wrap">
-              <button className="icon-btn bell" onClick={() => { setMenu(menu === 'bell' ? null : 'bell'); if (unread) setTimeout(() => markNotificationsRead(keys), 1500); }} aria-label={`Notifications${unread ? `, ${unread} unread` : ''}`}>
+              <button className="icon-btn bell" onClick={() => { setMenu(menu === 'bell' ? null : 'bell'); if (unread) setTimeout(() => markNotificationsRead(keys), 1500); }} aria-label={`Notifications${bell.badge ? `, ${bell.badge} unread` : bell.quiet ? ', quiet hours' : ''}`}>
                 <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 17V11a6 6 0 1 1 12 0v6l2 2H4z M10 21h4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" /></svg>
-                {unread > 0 && <span className="badge">{unread}</span>}
+                {bell.badge > 0 && <span className="badge">{bell.badge}</span>}
               </button>
               {menu === 'bell' && (
                 <div className="menu bell-menu" role="menu">
                   <div className="menu-title">{T('Notifications for')} {persona.name}</div>
+                  <div className="bm-actions">
+                    <button role="menuitem" disabled={!unread} onClick={() => markNotificationsRead(keys)}>{NT('Mark all as read')}</button>
+                    <button role="menuitem" disabled={!notes.some((n) => n.read)} onClick={() => clearReadNotifications(keys)}>{NT('Clear read')}</button>
+                  </div>
+                  {bell.quiet && <p className="bm-quiet">{NT('Quiet hours: the number waits until')} {nPrefs.quiet.to}.</p>}
                   {!notes.length && <p className="menu-empty">{T('Nothing yet. Things other people do with this record will show up here.')}</p>}
                   {notes.map((n) => (
                     <button key={n.id} role="menuitem" className={n.read ? '' : 'unread'} onClick={() => n.go && go(n.go.persona, n.go.screen, n.go.param)}>
                       <span><b>{noteText(lang, n.text)}</b><small>{agoIn(lang, n.ts)}</small></span>
                     </button>
                   ))}
+                  {bell.hidden > 0 && <p className="bm-hidden">{bell.hidden} {NT('not shown: cleared, or turned off in your settings')}.</p>}
+                  <button role="menuitem" className="bm-settings" onClick={() => { setMenu(null); setNsOpen(true); }}><span><b>{NT('Notification settings')}</b></span></button>
                 </div>
               )}
             </div>
@@ -397,6 +414,7 @@ export default function App() {
         )}
         {launch && <Launcher onGo={go} onClose={() => setLaunch(false)} only={pilot} />}
         {pwOpen && <PasswordDialog onClose={() => setPwOpen(false)} toast={toast} />}
+        {nsOpen && <NotificationSettings persona={persona} onClose={() => setNsOpen(false)} toast={toast} />}
         {fbOpen && <FeedbackDialog simple={level === 'simple'} onClose={() => setFbOpen(false)} toast={toast} />}
         <div className={`toast${toastMsg ? ' show' : ''}`} role="status" aria-live="polite">{toastMsg?.m}{toastMsg?.undo && <button className="toast-undo" onClick={() => undoToast(toastMsg)}>Undo</button>}</div>
       </div>
