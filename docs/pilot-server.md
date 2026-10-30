@@ -1600,3 +1600,53 @@ and from the demo's ManageBac "Endorse a whole-class task" (`store.classTasks`, 
   Mr David Coultas sets a task for Y8 Sciences 08.04 (04); the reminder once per student; Aaron Torres hands it in at
   Simple on a phone, offline, with a photo; the server restarted two days later (a Date shift): a classmate at Standard
   sees it overdue and hands it in late; This week, the grid, more time, endorse from the grid; refusals; axe).
+## Conference booking (`src/api.js`, `src/components/ConferenceBooking.jsx`, `server/routes/68-conference.mjs`)
+
+Families book a parent-student-advisor conference in the app. Nothing is emailed. Demo and pilot. Times are Bangkok time
+(`CONF_TZ` +07:00, no daylight saving): a slot starts at `confAt(date, time)`.
+
+- **Record** (made on first use): `store.confRounds = [{ id: 'cr-…', title, days: [{ date, from, to }], slot (10 | 15 | 20),
+  breaks: [{ from, to }] (every day), online, location, link, advisorId | null, year | null, advisorIds, studentIds, by, at,
+  closedOn?, closedBy? }]`, `store.confBookings = [{ id: 'cb-…', roundId, advisorId, studentId, date, time, by ('family' |
+  teacher id), at, reminded? }]` and `store.confBlocks = [{ id: 'ck-…', roundId, advisorId, date, time, by, at }]`.
+- **Mutators**: `openConferenceRound({ title, days, slot, breaks, online, location, link, advisorId | year }, by)` (an advisory,
+  or every student in a British Year with an advisor, each meeting their own advisor; students already in a live round are left
+  out, 409 when none are left; each family is told, and each advisor of a Year round); `editConferenceRound(id, patch, by)` (409
+  while a booking would lose its time; blocks that no longer fit go); `closeConferenceRound(id, by)`;
+  `bookConference(roundId, studentId, { date, time }, by)` (one slot per child per round: booking again moves it; refused when
+  the time is booked or blocked (409 "That time was just taken"), clashes with a brother's or sister's booking in any round
+  (409), has passed, or, for `by: 'family'`, is less than `CONF_CHANGE_H` = 24 hours away or moves a booking that is);
+  `cancelConference(id, by)` (a family until 24 hours before); `blockConferenceSlot(roundId, advisorId, date, time, on, by)`
+  (never a booked time); `sendConferenceReminders(today)`. The other side is told in the app (family ↔ advisor) and the student
+  hears when their conference is. Reads: `confGrid(roundId, advisorId)`, `confDayTimes(r, day)`, `confBookingOf`, `confClash`,
+  `confTooSoon`, `confProgress`, `advisorConfRounds`, `familyConfRounds(childIds)`, `studentConferences(sid)`.
+- **Siblings**: `setSiblingsOf(fn)`. The server (`68-conference.mjs`) sets it from the family accounts (every parent account
+  listing that child: its other `children`), so a clash is refused whoever books; the browser's family card greys out times that
+  clash with a brother or sister. The demo uses its one family.
+- **Reminders**: `68-conference.mjs` looks every `CONF_REMIND_MS` (default 10 minutes) and shortly after start; bookings tomorrow
+  (Bangkok) get one reminder to the family and one per advisor for the day (`reminded` stops a second), then `changed()`.
+  `sendConferenceReminders` is admin-only through `/api/action`.
+- **canAct** (`CF_FNS` in `server/auth.mjs`, before the admin rule): open: an advisor for `advisorId` = their own `teacherId`;
+  whole-school staff for any advisory or a Year, as themselves; admins. Edit and close: whoever opened it, its advisor,
+  whole-school staff, admins. Book and cancel: a parent only for their own `children`, as `'family'`, and only 24 hours or more
+  ahead by the server's clock (a new time and the time being moved or cancelled); the student's advisor as themselves, any time.
+  Block: the advisor of that grid. Students never.
+- **Scope**: rounds go to whole-school roles whole, to anyone else when they cover a student in reach (only those ids).
+  Bookings and blocks: whole-school roles and admins all; an advisor their own grid; a student their own bookings; a family their
+  children's bookings in full, and every other booking or block in their children's advisors' grids only as `{ roundId,
+  advisorId, date, time, taken: true }`: no student, no id, nobody's name. PDPA: a booking carries `studentId`, so it is in that
+  student's copy (and the family's) and goes with erasure; a round only lists the id and loses it.
+- **Screens**: My advisory has "Conference booking" (open: title, days and hours, 10/15/20 minutes, breaks, a room or "Online
+  (link)"; then "Booked: n of 23", "Not booked yet", Edit, Close booking, and the day grid: booked / free / blocked per day, Cancel,
+  "Book for…" a family, Block / Unblock, "Print the day’s schedule": one A4 page with each time, the student's name, Year and
+  homeroom, who booked, and the link to their conference sheet, `conferenceSheetLink(personaId, sid)` in `src/conference.js`
+  (`#/<persona>/student/<sid>~sheet` opens the advisor's page with the sheet). Notifications open the grid on that day
+  (`advisory/conf~<roundId>~<date>`). The school overview has "Conference booking" for a whole Year. The family view has a card
+  per round with one column per child, side by side (taken, too soon, or "Mira’s time" when it clashes), and Change time /
+  Cancel booking until 24 hours before. Family text, toasts, refusals and notifications are in Thai from `src/i18n.js`
+  (`confWords`, `confDay`, `confSlotText`, `NOTE_TH`, `ERR_TH`). The student's home shows "Your conference" at every level.
+- Tests: `server/test/conference-booking.test.mjs`; browser: `node scripts/checks/conference-booking.cjs` (real roster from
+  `TP_ROSTER`: Ms Jane Altemen opens a round for 8C; Aaron Torres's parent joins from a family letter on a phone in Thai and
+  books; a second 8C family sees that time as "Taken" without a name and is refused it; Aaron sees his time; the advisor blocks a
+  time, books for a third family, prints the day's schedule (1 A4 page) and its link opens Aaron's sheet; axe on every new
+  screen). Screenshots and a PDF: `tp-confbook-*` in `SCRATCH` or the temp folder.

@@ -6,6 +6,7 @@ import { FamilyMilestones } from '../components/Milestones.jsx';
 import StationPanel from '../components/StationPanel.jsx';
 import { consentText, dateIn, LangContext, lineName, tr } from '../i18n.js';
 import { chooseLang, exportUrl, isPilot } from '../auth.js';
+import { FamilyBooking } from '../components/ConferenceBooking.jsx';
 
 // N1: a parent's own screens, in English or Thai. One parent, two children:
 // Ploy (Year 11) decides what her family sees; Pim (Year 7) needs her parent's consent first.
@@ -103,7 +104,7 @@ export default function Family({ persona, screen, param, go, toast, version }) {
   );
 }
 
-function FamilyMap({ persona, childId, go, lang, version }) {
+function FamilyMap({ persona, childId, go, lang, version, toast }) {
   const s = getStudent(childId);
   const say = SAY[lang];
   const map = useMemo(() => getStudentMap(childId, familyViewer(childId), { family: true }), [childId, version]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -115,6 +116,7 @@ function FamilyMap({ persona, childId, go, lang, version }) {
   return (
     <>
       <Head persona={persona} childId={childId} screen="family" go={go} lang={lang} title={say.homeT(s.name)} lede={youngStudent(s) ? say.homeYoung(f) : say.homeOld(f)} />
+      <FamilyBooking persona={persona} lang={lang} version={version} toast={toast} />
       {empty ? (
         <div className="card-sec fam-empty">
           <p>{say.empty(f)}</p>

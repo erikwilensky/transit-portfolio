@@ -2723,6 +2723,218 @@ export function sendEncouragement(goalId, by, line, text) {
   emit();
   return n;
 }
+// ── Conference booking: families pick a time with the advisor (src/components/ConferenceBooking.jsx) ──
+// An advisor (their advisees) or whole-school staff (a whole Year: each student with their own advisor) open a round:
+// days with hours, a slot length, breaks (every day), a room or an online link. Each family picks one slot per child and can
+// change or cancel it until CONF_CHANGE_H hours before; the advisor sees the day grid, books for a family and blocks slots.
+// store.confRounds: { id: 'cr-…', title, days: [{ date, from, to }], slot, breaks: [{ from, to }], online, location, link,
+//   advisorId | null, year | null, advisorIds, studentIds, by, at, closedOn? }
+// store.confBookings: { id: 'cb-…', roundId, advisorId, studentId, date, time, by ('family' | teacher id), at, reminded? }
+// store.confBlocks: { id: 'ck-…', roundId, advisorId, date, time, by, at }. All three made on first use.
+// Times are Bangkok wall-clock times (no daylight saving): a slot starts at confAt(date, time).
+export const CONF_SLOTS = [10, 15, 20];
+export const CONF_CHANGE_H = 24;
+export const CONF_TZ = '+07:00';
+const cfErr = (m, status = 400) => Object.assign(new Error(m), { status });
+const isHm = (t) => /^([01]\d|2[0-3]):[0-5]\d$/.test(String(t || ''));
+const hmMin = (t) => +t.slice(0, 2) * 60 + +t.slice(3, 5);
+const minHm = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+// "3 Nov 2026 at 15:20" (notifications are stored in English; src/i18n.js renders the family's in Thai).
+export const confWhen = (date, time) => `${+date.slice(8)} ${MON[+date.slice(5, 7) - 1]} ${date.slice(0, 4)} at ${time}`;
+export const confAt = (date, time) => Date.parse(`${date}T${time}:00${CONF_TZ}`);
+export const confEnd = (r, time) => minHm(hmMin(time) + r.slot);
+export const getConferenceRounds = () => store.confRounds || [];
+export const getConferenceRound = (id) => getConferenceRounds().find((r) => r.id === id) || null;
+export const getConfBookings = () => store.confBookings || [];
+export const getConfBooking = (id) => getConfBookings().find((b) => b.id === id) || null;
+const confBlocks = () => store.confBlocks || [];
+export const roundLive = (r) => !!r && !r.closedOn && r.days.some((d) => d.date >= TODAY);
+// Brothers and sisters: a pilot server sets this from the family accounts (server/routes/68-conference.mjs); the demo has
+// its one family, by persona.
+let siblingsOf = (sid) => (PERSONA_OF_FAMILY[sid] ? Object.keys(PERSONA_OF_FAMILY).filter((x) => x !== sid && PERSONA_OF_FAMILY[x] === PERSONA_OF_FAMILY[sid]) : []);
+export const setSiblingsOf = (fn) => { siblingsOf = fn; };
+export const confSiblings = (sid) => siblingsOf(sid);
+// The start times of one day, leaving out the breaks.
+export function confDayTimes(r, day) {
+  const out = [], end = hmMin(day.to);
+  for (let t = hmMin(day.from); t + r.slot <= end; t += r.slot) if (!r.breaks.some((b) => t < hmMin(b.to) && t + r.slot > hmMin(b.from))) out.push(minHm(t));
+  return out;
+}
+const slotOk = (r, date, time) => r.days.some((d) => d.date === date && confDayTimes(r, d).includes(time));
+const sameSlot = (x, roundId, advisorId, date, time) => x.roundId === roundId && x.advisorId === advisorId && x.date === date && x.time === time;
+// One advisor's day grid in one round: booked, blocked or free. A family's copy has other families' bookings as
+// { taken: true } with no student (server/scope.mjs).
+export function confGrid(roundId, advisorId) {
+  const r = getConferenceRound(roundId); if (!r) return null;
+  return { round: r, days: r.days.map((d) => ({ ...d, slots: confDayTimes(r, d).map((time) => {
+    const booking = getConfBookings().find((b) => sameSlot(b, r.id, advisorId, d.date, time)), block = confBlocks().find((b) => sameSlot(b, r.id, advisorId, d.date, time));
+    return { date: d.date, time, end: confEnd(r, time), state: booking ? 'booked' : block ? 'blocked' : 'free', booking: booking || null, block: block || null };
+  }) })) };
+}
+export const confBookingOf = (roundId, studentId) => getConfBookings().find((b) => b.roundId === roundId && b.studentId === studentId) || null;
+// A brother's or sister's booking (any round, any advisor) that overlaps this slot.
+export function confClash(studentId, date, time, slot, siblings = siblingsOf(studentId)) {
+  const a = confAt(date, time), z = a + slot * 60000;
+  return getConfBookings().find((b) => {
+    if (!b.studentId || b.studentId === studentId || !siblings.includes(b.studentId)) return false;
+    const r = getConferenceRound(b.roundId), s = confAt(b.date, b.time);
+    return !!r && s < z && a < s + r.slot * 60000;
+  }) || null;
+}
+// Families change or cancel until CONF_CHANGE_H hours before; a new booking needs that much notice too.
+export const confTooSoon = (date, time, now = Date.now()) => confAt(date, time) - now < CONF_CHANGE_H * 3600e3;
+const roundStudents = ({ advisorId, year }) => store.students.filter((s) => !s.cohortOnly && s.advisorId && (advisorId ? s.advisorId === advisorId : s.grade + 1 === Number(year)));
+function confClean(spec, keep) {
+  const title = String(spec.title ?? keep?.title ?? '').trim().slice(0, 80) || 'Conferences';
+  const slot = Number(spec.slot ?? keep?.slot);
+  if (!CONF_SLOTS.includes(slot)) throw cfErr('Pick 10, 15 or 20 minutes');
+  const days = [].concat(spec.days ?? keep?.days ?? []).map((d) => ({ date: String(d?.date || ''), from: String(d?.from || ''), to: String(d?.to || '') }));
+  if (!days.length || days.length > 10 || new Set(days.map((d) => d.date)).size !== days.length) throw cfErr('Pick between 1 and 10 different days');
+  if (days.some((d) => !isDay(d.date) || !isHm(d.from) || !isHm(d.to) || d.from >= d.to)) throw cfErr('Each day needs a date and a start before its end');
+  if (days.some((d) => d.date < TODAY && !keep?.days.some((k) => k.date === d.date))) throw cfErr('Pick days from today on');
+  days.sort((a, b) => a.date.localeCompare(b.date));
+  const breaks = [].concat(spec.breaks ?? keep?.breaks ?? []).map((b) => ({ from: String(b?.from || ''), to: String(b?.to || '') }));
+  if (breaks.length > 6 || breaks.some((b) => !isHm(b.from) || !isHm(b.to) || b.from >= b.to)) throw cfErr('Each break needs a start before its end');
+  const online = !!(spec.online ?? keep?.online);
+  const location = String(spec.location ?? keep?.location ?? '').trim().slice(0, 80);
+  const link = online ? String(spec.link ?? keep?.link ?? '').trim().slice(0, 300) : '';
+  if (online ? !/^https:\/\/\S+$/.test(link) : !location) throw cfErr(online ? 'Add the meeting link (https://…)' : 'Say where it is');
+  const r = { title, days, slot, breaks, online, location, link };
+  if (!days.some((d) => confDayTimes(r, d).length)) throw cfErr('No times fit: check the hours and breaks');
+  return r;
+}
+export function openConferenceRound(spec = {}, by = null) {
+  if (by && !teacherById[by]) throw cfErr('No such teacher');
+  const { advisorId = null, year = null } = spec;
+  if (!advisorId === !year) throw cfErr('Pick an advisory or a Year');
+  if (advisorId && !teacherById[advisorId]) throw cfErr('No such advisor');
+  const c = confClean(spec);
+  const busy = new Set(getConferenceRounds().filter(roundLive).flatMap((r) => r.studentIds));
+  const all = roundStudents({ advisorId, year }), ids = all.map((s) => s.id).filter((id) => !busy.has(id));
+  if (!ids.length) throw cfErr(all.length ? 'These students already have conference booking open' : 'No students to book', all.length ? 409 : 400);
+  const advisorIds = [...new Set(ids.map((id) => getStudent(id).advisorId))];
+  const r = { id: uid('cr-'), ...c, advisorId: advisorId || null, year: year ? Number(year) : null, advisorIds, studentIds: ids, by: by || null, at: nowIso() };
+  (store.confRounds ||= []).push(r);
+  for (const sid of ids) {
+    const s = getStudent(sid);
+    notify(toFamily(sid), `${shortName(teacherById[s.advisorId]?.name || '')} opened conference booking: “${r.title}”. Pick a time for ${s.name.split(' ')[0]}`, { persona: toFamily(sid), screen: 'family', param: sid });
+  }
+  if (by) for (const aid of advisorIds) if (aid !== by) notify(toTeacher(aid), `${shortName(teacherById[by].name)} opened conference booking for ${r.year ? `Year ${r.year}` : 'your advisory'}: “${r.title}”`, { persona: toTeacher(aid), screen: 'advisory' });
+  emit();
+  return r;
+}
+// Title, place, days, hours, slot length or breaks. Refused while a booking would lose its time; blocks that no longer fit go.
+export function editConferenceRound(id, patch = {}, by = null) {
+  const r = getConferenceRound(id);
+  if (!r) throw cfErr('No such conference round', 404);
+  if (r.closedOn) throw cfErr('This round is closed', 410);
+  const c = confClean(patch, r);
+  const lost = getConfBookings().filter((b) => b.roundId === id && !slotOk(c, b.date, b.time)).length;
+  if (lost) throw cfErr(`${lost} booking${lost === 1 ? '' : 's'} would lose ${lost === 1 ? 'its' : 'their'} time: move or cancel ${lost === 1 ? 'it' : 'them'} first`, 409);
+  Object.assign(r, c, { editedAt: nowIso(), editedBy: by || null });
+  if (store.confBlocks) store.confBlocks = store.confBlocks.filter((k) => k.roundId !== id || slotOk(r, k.date, k.time));
+  emit();
+  return r;
+}
+export function closeConferenceRound(id, by = null) {
+  const r = getConferenceRound(id);
+  if (!r) throw cfErr('No such conference round', 404);
+  Object.assign(r, { closedOn: TODAY, closedBy: by || null });
+  emit();
+  return r;
+}
+// One slot per child per round: booking again moves it. by: 'family', or the advisor's teacher id (booking for the family).
+export function bookConference(roundId, studentId, { date, time } = {}, by = 'family') {
+  const r = getConferenceRound(roundId), s = getStudent(studentId);
+  if (!r || !s || !r.studentIds.includes(studentId)) throw cfErr('This conference is not for this student', 404);
+  if (!roundLive(r)) throw cfErr('Booking for this conference is closed', 410);
+  const advisorId = s.advisorId, fam = by === 'family';
+  if (!r.advisorIds.includes(advisorId)) throw cfErr('No advisor to meet', 409);
+  if (!fam && !teacherById[by]) throw cfErr('No such teacher');
+  if (!slotOk(r, date, time)) throw cfErr('Pick one of the times');
+  const now = Date.parse(nowIso());
+  if (confAt(date, time) <= now) throw cfErr('That time has passed', 409);
+  const mine = confBookingOf(roundId, studentId);
+  if (mine && mine.date === date && mine.time === time) return mine;
+  if (fam && mine && confTooSoon(mine.date, mine.time, now)) throw cfErr(`Less than ${CONF_CHANGE_H} hours to go: ask the advisor to change it`, 409);
+  if (fam && confTooSoon(date, time, now)) throw cfErr(`Pick a time at least ${CONF_CHANGE_H} hours ahead`, 409);
+  if (getConfBookings().some((b) => b !== mine && sameSlot(b, roundId, advisorId, date, time)) || confBlocks().some((k) => sameSlot(k, roundId, advisorId, date, time))) throw cfErr('That time was just taken. Pick another', 409);
+  const clash = confClash(studentId, date, time, r.slot);
+  if (clash) throw cfErr(`That clashes with ${getStudent(clash.studentId)?.name.split(' ')[0] || 'a brother or sister'}’s conference`, 409);
+  const b = mine || { id: uid('cb-'), roundId, advisorId, studentId };
+  Object.assign(b, { date, time, by, at: nowIso() }); delete b.reminded;
+  if (!mine) (store.confBookings ||= []).push(b);
+  const f = s.name.split(' ')[0], adv = shortName(teacherById[advisorId]?.name || '');
+  if (fam) notify(toTeacher(advisorId), `${s.name}’s family ${mine ? 'moved their' : 'booked a'} conference: ${confWhen(date, time)}`, { persona: toTeacher(advisorId), screen: 'advisory', param: `conf~${r.id}~${date}` });
+  else notify(toFamily(studentId), `${shortName(teacherById[by].name)} booked ${f}’s conference: ${confWhen(date, time)}`, { persona: toFamily(studentId), screen: 'family', param: studentId });
+  notify(toStudent(studentId), `Your conference with ${adv} is on ${confWhen(date, time)}`, { persona: toStudent(studentId), screen: 'map' });
+  emit();
+  return b;
+}
+export function cancelConference(id, by = 'family') {
+  const b = getConfBooking(id);
+  if (!b) throw cfErr('No such booking', 404);
+  const s = getStudent(b.studentId), fam = by === 'family';
+  if (!fam && !teacherById[by]) throw cfErr('No such teacher');
+  if (fam && confTooSoon(b.date, b.time, Date.parse(nowIso()))) throw cfErr(`Less than ${CONF_CHANGE_H} hours to go: ask the advisor to change it`, 409);
+  store.confBookings = getConfBookings().filter((x) => x !== b);
+  const f = s?.name.split(' ')[0] || 'the student';
+  if (fam) notify(toTeacher(b.advisorId), `${s?.name || 'A student'}’s family cancelled their conference on ${confWhen(b.date, b.time)}`, { persona: toTeacher(b.advisorId), screen: 'advisory', param: `conf~${b.roundId}~${b.date}` });
+  else notify(toFamily(b.studentId), `${shortName(teacherById[by].name)} cancelled ${f}’s conference on ${confWhen(b.date, b.time)}`, { persona: toFamily(b.studentId), screen: 'family', param: b.studentId });
+  notify(toStudent(b.studentId), `Your conference on ${confWhen(b.date, b.time)} was cancelled`, { persona: toStudent(b.studentId), screen: 'map' });
+  emit();
+  return b;
+}
+// The advisor keeps a time free of bookings (on), or opens it again (off).
+export function blockConferenceSlot(roundId, advisorId, date, time, on = true, by = null) {
+  const r = getConferenceRound(roundId);
+  if (!r || !r.advisorIds.includes(advisorId)) throw cfErr('No such conference round', 404);
+  if (!slotOk(r, date, time)) throw cfErr('Pick one of the times');
+  const k = confBlocks().find((x) => sameSlot(x, roundId, advisorId, date, time));
+  if (on && !k) {
+    if (getConfBookings().some((b) => sameSlot(b, roundId, advisorId, date, time))) throw cfErr('Someone booked this time: cancel it first', 409);
+    (store.confBlocks ||= []).push({ id: uid('ck-'), roundId, advisorId, date, time, by: by || null, at: nowIso() });
+  }
+  if (!on && k) store.confBlocks = confBlocks().filter((x) => x !== k);
+  emit();
+  return !!on;
+}
+// Bookings tomorrow (Bangkok) that have not had their reminder yet.
+export const confRemindersDue = (today = TODAY) => getConfBookings().filter((b) => b.studentId && b.date === dayAfter(today) && b.reminded !== b.date && getConferenceRound(b.roundId) && !getConferenceRound(b.roundId).closedOn);
+// The day before: a reminder to the family for each booking, and one to each advisor for their day. The server runs it.
+export function sendConferenceReminders(today = TODAY) {
+  const due = confRemindersDue(today), per = new Map();
+  for (const b of due) {
+    const r = getConferenceRound(b.roundId), s = getStudent(b.studentId);
+    b.reminded = b.date;
+    if (!s) continue;
+    notify(toFamily(b.studentId), `Reminder: ${s.name.split(' ')[0]}’s conference with ${shortName(teacherById[b.advisorId]?.name || '')} is tomorrow, ${confWhen(b.date, b.time)} · ${r.online ? 'online' : r.location}`, { persona: toFamily(b.studentId), screen: 'family', param: b.studentId });
+    per.set(b.advisorId, [...(per.get(b.advisorId) || []), b]);
+  }
+  for (const [aid, list] of per) {
+    const first = list.map((b) => b.time).sort()[0];
+    notify(toTeacher(aid), `Reminder: ${list.length} conference${list.length === 1 ? '' : 's'} tomorrow, the first ${confWhen(list[0].date, first)}`, { persona: toTeacher(aid), screen: 'advisory', param: `conf~${list[0].roundId}~${list[0].date}` });
+  }
+  if (due.length) emit();
+  return due.length;
+}
+// The rounds an advisor meets families in: live ones, and ones whose last day was in the past fortnight.
+export const advisorConfRounds = (advisorId) => getConferenceRounds().filter((r) => r.advisorIds.includes(advisorId) && (roundLive(r) || (!r.closedOn && r.days.at(-1).date >= daysBefore(14))))
+  .sort((a, b) => a.days[0].date.localeCompare(b.days[0].date) || a.at.localeCompare(b.at));
+// What a family sees: each live round that covers one of their children, with each child's advisor and booking.
+export const familyConfRounds = (childIds) => getConferenceRounds().filter((r) => roundLive(r) && childIds.some((id) => r.studentIds.includes(id)))
+  .map((r) => ({ round: r, children: childIds.filter((id) => r.studentIds.includes(id) && getStudent(id)).map((id) => ({ student: getStudent(id), advisorId: getStudent(id).advisorId, advisor: teacherById[getStudent(id).advisorId] || null, booking: confBookingOf(r.id, id) })) }));
+// A student's own conferences from today on.
+export const studentConferences = (studentId) => getConfBookings().filter((b) => b.studentId === studentId && b.date >= TODAY)
+  .map((b) => ({ booking: b, round: getConferenceRound(b.roundId), advisor: teacherById[b.advisorId] || null })).filter((x) => x.round && !x.round.closedOn)
+  .sort((a, b) => a.booking.date.localeCompare(b.booking.date) || a.booking.time.localeCompare(b.booking.time));
+// Booked so far in one round, for one advisor's students.
+export function confProgress(roundId, advisorId) {
+  const r = getConferenceRound(roundId);
+  const kids = (r ? r.studentIds : []).map(getStudent).filter((s) => s && (!advisorId || s.advisorId === advisorId)).sort((a, b) => a.name.localeCompare(b.name));
+  const waiting = kids.filter((s) => !confBookingOf(roundId, s.id));
+  return { total: kids.length, booked: kids.length - waiting.length, waiting, students: kids };
+}
 
 // ── Shared record: with the pilot server, every change is replayed there ──
 // A screen calls a change below; it runs here at once (instant UI) while recording the ids and
@@ -2787,6 +2999,7 @@ markMilestonesSeen = act('markMilestonesSeen', markMilestonesSeen);
 createExhibition = act('createExhibition', createExhibition); removeExhibitionSlide = act('removeExhibitionSlide', removeExhibitionSlide); pauseExhibition = act('pauseExhibition', pauseExhibition); revokeExhibition = act('revokeExhibition', revokeExhibition);
 saveLeaver = act('saveLeaver', saveLeaver); shareLeaver = act('shareLeaver', shareLeaver); revokeLeaver = act('revokeLeaver', revokeLeaver); commentLeaver = act('commentLeaver', commentLeaver); doneLeaverComment = act('doneLeaverComment', doneLeaverComment);
 checkInGoal = act('checkInGoal', checkInGoal); snoozeCheckins = act('snoozeCheckins', snoozeCheckins); sendEncouragement = act('sendEncouragement', sendEncouragement);
+openConferenceRound = act('openConferenceRound', openConferenceRound); editConferenceRound = act('editConferenceRound', editConferenceRound); closeConferenceRound = act('closeConferenceRound', closeConferenceRound); bookConference = act('bookConference', bookConference); cancelConference = act('cancelConference', cancelConference); blockConferenceSlot = act('blockConferenceSlot', blockConferenceSlot); sendConferenceReminders = act('sendConferenceReminders', sendConferenceReminders);
 // Undo puts a whole earlier copy back, and reset goes back to the seed (sync.js sends it to /api/reset).
 restore = act('restore', restore); resetDemo = act('resetDemo', resetDemo);
 export const MUTATORS = Object.keys(ACTIONS);

@@ -208,6 +208,7 @@ export function canAct(user, fn, args = []) {
   if (LV_FNS.has(fn)) { try { return leaverOk(user, fn, args); } catch { return false; } }
   if (GC_FNS.has(fn)) { try { return checkinOk(user, fn, args); } catch { return false; } }
   if (TK_FNS.has(fn)) { try { return taskOk(user, fn, args); } catch { return false; } }
+  if (CF_FNS.has(fn)) { try { return confOk(user, fn, args); } catch { return false; } }
   if (isAdmin(user)) return true;
   if (ADMIN_ONLY.has(fn)) return false;
   if (ANYONE.has(fn)) return true;
@@ -408,4 +409,47 @@ function taskOk(user, fn, a) {
   if (!t || !teachesClass(user, t.classId)) return false;
   if (fn === 'editTask') return a[1] === user.teacherId;
   return a[3] === user.teacherId && t.studentIds.includes(a[1]);
+}
+// ── Conference booking (api.openConferenceRound, editConferenceRound, closeConferenceRound, bookConference,
+// cancelConference, blockConferenceSlot) ──
+// Opening: an advisor for their own advisory, whole-school staff for any advisory or a whole Year, as themselves; admins.
+// Editing and closing: whoever opened it, its advisor, whole-school staff, admins. Booking: a family only for their own
+// children ('family'), at least api.CONF_CHANGE_H hours ahead by the server's clock, and only moving a booking that is still
+// that far off; the advisor (as themselves) for their own advisees, any time. Cancelling: the same. Blocking a slot: the
+// advisor of that grid, as themselves. Students never; reminders only the server (sendConferenceReminders).
+const CF_FNS = new Set(['openConferenceRound', 'editConferenceRound', 'closeConferenceRound', 'bookConference', 'cancelConference', 'blockConferenceSlot']);
+ADMIN_ONLY.add('sendConferenceReminders');
+function confOk(user, fn, args) {
+  const admin = isAdmin(user), tid = user.teacherId || null, staff = STAFF.includes(user.kind) && !!tid;
+  const whole = staff && reachOf(user) === null;
+  const soon = (d, t) => api.confTooSoon(d, t, Date.now());
+  if (fn === 'openConferenceRound') {
+    const [spec, by] = args;
+    if (admin) return !by || by === tid;
+    return staff && by === tid && (whole || (!spec?.year && spec?.advisorId === tid));
+  }
+  if (fn === 'editConferenceRound' || fn === 'closeConferenceRound') {
+    const r = api.getConferenceRound(args[0]), by = fn === 'editConferenceRound' ? args[2] : args[1];
+    if (!r) return false;
+    if (admin) return true;
+    return staff && by === tid && (whole || r.by === tid || r.advisorId === tid);
+  }
+  if (fn === 'blockConferenceSlot') {
+    const [rid, aid, , , , by] = args, r = api.getConferenceRound(rid);
+    return !!r && r.advisorIds.includes(aid) && !!tid && aid === tid && by === tid && (staff || admin);
+  }
+  const parent = user.kind === 'parent', kids = user.children || [];
+  if (fn === 'bookConference') {
+    const [rid, sid, slot, by] = args, r = api.getConferenceRound(rid), s = api.getStudent(sid);
+    if (!r || !s || !r.studentIds.includes(sid)) return false;
+    if (parent) { const mine = api.confBookingOf(rid, sid); return by === 'family' && kids.includes(sid) && !soon(slot?.date, slot?.time) && !(mine && soon(mine.date, mine.time)); }
+    return (staff || admin) && !!tid && by === tid && s.advisorId === tid;
+  }
+  if (fn === 'cancelConference') {
+    const b = api.getConfBooking(args[0]), by = args[1];
+    if (!b) return false;
+    if (parent) return by === 'family' && kids.includes(b.studentId) && !soon(b.date, b.time);
+    return (staff || admin) && !!tid && by === tid && api.getStudent(b.studentId)?.advisorId === tid;
+  }
+  return false;
 }

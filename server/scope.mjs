@@ -209,6 +209,7 @@ export function scopedSnapshot(user) {
   store.teacherTasks = parent ? [] : (full.teacherTasks || []).flatMap((t) => (taskMine(t) ? [t] : self && t.studentIds.includes(self) ? [{ ...t, studentIds: [self] }] : []));
   const keptTasks = new Set(store.teacherTasks.filter(taskMine).map((t) => t.id));
   store.handIns = parent ? [] : (full.handIns || []).filter((r) => (self ? r.studentId === self : keptTasks.has(r.taskId) && inReach(r.studentId)));
+  Object.assign(store, confScope(full, { user, all, self, parent, tid, inReach }));
   // Everything else (school lines' settings, integrations, rollout, family language, classes, keys other features add).
   for (const [k, v] of Object.entries(full)) if (!(k in store)) store[k] = generic(v, inReach);
   // Counts the whole-school screens show for what they may not open.
@@ -307,4 +308,26 @@ Object.assign(TOUCHES, {
   setTask: (a) => T((st().enrolments || []).filter((n) => n.classId === a[0] && !(n.to && n.to < api.TODAY) && api.getStudent(n.studentId)).map((n) => n.studentId), [a[1] ?? '?']),
   editTask: (a) => T(taskKids(a[0]), [a[1] ?? '?']), extendTask: (a) => T([a[1]], [a[3] ?? '?']),
   handInTask: (a) => T([api.getTask(a[0])?.studentIds.includes(a[1]) ? a[1] : '?']), remindDueTasks: () => T([]),
+});
+
+// ── Conference booking (api.openConferenceRound, bookConference): rounds go to whole-school roles whole, to anyone else
+// when they cover a student in reach (only those ids). Bookings and blocks: whole-school roles and admins all; an advisor
+// their own grid; a student their own bookings; a family their children's bookings in full, and every other booking or block
+// in their children's advisors' grids only as a taken time (no student, no id, nobody's name). ──
+function confScope(full, { user, all, self, parent, tid, inReach }) {
+  const rounds = (full.confRounds || []).flatMap((r) => { const ids = r.studentIds.filter((x) => (self ? x === self : inReach(x))); return all ? [r] : ids.length ? [{ ...r, studentIds: ids }] : []; });
+  const kids = new Set(parent ? user.children || [] : []);
+  const grids = new Set([...kids].flatMap((sid) => { const a = api.getStudent(sid)?.advisorId; return rounds.filter((r) => r.studentIds.includes(sid)).map((r) => `${r.id}|${a}`); }));
+  const taken = ({ roundId, advisorId, date, time }) => ({ roundId, advisorId, date, time, taken: true });
+  const bookings = (full.confBookings || []).flatMap((b) => {
+    if (all || (!!tid && b.advisorId === tid) || (!!self && b.studentId === self) || kids.has(b.studentId)) return [b];
+    return grids.has(`${b.roundId}|${b.advisorId}`) ? [taken(b)] : [];
+  });
+  const blocks = (full.confBlocks || []).flatMap((k) => (all || (!!tid && k.advisorId === tid) ? [k] : grids.has(`${k.roundId}|${k.advisorId}`) ? [taken(k)] : []));
+  return { confRounds: rounds, confBookings: bookings, confBlocks: blocks };
+}
+Object.assign(TOUCHES, {
+  openConferenceRound: (a) => T([], [a[1]]), editConferenceRound: (a) => T([], [a[2]]), closeConferenceRound: (a) => T([], [a[1]]),
+  bookConference: (a) => T([a[1]], [a[3] !== 'family' ? a[3] ?? '?' : null]), cancelConference: (a) => T([api.getConfBooking(a[0])?.studentId ?? '?'], [a[1] !== 'family' ? a[1] ?? '?' : null]),
+  blockConferenceSlot: (a) => T([], [a[5]]), sendConferenceReminders: () => T([]),
 });

@@ -1,5 +1,6 @@
 import { familyViewer, getMomentComments, getNotes, getStudentMap, TERM_START, TODAY } from './api.js';
 import { talkingPoints } from './conference-points.js';
+import { appUrl } from './format.js';
 
 // What one conference sheet shows (src/components/ConferenceSheets.jsx). The advisor's copy reads the record as the
 // advisor may (never private moments or reflections); the family copy reads it as the family view does
@@ -44,3 +45,6 @@ export function conferenceSheet(studentId, { family = false } = {}) {
   });
   return { student: s, first, year: s.grade + 1, homeroom: s.homeroom || '', family, lines, moments, reflections, termRefl, goals, endorsements, termEndorse, answers, staff, points };
 }
+
+// The address that opens one student's conference sheet on the advisor's page (the printed day schedule lists it).
+export const conferenceSheetLink = (personaId, studentId) => appUrl(`${personaId}/student/${studentId}~sheet`);

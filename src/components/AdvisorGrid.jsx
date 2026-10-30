@@ -12,8 +12,9 @@ import { HandoverNotes, NewToYou, isNewTo } from './YearHandover.jsx';
 import { AdvisoryReflection } from './TermReflection.jsx';
 import { AdvisoryMilestones } from './Milestones.jsx';
 import { StuckFlags } from './GoalCheckins.jsx';
+import { AdvisoryBooking } from './ConferenceBooking.jsx';
 
-export default function AdvisorGrid({ advisorId, onOpen, toast, version }) {
+export default function AdvisorGrid({ advisorId, onOpen, toast, version, persona, focus }) {
   const cohort = useMemo(() => getCohort(advisorId), [advisorId, version]); // eslint-disable-line react-hooks/exhaustive-deps
   const [prompted, setPrompted] = useState({});
   const [handover, setHandover] = useState(false);
@@ -41,6 +42,7 @@ export default function AdvisorGrid({ advisorId, onOpen, toast, version }) {
       <AdvisoryConference advisorId={advisorId} cohort={cohort} group={group.name} />
       <AdvisoryReflection advisorId={advisorId} toast={toast} version={version} />
       <StuckFlags teacherId={advisorId} toast={toast} version={version} onOpen={onOpen} />
+      <AdvisoryBooking advisorId={advisorId} persona={persona} toast={toast} version={version} focus={focus} />
       <QuietGroup advisorId={advisorId} toast={toast} version={version} />
       <AdvisoryMilestones studentIds={cohort.map((c) => c.student.id)} version={version} onOpen={(sid, eid) => onOpen(`${sid}~${eid}`)} />
       <p className="fineprint">Advisor view shows advisor, school and publishable items. Students are listed alphabetically; the grid never ranks or compares them. Each card compares a student only with their own last term.</p>
