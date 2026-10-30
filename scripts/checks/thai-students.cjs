@@ -167,6 +167,8 @@ let srv;
     await act(cT, 'setTask', [CLASS, COULTAS, { title: 'Cell diagram', due: day(1), brief: 'Draw and label a plant cell.', checklist: ['Label the nucleus'], needs: 'photo' }]);
     await act(cT, 'askClass', [CLASS, COULTAS, { question: 'What surprised you in the lab this week?' }]);
     await act(cT, 'spotMoment', [[AARON], COULTAS, { title: 'Helped tidy the lab', note: 'Thank you for staying behind.', lineId: 'science', classId: CLASS }]);
+    // Class photos (PhotoDrop.jsx): two photos from a practical, after the spotted moment.
+    await act(cT, 'dropPhotos', [CLASS, COULTAS, { title: 'Electricity practical', lineId: 'science', note: 'Great wiring.', photos: [{ url: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', studentIds: [AARON] }, { url: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', studentIds: [AARON] }] }]);
     await act(alT, 'openReflectionWindow', [{ title: 'Term 1 reflection', opens: day(0), closes: day(14), advisorId: ALTEMEN }, ALTEMEN]);
     await act(alT, 'addMomentComment', [m1.id, ALTEMEN, 'Brilliant engineering, Aaron.']);
     await a.reload(); await a.waitForSelector('.simple .sh-actions');
@@ -213,6 +215,11 @@ let srv;
     await a.locator('.sh-goal').first().waitFor({ timeout: 4000 }).catch(() => {});
     await sweep(a, AARON, 'Aaron: Simple home with a goal, an encouragement and a check-in');
     await a.locator('.sh-spot .primary, .spot-me .spot-acts .primary').first().click().catch(() => {}); await sweep(a, AARON, 'Aaron: added a spotted moment');
+    if (await a.locator('.pd-offer').count()) {
+      await a.locator('.pd-offer .pd-pick').first().click(); await sweep(a, AARON, 'Aaron: class photos, one not kept');
+      await a.locator('.pd-offer .pd-report').first().click(); await a.waitForSelector('.sg-dialog'); await sweep(a, AARON, 'Aaron: report a class photo'); await close(a);
+      await a.locator('.pd-offer .pd-acts .primary').click(); await sweep(a, AARON, 'Aaron: kept a class photo');
+    } else ok(false, 'Aaron: the class photos card is on his Simple home');
     const did = a.locator('.sh-goal .sh-goal-do .primary').first();
     if (await did.count()) {
       await did.click(); await a.waitForSelector('.sh-flow'); await sweep(a, AARON, 'Aaron: I did it, a photo');

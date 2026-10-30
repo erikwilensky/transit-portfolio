@@ -200,6 +200,7 @@ export function canAct(user, fn, args = []) {
   // Undo sends a whole copy of the record, and in a pilot every browser holds only its own part of it.
   if (fn === 'restore') return false;
   if (SPOT_FNS.has(fn)) { try { return spotOk(user, fn, args); } catch { return false; } }
+  if (fn === 'dropPhotos' || (fn === 'reportItem' && args[0]?.photoId)) { try { return dropOk(user, fn, args); } catch { return false; } }
   if (fn === 'setHandoverNote') { try { return handoverOk(user, args); } catch { return false; } }
   if (TR_FNS.has(fn)) { try { return termReflectionOk(user, fn, args); } catch { return false; } }
   if (PF_FNS.has(fn) || (fn === 'reportItem' && args[0]?.feedbackId)) { try { return peerOk(user, fn, args); } catch { return false; } }
@@ -498,4 +499,21 @@ function casOk(user, fn, args) {
 export function liveSessions() {
   const now = Date.now(), live = Object.values(sessions).filter((s) => s.expiresAt >= now && accountById(s.userId));
   return { sessions: live.length, people: new Set(live.map((s) => s.userId)).size };
+}
+
+// ── Class photo drop (api.dropPhotos; acceptSpotted/declineSpotted answer it; reportItem on { photoId }) ──
+// Sending: a teacher of the class (whole-school staff and admins too, only for a class they teach), as themselves; the
+// mutator checks every student is in the class. Reporting a photo: a student it was given to who still holds it, as
+// 'student'; staff who reach a student it was given to, as themselves; admins. Never families.
+function dropOk(user, fn, args) {
+  if (fn === 'dropPhotos') return (STAFF.includes(user.kind) || isAdmin(user)) && !!user.teacherId && args[1] === user.teacherId && teachesClass(user, args[0]);
+  const [target, , , from] = args, f = api.dropPhotoById(target.photoId), key = from?.key;
+  if (!f?.p.url) return false;
+  const sid = target.studentId || f.p.studentIds[0];
+  if (!f.p.studentIds.includes(sid)) return false;
+  if (user.kind === 'student') return key === 'student' && sid === user.studentId && (st().spotted || []).some((x) => x.dropId === f.d.id && x.studentId === sid && x.photos?.some((p) => p.id === f.p.id) && (x.status === 'open' || (x.kept || []).includes(f.p.id)));
+  if (isAdmin(user)) return key === 'admin' || (!!user.teacherId && key === user.teacherId);
+  if (!STAFF.includes(user.kind) || !user.teacherId || key !== user.teacherId) return false;
+  const reach = reachOf(user);
+  return reach === null || reach.has(sid);
 }

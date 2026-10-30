@@ -774,3 +774,16 @@ export function studentThai(s) {
   const d = thaiDates(s); if (d !== s && !/[A-Za-z]{2,}/.test(d)) return d;
   return null;
 }
+// Class photo drop (src/components/PhotoDrop.jsx): the photos a teacher gave a student, keeping them, reporting one.
+Object.assign(STU, {
+  'Keep this photo?': 'เก็บรูปนี้ไหม', 'Tap the photos you want to keep.': 'แตะรูปที่คุณอยากเก็บไว้', '✓ Keeping': '✓ เก็บไว้', 'Not keeping': 'ไม่เก็บ',
+  'Something wrong with this photo?': 'รูปนี้มีอะไรไม่ถูกต้องไหม', 'Say what you did': 'เล่าว่าคุณทำอะไร', 'e.g. I wired the circuit and the bulb lit up.': 'เช่น ฉันต่อวงจรแล้วหลอดไฟก็สว่าง',
+  'Keep 1 photo': 'เก็บ 1 รูป', 'Pick at least one photo to keep': 'เลือกอย่างน้อยหนึ่งรูปที่จะเก็บ', 'Tell a teacher about this photo': 'บอกครูเรื่องรูปนี้', 'The photo': 'รูปนี้',
+  'A teacher who looks after safety will see it. The teacher who took the photo is not told it was you.': 'ครูที่ดูแลความปลอดภัยจะเห็นเรื่องนี้ ครูที่ถ่ายรูปจะไม่รู้ว่าเป็นคุณ',
+  'This photo is not for you.': 'รูปนี้ไม่ใช่ของคุณ', 'That photo is gone.': 'รูปนี้ไม่มีแล้ว',
+});
+STU_RE.push(
+  [/^(.+) added photos from “(.+)”$/, (m) => `${m[1]} เพิ่มรูปจาก “${m[2]}”`], [/^(.+) added photos from (.+)$/, (m) => `${m[1]} เพิ่มรูปจาก ${m[2]}`],
+  [/^Keep (\d+) photos$/, (m) => `เก็บ ${m[1]} รูป`], [/^Photo (\d+) from your teacher$/, (m) => `รูปที่ ${m[1]} จากครู`], [/^(\d+) more after this$/, (m) => `มีอีก ${m[1]} รายการ`],
+  [/^A teacher has removed a photo from “(.+)”\.$/, (m) => `ครูลบรูปหนึ่งออกจาก “${m[1]}” แล้ว`],
+);

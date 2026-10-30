@@ -9,6 +9,7 @@ import { SpotDialog, SpottedList } from '../components/Spotted.jsx';
 import { PeerClassList } from '../components/PeerFeedback.jsx';
 import { ClassTaskList, SetTaskDialog, TaskGrid } from '../components/ClassTasks.jsx';
 import { ClassPromptsCard } from '../components/SubjectPrompts.jsx';
+import { PhotoDropDialog, PhotoDropList } from '../components/PhotoDrop.jsx';
 import './classes.css';
 
 // Pilot: a teacher's classes from the class lists. #/<persona>/classes, /classes/<classId>,
@@ -81,6 +82,7 @@ function ClassPage({ classId, teacherId, go, persona, version, toast }) {
   const [tasking, setTasking] = useState(false);
   const [ticked, setTicked] = useState([]);
   const [spotting, setSpotting] = useState(null); // the students a spotted moment is for
+  const [dropping, setDropping] = useState(false); // class photos
   const back = <button className="cb-back" onClick={() => go(persona.id, 'classes')}>‹ My classes</button>;
   if (!c || !c.teacherIds?.includes(teacherId)) return <div className="page mc">{back}<div className="empty-state"><b>This class is not one of yours.</b></div></div>;
   return (
@@ -95,10 +97,12 @@ function ClassPage({ classId, teacherId, go, persona, version, toast }) {
         <div className="cp-head-acts">
           <button className="primary" disabled={!c.students.length} onClick={() => setAsking(true)}>Ask the class</button>
           <button className="ghost" disabled={!c.students.length} onClick={() => setTasking(true)}>Set a task</button>
+          <button className="ghost pd-open" disabled={!c.students.length} onClick={() => setDropping(true)}>Drop photos</button>
           <Waiting teacherId={teacherId} go={go} persona={persona} />
         </div>
       </header>
       {asking && <AskClassDialog c={c} teacherId={teacherId} toast={toast} onClose={() => setAsking(false)} />}
+      {dropping && <PhotoDropDialog c={c} teacherId={teacherId} toast={toast} onClose={() => setDropping(false)} />}
       <ClassQuestions c={c} teacherId={teacherId} go={go} persona={persona} version={version} toast={toast} />
       {tasking && <SetTaskDialog c={c} teacherId={teacherId} toast={toast} onClose={() => setTasking(false)} />}
       <ClassTaskList c={c} teacherId={teacherId} go={go} persona={persona} version={version} toast={toast} />
@@ -128,6 +132,7 @@ function ClassPage({ classId, teacherId, go, persona, version, toast }) {
         </table>
       )}
       <SpottedList teacherId={teacherId} classId={c.id} version={version} />
+      <PhotoDropList teacherId={teacherId} classId={c.id} version={version} />
       <PeerClassList classId={c.id} version={version} />
     </div>
   );

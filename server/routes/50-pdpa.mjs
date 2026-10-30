@@ -16,7 +16,7 @@ import * as L from '../audit.mjs';
 const UPLOADS = path.join(DATA_DIR, 'uploads');
 const AUDIT = path.join(DATA_DIR, 'audit.log');
 const fail = (status, message) => Object.assign(new Error(message), { status });
-const FILE_RE = /\/api\/files\/([a-f0-9]{32}\.[a-z0-9]{2,5})/g;
+const FILE_RE = /api\/files\/([a-f0-9]{32}\.[a-z0-9]{2,5})/g; // with or without the leading slash (the browser saves it without)
 export const filesIn = (obj) => [...new Set([...JSON.stringify(obj).matchAll(FILE_RE)].map((m) => m[1]))];
 export function audit(entry) {
   try { fs.appendFileSync(AUDIT, JSON.stringify({ at: new Date().toISOString(), ...entry }) + '\n'); } catch (e) { console.error('Audit log not written:', e.message); }

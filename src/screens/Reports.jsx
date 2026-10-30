@@ -1,7 +1,7 @@
 // Safeguarding: the moderators' queue (api.moderateReport). Coordinators, counsellors, leadership and admins.
 // Each report: the item (title, photo, text), the student, who reported it and why, and what was done.
 import { useEffect, useState } from 'react';
-import { getEvent, getMomentComment, getPeerFeedback, getReports, getStudent, peerText, isPhoto, moderateReport, REPORT_REASONS } from '../api.js';
+import { getEvent, getMomentComment, getPeerFeedback, getReports, getStudent, getTeacher, peerText, isPhoto, moderateReport, REPORT_REASONS } from '../api.js';
 import { ago } from '../format.js';
 import '../components/safeguarding.css';
 
@@ -34,9 +34,9 @@ function ReportCard({ r, persona, toast, focus }) {
   const [note, setNote] = useState('');
   const e = getEvent(r.eventId), c = r.commentId ? getMomentComment(r.commentId) : null;
   const f = r.feedbackId ? getPeerFeedback(r.feedbackId) : null;
-  const target = r.feedbackId ? f : r.commentId ? c : e;
+  const target = r.photoId ? null : r.feedbackId ? f : r.commentId ? c : e;
   const s = getStudent(r.studentId);
-  const photo = !c && !r.feedbackId && e?.evidence?.find(isPhoto);
+  const photo = r.photoId ? (r.url ? { url: r.url, caption: 'The reported photo' } : null) : !c && !r.feedbackId && e?.evidence?.find(isPhoto);
   const act = (action) => {
     try { moderateReport(r.id, action, note, persona.teacherId || null); setNote(''); toast?.(ACTION[action]); } catch (x) { toast?.(x.message || 'That did not work.'); }
   };
@@ -50,8 +50,9 @@ function ReportCard({ r, persona, toast, focus }) {
       <div className="sg-item">
         {photo && <img src={photo.url} alt={photo.caption || 'Photo'} />}
         <div>
-          <span className="sg-kind">{r.feedbackId ? `Kind feedback from a classmate${f ? ` (${getStudent(f.fromId)?.name || f.fromName})` : ''}` : c || r.commentId ? 'Comment on a moment' : 'Moment'}</span>
-          <h3>{e?.title || 'This moment was deleted'}</h3>
+          <span className="sg-kind">{r.photoId ? `Class photo from ${getTeacher(r.teacherId)?.name || 'a teacher'}` : r.feedbackId ? `Kind feedback from a classmate${f ? ` (${getStudent(f.fromId)?.name || f.fromName})` : ''}` : c || r.commentId ? 'Comment on a moment' : 'Moment'}</span>
+          <h3>{r.photoId ? r.title : e?.title || 'This moment was deleted'}</h3>
+          {r.photoId && !r.url && <p className="fineprint">The photo was removed.</p>}
           {r.feedbackId ? (f ? <p className="sg-text">“{f.parts.map(peerText).join(' ')}”</p> : <p className="fineprint">The feedback was removed.</p>) : c ? <p className="sg-text">“{c.text}”</p> : e?.summary ? <p className="sg-text">{e.summary}</p> : null}
           {r.commentId && !c && <p className="fineprint">The comment was deleted.</p>}
           {e?.visibility === 'private' && <p className="fineprint">The student has made it private since.</p>}

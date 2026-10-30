@@ -79,6 +79,9 @@ export function canSeeFile(user, name, meta = {}, exToken = null) {
   if ((A.isAdmin(user) || user.kind === 'leadership') && F.allFeedback().some((f) => f.screenshot?.url?.endsWith(`/${name}`))) return true;
   // Kind feedback: the photo on a classmate's moment opened for feedback (api.peerMomentsFor).
   if (user.kind === 'student' && user.studentId && api.peerMomentsFor(user.studentId).some((m) => m.image?.includes(`api/files/${name}`))) return true;
+  // Class photo drop: a photo given to students also opens for staff who reach one of them (the batch itself goes only to
+  // its teacher; each student gets their own photos through their copy of the record).
+  if (user.kind !== 'student' && user.kind !== 'parent') { const sids = api.dropPhotoStudents(name); if (sids?.length) { const { reach } = seen(user); if (reach === null || sids.some((sid) => reach.has(sid))) return true; } }
   const refs = fileIndex().get(name);
   if (!refs) return false; // not attached to anything yet: the uploader only
   return [user, ...(A.isAdmin(user) ? previewed(user) : [])].some((u) => viaRecord(u, name, refs));
