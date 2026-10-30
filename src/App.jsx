@@ -40,6 +40,7 @@ import Pdpa from './screens/Pdpa.jsx';
 import { FeedbackDialog } from './components/Feedback.jsx';
 import { NudgeBanner } from './components/Nudges.jsx';
 import { TermReflectionCard } from './components/TermReflection.jsx';
+import { StudentConference } from './components/ConferenceBooking.jsx';
 import { StudentMilestones } from './components/Milestones.jsx';
 import Applications from './screens/Applications.jsx';
 import SignalBoard from './screens/SignalBoard.jsx';
@@ -336,7 +337,7 @@ export default function App() {
           <ErrorBoundary resetKey={`${persona.id}-${route.screen}-${route.param}`}>
           {persona.kind === 'student' && <StudentScreens {...ctx} screen={route.screen} param={route.param} studentId={studentId} />}
           {persona.kind === 'student' && route.screen === 'map' && !tour && !getStudent(studentId)?.onboarding && <InstallHint />}
-          {acts(persona, 'advisor') && route.screen === 'advisory' && <AdvisorGrid advisorId={persona.teacherId} version={version} toast={toast} onOpen={(id) => go(persona.id, 'student', id)} />}
+          {acts(persona, 'advisor') && route.screen === 'advisory' && <AdvisorGrid advisorId={persona.teacherId} version={version} toast={toast} persona={persona} focus={route.param} onOpen={(id) => go(persona.id, 'student', id)} />}
           {acts(persona, 'advisor') && route.screen === 'student' && (getStudent(route.param?.split('~')[0] || 'st-01') ? <AdvisorStudent studentId={route.param?.split('~')[0] || 'st-01'} focus={route.param?.split('~')[1]} {...ctx} /> : <NotInRecord onBack={() => go(persona.id, 'advisory')} />)}
           {acts(persona, 'teacher') && route.screen === 'queue' && <TeacherQueue teacherId={persona.teacherId} focus={route.param} {...ctx} />}
           {pilot && acts(persona, 'teacher') && route.screen === 'classes' && <MyClasses teacherId={persona.teacherId} param={route.param} {...ctx} />}
@@ -417,7 +418,8 @@ function StudentScreens({ screen, param, studentId, drafts, setDrafts, audience,
   const [addReq, setAddReq] = useState(0);
   useEffect(() => { if (param === 'add' && screen === 'map') setAddReq((n) => n + 1); }, [param, screen]);
   const nudge = <><StudentMilestones studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} /><NudgeBanner studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} onAdd={() => setAddReq((n) => n + 1)} /><CarryOverGoals studentId={studentId} version={version} toast={toast} simple={getIntensity(studentId) === 'simple'} />
-    <TermReflectionCard studentId={studentId} version={version} toast={toast} simple={getIntensity(studentId) === 'simple'} auto={screen === 'map' && param === 'reflect'} /></>;
+    <TermReflectionCard studentId={studentId} version={version} toast={toast} simple={getIntensity(studentId) === 'simple'} auto={screen === 'map' && param === 'reflect'} />
+    <StudentConference studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} /></>;
   // N11: stations a presentation would show but a link cannot, because they are not publishable.
   const [gapFor, setGapFor] = useState(null);
   const gapsOf = (pres) => { const l = applyLens(map, pres, { hiddenLines: pres.filters.hiddenLines }); return map.events.filter((e) => l.visible.has(e.id) && e.type !== 'goal' && e.visibility !== 'publishable'); };

@@ -161,3 +161,45 @@ export function consentText(lang, r, first) {
   if (r.title !== t || r.detail !== d) return [r.title, r.detail, 'en'];
   return [...c.th(first), 'th'];
 }
+
+// ── Conference booking, as a family reads it (src/components/ConferenceBooking.jsx). Times are Bangkok time. ──
+const CONF = {
+  en: {
+    head: 'Book a conference', intro: 'Pick one time for each child with their advisor. You can change or cancel until 24 hours before.',
+    tz: 'All times are Bangkok time.', with: (a) => `with ${a}`, online: 'Online', join: 'Join link', mins: (n) => `${n} minutes`,
+    pick: (f) => `Pick a time for ${f}`, booked: 'Booked', change: 'Change time', cancel: 'Cancel booking', keep: 'Keep this time',
+    sure: 'Cancel this booking?', yes: 'Yes, cancel', locked: 'Less than 24 hours to go. To change it, contact the advisor.',
+    taken: 'Taken', clash: (f) => `${f}’s time`, soon: 'Too soon', book: (t) => `Book ${t}`, none: 'No times are free. Contact the advisor.',
+    saved: (f, w) => `Booked ${f}’s conference: ${w}`, gone: (f) => `${f}’s booking is cancelled`, by: (a) => `Booked by ${a}`,
+    at: (d, t) => `${d}, ${t}`, times: (f, d) => `Times for ${f} on ${d}`,
+  },
+  th: {
+    head: 'จองเวลาประชุมผู้ปกครอง', intro: 'เลือกเวลาหนึ่งช่วงสำหรับบุตรหลานแต่ละคนกับครูที่ปรึกษา เปลี่ยนหรือยกเลิกได้จนถึง 24 ชั่วโมงก่อนเวลานัด',
+    tz: 'เวลาทั้งหมดเป็นเวลาประเทศไทย', with: (a) => `กับ ${a}`, online: 'ออนไลน์', join: 'ลิงก์เข้าร่วม', mins: (n) => `${n} นาที`,
+    pick: (f) => `เลือกเวลาสำหรับ ${f}`, booked: 'จองแล้ว', change: 'เปลี่ยนเวลา', cancel: 'ยกเลิกการจอง', keep: 'ใช้เวลาเดิม',
+    sure: 'ต้องการยกเลิกการจองนี้หรือไม่', yes: 'ยืนยันการยกเลิก', locked: 'เหลือเวลาน้อยกว่า 24 ชั่วโมง หากต้องการเปลี่ยน โปรดติดต่อครูที่ปรึกษา',
+    taken: 'ไม่ว่าง', clash: (f) => `ตรงกับเวลาของ ${f}`, soon: 'กระชั้นเกินไป', book: (t) => `จอง ${t} น.`, none: 'ไม่มีเวลาว่าง โปรดติดต่อครูที่ปรึกษา',
+    saved: (f, w) => `จองเวลาประชุมของ ${f} แล้ว: ${w}`, gone: (f) => `ยกเลิกการจองของ ${f} แล้ว`, by: (a) => `จองโดย ${a}`,
+    at: (d, t) => `${d} เวลา ${t} น.`, times: (f, d) => `เวลาสำหรับ ${f} วัน${d}`,
+  },
+};
+export const confWords = (lang) => CONF[lang === 'th' ? 'th' : 'en'];
+// "Tue 3 Nov" / "อ. 3 พ.ย." for a conference day (Bangkok dates).
+export const confDay = (lang, d) => new Date(`${d}T12:00:00+07:00`).toLocaleDateString(lang === 'th' ? 'th-TH' : 'en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Asia/Bangkok' });
+export const confSlotText = (lang, d, t) => confWords(lang).at(confDay(lang, d), t);
+const MON_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const thWhen = (d, mon, y, t) => `${dateIn('th', `${y}-${String(MON_EN.indexOf(mon) + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`)} เวลา ${t} น.`;
+const WHEN = '(\\d{1,2}) (\\w{3}) (\\d{4}) at (\\d{2}:\\d{2})';
+NOTE_TH.push(
+  [/^(.+) opened conference booking: “(.+)”\. Pick a time for (.+)$/, (m) => `${m[1]} เปิดให้จองเวลาประชุมผู้ปกครอง: “${m[2]}” เลือกเวลาสำหรับ ${m[3]}`],
+  [new RegExp(`^(.+) booked (.+)’s conference: ${WHEN}$`), (m) => `${m[1]} จองเวลาประชุมของ ${m[2]} แล้ว: ${thWhen(m[3], m[4], m[5], m[6])}`],
+  [new RegExp(`^(.+) cancelled (.+)’s conference on ${WHEN}$`), (m) => `${m[1]} ยกเลิกการประชุมของ ${m[2]} ${thWhen(m[3], m[4], m[5], m[6])}`],
+  [new RegExp(`^Reminder: (.+)’s conference with (.+) is tomorrow, ${WHEN} · (.+)$`), (m) => `เตือนความจำ: พรุ่งนี้ ${m[1]} มีนัดประชุมกับ ${m[2]} ${thWhen(m[3], m[4], m[5], m[6])} · ${m[7] === 'online' ? 'ออนไลน์' : m[7]}`],
+);
+Object.assign(ERR_TH, {
+  'That time was just taken. Pick another': 'มีผู้จองเวลานี้ไปแล้ว โปรดเลือกเวลาอื่น',
+  'Pick a time at least 24 hours ahead': 'โปรดเลือกเวลาที่ห่างจากตอนนี้อย่างน้อย 24 ชั่วโมง',
+  'Less than 24 hours to go: ask the advisor to change it': 'เหลือเวลาน้อยกว่า 24 ชั่วโมง โปรดติดต่อครูที่ปรึกษาเพื่อเปลี่ยนเวลา',
+  'That time has passed': 'เลยเวลานี้ไปแล้ว',
+  'Booking for this conference is closed': 'ปิดการจองแล้ว',
+});
