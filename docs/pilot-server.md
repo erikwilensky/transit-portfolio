@@ -915,6 +915,11 @@ Each person reads the app in English or Thai, and the choice belongs to them, no
   written), weekly digest, header navigation, display menu, account menu, password dialog, feedback dialog, save status,
   and notifications. Notifications are stored once, in English; `noteText(lang, text)` renders the ones families get
   (and the consent answers students get) from their known templates. Names and quoted titles stay as written.
+- **Also in Thai** (`barWords(lang)`, `src/i18n.js`): the bars at the foot of every screen, which `src/main.jsx` renders
+  outside `LangContext` and so read `getLang()`: a refused change (`Refused.jsx`, with the server's reason through
+  `errText`), "A new version is ready" (`UpdateBar`), waiting changes (`OfflineBar`) and the sign-out warning
+  (`signOutWarning(n, lang)`). Also reporting a moment (`Report.jsx`: button, dialog, reasons), "Spotted by" and the
+  evidence viewer's labels and dates.
 - **Never translated**: students' own words (station titles, reflections) stay as written, marked `lang="en"`.
 - **Family letters** (`FamilyLetters.jsx`): a Language choice on the sheet: Thai and English (default: Thai paragraphs,
   then English, on each letter), English only, or Thai only. Still two letters to an A4 page in every choice.
@@ -923,10 +928,13 @@ Each person reads the app in English or Thai, and the choice belongs to them, no
   missing): two parents of different students in separate browsers, one Thai and one English, each keeps theirs after a
   reload and on a second device; the Thai parent's family view, bell and menu are in Thai; the sign-in page remembers ไทย;
   bilingual letters fit two to a page (PDF page count). Screenshots and a PDF go to `SCRATCH` or the temp folder.
+  `node scripts/checks/polish.cjs`: a Thai and an English parent each get the refused-change bar in their own language;
+  the demo's coordinator, counsellor and leadership have Reports in the nav (a subject teacher does not).
 ## Safeguarding: reports and the moderators' queue (`src/api.js`, `src/components/Report.jsx`, `src/screens/Reports.jsx`)
 
 Anyone signed in can report a moment or a moment comment they can see; the school's moderators decide what happens to it.
-Demo and pilot (the Reports screen is in the pilot nav only). No automatic filter.
+Demo and pilot: Reports is in the nav of every moderator (coordinator, counsellor, leadership, admin), the demo's
+personas included (`NAV` in `src/personas.js`; the pilot adds it once, `src/auth.js`). No automatic filter.
 
 - **Record**: `store.reports = [{ id, kind: 'station' | 'comment', eventId, commentId?, studentId (the owner), reason, note, at,
   from: { key, name, role }, status: open | hidden | shown | photo-removed | no-action, history: [{ action, note, at, by }] }]`,
@@ -1040,7 +1048,11 @@ it, and the old advisor stops seeing students who are no longer theirs.
 - **Reach** (`teacherReach`): an ended class place (`to` before today) no longer counts. For a student whose latest
   handover was from this teacher, only links made after the handover date count (their earlier prompts, comments,
   requests, endorsements, sponsorships); being the advisor or teaching a current class still does. So the old advisor
-  keeps students she still teaches, and loses the rest.
+  keeps students she still teaches, and loses the rest. Once a new year has started (`store.yearStart`), the same holds for
+  every teacher: links dated on or before `yearStart.date` (prompts, comments, endorsement and evidence requests,
+  endorsements, sponsorships, class tasks and class endorsements) no longer count, so a subject teacher from an earlier
+  year stops reaching a student unless they advise them, have a current class place with them or supervise their DP
+  work. Links made after the year start count again. Test: `server/test/year-reach.test.mjs`.
 - **Scope**: handovers and notes go to staff only, never to a student or family. Notes: the student's current advisor,
   the note's author and whole-school roles (subject teachers do not get them). `store.handedOver` gives the previous
   advisor `{ studentId, name, grade, homeroom, to, date }` for students she handed over and no longer reaches, so she
@@ -1138,6 +1150,8 @@ so no mutator, Undo or restore can change it. Demo mode writes nothing.
   people }`. `person`: an account id, or part of a name (the actor, or the account the entry is about); `student`: a
   student id, or part of the label; `from`/`to`: `YYYY-MM-DD`, inclusive, which also limits the months read.
   `&format=csv` → every matching entry as CSV (cells starting `=`, `+`, `-` or `@` get a leading `'`).
+  Each month file is parsed once and kept in memory while its size and mtime stay the same; a file that only grew
+  parses just the appended lines; pruning, erasure or any other rewrite parses it again (`server/test/audit-cache.test.mjs`).
 - **Screen**: "Activity log" in the nav for admins and leadership: filters (person with suggestions, student, what,
   result, dates), 50 per page (Newer, Older), "Download as CSV" of the filtered set.
 - Tests: `server/test/activity-log.test.mjs` (written on action, refusals, no secrets, 403, filters, paging, CSV,

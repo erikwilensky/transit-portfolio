@@ -64,7 +64,29 @@ setInterval(() => flush(), 60_000).unref();
 onShutdown(() => flush(true));
 
 // ── Reading ──
-const readLines = (f) => { try { return fs.readFileSync(f, 'utf8').split('\n').filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean); } catch { return []; } };
+const parse = (text) => text.split('\n').filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+// Parsed month files, kept while their size and mtime stay the same. A file that only grew (new lines appended) parses
+// just the new part; anything else (prune, erasure, a restore) parses it again. Callers must not change the entries.
+const cache = new Map(); // file → { size, mtime, entries }
+export const parsedCount = { files: 0, tails: 0 }; // for tests
+export const forget = (f) => (f ? cache.delete(f) : cache.clear());
+function readLines(f) {
+  let st; try { st = fs.statSync(f); } catch { cache.delete(f); return []; }
+  const c = cache.get(f);
+  if (c && c.size === st.size && c.mtime === st.mtimeMs) return c.entries;
+  try {
+    if (c && st.size > c.size) {
+      const fd = fs.openSync(f, 'r'), buf = Buffer.alloc(st.size - c.size);
+      try { fs.readSync(fd, buf, 0, buf.length, c.size); } finally { fs.closeSync(fd); }
+      const text = buf.toString('utf8');
+      if (text.endsWith('\n')) { parsedCount.tails++; const entries = [...c.entries, ...parse(text)]; cache.set(f, { size: st.size, mtime: st.mtimeMs, entries }); return entries; }
+    }
+    parsedCount.files++;
+    const entries = parse(fs.readFileSync(f, 'utf8'));
+    cache.set(f, { size: st.size, mtime: st.mtimeMs, entries });
+    return entries;
+  } catch { return []; }
+}
 // Every entry in the months from..to (YYYY-MM-DD, inclusive), oldest first, with the hour's refusals not written yet.
 export function entriesBetween(from, to) {
   const lo = from ? from.slice(0, 7) : '0000-00', hi = to ? to.slice(0, 7) : '9999-99';
@@ -85,6 +107,7 @@ export function prune(now = Date.now()) {
     const keep = lines.filter((l) => { try { return JSON.parse(l).at >= cut; } catch { return false; } });
     removed += lines.length - keep.length;
     if (!keep.length) fs.unlinkSync(f); else if (keep.length < lines.length) fs.writeFileSync(f, keep.join('\n') + '\n');
+    forget(f);
   }
   return removed;
 }
@@ -105,6 +128,6 @@ export function redactStudent(sid, accountIds = []) {
       if (e.actor && gone.has(e.actor.id)) { e.actor.name = ERASED; hit = true; }
       return JSON.stringify(e);
     });
-    if (hit) fs.writeFileSync(f, lines.join('\n') + '\n');
+    if (hit) { fs.writeFileSync(f, lines.join('\n') + '\n'); forget(f); }
   }
 }

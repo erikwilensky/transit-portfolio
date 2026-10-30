@@ -31,4 +31,5 @@ echo "== weekly-summary (starts its own clean pilot server on the real roster)";
 echo "== activity-log (starts its own clean pilot server on the real roster)"; node activity-log.cjs || fail=1
 echo "== term-reflection (starts its own clean pilot server on the real roster)"; node term-reflection.cjs || fail=1
 echo "== offline-capture (starts its own clean pilot server on the real roster)"; node offline-capture.cjs || fail=1
+echo "== polish (starts its own pilot and demo servers)"; node polish.cjs || fail=1
 echo "== tours"; node tours.cjs | grep -E "end url|ERRS|soon|boom|empty|hs" ; exit $fail

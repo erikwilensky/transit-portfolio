@@ -39,4 +39,5 @@ test('the words', () => {
   assert.equal(ob.waitingText(2, { offline: false }), 'Sending 2 changes saved on this phone…');
   assert.equal(ob.signOutWarning(2), '2 changes are not sent yet. Sign out anyway?');
   assert.equal(ob.signOutWarning(1), '1 change is not sent yet. Sign out anyway?');
+  assert.equal(ob.signOutWarning(2, 'th'), 'ยังมี 2 รายการที่ยังไม่ได้ส่ง ต้องการออกจากระบบหรือไม่');
 });

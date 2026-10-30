@@ -21,8 +21,11 @@ export function teacherReach(tid) {
   const cut = new Map();
   for (const h of s.handovers || []) cut.set(h.studentId, h);
   for (const [sid, h] of cut) if (h.from !== tid) cut.delete(sid); else cut.set(sid, h.date);
+  // A new year (store.yearStart): every teacher's older links stop counting too; advising, a current class place or
+  // DP supervision (NOW) still do.
+  const year = s.yearStart?.date || '';
   const NOW = '9999';
-  const add = (id, date) => { if (id && !(cut.has(id) && !(String(date ?? '') > cut.get(id)))) out.add(id); };
+  const add = (id, date) => { const d = String(date ?? ''); if (id && !(cut.has(id) && !(d > cut.get(id))) && !(year && !(d > year))) out.add(id); };
   const evStudent = new Map(s.events.map((e) => [e.id, e.studentId]));
   for (const x of s.students) if (x.advisorId === tid) add(x.id, NOW);
   const classes = new Set((s.classes || []).filter((c) => (c.teacherIds || []).includes(tid) || c.teacherId === tid).map((c) => c.id));

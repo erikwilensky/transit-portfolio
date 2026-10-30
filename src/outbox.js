@@ -2,6 +2,8 @@
 // kept in IndexedDB per signed-in account so they survive closing or reloading the app. Each row: { k, uid, url, body }
 // for a change, or { k, uid, upload: { key, name, type }, blob } for a photo taken offline. Rows go in order (k).
 // No IndexedDB (a private window, blocked storage, Node): the same calls work in memory for this page only.
+import { barWords } from './i18n.js';
+
 const DB = 'tp-outbox', STORE = 'items';
 let dbp = null, memK = 0;
 const mem = [];
@@ -80,4 +82,4 @@ export function waitingText(n, { simple = false, offline = true } = {}) {
   const c = `${n} change${n === 1 ? '' : 's'}`;
   return offline ? `${c} waiting. Saved on this phone. ${n === 1 ? 'It' : 'They'} will send when you are back online.` : `Sending ${c} saved on this phone…`;
 }
-export const signOutWarning = (n) => `${n} change${n === 1 ? ' is' : 's are'} not sent yet. Sign out anyway?`;
+export const signOutWarning = (n, lang = 'en') => barWords(lang).signOut(n);
