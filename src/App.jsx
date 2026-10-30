@@ -410,7 +410,7 @@ export default function App() {
           {pilot && route.screen === 'overview' && (persona.admin || persona.kind === 'leadership' || persona.kind === 'coordinator') && <Overview {...ctx} />}
           {pilot && route.screen === 'activitylog' && (persona.admin || persona.kind === 'leadership') && <ActivityLog {...ctx} />}
           {pilot && route.screen === 'screens' && (persona.admin || ['advisor', 'teacher', 'counsellor', 'coordinator', 'leadership'].includes(persona.kind)) && <Exhibitions {...ctx} />}
-          {pilot && route.screen === 'prompts' && (persona.admin || persona.kind === 'coordinator' || persona.kind === 'leadership') && <SubjectPromptsScreen {...ctx} />}
+          {pilot && route.screen === 'prompts' && (persona.admin || persona.kind === 'coordinator' || persona.kind === 'leadership') && <SubjectPromptsScreen {...ctx} param={route.param} />}
           {pilot && route.screen === 'phrases' && phraseWriter() && <PhrasesScreen {...ctx} />}
           {pilot && route.screen === 'reportcomments' && (persona.teacherId || persona.admin || persona.kind === 'coordinator' || persona.kind === 'leadership') && <ReportComments {...ctx} param={route.param} />}
           {pilot && route.screen === 'events' && persona.kind !== 'student' && persona.kind !== 'parent' && <SchoolEventsScreen {...ctx} />}

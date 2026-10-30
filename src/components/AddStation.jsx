@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { addStation, endorserChoices, getIntensity, getLine, getPromptsFor, getTeachers, teachersOf, TODAY } from '../api.js';
+import { addStation, endorserChoices, getIntensity, getLine, getPromptsFor, getTeachers, teachersOf, templateText, TODAY } from '../api.js';
 import { IdeasPanel } from './SubjectPrompts.jsx';
+import { GuideFields, GuideOffer } from './MomentTemplates.jsx';
 import { TYPE_LABEL, VIS_LABEL } from '../format.js';
 import { AttachButton, PendingFiles, UploadStatus, useUpload } from './FileAttach.jsx';
 import { evidenceFor } from '../upload.js';
@@ -32,7 +33,12 @@ export default function AddStation({ map, studentId, onClose, onAdded, prefill =
   const [usedIdeas, setUsedIdeas] = useState(null);
   const promptId = prompts && (prompts.source !== 'default' || usedIdeas === prompts.id) ? prompts.id : null;
   const starter = (s) => { setUsedIdeas(prompts.id); set({ reflection: `${f.reflection ? `${f.reflection.trimEnd()} ` : ''}${s.replace(/…$/, ' ')}` }); };
-  const save = () => { const e = addStation(studentId, { ...f, requestFrom: f.requestFrom || null, promptId }); onAdded?.(e); };
+  // Moment templates (MomentTemplates.jsx): a guide for the first line picked; its answers are the reflection, under headings.
+  const [guide, setGuide] = useState(null);
+  const [answers, setAnswers] = useState([]);
+  const guided = guide && f.lineIds[0] ? guide : null;
+  const words = guided ? templateText(guided, answers) : f.reflection;
+  const save = () => { const e = addStation(studentId, { ...f, reflection: words, requestFrom: f.requestFrom || null, promptId, templateId: guided && words ? guided.id : null }); onAdded?.(e); };
   const pickPhoto = (file) => photo.run(file, (r) => { const ev = evidenceFor(r, file.name); if (ev.kind === 'image') set({ image: ev.url, imageCaption: file.name }); else set({ files: [...f.files, ev] }); });
   return (
     <div className="modal-back" onClick={onClose}>
@@ -48,6 +54,7 @@ export default function AddStation({ map, studentId, onClose, onAdded, prefill =
             <div className="chips">{lines.map((l) => <button key={l.id} type="button" className={`line-chip${f.lineIds.includes(l.id) ? '' : ' off'}`} style={{ '--c': l.colour }} aria-pressed={f.lineIds.includes(l.id)} onClick={() => toggleLine(l.id)}><i className={l.pattern === 'cased' ? 'cased' : undefined} />{l.name}</button>)}</div>
           </div>
           <IdeasPanel key={prompts?.id || 'none'} prompts={prompts} onStarter={starter} onOpen={() => setUsedIdeas(prompts.id)} />
+          {f.lineIds[0] && !guided && <GuideOffer key={`g-${f.lineIds[0]}`} lineId={f.lineIds[0]} className="span2" onPick={(t) => { setGuide(t); setAnswers(f.reflection.trim() ? [f.reflection] : []); }} />}
           <label className="span2">One line about it<input value={f.summary} onChange={(e) => set({ summary: e.target.value })} placeholder="What you did, and what came of it" /></label>
           <div className="span2 field"><span>Photo</span>
             <div className="photo-row">
@@ -61,7 +68,8 @@ export default function AddStation({ map, studentId, onClose, onAdded, prefill =
             <PendingFiles files={f.files} onRemove={(i) => set({ files: f.files.filter((_, j) => j !== i) })} />
             <AttachButton label={f.files.length ? 'Attach another file' : 'Attach a file'} onAdded={(ev) => setF((x) => ({ ...x, files: [...x.files, ev] }))} />
           </div>
-          <label className="span2">{f.question ? `${f.question} (optional)` : simple ? 'What did you learn? (optional)' : 'Quick reflection (optional)'}<textarea rows={2} value={f.reflection} onChange={(e) => set({ reflection: e.target.value })} placeholder="What did you learn?" /></label>
+          {guided ? <GuideFields t={guided} answers={answers} onChange={setAnswers} onDrop={() => { setGuide(null); setAnswers([]); }} className="span2" />
+            : <label className="span2">{f.question ? `${f.question} (optional)` : simple ? 'What did you learn? (optional)' : 'Quick reflection (optional)'}<textarea rows={2} value={f.reflection} onChange={(e) => set({ reflection: e.target.value })} placeholder="What did you learn?" /></label>}
           {dp && !simple && (
             <div className="span2 field cas-field"><span>Counts for CAS?</span>
               <div className="seg small">{[[null, 'No'], ['C', 'Creativity'], ['A', 'Activity'], ['S', 'Service']].map(([v, l]) => <button type="button" key={l} className={(f.cas?.strand || null) === v ? 'on' : ''} onClick={() => set({ cas: v ? { strand: v, outcomes: f.cas?.outcomes || [] } : null })}>{l}</button>)}</div>

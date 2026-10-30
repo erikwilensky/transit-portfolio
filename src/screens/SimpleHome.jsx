@@ -10,6 +10,8 @@ import { MyTasks } from '../components/ClassTasks.jsx';
 import { EventCards } from '../components/SchoolEvents.jsx';
 import { schoolEventName } from '../api.js';
 import { ExampleAsks, Examples, promptsFrom } from '../components/SubjectPrompts.jsx';
+import { GuideOffer, GuideStep } from '../components/MomentTemplates.jsx';
+import { templateText } from '../api.js';
 import { SpottedForMe } from '../components/Spotted.jsx';
 import { PeerFromClasses, PeerOnMoment } from '../components/PeerFeedback.jsx';
 import { FamilyNotesHome, FamilyNotesOn, FamilyNotesSwitch } from '../components/FamilyNotes.jsx';
@@ -198,15 +200,22 @@ function AddFlow({ map, studentId, onClose, onDone, camera, prefill }) {
   const [answers, setAnswers] = useState([]);
   const [usedStarter, setUsedStarter] = useState(false);
   const qn = guided && prompts ? prompts.questions.length : 0;
-  const reflection = () => (qn ? prompts.questions.map((q, i) => (answers[i]?.trim() ? `${q}\n${answers[i].trim()}` : null)).filter(Boolean).join('\n\n') : f.reflection.trim());
-  const pickLine = (id) => { const p = getPromptsFor(studentId, id); set({ line: id }); setGuided(!!p && p.source !== 'default'); setQi(0); setAnswers([]); setUsedStarter(false); setMore(false); setStep(2); };
+  // Moment templates (MomentTemplates.jsx): "Use a guide" after the line; its parts one per screen, before the teacher's questions.
+  const [tpl, setTpl] = useState(null);
+  const [ti, setTi] = useState(0);
+  const [tAns, setTAns] = useState([]);
+  const startGuide = (t) => { setTpl(t); setTi(0); setTAns(!qn && f.reflection.trim() ? [f.reflection.trim()] : []); };
+  const tn = tpl ? tpl.fields.length : 0;
+  const reflection = () => (tpl ? templateText(tpl, tAns) : qn ? prompts.questions.map((q, i) => (answers[i]?.trim() ? `${q}\n${answers[i].trim()}` : null)).filter(Boolean).join('\n\n') : f.reflection.trim());
+  const pickLine = (id) => { const p = getPromptsFor(studentId, id); set({ line: id }); setGuided(!!p && p.source !== 'default'); setQi(0); setAnswers([]); setTpl(null); setTAns([]); setUsedStarter(false); setMore(false); setStep(2); };
   const save = (teacher) => {
     const snap = snapshot();
-    const e = addStation(studentId, { title: f.title.trim(), lineIds: [f.line], ...(prefill?.schoolEvent ? { date: prefill.date, schoolEvent: prefill.schoolEvent } : {}), type: 'project', image: f.image, imageCaption: f.imageCaption, files: f.voice ? [f.voice] : [], reflection: reflection() || null, visibility: 'advisor', via: 'Simple add', requestFrom: teacher?.id || null, promptId: prompts && (qn || usedStarter) ? prompts.id : null });
+    const e = addStation(studentId, { title: f.title.trim(), lineIds: [f.line], ...(prefill?.schoolEvent ? { date: prefill.date, schoolEvent: prefill.schoolEvent } : {}), type: 'project', image: f.image, imageCaption: f.imageCaption, files: f.voice ? [f.voice] : [], reflection: reflection() || null, visibility: 'advisor', via: 'Simple add', requestFrom: teacher?.id || null, promptId: prompts && !tpl && (qn || usedStarter) ? prompts.id : null, templateId: tpl && tAns.some((a) => a?.trim()) ? tpl.id : null });
     onDone(e, teacher, snap);
   };
-  const steps = (who.length ? 4 : 3) + (qn ? qn - 1 : 0) + (camera ? 1 : 0);
-  const at = (step === 2 ? 2 + qi : step === 3 ? 3 + (qn ? qn - 1 : 0) : step) + (camera ? 1 : 0);
+  const extra = tn ? tn - 1 : qn ? qn - 1 : 0;
+  const steps = (who.length ? 4 : 3) + extra + (camera ? 1 : 0);
+  const at = (step === 2 ? 2 + (tn ? ti : qi) : step === 3 ? 3 + extra : step) + (camera ? 1 : 0);
   const voice = f.voice ? <div className="sh-voice"><VoiceNotes evidence={[f.voice]} /><button type="button" className="ghost" onClick={() => set({ voice: null })}>Remove voice note</button></div>
     : recording ? <VoiceRecorder onAdded={(v) => { set({ voice: v }); setRecording(false); }} onCancel={() => setRecording(false)} />
     : <VoiceStart onClick={() => setRecording(true)} />;
@@ -238,18 +247,19 @@ function AddFlow({ map, studentId, onClose, onDone, camera, prefill }) {
           <div className="sh-lines">{lines.map((l) => <button key={l.id} style={{ '--c': l.colour }} className={f.line === l.id ? 'on' : ''} onClick={() => pickLine(l.id)}><i />{l.name}</button>)}</div>
           <div className="sh-next"><button className="ghost" onClick={() => setStep(0)}>Back</button></div>
         </>}
-        {step === 2 && !qn && <>
+        {step === 2 && !tn && !qn && <>
           <Said text={prefill?.question || 'What did you learn?'} />
           {prompts?.note ? <p className="sp-note">{prompts.note}</p> : <p className="sh-sub">One or two sentences is plenty. You can skip this.</p>}
           <div className="sh-starters">{(prompts?.starters?.length ? prompts.starters : STARTERS).map((s) => <button key={s} onClick={() => { setUsedStarter(!!prompts); set({ reflection: `${f.reflection ? `${f.reflection} ` : ''}${shown(s).replace('…', ' ')}` }); }}>{s}</button>)}</div>
           <textarea className="sh-input" rows={3} value={f.reflection} onChange={(e) => set({ reflection: e.target.value })} aria-label="What did you learn?" />
           <SayIt value={f.reflection} onChange={(reflection) => set({ reflection })} />
           {prompts?.questions.length > 0 && <button type="button" className="ghost sp-help" onClick={() => { setGuided(true); setQi(0); setAnswers(f.reflection.trim() ? [f.reflection] : []); }}>Help me with questions</button>}
+          <GuideOffer simple lineId={f.line} onPick={startGuide} />
           {voice}
           <div className="sh-next"><button className="ghost" onClick={() => setStep(1)}>Back</button>{finish(!!f.reflection.trim())}</div>
           {!who.length && <p className="sh-note">Only you and your advisor can see it at first.</p>}
         </>}
-        {step === 2 && qn > 0 && (() => {
+        {step === 2 && !tn && qn > 0 && (() => {
           const q = prompts.questions[qi], last = qi === qn - 1, val = answers[qi] || '';
           const put = (v) => setAnswers((xs) => { const n = [...xs]; n[qi] = v; return n; });
           return <div className="sp-guided" key={qi}>
@@ -264,6 +274,19 @@ function AddFlow({ map, studentId, onClose, onDone, camera, prefill }) {
             <div className="sh-next"><button className="ghost" onClick={() => (qi ? setQi(qi - 1) : setStep(1))}>Back</button>
               {last ? finish(answers.some((a) => a?.trim())) : <button className="primary" onClick={() => setQi(qi + 1)}>{val.trim() ? 'Next question' : 'Skip this one'}</button>}</div>
             {!last && <button type="button" className="linkish sp-skip" onClick={() => (who.length ? setStep(3) : save(null))}>{answers.some((a) => a?.trim()) ? 'That is enough, carry on' : 'Skip the questions'}</button>}
+            {last && !who.length && <p className="sh-note">Only you and your advisor can see it at first.</p>}
+            {qi === 0 && <GuideOffer simple lineId={f.line} onPick={startGuide} />}
+          </div>;
+        })()}
+        {step === 2 && tn > 0 && (() => {
+          const last = ti === tn - 1, val = tAns[ti] || '', any = tAns.some((a) => a?.trim());
+          const put = (v) => setTAns((xs) => { const n = [...xs]; n[ti] = v; return n; });
+          return <div className="mt-guided" key={`t-${ti}`}>
+            <GuideStep t={tpl} i={ti} value={val} onChange={put} />
+            {last && voice}
+            <div className="sh-next"><button className="ghost" onClick={() => (ti ? setTi(ti - 1) : setTpl(null))}>Back</button>
+              {last ? finish(any) : <button className="primary" onClick={() => setTi(ti + 1)}>{val.trim() ? 'Next question' : 'Skip this one'}</button>}</div>
+            {!last && <button type="button" className="linkish sp-skip" onClick={() => (who.length ? setStep(3) : save(null))}>{any ? 'That is enough, carry on' : 'Skip the questions'}</button>}
             {last && !who.length && <p className="sh-note">Only you and your advisor can see it at first.</p>}
           </div>;
         })()}

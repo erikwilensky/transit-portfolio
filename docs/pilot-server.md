@@ -2292,3 +2292,55 @@ the browser from the leadership copy of the record.
   another advisor, leadership and Aaron are refused; Aaron's card at Simple on a phone; his family's copy has nothing; the
   activity log; axe). `thai-students.cjs` sweeps the card and the notification.
 - Not done: no reminder to advisors who have not signed off; a closed year cannot be reopened for one student.
+
+## Moment templates: guides for common kinds of moment (`src/api.js`, `src/components/MomentTemplates.jsx`)
+
+Guided shapes so students know what to write: a few short parts, each with a heading, a question and sentence starters.
+Demo and pilot. No notification, no email.
+- **Built-in** (`MT_BUILTIN`, with Thai for every word in `src/i18n.js`): Lab write-up (`mt-lab`: the question, what I did,
+  what I found, what I'd change; Science, Environment, Design), Reading log (`mt-reading`: book, author, what stayed with me;
+  Languages), Match or competition (`mt-match`: event, result, what went well, next time; Sport, Computing), Performance or
+  exhibition (`mt-show`; Music, Art, Design), Trip or service day (`mt-trip`; Service, Environment, Languages), Project
+  milestone (`mt-milestone`; every line). The school can change a built-in's lines and turn it off, never its words ("Make a
+  copy" for its own version).
+- **Students**: after choosing a line, "Use a guide" lists the guides on and fitting that line (`templatesFor(lineId)`; a
+  sub-line counts for its school line). Simple (`AddFlow` in `SimpleHome.jsx`): on the "What did you learn?" screen (and the
+  first of a teacher's prompt questions), big buttons; a guide then goes one part per screen (`GuideStep`: its question read
+  aloud with `Said`, starters, speak to type with `SayIt`, "Skip this one", "That is enough, carry on"; the voice note on the
+  last). Standard and Full (`AddStation.jsx`): chips under the line choice; a guide replaces "Quick reflection" with one
+  labelled field per part (`GuideFields`, "Stop using the guide"). The answers are saved as the moment's reflection, each
+  under its heading (`templateText`: `Heading\nanswer`, parts left empty are dropped; prompt: the template's name), so every
+  screen that reads reflections and summaries works unchanged; the moment carries `templateId`.
+- **Teachers**: "Guide for students" on Set a task (`ClassTasks.jsx`) and Ask the class (`ClassPrompts.jsx`): the guides that
+  fit the line first. The student's hand-in or answer then uses it ("Mr Coultas gave you a guide: …"; Simple one part per
+  screen, Standard and Full the labelled fields); the task grid and class answers show the sections. The class page lists
+  "guide: …" on the task.
+- **Coordinators, leadership and admins** (pilot): Subject prompts has two tabs, Line prompts and Moment templates
+  (`#/<persona>/prompts/templates`): every template with its lines, "N moments written with it", who changed it last;
+  "Add a template" (name, what it is for, 2–6 parts: heading, question, starters separated by `/`, and the lines; none
+  picked means every line), Edit, Change lines, Make a copy, Turn off / Turn on.
+- **Record**: `store.momentTemplates` (made on first use): a school template `{ id: 'mt-…', name, about, fields: [{ label,
+  ask, starters }], lineIds, off, by, at, from? }`; a built-in's row only `{ id: 'mt-lab', builtIn: true, lineIds, off, by,
+  at }`. `e.templateId` on a moment written with one (`addStation(…, { templateId })`, `handInTask(…, { templateId })`,
+  `answerPrompt(…, { templateId })`: only the task's or question's own guide counts). `templateId` on a `teacherTasks` or
+  `classPrompts` item (`setTask`/`editTask`/`askClass` fields; a guide that is off is refused (400), one already on a task
+  stays when it is edited; `null` takes it off).
+- **Mutators**: `saveMomentTemplate({ id?, name, about, fields, lineIds, from? }, by)` (a new or the school's own template;
+  a built-in's id changes only its lines; 400: a name under 3 letters or already used, fewer than 2 or more than 6 parts,
+  two parts with one heading, a line that is not a school line), `setMomentTemplateOff(id, off, by)`. Reads:
+  `momentTemplates()`, `getMomentTemplate(id)`, `templatesFor(lineId)`, `liveTemplate(id)` (on, else null),
+  `templateFits(t, lineId)`, `templateText(t, answers)`, `templateUses(id)`, `MT_LIMITS`.
+- **canAct** (`momentTemplateOk` in `server/auth.mjs`): coordinators and leadership as themselves; admins as themselves or
+  `by` null. Teachers, advisors, counsellors, students and families: 403. A guide on a task or question goes with that
+  task's or question's own rules.
+- **Scope**: `momentTemplates` go to every student and member of staff, not to families. **Activity log**: both mutators are
+  logged as `change` with the template's id (`target.id`, `getMomentTemplate` is a known getter in `20-state.mjs`) and the
+  acting teacher; refusals too. Never the template's wording.
+- Tests: `server/test/moment-templates.test.mjs` (built-ins and their Thai, permissions, validation, replay, built-in lines
+  and off, a moment's words and id, tasks and questions, scope, the activity log through a real pilot server);
+  `node scripts/checks/moment-templates.cjs` (real roster, skipped when missing; separate contexts: Aaron Torres at Simple on
+  a phone uses the Lab write-up on Science with read aloud and a starter; a coordinator adds "Field trip report" for Science
+  and turns the Reading log off; Mr David Coultas sets a task for C-392000 with it; Aaron hands it in through the guide and
+  Mr Coultas reads the sections on the grid; at Standard the guide is labelled fields; refusals; axe on each).
+  `scripts/checks/thai-students.cjs` sweeps the Simple guide, a task's guide and the Standard dialog's fields in Thai.
+- Not done: guides in the term reflection and goal flows; per-Year templates; translating a school's own templates.

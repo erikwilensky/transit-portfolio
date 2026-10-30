@@ -164,7 +164,7 @@ let srv;
     const m1 = await act(aT, 'addStation', [AARON, { title: 'Built a bridge out of straws', lineIds: [aLines[0]], date: day(-20), type: 'project', summary: 'It held two kilos.', visibility: 'advisor' }]);
     await act(aT, 'addStation', [AARON, { title: 'Painted the class mural', lineIds: [aLines[1]], date: day(-9), type: 'project', visibility: 'advisor' }]);
     const g1 = await act(aT, 'addGoal', [AARON, { title: 'Run 5k', date: day(30), lineId: aLines[0], summary: '', checkIn: true }]);
-    await act(cT, 'setTask', [CLASS, COULTAS, { title: 'Cell diagram', due: day(1), brief: 'Draw and label a plant cell.', checklist: ['Label the nucleus'], needs: 'photo' }]);
+    await act(cT, 'setTask', [CLASS, COULTAS, { title: 'Cell diagram', due: day(1), brief: 'Draw and label a plant cell.', checklist: ['Label the nucleus'], needs: 'photo', templateId: 'mt-lab' }]); // with a guide (MomentTemplates.jsx)
     await act(cT, 'askClass', [CLASS, COULTAS, { question: 'What surprised you in the lab this week?' }]);
     await act(cT, 'spotMoment', [[AARON], COULTAS, { title: 'Helped tidy the lab', note: 'Thank you for staying behind.', lineId: 'science', classId: CLASS }]);
     // Class photos (PhotoDrop.jsx): two photos from a practical, after the spotted moment.
@@ -192,6 +192,7 @@ let srv;
     await a.locator('.sh-flow .sh-starters button').first().click();
     ok(THAI.test(await a.locator('.sh-flow textarea').inputValue()), `a Thai sentence starter writes Thai: “${await a.locator('.sh-flow textarea').inputValue()}”`);
     const help = a.locator('.sh-flow .sp-help'); if (await help.count()) { await help.click(); await sweep(a, AARON, 'Aaron: add, built-in questions'); }
+    if (await openSweep(a, AARON, '.sh-flow .mt-offer-list button', 'Aaron: add, a guide (moment template)')) { await a.locator('.mt-step .sh-starters button').first().click(); ok(THAI.test(await a.locator('.mt-step textarea').inputValue()), 'a guide’s Thai starter writes Thai'); }
     await close(a);
     // Something I want to do.
     await a.click('.sh-card.goal'); await sweep(a, AARON, 'Aaron: goal, what');
@@ -215,7 +216,7 @@ let srv;
     const fT = fj.headers.get('set-cookie').match(/tp_session=([^;]+)/)[1];
     const fMe = (await (await fetch(`${U}/api/auth/me`, { headers: { cookie: `tp_session=${fT}` } })).json()).user;
     await act(fT, 'addFamilyNote', [m1.id, { key: `u:${fMe.id}`, name: fMe.name }, 'So proud of you!', 'proud']);
-    if (await openSweep(a, AARON, '.tk-card', 'Aaron: hand in a task')) await close(a);
+    if (await openSweep(a, AARON, '.tk-card', 'Aaron: hand in a task')) { await a.click('.tk-flow .sh-next .primary'); await a.click('.tk-flow .sh-next .primary'); await a.waitForSelector('.tk-flow .mt-step'); await sweep(a, AARON, 'Aaron: hand in a task, its guide'); await close(a); }
     if (await openSweep(a, AARON, '.cp-card', 'Aaron: a class question')) await close(a);
     if (await openSweep(a, AARON, '.tr-card .primary', 'Aaron: term reflection, look back')) {
       await a.locator('.tr-pick').first().click(); await a.click('.tr-flow .sh-next .primary');
@@ -311,7 +312,8 @@ let srv;
     const vb = s.locator('.station-panel.open .as-btn').first(); if (await vb.count()) { await vb.click(); await sweep(s, Y10.id, 'Year 10: verification record'); await close(s); }
     await s.goto(`${U}/#/me/map/${yg.id}`); await s.waitForSelector('.station-panel.open'); await sweep(s, Y10.id, 'Year 10: a goal');
     await s.goto(`${U}/#/me/map`); await s.waitForSelector('.home');
-    await s.click('.home-actions > .primary'); await s.waitForSelector('.modal'); await sweep(s, Y10.id, 'Year 10: add a station'); await close(s);
+    await s.click('.home-actions > .primary'); await s.waitForSelector('.modal'); await sweep(s, Y10.id, 'Year 10: add a station');
+    await s.locator('.add-station .line-chip').first().click(); await s.locator('.add-station .mt-offer-list button').first().click(); await s.waitForSelector('.add-station .mt-fields'); await sweep(s, Y10.id, 'Year 10: add a station with a guide'); await close(s);
     const menuItems = async () => { await s.click('.home-actions .menu-wrap > button'); await s.waitForSelector('.home-actions .menu'); return s.locator('.home-actions .menu [role=menuitem]').count(); };
     const nItems = await menuItems(); await sweep(s, Y10.id, 'Year 10: Plan & review menu');
     for (let i = 0; i < nItems; i++) {

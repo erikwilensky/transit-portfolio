@@ -677,10 +677,11 @@ export function addStation(studentId, f) {
     verification: 'student-added', visibility: f.visibility || 'advisor', source: { system: f.via || 'Manual entry', ref: null },
     ...(f.cas ? { cas: f.cas } : {}),
     ...(f.promptId ? { promptId: String(f.promptId).slice(0, 80) } : {}), // written with subject prompts (getPromptsFor)
+    ...(f.templateId ? { templateId: String(f.templateId).slice(0, 80) } : {}), // written with a moment template (templatesFor)
   };
   const se = f.schoolEvent ? linkSchoolEvent(e, f.schoolEvent) : null; // school events: a moment from one
   store.events.push(e);
-  if (f.reflection) store.reflections.push({ id: uid('rf-x'), eventId: e.id, text: f.reflection, prompt: se?.question || 'Quick reflection', date: e.date, visibility: f.visibility || 'advisor' });
+  if (f.reflection) store.reflections.push({ id: uid('rf-x'), eventId: e.id, text: f.reflection, prompt: se?.question || (e.templateId && getMomentTemplate(e.templateId)?.name) || 'Quick reflection', date: e.date, visibility: f.visibility || 'advisor' });
   const who = getStudent(studentId).name;
   log(studentId, who, 'station', `Added “${e.title}”${f.via ? ` from ${f.via}` : ''}`);
   if (f.requestFrom) requestEndorsement(e.id, f.requestFrom, f.requestNote);
@@ -1566,7 +1567,7 @@ export function classPrompts(classId) {
 // The prompts a student has not answered or skipped yet, oldest first.
 export const openPromptsFor = (studentId) => cPrompts().filter((p) => p.studentIds.includes(studentId) && !answerOf(p.id, studentId))
   .sort((a, b) => a.at.localeCompare(b.at)).map((p) => ({ ...p, teacher: teacherById[p.teacherId] || null, className: classById(p.classId)?.name || '', line: (p.lineId && lineById(p.lineId)) || null }));
-export function askClass(classId, teacherId, { question, context = '', asMoment = false, due = null } = {}) {
+export function askClass(classId, teacherId, { question, context = '', asMoment = false, due = null, templateId = null } = {}) {
   const c = classById(classId);
   if (!c) throw Object.assign(new Error('No such class'), { status: 404 });
   if (!teacherById[teacherId]) throw Object.assign(new Error('No such teacher'), { status: 400 });
@@ -1574,7 +1575,7 @@ export function askClass(classId, teacherId, { question, context = '', asMoment 
   if (q.length < 5) throw Object.assign(new Error('Write the question first'), { status: 400 });
   const studentIds = nowIn(classId);
   const p = { id: uid('cq-'), classId, teacherId, question: q, context: String(context || '').trim().slice(0, 200), asMoment: !!asMoment && !!c.lineId, lineId: c.lineId || null,
-    due: /^\d{4}-\d{2}-\d{2}$/.test(due || '') ? due : null, date: TODAY, at: nowIso(), studentIds, reminded: null };
+    due: /^\d{4}-\d{2}-\d{2}$/.test(due || '') ? due : null, date: TODAY, at: nowIso(), studentIds, reminded: null, ...(templateId ? { templateId: templateRef(templateId) } : {}) };
   cPrompts().push(p);
   const t = teacherById[teacherId];
   for (const sid of studentIds) notify(toStudent(sid), `${t.name} asked ${c.name} a question: “${q}”`, { persona: toStudent(sid), screen: 'map' });
@@ -1601,7 +1602,7 @@ const laneFor = (s, lineId) => {
   if (!lineById(lineId)) return s.laneOrder[0] || null;
   s.laneOrder.push(lineId); return lineId;
 };
-export function answerPrompt(promptId, studentId, { text, image = null, imageCaption = 'Photo', title } = {}) {
+export function answerPrompt(promptId, studentId, { text, image = null, imageCaption = 'Photo', title, templateId = null } = {}) {
   const p = getClassPrompt(promptId), s = getStudent(studentId);
   if (!p || !s || !p.studentIds.includes(studentId)) throw Object.assign(new Error('This question is not for you'), { status: 404 });
   if (answerOf(promptId, studentId)) throw Object.assign(new Error('You already answered this'), { status: 409 });
@@ -1612,8 +1613,8 @@ export function answerPrompt(promptId, studentId, { text, image = null, imageCap
   if (lane) {
     const name = String(title || '').trim().slice(0, 120) || p.context || p.question;
     e = addStation(studentId, p.asMoment
-      ? { title: name, lineIds: [lane], type: 'project', image, imageCaption, visibility: 'advisor', via: 'Class question', requestFrom: teacherById[p.teacherId] ? p.teacherId : null, requestNote: `Answer to “${p.question}”` }
-      : { title: `Reflection: ${p.context || p.question}`, lineIds: [lane], type: 'reflection', image, imageCaption, visibility: 'advisor', via: 'Class question' });
+      ? { title: name, lineIds: [lane], type: 'project', image, imageCaption, visibility: 'advisor', via: 'Class question', requestFrom: teacherById[p.teacherId] ? p.teacherId : null, requestNote: `Answer to “${p.question}”`, templateId: templateId && templateId === p.templateId ? templateId : null }
+      : { title: `Reflection: ${p.context || p.question}`, lineIds: [lane], type: 'reflection', image, imageCaption, visibility: 'advisor', via: 'Class question', templateId: templateId && templateId === p.templateId ? templateId : null });
     store.reflections.push({ id: uid('rf-x'), eventId: e.id, text: answer, prompt: p.question, date: e.date, visibility: 'advisor' });
   }
   const a = { id: uid('ca-'), promptId, studentId, date: TODAY, at: nowIso(), text: answer, eventId: e?.id || null };
@@ -1722,7 +1723,7 @@ function taskFields(f, c, old = {}) {
   if (!l || l.studentId) throw Object.assign(new Error('Pick a line for the hand-ins'), { status: 400 });
   const checklist = (Array.isArray(f.checklist) ? f.checklist : old.checklist || []).map((x) => String(x ?? '').trim().slice(0, 120)).filter(Boolean);
   if (checklist.length > 5) throw Object.assign(new Error('Up to 5 checklist items'), { status: 400 });
-  return { title, brief: String(f.brief ?? old.brief ?? '').trim().slice(0, 600), due, lineId, checklist, needsFile: !!(f.needsFile ?? old.needsFile) };
+  return { title, brief: String(f.brief ?? old.brief ?? '').trim().slice(0, 600), due, lineId, checklist, needsFile: !!(f.needsFile ?? old.needsFile), ...templateField(f, old) };
 }
 const taskView = (t) => ({ ...t, teacher: teacherById[t.teacherId] || null, className: classById(t.classId)?.name || '', line: lineById(t.lineId) || null });
 // A class's tasks, newest first, with counts: handed (on time), late, notYet (overdue among them), waiting (to look at), endorsed.
@@ -1790,7 +1791,7 @@ export function extendTask(taskId, studentId, due, teacherId) {
 // Hand in: a station on the task's line (the student's sub-line of it if they have one), what they did as its reflection,
 // and an endorsement request to the teacher who set it. Asked for more: the same station gets the new words and files,
 // and the request is pending again.
-export function handInTask(taskId, studentId, { text = '', ticked = [], image = null, imageCaption = 'Photo', files = [] } = {}) {
+export function handInTask(taskId, studentId, { text = '', ticked = [], image = null, imageCaption = 'Photo', files = [], templateId = null } = {}) {
   const t = getTask(taskId), s = getStudent(studentId);
   if (!t || !s || !t.studentIds.includes(studentId)) throw Object.assign(new Error('This task is not for you'), { status: 404 });
   const words = String(text || '').trim().slice(0, 4000);
@@ -1811,7 +1812,7 @@ export function handInTask(taskId, studentId, { text = '', ticked = [], image = 
   } else {
     const lane = laneFor(s, t.lineId);
     const e = addStation(studentId, { title: t.title, lineIds: [lane], type: 'project', image, imageCaption, files: extra, visibility: 'advisor', via: 'Class task',
-      requestFrom: teacherById[t.teacherId] ? t.teacherId : null, requestNote: `Hand-in for “${t.title}”` });
+      requestFrom: teacherById[t.teacherId] ? t.teacherId : null, requestNote: `Hand-in for “${t.title}”`, templateId: templateId && templateId === t.templateId ? templateId : null });
     e.task = t.id;
     if (words) store.reflections.push({ id: uid('rf-x'), eventId: e.id, text: words, prompt: t.title, date: e.date, visibility: 'advisor' });
     Object.assign(row, { date: TODAY, at: nowIso(), eventId: e.id, ticked: tick });
@@ -4161,6 +4162,110 @@ logCasExperience = act('logCasExperience', logCasExperience); logCasHours = act(
 addFamilyNote = act('addFamilyNote', addFamilyNote); editFamilyNote = act('editFamilyNote', editFamilyNote); deleteFamilyNote = act('deleteFamilyNote', deleteFamilyNote); thankFamilyNote = act('thankFamilyNote', thankFamilyNote); setFamilyNoteHidden = act('setFamilyNoteHidden', setFamilyNoteHidden);
 addSchoolEvent = act('addSchoolEvent', addSchoolEvent); editSchoolEvent = act('editSchoolEvent', editSchoolEvent); removeSchoolEvent = act('removeSchoolEvent', removeSchoolEvent); importSchoolEvents = act('importSchoolEvents', importSchoolEvents); dismissSchoolEvent = act('dismissSchoolEvent', dismissSchoolEvent); remindSchoolEvent = act('remindSchoolEvent', remindSchoolEvent);
 tickSignoff = act('tickSignoff', tickSignoff); signOffYear = act('signOffYear', signOffYear); markNotThisYear = act('markNotThisYear', markNotThisYear); undoSignoff = act('undoSignoff', undoSignoff); setSignoffYear = act('setSignoffYear', setSignoffYear); setSignoffClose = act('setSignoffClose', setSignoffClose);
+// ── Moment templates: guided shapes for common kinds of moment (src/components/MomentTemplates.jsx) ──
+// The built-in ones (MT_BUILTIN) and the school's own in store.momentTemplates (made on first use). A school template is
+// { id: 'mt-…', name, about, fields: [{ label, ask, starters }], lineIds ([]: every line), off, by, at, from? (the built-in
+// it was copied from) }; a built-in's row holds only what the school changed: { id (the built-in's), builtIn: true, lineIds,
+// off, by, at }. A moment written with one carries templateId; its answers are its reflection, each under the part's label
+// (templateText), so everything that reads reflections and summaries works as before. A class task or class question can
+// carry a templateId too (setTask, editTask, askClass): the hand-in or the answer then uses that guide.
+export const MT_LIMITS = { name: 60, about: 200, label: 40, ask: 200, starter: 80, starters: 4, minFields: 2, maxFields: 6 };
+const MF = (label, ask, starters) => ({ label, ask, starters });
+export const MT_BUILTIN = [
+  { id: 'mt-lab', name: 'Lab write-up', about: 'For an experiment or investigation.', lineIds: ['science', 'environment', 'design'], fields: [
+    MF('The question', 'What were you trying to find out?', ['I wanted to find out…']), MF('What I did', 'What did you do, step by step?', ['First we…', 'Then I…']),
+    MF('What I found', 'What happened? What did you notice or measure?', ['I noticed that…', 'This shows that…']), MF('What I’d change', 'What would you change if you did it again?', ['Next time I would…'])] },
+  { id: 'mt-reading', name: 'Reading log', about: 'For a book you read, in any language.', lineIds: ['languages'], fields: [
+    MF('Book', 'What book did you read?', ['I read…']), MF('Author', 'Who wrote it?', ['It was written by…']),
+    MF('What stayed with me', 'What stayed with you after reading it?', ['The part I remember most is…', 'It made me think about…'])] },
+  { id: 'mt-match', name: 'Match or competition', about: 'For a game, race, contest or competition.', lineIds: ['sport', 'computing'], fields: [
+    MF('Event', 'What was the match or competition?', ['We played against…', 'I took part in…']), MF('Result', 'What was the result?', ['We won…', 'We lost…', 'I came…']),
+    MF('What went well', 'What went well?', ['I was proud of…', 'We played well when…']), MF('Next time', 'What will you work on next time?', ['Next time I will…'])] },
+  { id: 'mt-show', name: 'Performance or exhibition', about: 'For a concert, a show, a display or an exhibition.', lineIds: ['music', 'art', 'design'], fields: [
+    MF('What I showed', 'What did you perform or show?', ['I performed…', 'I showed…']), MF('Getting ready', 'How did you get ready?', ['To get ready I…']),
+    MF('On the day', 'How did it go on the day?', ['On the day…', 'I felt…']), MF('What people said', 'What did people say about it?', ['People said…']),
+    MF('Next time', 'What would you do differently next time?', ['Next time I would…'])] },
+  { id: 'mt-trip', name: 'Trip or service day', about: 'For a school trip, a visit or a day helping others.', lineIds: ['service', 'environment', 'languages'], fields: [
+    MF('Where we went', 'Where did you go, and why?', ['We went to…']), MF('What I did', 'What did you do there?', ['I helped…', 'We…']),
+    MF('What I learnt', 'What did you learn or notice?', ['I learnt that…', 'I noticed that…']), MF('Why it mattered', 'Why did it matter, to others or to you?', ['It mattered because…'])] },
+  { id: 'mt-milestone', name: 'Project milestone', about: 'For a step along the way in a longer project.', lineIds: [], fields: [
+    MF('The project', 'What is the project?', ['My project is…']), MF('Where I am now', 'What have you finished so far?', ['So far I have…']),
+    MF('What was hard', 'What was hard, and how did you deal with it?', ['It was hard when…']), MF('Next step', 'What is your next step?', ['Next I will…'])] },
+];
+const mtErr = (m, status = 400) => Object.assign(new Error(m), { status });
+const mtRows = () => (store.momentTemplates ||= []);
+const mtBuiltIn = (id) => MT_BUILTIN.find((t) => t.id === id);
+// One template as everyone reads it (a built-in with the school's changes), or null.
+export function getMomentTemplate(id) {
+  const b = mtBuiltIn(id), row = (store.momentTemplates || []).find((t) => t.id === id);
+  if (b) return { ...structuredClone(b), builtIn: true, off: !!row?.off, lineIds: [...(row?.lineIds || b.lineIds)], by: row?.by || null, at: row?.at || null };
+  return row && !row.builtIn ? { ...structuredClone(row), lineIds: [...(row.lineIds || [])], builtIn: false, off: !!row.off } : null;
+}
+// Every template: the built-in ones first, then the school's by name.
+export const momentTemplates = () => [...MT_BUILTIN.map((b) => getMomentTemplate(b.id)),
+  ...(store.momentTemplates || []).filter((t) => !t.builtIn).map((t) => getMomentTemplate(t.id)).sort((a, b) => a.name.localeCompare(b.name))];
+export const templateFits = (t, lineId) => !t.lineIds.length || t.lineIds.includes(rootLine(lineId));
+// The guides a student is offered after choosing a line (a sub-line counts for its school line): on, and fitting it.
+export const templatesFor = (lineId) => (lineId ? momentTemplates().filter((t) => !t.off && templateFits(t, lineId)) : []);
+// A class task's or class question's guide while it is on, else null.
+export const liveTemplate = (id) => { const t = id ? getMomentTemplate(id) : null; return t && !t.off ? t : null; };
+// The answers as the moment's words: each part's label, then its answer; empty parts left out.
+export const templateText = (t, answers = []) => t.fields.map((f, i) => { const a = String(answers[i] ?? '').trim(); return a ? `${f.label}\n${a}` : null; }).filter(Boolean).join('\n\n');
+export const templateUses = (id) => store.events.filter((e) => e.templateId === id && e.type !== 'goal').length;
+// A guide on a task or question: one that is on (a guide already there stays, even if turned off since).
+function templateRef(id, kept = null) {
+  if (id == null || id === '') return null;
+  if (id === kept) return kept;
+  if (!liveTemplate(id)) throw mtErr('Pick a guide that is turned on');
+  return id;
+}
+function templateField(f, old) {
+  const ref = templateRef(f.templateId !== undefined ? f.templateId : old.templateId, old.templateId ?? null);
+  return ref || old.templateId ? { templateId: ref } : {};
+}
+const mtLines = (xs) => { const ids = [...new Set([].concat(xs || []).map(String))]; if (ids.some((id) => !schoolLine(id))) throw mtErr('Pick school lines'); return ids; };
+// Add or change a school template (spec.id: one of the school's), or a built-in's lines (spec.id: a built-in's id).
+// spec: { id?, name, about, fields: [{ label, ask, starters }], lineIds, from? }.
+export function saveMomentTemplate(spec = {}, by = null) {
+  if (by && !teacherById[by]) throw mtErr('No such teacher');
+  const lineIds = mtLines(spec.lineIds);
+  const b = spec.id ? mtBuiltIn(spec.id) : null;
+  if (b) {
+    let row = mtRows().find((t) => t.id === b.id);
+    if (!row) { row = { id: b.id, builtIn: true, off: false }; mtRows().push(row); }
+    Object.assign(row, { lineIds, by: by || null, at: nowIso() });
+    emit();
+    return getMomentTemplate(b.id);
+  }
+  const old = spec.id ? mtRows().find((t) => t.id === spec.id && !t.builtIn) : null;
+  if (spec.id && !old) throw mtErr('No such template', 404);
+  const one = (s, n) => String(s ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
+  const name = one(spec.name, MT_LIMITS.name);
+  if (name.length < 3) throw mtErr('Give the template a name');
+  if (momentTemplates().some((t) => t.id !== old?.id && t.name.toLowerCase() === name.toLowerCase())) throw mtErr('There is already a template with that name');
+  const fields = [].concat(spec.fields || []).map((f) => ({ label: one(f?.label, MT_LIMITS.label), ask: one(f?.ask, MT_LIMITS.ask),
+    starters: [...new Set([].concat(f?.starters || []).map((x) => one(x, MT_LIMITS.starter)).filter(Boolean))].slice(0, MT_LIMITS.starters) })).filter((f) => f.label);
+  if (fields.length < MT_LIMITS.minFields || fields.length > MT_LIMITS.maxFields) throw mtErr(`Give it ${MT_LIMITS.minFields} to ${MT_LIMITS.maxFields} parts, each with a heading`);
+  if (new Set(fields.map((f) => f.label.toLowerCase())).size < fields.length) throw mtErr('Give each part its own heading');
+  for (const f of fields) f.ask ||= f.label;
+  const t = old || { id: uid('mt-'), off: false, ...(mtBuiltIn(spec.from) ? { from: spec.from } : {}) };
+  Object.assign(t, { name, about: one(spec.about, MT_LIMITS.about), fields, lineIds, by: by || null, at: nowIso() });
+  if (!old) mtRows().push(t);
+  emit();
+  return getMomentTemplate(t.id);
+}
+// Turn a template off (students are no longer offered it, and it cannot go on a new task or question) or on again.
+export function setMomentTemplateOff(id, off, by = null) {
+  const b = mtBuiltIn(id);
+  let row = mtRows().find((t) => t.id === id);
+  if (!b && (!row || row.builtIn)) throw mtErr('No such template', 404);
+  if (by && !teacherById[by]) throw mtErr('No such teacher');
+  if (!row) { row = { id, builtIn: true, lineIds: [...b.lineIds] }; mtRows().push(row); }
+  Object.assign(row, { off: !!off, by: by || null, at: nowIso() });
+  emit();
+  return getMomentTemplate(id);
+}
+saveMomentTemplate = act('saveMomentTemplate', saveMomentTemplate); setMomentTemplateOff = act('setMomentTemplateOff', setMomentTemplateOff);
 // Undo puts a whole earlier copy back, and reset goes back to the seed (sync.js sends it to /api/reset).
 restore = act('restore', restore); resetDemo = act('resetDemo', resetDemo);
 export const MUTATORS = Object.keys(ACTIONS);

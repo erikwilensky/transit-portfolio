@@ -916,3 +916,33 @@ STU_RE.push(
   [/^(\d+) hours of CAS confirmed$/, (m) => `ชั่วโมง CAS ที่ยืนยันแล้ว ${m[1]} ชั่วโมง`],
 );
 NOTE_TH.push([/^(.+) signed off your year\. Well done!$/, (m) => `${m[1]} รับรองปีการศึกษานี้ของคุณแล้ว เก่งมาก!`]);
+// ── Moment templates (src/components/MomentTemplates.jsx, api.MT_BUILTIN): "Use a guide", every built-in template's name,
+// what it is for, its headings, questions and sentence starters, and the guide a teacher put on a task or question. ──
+for (const [k, v] of Object.entries({
+  'Use a guide': 'ใช้ตัวช่วยเขียน', 'Stop using the guide': 'เลิกใช้ตัวช่วยเขียน', 'Sentence starters': 'ประโยคเริ่มต้น', // the last: Ideas for this line, beside a guide
+  'Lab write-up': 'บันทึกการทดลอง', 'For an experiment or investigation.': 'สำหรับการทดลองหรือการสืบค้น',
+  'The question': 'คำถาม', 'What I did': 'สิ่งที่ฉันทำ', 'What I found': 'สิ่งที่ฉันพบ', 'What I’d change': 'สิ่งที่ฉันจะเปลี่ยน', 'Then I…': 'จากนั้นฉัน…',
+  'Reading log': 'บันทึกการอ่าน', 'For a book you read, in any language.': 'สำหรับหนังสือที่คุณอ่าน ภาษาอะไรก็ได้',
+  Book: 'หนังสือ', Author: 'ผู้เขียน', 'What stayed with me': 'สิ่งที่ฉันยังจำได้', 'What book did you read?': 'คุณอ่านหนังสืออะไร', 'Who wrote it?': 'ใครเป็นคนเขียน',
+  'What stayed with you after reading it?': 'อ่านจบแล้ว อะไรยังติดอยู่ในใจคุณ', 'It was written by…': 'หนังสือเล่มนี้เขียนโดย…', 'The part I remember most is…': 'ตอนที่ฉันจำได้มากที่สุดคือ…', 'It made me think about…': 'มันทำให้ฉันคิดถึง…',
+  'Match or competition': 'การแข่งขัน', 'For a game, race, contest or competition.': 'สำหรับเกม การวิ่งแข่ง การประกวด หรือการแข่งขัน',
+  Event: 'รายการแข่งขัน', Result: 'ผลการแข่งขัน', 'What went well': 'สิ่งที่ทำได้ดี', 'Next time': 'ครั้งหน้า',
+  'What was the match or competition?': 'เป็นการแข่งขันอะไร', 'What was the result?': 'ผลออกมาเป็นอย่างไร', 'What went well?': 'อะไรที่ทำได้ดี', 'What will you work on next time?': 'ครั้งหน้าคุณจะฝึกเรื่องอะไร',
+  'We played against…': 'เราแข่งกับ…', 'I took part in…': 'ฉันเข้าร่วม…', 'We won…': 'เราชนะ…', 'We lost…': 'เราแพ้…', 'I came…': 'ฉันได้อันดับ…', 'I was proud of…': 'ฉันภูมิใจที่…', 'We played well when…': 'เราเล่นได้ดีตอนที่…',
+  'Performance or exhibition': 'การแสดงหรือนิทรรศการ', 'For a concert, a show, a display or an exhibition.': 'สำหรับคอนเสิร์ต การแสดง การจัดแสดง หรือนิทรรศการ',
+  'What I showed': 'สิ่งที่ฉันแสดง', 'Getting ready': 'การเตรียมตัว', 'On the day': 'ในวันจริง', 'What people said': 'คนอื่นพูดว่าอย่างไร',
+  'What did you perform or show?': 'คุณแสดงหรือนำเสนออะไร', 'How did you get ready?': 'คุณเตรียมตัวอย่างไร', 'How did it go on the day?': 'ในวันจริงเป็นอย่างไรบ้าง', 'What did people say about it?': 'คนอื่นพูดถึงมันว่าอย่างไร',
+  'What would you do differently next time?': 'ครั้งหน้าคุณจะทำอะไรต่างไป', 'I performed…': 'ฉันแสดง…', 'I showed…': 'ฉันนำเสนอ…', 'On the day…': 'ในวันจริง…', 'I felt…': 'ฉันรู้สึก…', 'People said…': 'คนอื่นบอกว่า…',
+  'Trip or service day': 'ทัศนศึกษาหรือวันจิตอาสา', 'For a school trip, a visit or a day helping others.': 'สำหรับทัศนศึกษา การไปเยี่ยมชม หรือวันที่ไปช่วยเหลือผู้อื่น',
+  'Where we went': 'ที่ที่เราไป', 'What I learnt': 'สิ่งที่ฉันได้เรียนรู้', 'Why it mattered': 'ทำไมจึงสำคัญ',
+  'Where did you go, and why?': 'คุณไปที่ไหน และไปทำไม', 'What did you do there?': 'คุณทำอะไรที่นั่น', 'What did you learn or notice?': 'คุณได้เรียนรู้หรือสังเกตเห็นอะไร', 'Why did it matter, to others or to you?': 'ทำไมเรื่องนี้จึงสำคัญ ต่อคนอื่นหรือต่อตัวคุณ',
+  'We went to…': 'เราไปที่…', 'I helped…': 'ฉันช่วย…', 'I learnt that…': 'ฉันได้เรียนรู้ว่า…', 'It mattered because…': 'เรื่องนี้สำคัญเพราะ…',
+  'Project milestone': 'ความคืบหน้าของโครงงาน', 'For a step along the way in a longer project.': 'สำหรับก้าวหนึ่งระหว่างทางของโครงงานที่ใช้เวลานาน',
+  'The project': 'โครงงาน', 'Where I am now': 'ตอนนี้ฉันอยู่ตรงไหน', 'What was hard': 'สิ่งที่ยาก', 'Next step': 'ขั้นต่อไป',
+  'What is the project?': 'โครงงานนี้คืออะไร', 'What have you finished so far?': 'ตอนนี้คุณทำอะไรเสร็จไปแล้วบ้าง', 'What was hard, and how did you deal with it?': 'อะไรยาก และคุณจัดการอย่างไร', 'What is your next step?': 'ขั้นต่อไปของคุณคืออะไร',
+  'My project is…': 'โครงงานของฉันคือ…', 'So far I have…': 'ตอนนี้ฉัน…ไปแล้ว',
+})) STU[k] ??= v;
+STU_RE.push(
+  [/^Ways to start: (.+)$/, (m, t) => `ลองเริ่มแบบนี้: ${t(m[1])}`],
+  [/^(.+) gave you a guide:$/, (m) => `${m[1]} ให้ตัวช่วยเขียนกับคุณ:`],
+);
