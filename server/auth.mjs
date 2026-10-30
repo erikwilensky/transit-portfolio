@@ -206,6 +206,7 @@ export function canAct(user, fn, args = []) {
   if (fn === 'markMilestonesSeen') return milestonesOk(user, args); // only the student, never staff, admins or families
   if (EX_FNS.has(fn)) { try { return exhibitionOk(user, fn, args); } catch { return false; } }
   if (LV_FNS.has(fn)) { try { return leaverOk(user, fn, args); } catch { return false; } }
+  if (TK_FNS.has(fn)) { try { return taskOk(user, fn, args); } catch { return false; } }
   if (isAdmin(user)) return true;
   if (ADMIN_ONLY.has(fn)) return false;
   if (ANYONE.has(fn)) return true;
@@ -380,4 +381,19 @@ function leaverOk(user, fn, [sid, by]) {
   if (!STAFF.includes(user.kind) || !user.teacherId || by !== user.teacherId || !api.getLeaver(sid)) return false;
   const reach = reachOf(user);
   return reach === null || (reach.has(sid) && api.getStudent(sid)?.advisorId === user.teacherId);
+}
+// ── Class tasks (api.setTask, editTask, extendTask, handInTask, remindDueTasks) ──
+// Setting, editing and extending: a teacher of the class (in its teacherIds; whole-school staff and admins too, but only
+// when they teach it), as themselves; extending only for a student the task was set for. Handing in: only that student,
+// on their own. The day-before reminder: only the server (server/routes/68-tasks.mjs), never through /api/action.
+const TK_FNS = new Set(['setTask', 'editTask', 'extendTask', 'handInTask', 'remindDueTasks']);
+function taskOk(user, fn, a) {
+  if (fn === 'remindDueTasks') return false;
+  if (fn === 'handInTask') return user.kind === 'student' && !!user.studentId && a[1] === user.studentId && !!api.getTask(a[0])?.studentIds.includes(a[1]);
+  if (!(STAFF.includes(user.kind) || isAdmin(user)) || !user.teacherId) return false;
+  if (fn === 'setTask') return a[1] === user.teacherId && teachesClass(user, a[0]);
+  const t = api.getTask(a[0]);
+  if (!t || !teachesClass(user, t.classId)) return false;
+  if (fn === 'editTask') return a[1] === user.teacherId;
+  return a[3] === user.teacherId && t.studentIds.includes(a[1]);
 }

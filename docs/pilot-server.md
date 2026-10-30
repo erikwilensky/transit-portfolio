@@ -1525,3 +1525,51 @@ their map; the server refuses the mutators).
   rely on the CSS colour fix in `a11y.css` rather than their own markup. axe cannot judge everything, and nothing has
   been tried yet with a real screen reader (VoiceOver, NVDA, TalkBack). The Thai words for the new
   options are in `src/i18n.js`; the sign-in page has no display menu (it uses this device's last choice).
+
+## Class tasks: set for a class, handed in as a moment (`src/api.js`, `src/components/ClassTasks.jsx`, `server/routes/68-tasks.mjs`)
+
+A teacher sets a task for a class ("Plant cell poster, due Friday"); each student hands it in from their home, and it
+becomes a moment on the task's line waiting for that teacher. Distinct from class prompts (a question, answered once)
+and from the demo's ManageBac "Endorse a whole-class task" (`store.classTasks`, unchanged).
+- **Teacher**: My classes has "Set a task" on each class and on the class page: title, a short brief, due date, the line
+  hand-ins go on (default the class's line; any school line), an optional checklist (up to 5 things the student ticks)
+  and "Needs a photo or a file". The class page lists its tasks ("N of M handed in, K late", "Look at hand-ins (n)",
+  Edit). `#/<persona>/classes/<classId>~task~<taskId>` is the hand-in grid: every student it was set for, with Handed
+  in / Handed in late / Not yet / Not yet, overdue (text, and red), their moment (photo, words, files, ticks) and its
+  check (To look at, Asked for more, Endorsed). The teacher who set it endorses (one or "Endorse all to look at", with a
+  shared note and the queue's chips: `endorse`) or asks for more (`declineRequest`); any teacher of the class gives one
+  student more time. Hand-ins also reach Endorsements as ordinary requests.
+- **Student**, at the top of the home: Simple, a big card per open task ("Mr Coultas set a task: … due Friday", up to
+  three) and a step-by-step hand-in (the brief, read aloud; the checklist; what I did, with speak-to-type; a photo or a
+  file, required when the task asks; done). Standard and Full: a "Tasks" list with due dates, "Overdue" in red and in
+  words, and the last week's hand-ins. Asked for more: the task opens again with the teacher's note, and handing in
+  adds to the same moment. Works offline: the hand-in is an ordinary change and its photo goes through `holdUpload`.
+- **This week**: "Waiting for you" has one line per task with hand-ins to look at ("Hand-ins for “…”", opens the
+  grid); those requests are not counted again as single endorsement requests.
+- **Record**: `store.teacherTasks[] { id: 'tk-…', classId, teacherId, title, brief, due, lineId, checklist, needsFile,
+  date, at, studentIds, editedAt }` (studentIds: the class when it was set); `store.handIns[] { id: 'hi-…', taskId,
+  studentId, due (more time, or null), reminded (the due date reminded for), date, at, eventId, ticked, again }`, one per
+  student with anything on a task. Both made on first use. The moment: `addStation` (type project, via "Class task",
+  `e.task` = the task id, visibility advisor) with `requestFrom` the setting teacher, and the words as a reflection whose
+  prompt is the task's title. Late: handed in after the student's due date (more time counts); overdue: not handed in
+  and past it (by `TODAY`, Bangkok).
+- **Mutators** (replayed like the rest): `setTask(classId, teacherId, { title, brief, due, lineId, checklist, needsFile })`
+  (notifies the class), `editTask(taskId, teacherId, fields)` (a new date tells those not handed in),
+  `extendTask(taskId, studentId, due | null, teacherId)` (tells the student), `handInTask(taskId, studentId, { text,
+  ticked, image, imageCaption, files })` (400 without a file when one is needed, 409 when already handed in unless asked
+  for more), `remindDueTasks()`. Reads: `tasksForClass`, `taskGrid`, `tasksFor(studentId)`, `taskHandInWaits(teacherId)`,
+  `taskStatus`, `getTask`, `dueWords(date)` ("today", "tomorrow", "Friday", else the date).
+- **Reminder**: the day before the due date, one in-app notification to each student still in the class who has not
+  handed in ("Reminder: “…” is due tomorrow"); once per student and due date, so more time is reminded again. The server
+  runs `remindDueTasks` in pilot mode shortly after start and every `TASK_TICK_MS` (default 10 minutes). No email.
+- **canAct** (`taskOk` in `server/auth.mjs`): setting, editing and extending, a teacher in the class's `teacherIds`
+  acting as themselves (whole-school staff and admins too, only for a class they teach); extending only for a student
+  it was set for. `handInTask`: only that student, for themselves. `remindDueTasks`: nobody through `/api/action`.
+- **Scope**: tasks and every hand-in row go to the class's teachers, the teacher who set it and whole-school roles; a
+  student gets the tasks set for them (their copy's `studentIds` is just themselves) and their own rows; families and
+  other staff get neither. The moment itself follows the usual rules (the setting teacher receives it through the
+  request). **PDPA**: hand-in rows are the student's own (copy and erasure); a task lists them only by id (mentions).
+- Tests: `server/test/class-tasks.test.mjs`; `node scripts/checks/class-tasks.cjs` (real roster, skipped without it:
+  Mr David Coultas sets a task for Y8 Sciences 08.04 (04); the reminder once per student; Aaron Torres hands it in at
+  Simple on a phone, offline, with a photo; the server restarted two days later (a Date shift): a classmate at Standard
+  sees it overdue and hands it in late; This week, the grid, more time, endorse from the grid; refusals; axe).

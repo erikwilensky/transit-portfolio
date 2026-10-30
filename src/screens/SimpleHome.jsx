@@ -6,6 +6,7 @@ import { evidenceFor } from '../upload.js';
 import { UploadStatus, useUpload } from '../components/FileAttach.jsx';
 import { SUGGEST } from '../components/AddStation.jsx';
 import { OpenPrompts } from '../components/ClassPrompts.jsx';
+import { MyTasks } from '../components/ClassTasks.jsx';
 import { SpottedForMe } from '../components/Spotted.jsx';
 import { PeerFromClasses, PeerOnMoment } from '../components/PeerFeedback.jsx';
 import MomentComments, { NewBadge, useUnread } from '../components/MomentComments.jsx';
@@ -72,6 +73,7 @@ export default function SimpleHome({ map, studentId, toast, version, addRequest,
         <p>{moments.length ? `Your journey has ${moments.length} moment${moments.length > 1 ? 's' : ''} so far.` : 'Your journey starts here.'} What have you been up to?</p>
       </section>
 
+      <MyTasks studentId={studentId} simple toast={toast} version={version} />
       <OpenPrompts studentId={studentId} simple toast={toast} version={version} />
       <SpottedForMe studentId={studentId} simple toast={toast} version={version} />
       <PeerFromClasses studentId={studentId} simple toast={toast} version={version} />

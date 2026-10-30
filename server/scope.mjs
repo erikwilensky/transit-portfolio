@@ -200,6 +200,13 @@ export function scopedSnapshot(user) {
   // (they read it only through a link the student gives them).
   store.leaver = parent ? {} : Object.fromEntries(Object.entries(full.leaver || {}).filter(([sid]) => inReach(sid))
     .map(([sid, p]) => [sid, sid === self ? p : { ...p, links: (p.links || []).map(({ token, ...l }) => l) }]));
+  // Class tasks (api.setTask, handInTask): the class's teachers, the teacher who set it and whole-school roles get a task
+  // and its hand-in rows whole; a student gets the tasks set for them (studentIds: just themselves) and their own rows.
+  // Families and other staff get neither (a hand-in is a station: it reaches them by its visibility like any other).
+  const taskMine = (t) => all || (!!tid && (t.teacherId === tid || teaches.has(t.classId)));
+  store.teacherTasks = parent ? [] : (full.teacherTasks || []).flatMap((t) => (taskMine(t) ? [t] : self && t.studentIds.includes(self) ? [{ ...t, studentIds: [self] }] : []));
+  const keptTasks = new Set(store.teacherTasks.filter(taskMine).map((t) => t.id));
+  store.handIns = parent ? [] : (full.handIns || []).filter((r) => (self ? r.studentId === self : keptTasks.has(r.taskId) && inReach(r.studentId)));
   // Everything else (school lines' settings, integrations, rollout, family language, classes, keys other features add).
   for (const [k, v] of Object.entries(full)) if (!(k in store)) store[k] = generic(v, inReach);
   // Counts the whole-school screens show for what they may not open.
@@ -291,3 +298,10 @@ Object.assign(TOUCHES, {
   pauseExhibition: (a) => T([], [a[2]]), revokeExhibition: (a) => T([], [a[1]]),
 });
 Object.assign(TOUCHES, { saveLeaver: own0, shareLeaver: own0, revokeLeaver: own0, doneLeaverComment: own0, commentLeaver: (a) => T([a[0]], [a[1] ?? '?']) });
+// Class tasks (canAct's own rules are taskOk in auth.mjs; these name the students for the activity log).
+const taskKids = (id) => (api.getTask(id)?.studentIds || []).filter((sid) => api.getStudent(sid));
+Object.assign(TOUCHES, {
+  setTask: (a) => T((st().enrolments || []).filter((n) => n.classId === a[0] && !(n.to && n.to < api.TODAY) && api.getStudent(n.studentId)).map((n) => n.studentId), [a[1] ?? '?']),
+  editTask: (a) => T(taskKids(a[0]), [a[1] ?? '?']), extendTask: (a) => T([a[1]], [a[3] ?? '?']),
+  handInTask: (a) => T([api.getTask(a[0])?.studentIds.includes(a[1]) ? a[1] : '?']), remindDueTasks: () => T([]),
+});

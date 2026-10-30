@@ -2,6 +2,7 @@
 // record this person already holds (server/scope.mjs). Nothing here asks the server for more.
 import { TODAY, classAnswerGroups, classesOf, classPrompts, commentStaff, getEvent, getLine, getMomentComments, getReports, getRequests, getStore, getStudent, isModerator, rootLine, spottedBy, unreadComments } from './api.js';
 import { atInWeek, inWeek, weekOf } from './week.js';
+import { taskHandInWaits } from './api.js';
 
 const SCHOOL = ['school', 'publishable'];
 const moment = (e) => e.type !== 'goal' && !e.alum && e.date <= TODAY;
@@ -31,6 +32,8 @@ export function weeklySummary(persona, back = 0) {
   // ── Waiting for you ──
   const groups = teaches ? classAnswerGroups(tid) : [];
   const inGroup = new Set(groups.flatMap((g) => g.requests.map((r) => r.id)));
+  // Class tasks: hand-ins to look at show per task (ThisWeek.jsx, taskHandInWaits), not one line per request.
+  if (teaches) for (const g of taskHandInWaits(tid)) for (const r of g.requests) inGroup.add(r.id);
   const requests = teaches ? getRequests(tid).filter((r) => !inGroup.has(r.id)) : [];
   const reports = isModerator(persona) ? getReports().filter((r) => r.status === 'open') : null;
   const spotted = tid ? spottedBy(tid).filter((x) => x.shown === 'waiting') : [];
