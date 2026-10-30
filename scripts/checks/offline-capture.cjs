@@ -33,10 +33,11 @@ const setupWith = async (U, token, extra = {}) => {
 const until = async (fn, ms = 10000) => { const t0 = Date.now(); for (;;) { const v = await fn(); if (v || Date.now() - t0 > ms) return v; await new Promise((r) => setTimeout(r, 200)); } };
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 // What is waiting in this browser's IndexedDB (src/outbox.js), without the photo bytes.
+// The changes waiting on the phone, leaving out milestone "seen" marks (src/milestones.js), which ride along.
 const held = (page) => page.evaluate(() => new Promise((ok) => {
   const r = indexedDB.open('tp-outbox', 1);
   r.onupgradeneeded = () => r.result.createObjectStore('items', { keyPath: 'k', autoIncrement: true }).createIndex('uid', 'uid');
-  r.onsuccess = () => { const g = r.result.transaction('items').objectStore('items').getAll(); g.onsuccess = () => { ok(g.result.map(({ blob, ...x }) => ({ ...x, blob: !!blob }))); r.result.close(); }; };
+  r.onsuccess = () => { const g = r.result.transaction('items').objectStore('items').getAll(); g.onsuccess = () => { ok(g.result.filter((x) => !/markMilestonesSeen/.test(x.body || '')).map(({ blob, ...x }) => ({ ...x, blob: !!blob }))); r.result.close(); }; };
   r.onerror = () => ok(null);
 }));
 const cached = (page) => page.evaluate(async () => { const out = []; for (const k of await caches.keys()) for (const r of await (await caches.open(k)).keys()) out.push(new URL(r.url).pathname + new URL(r.url).search); return out; });
