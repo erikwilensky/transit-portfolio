@@ -203,6 +203,7 @@ export function canAct(user, fn, args = []) {
   if (fn === 'setHandoverNote') { try { return handoverOk(user, args); } catch { return false; } }
   if (TR_FNS.has(fn)) { try { return termReflectionOk(user, fn, args); } catch { return false; } }
   if (PF_FNS.has(fn) || (fn === 'reportItem' && args[0]?.feedbackId)) { try { return peerOk(user, fn, args); } catch { return false; } }
+  if (fn === 'markMilestonesSeen') return milestonesOk(user, args); // only the student, never staff, admins or families
   if (isAdmin(user)) return true;
   if (ADMIN_ONLY.has(fn)) return false;
   if (ANYONE.has(fn)) return true;
@@ -337,3 +338,5 @@ function peerOk(user, fn, args) {
   if (!STAFF.includes(user.kind) || !user.teacherId || key !== user.teacherId) return false;
   return reachOf(user) === null || teachesClass(user, f.classId) || [f.studentId, f.fromId].some((sid) => api.getStudent(sid)?.advisorId === user.teacherId);
 }
+// ── Milestones (api.markMilestonesSeen): a student marks their own celebrations seen; nobody does it for them. ──
+const milestonesOk = (user, args) => user.kind === 'student' && !!user.studentId && args[0] === user.studentId;

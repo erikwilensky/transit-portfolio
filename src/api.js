@@ -2264,6 +2264,24 @@ moderateReport = function moderateReport(id, action, note, by) {
   emit();
   return r;
 };
+// ── Milestones and celebrations (src/milestones.js, src/components/Milestones.jsx) ──
+// Worked out from the map as each viewer reads it (a family or an advisor only from moments they can see), never stored.
+// What is kept: store.milestonesSeen[studentId] = { [key]: at }, so a celebration shows once, on any device.
+import { deriveMilestones, since as milestonesSince, RECENT_DAYS } from './milestones.js';
+export function milestonesOf(studentId, viewer = 'student', opts = {}) {
+  if (!getStudent(studentId)) return [];
+  return deriveMilestones(getStudentMap(studentId, viewer, opts), { today: TODAY, root: rootLine, line: lineById });
+}
+export const familyMilestones = (studentId) => (getStudent(studentId) ? milestonesOf(studentId, familyViewer(studentId), { family: true }) : []);
+export const recentMilestones = (studentId, viewer = 'advisor', days = RECENT_DAYS) => milestonesSince(milestonesOf(studentId, viewer), daysBefore(days));
+export const milestonesSeen = (studentId) => store.milestonesSeen?.[studentId] || null;
+export function markMilestonesSeen(studentId, keys) {
+  if (!getStudent(studentId)) throw Object.assign(new Error('No such student'), { status: 404 });
+  const at = nowIso(), seen = ((store.milestonesSeen ||= {})[studentId] ||= {});
+  for (const k of [].concat(keys || []).slice(0, 100)) if (typeof k === 'string' && k && k.length <= 80 && !seen[k]) seen[k] = at;
+  emit();
+  return seen;
+}
 
 // ── Shared record: with the pilot server, every change is replayed there ──
 // A screen calls a change below; it runs here at once (instant UI) while recording the ids and
@@ -2323,6 +2341,7 @@ spotMoment = act('spotMoment', spotMoment); acceptSpotted = act('acceptSpotted',
 setHandoverNote = act('setHandoverNote', setHandoverNote); carryOverGoal = act('carryOverGoal', carryOverGoal); closeGoal = act('closeGoal', closeGoal);
 setPeerFeedback = act('setPeerFeedback', setPeerFeedback); givePeerFeedback = act('givePeerFeedback', givePeerFeedback); thankPeerFeedback = act('thankPeerFeedback', thankPeerFeedback); hidePeerFeedback = act('hidePeerFeedback', hidePeerFeedback); setPeerFeedbackYear = act('setPeerFeedbackYear', setPeerFeedbackYear);
 openReflectionWindow = act('openReflectionWindow', openReflectionWindow); closeReflectionWindow = act('closeReflectionWindow', closeReflectionWindow); saveTermReflection = act('saveTermReflection', saveTermReflection); finishTermReflection = act('finishTermReflection', finishTermReflection);
+markMilestonesSeen = act('markMilestonesSeen', markMilestonesSeen);
 // Undo puts a whole earlier copy back, and reset goes back to the seed (sync.js sends it to /api/reset).
 restore = act('restore', restore); resetDemo = act('resetDemo', resetDemo);
 export const MUTATORS = Object.keys(ACTIONS);

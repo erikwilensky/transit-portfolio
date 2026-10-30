@@ -191,6 +191,8 @@ export function scopedSnapshot(user) {
     return f.fromId === self ? [{ ...x, fromId }] : f.studentId === self && !hidden ? [x] : [];
   });
   if (!moderator) { const fb = new Map((full.reports || []).filter((r) => r.feedbackId).map((r) => [r.id, r.feedbackId])); store.reports = store.reports.map((r) => (fb.has(r.id) ? { ...r, feedbackId: fb.get(r.id) } : r)); }
+  // Milestones (api.markMilestonesSeen): which celebrations a student has seen, for that student only.
+  store.milestonesSeen = self ? pickBy(full.milestonesSeen, (sid) => sid === self) : {};
   // Everything else (school lines' settings, integrations, rollout, family language, classes, keys other features add).
   for (const [k, v] of Object.entries(full)) if (!(k in store)) store[k] = generic(v, inReach);
   // Counts the whole-school screens show for what they may not open.
@@ -276,3 +278,4 @@ Object.assign(TOUCHES, {
   setPeerFeedback: (a) => T([ev(a[0])]), givePeerFeedback: (a) => T([a[1]]), setPeerFeedbackYear: (a) => T([], [a[2]]),
   thankPeerFeedback: (a) => T([api.getPeerFeedback(a[0])?.studentId ?? '?']), hidePeerFeedback: (a) => T([api.getPeerFeedback(a[0])?.studentId ?? '?']),
 });
+Object.assign(TOUCHES, { markMilestonesSeen: (a) => T([a[0]]) });

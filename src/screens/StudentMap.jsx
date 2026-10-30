@@ -11,6 +11,7 @@ import TermReview from '../components/TermReview.jsx';
 import { OpenPrompts } from '../components/ClassPrompts.jsx';
 import { SpottedForMe } from '../components/Spotted.jsx';
 import { PeerFromClasses } from '../components/PeerFeedback.jsx';
+import { milestoneBadges } from '../components/Milestones.jsx';
 import { MapLegend, VerifyBadge, VerifyLegend } from '../components/Badge.jsx';
 import { fmtDate, fmtTerm, TYPE_LABEL, VERIFY_LABEL, inkOn } from '../format.js';
 import { TOUR_REFLECTION, TOUR_STATION, tourEvent } from '../tourStory.js';
@@ -100,6 +101,7 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
   useEffect(() => { if (focusId?.startsWith('ev-')) { setSelected(focusId); setView('map'); } }, [focusId]);
   const markNew = (id) => { setNewIds(new Set([id])); setTimeout(() => setNewIds(new Set()), 8000); };
   const event = shown.events.find((e) => e.id === selected);
+  const badgeIds = useMemo(() => milestoneBadges(studentId), [studentId, map]);
 
   return (
     <div className="home">
@@ -164,7 +166,7 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
         {filtering && <p className="find-n" role="status">{lens.visible.size} match{lens.visible.size === 1 ? '' : 'es'} <button className="linkish" onClick={() => { setQ(''); setKind(''); setVer(''); setYear(''); setLp(''); }}>Clear</button></p>}
       </div>
       <div className="home-map">
-        {view === 'map' ? <MetroMap recent={simple} map={shown} lens={lens} selectedId={selected} onSelect={setSelected} onSignal={(g) => (g.open ? setSignal(g) : setSelected(g.eventId))} fitKey={studentId} newIds={newIds} />
+        {view === 'map' ? <MetroMap recent={simple} map={shown} lens={lens} selectedId={selected} onSelect={setSelected} onSignal={(g) => (g.open ? setSignal(g) : setSelected(g.eventId))} fitKey={studentId} newIds={newIds} badgeIds={seeAs === 'student' ? badgeIds : null} />
           : <StationList events={listed} map={shown} selected={selected} onSelect={setSelected} />}
         <StationPanel event={event} map={map} onClose={() => setSelected(null)} readOnly={seeAs !== 'student'} toast={toast} />
       </div>
