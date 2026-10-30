@@ -1,0 +1,19 @@
+/* Not seen lately (NotSeen.jsx). Builds on the advisor nudges' nd-* styles (feedback-nudges.css). */
+.nsl-weeks { display: inline-flex; border: 1px solid var(--rule); border-radius: 999px; overflow: hidden; }
+.nsl-weeks button { font: inherit; font-size: 13px; padding: 6px 12px; border: 0; background: var(--surface); color: var(--ink); cursor: pointer; min-height: 32px; }
+.nsl-weeks button + button { border-left: 1px solid var(--rule); }
+.nsl-weeks button.on { background: #002855; color: #fff; font-weight: 600; }
+.nsl-all { margin-top: 8px; }
+.nsl-hint { color: var(--muted); font-size: 14px; margin: 4px 0 0; }
+.nsl-msg { margin: 0; font-weight: 600; }
+.nsl-confirm { margin: 0; } .nsl-confirm span { color: var(--muted); font-size: 13.5px; }
+.nsl-note { width: 100%; box-sizing: border-box; border: 1px solid var(--rule); border-radius: 8px; padding: 8px; font: inherit; background: var(--surface); color: var(--ink); }
+.mc-list .nsl-row { grid-column: 1 / -1; margin: 0; font-size: 13.5px; }
+.nsl-row summary { cursor: pointer; font-weight: 600; color: var(--ink); padding: 4px 2px; }
+.nsl-row .nsl { margin: 6px 0 0; }
+.nsl-none { color: var(--muted); }
+.nsl-week .nsl-row { border-top: 1px solid var(--rule); padding: 8px 0; }
+.nsl-banner { border-color: var(--c, var(--b-gold)); background: color-mix(in srgb, var(--c, var(--b-gold)) 10%, var(--surface)); }
+.nsl-adv p { margin: 4px 0 0; font-size: 14px; }
+@media (max-width: 560px) { .nd-banner.nsl-banner { margin: 10px 16px; } }
+.nsl .nd-list li:has(.nsl-edit) { grid-column: 1 / -1; }

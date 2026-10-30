@@ -980,3 +980,9 @@ STU_RE.push(
   [/^(\d+) moments? this school year (?:has|have) no skills picked\. Suggestions the app made are not counted until you pick them\.$/,
     (m) => `เรื่องราว ${m[1]} รายการในปีการศึกษานี้ยังไม่ได้เลือกทักษะ ทักษะที่แอปแนะนำจะยังไม่นับจนกว่าคุณจะเลือก`],
 );
+// Not seen lately (src/components/NotSeen.jsx): a subject teacher's nudge, on the student's banner and in their bell.
+Object.assign(STU, { 'Add one thing you did for this subject.': 'เพิ่มสิ่งหนึ่งที่คุณทำในวิชานี้' });
+STU_RE.push(
+  [/^(.+) would love to see something from (.+): “(.+)”$/, (m) => `${m[1]} อยากเห็นผลงานของคุณในวิชา ${m[2]}: “${m[3]}”`],
+  [/^(.+) would love to see something from (.+)$/, (m) => `${m[1]} อยากเห็นผลงานของคุณในวิชา ${m[2]}`],
+);

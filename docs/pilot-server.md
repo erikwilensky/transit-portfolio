@@ -2382,3 +2382,62 @@ anyone. Demo and pilot. No route of its own, no notifications, no messages: tagg
   the moment shared with the school; a teacher who does not teach him gets nothing and is refused; a parent through the
   family letter, in Thai; axe on each). `thai-students.cjs` sweeps My skills at Simple and Standard and the picker.
 - Not done: earlier school years (the view is this year only); teachers do not suggest skills for a student.
+
+## Not seen lately: quiet students in a subject class (`src/api.js`, `src/components/NotSeen.jsx`)
+
+A subject teacher sees which students in each class have added nothing for that class lately, and nudges them. Built on
+the advisor nudges (see "Feedback and advisor nudges"): the same banner, the same 7 days, but per class. It goes only to the
+student: families get nothing (no new family path), and nothing is emailed.
+
+- **What counts** for a class (`classSeen(classIds)` → Map classId → Map studentId → last date): the student's moments on the
+  class's line (a sub-line counts; goals and alum stations do not), reflections on them, hand-ins of the class's tasks,
+  answers to its class questions (not skips), and spotted moments and class photos kept from it (whatever their line). A
+  back-dated moment counts on the day the log says it was added. Private ("Only me") moments count too, but only as a date.
+- **Teacher** (pilot; anywhere the class is the teacher's own):
+  - My classes: under each class, "N not seen lately on Science" (opens the list), or "Everyone has added something…", or,
+    for a class on no line, a hint to ask the coordinator (Lines, "Subjects and lines").
+  - Class page: "Not seen lately" above the tasks: "2 weeks / 4 weeks / 6 weeks" (`aria-pressed`; 4 to start; remembered on
+    the device, `localStorage['tp-nsl-weeks']`), each quiet student with "Last added something <date>" or "Nothing added
+    yet", "Nudge" or "Nudged 3 days ago", and "Nudge all N" (everyone not nudged this week) which first asks "Nudge all N
+    students?" with their names and "Yes, nudge N". The nudge shows its fixed words ("Mr Coultas would love to see
+    something from Science") and an optional short line (up to 140 characters). Long lists show 8, then "Show all".
+  - This week (this week only): "Not seen lately", one row per class with quiet students, each opening the same list.
+  - Left out (counted under "Not counted: …"): students whose account is paused, and students new to the class in the last
+    14 days (`NSL_NEW_DAYS`: the enrolment's `from`, else `store.classJoins['sid|classId']`, the day a later class list
+    added them to a class that already existed; places from the first import are not new).
+- **Student** (Simple, Standard and Full): one banner per class that nudged them in the last 14 days, until they do
+  something for that class after the nudge (the log, or a class question answered): "Mr Coultas would love to see
+  something from Science", the teacher's line (or "Add one thing you did for this subject."), "Add something" and "Not now"
+  (hidden on this device, `localStorage['tp-cnudge-hidden-<id>']`). "Add something" (and the notification,
+  `#/<persona>/map/add~<lineId>`) opens the add flow on that line: at Simple it skips "Which colour"; Standard and Full
+  open Add a station with the line ticked. Thai: its own block at the end of `src/i18n.js`.
+- **Advisor**: the advisee's page shows "Subject nudges: Subject teachers nudged them N times in the last 30 days" (a count;
+  not who, which class or what it said).
+- **Record**: `store.classNudges[] { id: 'sn-…', classId, studentId, from (teacher id), lineId, note, date, ts }` (the sentence
+  is made when shown, `classNudgeText(n)`, never stored); `store.classJoins { 'sid|classId': date }`. Both made on first use.
+- **Mutator**: `nudgeClass(classId, studentIds, teacherId, note?)` (one id or a list; replayed like the rest): 400 for an
+  unknown class or teacher, a class on no line, no students or a student not in the class now; 403 when the teacher does not
+  teach it; 409 when any of them was nudged for this class in the last 7 days (`NUDGE_GAP`; all or nothing). Each student
+  is notified (`toStudent`, kind `teacher`, in their "Teacher replies and endorsements" group; `inferKind` also knows the
+  words): "Mr Coultas would love to see something from Science: “<line>”", and logged ("Sent a nudge to add something on
+  Science"). Reads: `notSeenLately(classId, weeks)` → `{ c, line, noLine?, weeks, quiet: [{ student, last, nudge, can }],
+  left: { paused, isNew } }`, `classNudgesOf`, `lastClassNudge`, `canClassNudge`, `openClassNudges(studentId)`,
+  `subjectNudgeCount(studentId, days)`. `importRoster` is wrapped to fill `classJoins`.
+- **canAct** (`nslOk` in `server/auth.mjs`, before the admin rule): staff (or an admin with a staff record) in the class's
+  `teacherIds`, as themselves (`args[2]`), for students in the class now; whole-school roles only for a class they teach.
+  Never students or families. **Activity log**: `nudgeClass` names the students and the teacher (TOUCHES), never the line.
+- **Scope** (`server/scope.mjs`, wrapping `scopedSnapshot`): `classNudges` whole to the student and to that class's
+  teachers; to the student's advisor and whole-school roles only `{ id, studentId, date }`; families and other staff none.
+  `lineSeen { [classId]: { last: { sid: date }, paused: [sid] } }` for each class the person teaches, worked out on the whole
+  record (so a private moment counts while the moment itself is never sent) with paused student accounts
+  (`setPausedStudents`, set by `server/auth.mjs`); the browser uses it instead of its own part of the record.
+  `classJoins` to staff for students in reach. **PDPA**: `classNudges` and `classJoins` are the student's (copy and erasure).
+- Tests: `server/test/not-seen-lately.test.mjs`; browser: `node scripts/checks/not-seen-lately.cjs` (the real roster, skipped
+  without it): two classmates of Aaron Torres add Science moments (one "Only me"); Mr David Coultas sees the other 15 in
+  C-392000 on My classes and the class page, switches to 2 weeks, nudges Aaron with a line, opens "Nudge all 14" and
+  cancels, finds the class on This week; another teacher, a student and a student outside the class are refused (403), a
+  second nudge inside 7 days too (409); Ms Jane Altemen sees the count; Aaron at Simple on a phone sees the banner, adds a
+  Science moment from it and the banner goes; the activity log has the change without its words. Axe on each screen.
+  `scripts/checks/thai-students.cjs` sweeps the banner and the bell in Thai.
+- Not done: no nudges by email or to families (on purpose); nothing tells the teacher when a nudged student adds something
+  beyond them leaving the list.

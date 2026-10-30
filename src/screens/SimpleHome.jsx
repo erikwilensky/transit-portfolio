@@ -59,7 +59,7 @@ function checkers(studentId, lineId) {
 
 export default function SimpleHome({ map, studentId, toast, version, addRequest, focusId }) {
   const [adding, setAdding] = useState(false);
-  useEffect(() => { if (addRequest) setAdding(true); }, [addRequest]); // a nudge's "Add something"
+  useEffect(() => { if (addRequest) setAdding(addRequest.lineIds ? { lineIds: addRequest.lineIds } : true); }, [addRequest]); // a nudge's "Add something"
   const [asking, setAsking] = useState(null); // { event, prompt, signal }
   const [open, setOpen] = useState(focusId?.startsWith('ev-') ? focusId : null); // a notification's moment
   useEffect(() => { if (focusId?.startsWith('ev-')) setOpen(focusId); }, [focusId]); // search opens one

@@ -14,6 +14,7 @@ import { AdvisorStudentMilestones } from '../components/Milestones.jsx';
 import { LeaverForStaff } from '../components/Leaver.jsx';
 import { SkillsGrowthCard } from '../components/SkillsGrowth.jsx';
 import { skillsReader } from '../api.js';
+import { AdviseeSubjectNudges } from '../components/NotSeen.jsx';
 
 const daysBetween = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
 
@@ -70,6 +71,7 @@ export default function AdvisorStudent({ studentId, version, toast, go, persona,
           <AdvisorStudentMilestones studentId={studentId} version={version} onOpen={setSelected} />
           <LeaverForStaff studentId={studentId} version={version} persona={persona} toast={toast} />
           {skillsReader(persona, studentId) && <SkillsGrowthCard events={map.events} first={first} onOpen={setSelected} />}
+          <AdviseeSubjectNudges studentId={studentId} version={version} />
           <section className="card-sec">
             <h3>Meeting agenda</h3>
             <ol className="agenda">{agenda.map((a, i) => <li key={i}>{a}</li>)}</ol>

@@ -10,6 +10,7 @@ import { PeerClassList } from '../components/PeerFeedback.jsx';
 import { ClassTaskList, SetTaskDialog, TaskGrid } from '../components/ClassTasks.jsx';
 import { ClassPromptsCard } from '../components/SubjectPrompts.jsx';
 import { PhotoDropDialog, PhotoDropList } from '../components/PhotoDrop.jsx';
+import { QuietClass, QuietClassRow } from '../components/NotSeen.jsx';
 import './classes.css';
 import { SkillsGrowthCard } from '../components/SkillsGrowth.jsx';
 
@@ -67,6 +68,7 @@ function ClassList({ teacherId, go, persona, version, toast }) {
               </a>
               <button className="ghost cp-askbtn" disabled={!c.studentIds.length} onClick={() => setAsking(c)}>Ask the class</button>
               <button className="ghost tk-setbtn" disabled={!c.studentIds.length} onClick={() => setTasking(c)}>Set a task</button>
+              {c.studentIds.length > 0 && <QuietClassRow classId={c.id} teacherId={teacherId} toast={toast} version={version} />}
             </li>
           ))}
         </ul>
@@ -106,6 +108,7 @@ function ClassPage({ classId, teacherId, go, persona, version, toast }) {
       {dropping && <PhotoDropDialog c={c} teacherId={teacherId} toast={toast} onClose={() => setDropping(false)} />}
       <ClassQuestions c={c} teacherId={teacherId} go={go} persona={persona} version={version} toast={toast} />
       {tasking && <SetTaskDialog c={c} teacherId={teacherId} toast={toast} onClose={() => setTasking(false)} />}
+      {c.students.length > 0 && <QuietClass classId={c.id} teacherId={teacherId} toast={toast} version={version} />}
       <ClassTaskList c={c} teacherId={teacherId} go={go} persona={persona} version={version} toast={toast} />
       <ClassPromptsCard c={c} teacherId={teacherId} version={version} toast={toast} />
       {spotting && <SpotDialog students={spotting} teacherId={teacherId} classId={c.id} toast={toast} onClose={() => { setSpotting(null); setTicked([]); }} />}
