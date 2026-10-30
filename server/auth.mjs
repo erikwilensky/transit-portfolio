@@ -471,3 +471,9 @@ function subjectPromptOk(user, fn, args) {
   const reach = reachOf(user);
   return [].concat(args[1]?.examples || []).every((x) => { if (!x?.eventId) return true; const sid = api.getEvent(x.eventId)?.studentId; return !!sid && (reach === null || reach.has(sid)); });
 }
+
+// ── System health (routes/69-health.mjs): how many sessions are live, and for how many people ──
+export function liveSessions() {
+  const now = Date.now(), live = Object.values(sessions).filter((s) => s.expiresAt >= now && accountById(s.userId));
+  return { sessions: live.length, people: new Set(live.map((s) => s.userId)).size };
+}

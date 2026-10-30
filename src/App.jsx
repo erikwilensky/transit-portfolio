@@ -12,6 +12,7 @@ import Usage from './screens/Usage.jsx';
 import Reports from './screens/Reports.jsx';
 import Overview from './screens/Overview.jsx';
 import ActivityLog from './screens/ActivityLog.jsx';
+import SystemHealth from './screens/SystemHealth.jsx';
 import Exhibitions from './screens/Exhibitions.jsx';
 import { isModerator } from './api.js';
 import { AccountMenu, PasswordDialog } from './screens/SignIn.jsx';
@@ -374,7 +375,8 @@ export default function App() {
           {pilot && route.screen === 'activitylog' && (persona.admin || persona.kind === 'leadership') && <ActivityLog {...ctx} />}
           {pilot && route.screen === 'screens' && (persona.admin || ['advisor', 'teacher', 'counsellor', 'coordinator', 'leadership'].includes(persona.kind)) && <Exhibitions {...ctx} />}
           {pilot && route.screen === 'prompts' && (persona.admin || persona.kind === 'coordinator' || persona.kind === 'leadership') && <SubjectPromptsScreen {...ctx} />}
-          {route.screen !== 'prompts' && route.screen !== 'screens' && route.screen !== 'accounts' && route.screen !== 'usage' && route.screen !== 'reports' && route.screen !== 'overview' && route.screen !== 'week' && route.screen !== 'activitylog' && route.screen !== 'leaver' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} persona={persona} />}
+          {pilot && route.screen === 'health' && persona.admin && <SystemHealth {...ctx} />}
+          {route.screen !== 'prompts' && route.screen !== 'health' &&route.screen !== 'screens' && route.screen !== 'accounts' && route.screen !== 'usage' && route.screen !== 'reports' && route.screen !== 'overview' && route.screen !== 'week' && route.screen !== 'activitylog' && route.screen !== 'leaver' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} persona={persona} />}
           </ErrorBoundary>
           {pilot && level === 'simple' && <div className="fb-simple"><button onClick={() => setFbOpen(true)}>Something not working? Tell us</button></div>}
         </main>

@@ -177,6 +177,8 @@ export function personaFor(user) {
   if (['advisor', 'teacher', 'counsellor', 'coordinator', 'leadership'].includes(kind) || user.admin) p.nav = [...(p.nav || NAV[kind]), ['screens', 'School screens']];
   // Subject prompts for every line (src/components/SubjectPrompts.jsx): coordinators, leadership and admins.
   if (kind === 'coordinator' || kind === 'leadership' || user.admin) p.nav = [...(p.nav || NAV[kind]), ['prompts', 'Subject prompts']];
+  // System health (src/screens/SystemHealth.jsx): admins only.
+  if (user.admin) p.nav = [...(p.nav || NAV[kind]), ['health', 'System health']];
   return p;
 }
 function applyPersona() {
@@ -204,4 +206,9 @@ export const sisSync = {
   check: () => call('POST', '/api/admin/sis/check'),
   apply: (id, opts = {}) => call('POST', `/api/admin/sis/reports/${encodeURIComponent(id)}/apply`, opts), // opts: { pauseLeavers }
   dismiss: (id) => call('POST', `/api/admin/sis/reports/${encodeURIComponent(id)}/dismiss`),
+};
+// System health (server/routes/69-health.mjs): admins only, pilot.
+export const systemHealth = {
+  get: () => call('GET', '/api/admin/health'),
+  diagnosticsUrl: '/api/admin/health?format=diagnostics',
 };
