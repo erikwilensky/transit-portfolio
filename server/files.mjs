@@ -68,9 +68,11 @@ const viaRecord = (u, name, refs) => {
 };
 
 // meta: the .json kept beside the upload ({ by: account id, … }).
-export function canSeeFile(user, name, meta = {}) {
+// exToken: an exhibition screen's token (?ex=, server/routes/45-exhibition.mjs), for the photos on its slides.
+export function canSeeFile(user, name, meta = {}, exToken = null) {
   if (user && meta.by && meta.by === user.id) return true;
   if (publicFiles().has(name)) return true;
+  if (exToken && exhibitionFiles(exToken).has(name)) return true;
   if (!user) return false;
   if ((A.isAdmin(user) || user.kind === 'leadership') && F.allFeedback().some((f) => f.screenshot?.url?.endsWith(`/${name}`))) return true;
   // Kind feedback: the photo on a classmate's moment opened for feedback (api.peerMomentsFor).
@@ -78,4 +80,13 @@ export function canSeeFile(user, name, meta = {}) {
   const refs = fileIndex().get(name);
   if (!refs) return false; // not attached to anything yet: the uploader only
   return [user, ...(A.isAdmin(user) ? previewed(user) : [])].some((u) => viaRecord(u, name, refs));
+}
+
+// Photos on an exhibition screen's slides, by its token: none once it is paused or turned off.
+export function exhibitionFiles(token) {
+  const x = api.exhibitionByToken(token);
+  if (!x || x.revoked || x.paused) return new Set();
+  const c = now(), ex = (c.ex ||= new Map());
+  if (!ex.has(x.id)) ex.set(x.id, new Set(api.exhibitionSlides(x).flatMap((s) => namesIn(s.photo))));
+  return ex.get(x.id);
 }

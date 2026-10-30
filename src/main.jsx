@@ -44,8 +44,11 @@ const mayShare = () => { const a = getAuth(); return a.server && (a.mode !== 'pi
 // Offline capture: the signed-in account's changes not sent yet are taken up again; with no connection, this device's copy.
 const sync = () => { const a = getAuth(); if (a.mode === 'pilot' && a.user) keepShell(); return startSync({ user: a.mode === 'pilot' ? a.user?.id : null, offline: !!a.offline }); };
 const render = () => createRoot(document.getElementById('root')).render(<><PreviewBar /><Root /><UpdateBar /><RefusedBar /><OfflineBar /></>);
+// An exhibition screen (#/x/<token>, src/screens/Kiosk.jsx): on its own, signed out, never the record.
+const kioskToken = location.hash.match(/^#\/?x\/([A-Za-z0-9_-]{32,128})$/)?.[1];
 registerServiceWorker(); // the phone app (src/pwa.js)
-loadAuth().then(() => {
+if (kioskToken) import('./screens/Kiosk.jsx').then(({ default: Kiosk }) => { keepShell(); createRoot(document.getElementById('root')).render(<Kiosk token={kioskToken} />); });
+else loadAuth().then(() => {
   if (getAuth().mode === 'pilot') useLiveDate(); // a pilot runs on the real calendar, like its server
   if (!mayShare()) return render();
   // Admin "See as" (src/preview.js): that person's copy, read-only, and no sync. If it cannot start, the admin's own view.

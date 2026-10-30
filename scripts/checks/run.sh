@@ -36,4 +36,5 @@ echo "== peer-feedback (starts its own clean pilot server on the real roster)"; 
 echo "== polish (starts its own pilot and demo servers)"; node polish.cjs || fail=1
 echo "== milestones (starts its own clean pilot server on the real roster)"; node milestones.cjs || fail=1
 echo "== sis-sync (starts its own clean pilot server and a mock SIS serving the real roster)"; node sis-sync.cjs || fail=1
+echo "== exhibition (starts its own clean pilot server on the real roster)"; node exhibition.cjs || fail=1
 echo "== tours"; node tours.cjs | grep -E "end url|ERRS|soon|boom|empty|hs" ; exit $fail

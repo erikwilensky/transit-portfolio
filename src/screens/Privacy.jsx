@@ -79,6 +79,14 @@ export default function Privacy({ studentId, drafts, toast, go, persona, version
             : <><p><span className="status s-ok"><i>✓</i>Parent consent on file</span></p><p className="fineprint">Recorded in the SIS when you joined. Under Thailand's PDPA you can ask the school to correct or delete your data at any time{isPilot() ? ': ask the pilot admin, who can remove your record' : ''}.</p></>}
         </div>
 
+        {isPilot() && <div className="card-sec pv-screens">
+          <h3>School screens</h3>
+          <p className="fineprint">At open evenings, in the library or on a lobby TV, the school may show moments you made publishable, with your first name and Year.</p>
+          <label className="pv-row"><span>Don't show my moments on school screens</span>
+            <input type="checkbox" checked={p.screens === false} onChange={(e) => { setPrivacy(studentId, { screens: !e.target.checked }); toast(e.target.checked ? 'Your moments will not be shown on school screens.' : 'Your publishable moments may be shown on school screens.'); }} />
+          </label>
+        </div>}
+
         <div className="card-sec pv-export">
           <h3>Take your map with you</h3>
           <p>When you graduate, or whenever you like, download your whole record. It is yours.</p>

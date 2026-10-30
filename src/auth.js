@@ -173,6 +173,8 @@ export function personaFor(user) {
   if (kind === 'teacher' || kind === 'advisor' || also.length) { p.nav = [...(p.nav || NAV[kind])]; p.nav.splice(1, 0, ['week', 'This week']); }
   // Activity log (src/screens/ActivityLog.jsx): admins and leadership.
   if (kind === 'leadership' || user.admin) p.nav = [...(p.nav || NAV[kind]), ['activitylog', 'Activity log']];
+  // School screens (src/screens/Exhibitions.jsx): every member of staff and admins.
+  if (['advisor', 'teacher', 'counsellor', 'coordinator', 'leadership'].includes(kind) || user.admin) p.nav = [...(p.nav || NAV[kind]), ['screens', 'School screens']];
   return p;
 }
 function applyPersona() {

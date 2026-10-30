@@ -2283,6 +2283,89 @@ export function markMilestonesSeen(studentId, keys) {
   return seen;
 }
 
+// ── Exhibition screens (open evenings, the library, a lobby TV; src/screens/Exhibitions.jsx, src/screens/Kiosk.jsx,
+// server/routes/45-exhibition.mjs) ──
+// store.exhibitions [{ id: 'ex-…', title, token (long and random, made by the browser: the screen's address), by
+// (teacherId | null), at, from, to (moment dates, inclusive; null: open), seconds (per slide), years: [British Years],
+// classIds, advisory (by's advisees), lineIds (school lines; none: every line), paused: { at, by } | null, revoked:
+// { at, by } | null, removed: [{ eventId, by, at }] }], made on first use.
+// A slide is a moment that is publishable, not hidden by safeguarding, not a goal, dated in the window, on a chosen line,
+// of a chosen student, whose student has not turned school screens off (privacy.screens === false), and that was never
+// removed from this exhibition. It carries the first name and Year only, and one line of a publishable reflection.
+export const EXHIBIT_SECONDS = { min: 4, max: 60, standard: 10 };
+const exErr = (message, status = 400) => Object.assign(new Error(message), { status });
+export const getExhibitions = () => store.exhibitions || [];
+export const getExhibition = (id) => getExhibitions().find((x) => x.id === id);
+export const EXHIBIT_TOKEN = /^[A-Za-z0-9_-]{32,128}$/;
+export const exhibitionByToken = (t) => (typeof t === 'string' && EXHIBIT_TOKEN.test(t) ? getExhibitions().find((x) => x.token === t) : undefined);
+export const screensAllowed = (sid) => getPrivacy(sid).screens !== false;
+export function exhibitionStudents(x) {
+  const years = new Set(x.years || []), classes = new Set(x.classIds || []);
+  const any = years.size || classes.size || x.advisory;
+  const inClass = new Set(getEnrolments().filter((n) => classes.has(n.classId) && !(n.to && n.to < TODAY)).map((n) => n.studentId));
+  return new Set(getStudents().filter((s) => !any || years.has(s.grade + 1) || inClass.has(s.id) || (x.advisory && !!x.by && s.advisorId === x.by)).map((s) => s.id));
+}
+const oneLine = (t) => {
+  const s = String(t ?? '').replace(/\s+/g, ' ').trim(), first = s.match(/^.+?[.!?](?=\s|$)/)?.[0] || s;
+  return first.length > 140 ? `${first.slice(0, 139).trimEnd()}…` : first;
+};
+export function exhibitionSlides(idOrX) {
+  const x = typeof idOrX === 'string' ? getExhibition(idOrX) : idOrX;
+  if (!x) return [];
+  const who = exhibitionStudents(x), gone = new Set((x.removed || []).map((r) => r.eventId)), lines = new Set(x.lineIds || []);
+  const onLine = (l) => !lines.size || lines.has(l) || lines.has(rootLine(l));
+  return store.events.filter((e) => who.has(e.studentId) && e.visibility === 'publishable' && !e.hidden && e.type !== 'goal' && e.date <= TODAY
+    && (!x.from || e.date >= x.from) && (!x.to || e.date <= x.to) && e.lineIds.some(onLine) && !gone.has(e.id) && screensAllowed(e.studentId))
+    .sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id)).slice(0, 200).map((e) => {
+      const s = getStudent(e.studentId), l = lineById(e.lineIds.find(onLine));
+      const r = store.reflections.find((f) => f.eventId === e.id && f.visibility === 'publishable' && String(f.text || '').trim());
+      return { eventId: e.id, studentId: e.studentId, title: e.title, date: e.date, name: s.name.split(' ')[0], year: s.grade + 1,
+        line: l ? { id: l.id, name: l.name, colour: l.colour } : null, photo: (e.evidence || []).find(isPhoto)?.url || null, quote: r ? oneLine(r.text) : null };
+    });
+}
+export function createExhibition(spec, by, token) {
+  if (typeof token !== 'string' || !EXHIBIT_TOKEN.test(token) || getExhibitions().some((x) => x.token === token)) throw exErr('Could not make an address for the screen. Try again.');
+  if (by && !teacherById[by]) throw exErr('No such teacher.');
+  const title = String(spec?.title ?? '').replace(/\s+/g, ' ').trim().slice(0, 80);
+  if (!title) throw exErr('Give the screen a title.');
+  const day = (d) => (/^\d{4}-\d{2}-\d{2}$/.test(d || '') ? d : null);
+  const from = day(spec.from), to = day(spec.to);
+  if (from && to && from > to) throw exErr('The first day is after the last day.');
+  const seconds = Math.round(Number(spec.seconds ?? EXHIBIT_SECONDS.standard));
+  if (!(seconds >= EXHIBIT_SECONDS.min && seconds <= EXHIBIT_SECONDS.max)) throw exErr(`Show each slide for ${EXHIBIT_SECONDS.min} to ${EXHIBIT_SECONDS.max} seconds.`);
+  const years = [...new Set([].concat(spec.years || []).map(Number))].filter((y) => Number.isInteger(y) && y >= 1 && y <= 13).sort((a, b) => a - b);
+  const classIds = [...new Set([].concat(spec.classIds || []))].filter((c) => getClasses().some((k) => k.id === c));
+  const lineIds = [...new Set([].concat(spec.lineIds || []))].filter((l) => lineById(l) && !lineById(l).studentId);
+  const x = { id: uid('ex-'), title, token, by: by || null, at: nowIso(), from, to, seconds, years, classIds, advisory: !!spec.advisory && !!by, lineIds, paused: null, revoked: null, removed: [] };
+  (store.exhibitions ||= []).push(x);
+  emit();
+  return x;
+}
+const liveExhibition = (id) => {
+  const x = getExhibition(id);
+  if (!x) throw exErr('No such screen.', 404);
+  if (x.revoked) throw exErr('This screen has been turned off.', 409);
+  return x;
+};
+// Removed slides never come back, whatever the student does with the moment later.
+export function removeExhibitionSlide(id, eventId, by) {
+  const x = liveExhibition(id);
+  if (typeof eventId !== 'string' || !eventId) throw exErr('Pick a slide.');
+  if (!(x.removed ||= []).some((r) => r.eventId === eventId)) x.removed.push({ eventId, by: by || null, at: nowIso() });
+  emit();
+}
+export function pauseExhibition(id, paused, by) {
+  const x = liveExhibition(id);
+  x.paused = paused ? { at: nowIso(), by: by || null } : null;
+  emit();
+}
+export function revokeExhibition(id, by) {
+  const x = getExhibition(id);
+  if (!x) throw exErr('No such screen.', 404);
+  if (!x.revoked) x.revoked = { at: nowIso(), by: by || null };
+  emit();
+}
+
 // ── Shared record: with the pilot server, every change is replayed there ──
 // A screen calls a change below; it runs here at once (instant UI) while recording the ids and
 // times it made. The hook (src/sync.js) posts { fn, args, rec } to /api/action, and the server runs
@@ -2342,6 +2425,7 @@ setHandoverNote = act('setHandoverNote', setHandoverNote); carryOverGoal = act('
 setPeerFeedback = act('setPeerFeedback', setPeerFeedback); givePeerFeedback = act('givePeerFeedback', givePeerFeedback); thankPeerFeedback = act('thankPeerFeedback', thankPeerFeedback); hidePeerFeedback = act('hidePeerFeedback', hidePeerFeedback); setPeerFeedbackYear = act('setPeerFeedbackYear', setPeerFeedbackYear);
 openReflectionWindow = act('openReflectionWindow', openReflectionWindow); closeReflectionWindow = act('closeReflectionWindow', closeReflectionWindow); saveTermReflection = act('saveTermReflection', saveTermReflection); finishTermReflection = act('finishTermReflection', finishTermReflection);
 markMilestonesSeen = act('markMilestonesSeen', markMilestonesSeen);
+createExhibition = act('createExhibition', createExhibition); removeExhibitionSlide = act('removeExhibitionSlide', removeExhibitionSlide); pauseExhibition = act('pauseExhibition', pauseExhibition); revokeExhibition = act('revokeExhibition', revokeExhibition);
 // Undo puts a whole earlier copy back, and reset goes back to the seed (sync.js sends it to /api/reset).
 restore = act('restore', restore); resetDemo = act('resetDemo', resetDemo);
 export const MUTATORS = Object.keys(ACTIONS);
