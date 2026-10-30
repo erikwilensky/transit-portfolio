@@ -59,4 +59,5 @@ echo "== year-signoff (starts its own clean pilot server on the real roster)"; n
 echo "== moment-templates (starts its own clean pilot server on the real roster)"; node moment-templates.cjs || fail=1
 echo "== skills-growth (starts its own clean pilot server on the real roster)"; node skills-growth.cjs || fail=1
 echo "== not-seen-lately (starts its own clean pilot server on the real roster)"; node not-seen-lately.cjs || fail=1
+echo "== moving-up (starts its own clean pilot server on the real roster)"; node moving-up.cjs || fail=1
 echo "== tours";node tours.cjs | grep -E "end url|ERRS|soon|boom|empty|hs" ; exit $fail

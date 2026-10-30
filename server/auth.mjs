@@ -219,6 +219,7 @@ export function canAct(user, fn, args = []) {
   if (YS_FNS.has(fn)) { try { return signoffOk(user, fn, args); } catch { return false; } }
   if (MT_FNS.has(fn)) { try { return momentTemplateOk(user, fn, args); } catch { return false; } }
   if (fn === 'nudgeClass') { try { return nslOk(user, args); } catch { return false; } }
+  if (MU_FNS.has(fn)) { try { return movingUpOk(user, fn, args); } catch { return false; } }
   if (isAdmin(user)) return true;
   if (ADMIN_ONLY.has(fn)) return false;
   if (ANYONE.has(fn)) return true;
@@ -629,3 +630,18 @@ function nslOk(user, [classId, studentIds, teacherId]) {
   return ids.length > 0 && ids.every((sid) => typeof sid === 'string' && here.has(sid));
 }
 setPausedStudents(() => new Set(accounts.filter((a) => a.paused && a.kind === 'student' && a.studentId).map((a) => a.studentId)));
+// ── Moving-up summaries (api.openMovingUp, closeMovingUp, saveMovingUp, finishMovingUp, setMovingUpFamily) ──
+// Open: an advisor for their own advisory, whole-school staff for any advisory or Year 9 or 11, as themselves; admins.
+// Close: whoever opened it, its advisor, whole-school staff, admins. Writing and the family choice: only the student, their
+// own, in a window that includes them (never staff, admins or families).
+const MU_FNS = new Set(['openMovingUp', 'closeMovingUp', 'saveMovingUp', 'finishMovingUp', 'setMovingUpFamily']);
+function movingUpOk(user, fn, args) {
+  if (fn === 'saveMovingUp' || fn === 'finishMovingUp') return user.kind === 'student' && !!user.studentId && args[1] === user.studentId && !!api.getMovingUpWindow(args[0])?.studentIds.includes(user.studentId);
+  if (fn === 'setMovingUpFamily') return user.kind === 'student' && !!user.studentId && args[0] === user.studentId && api.getMovingUp(args[1])?.studentId === user.studentId;
+  if (isAdmin(user)) return fn === 'closeMovingUp' || !args[1] || args[1] === user.teacherId;
+  if (!STAFF.includes(user.kind) || !user.teacherId) return false;
+  const whole = reachOf(user) === null;
+  if (fn === 'closeMovingUp') { const w = api.getMovingUpWindow(args[0]); return !!w && (whole || w.by === user.teacherId || w.advisorId === user.teacherId); }
+  const spec = args[0] || {};
+  return args[1] === user.teacherId && (whole || (!spec.year && spec.advisorId === user.teacherId));
+}
