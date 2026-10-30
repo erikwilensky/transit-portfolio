@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { dismissHint, hintDismissed, install, isIos, onPhone, onPwa, standalone } from '../pwa.js';
+import { getLang } from '../api.js';
+import { barWords } from '../i18n.js';
 import './phone-app.css';
 
 // "A new version is ready": a new deploy's service worker has taken over; the page reloads into it.
@@ -7,7 +9,8 @@ export function UpdateBar() {
   const [s, setS] = useState({});
   useEffect(() => onPwa(setS), []);
   if (!s.update) return null;
-  return <div className="pa-update" role="status">A new version is ready <button onClick={() => location.reload()}>Reload</button></div>;
+  const lang = getLang(), w = barWords(lang);
+  return <div className="pa-update" role="status" lang={lang}>{w.update} <button onClick={() => location.reload()}>{w.reload}</button></div>;
 }
 
 // For students on phones: how to put the app on the home screen. Dismissed once, gone on this device.

@@ -17,6 +17,7 @@ import { send, readJson, clientIp, DATA_DIR, writeAtomic } from '../lib.mjs';
 import { api } from '../store.mjs';
 import * as A from '../auth.mjs';
 import { originOf, requireAdmin } from './10-auth.mjs';
+import * as L from '../audit.mjs';
 
 const bad = (status, message) => Object.assign(new Error(message), { status });
 const DAYS = 30, USES = 2;
@@ -52,6 +53,7 @@ function lettersFor(req, students, onlyNew) {
     return { studentId: s.id, firstName: first(s), homeroom: s.homeroom || '', year: s.grade + 1, url: urlOf(base, t), expiresAt };
   });
   save();
+  L.log(req, { action: 'family-letters', target: L.studentsTarget(todo.map((s) => s.id)), detail: { count: letters.length } });
   return { school: school(), letters: letters.sort((x, y) => byRoom({ ...x, name: x.firstName }, { ...y, name: y.firstName })) };
 }
 
@@ -89,11 +91,13 @@ export default (app) => {
     if (req.user) {
       if (req.user.kind !== 'parent') throw bad(403, 'You are signed in with a school account. Sign out first, then open the link again.');
       const added = addChild(req.user, i);
+      L.log(req, { action: 'family-join', target: L.studentsTarget([i.studentId]), detail: { added, how: 'signed in' } });
       return send(res, 200, { mode: A.MODE, user: meOf(req.user), added });
     }
     const email = A.normEmail(b.email), ip = clientIp(req);
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) throw bad(400, 'Add a valid email address.');
     let a = A.accountByEmail(email), added = true;
+    const existing = !!a;
     if (a) {
       // A parent account already: its password links this child too (throttled like a sign-in).
       const t = A.throttle(email, ip);
@@ -110,6 +114,7 @@ export default (app) => {
       await A.setPassword(a, b.password);
       i.uses.push(a.id); save();
     }
+    L.log(req, { action: 'family-join', actor: L.actorOf(a), target: L.studentsTarget([i.studentId]), detail: { added, how: existing ? 'existing account' : 'new account' } });
     const s = A.startSession(a.id);
     send(res, 200, { mode: A.MODE, user: meOf(a), added }, { 'set-cookie': A.cookieHeader(req, s.token, s.maxAge) });
   });
@@ -164,6 +169,7 @@ export default (app) => {
     const a = A.accountById(accountId);
     if (!a || a.kind !== 'parent' || !a.children?.includes(studentId)) throw bad(404, 'That family member is not linked to this student.');
     const rest = a.children.filter((c) => c !== studentId);
+    L.log(req, { action: 'family-remove', target: { ...L.studentsTarget([studentId]), accountId: a.id }, detail: { accountRemoved: !rest.length } });
     if (rest.length) A.updateAccount(a, { children: rest }); else A.removeAccount(a.id);
     send(res, 200, { ok: true, removed: !rest.length });
   });

@@ -1,10 +1,12 @@
 // Pilot sign-in, browser side. The server says which mode it runs in (GET /api/auth/me).
 // Demo mode (the default, and whenever there is no server): the persona switcher, tours and reset, no sign-in.
 // Pilot mode: each person signs in and sees only their own role's screens, built as a persona.
-import { addStudent, addTeacher, getStudent, getTeacher, isModerator, setLang, setOwnLang } from './api.js';
+import { addStudent, addTeacher, getLang, getStudent, getTeacher, isModerator, setLang, setOwnLang } from './api.js';
 import { savedLang, saveLang } from './i18n.js';
 import { PERSONAS, NAV, setPilotPersona } from './personas.js';
 import { clearCaches } from './pwa.js';
+import { dropUnsent, unsent } from './sync.js';
+import { signOutWarning } from './outbox.js';
 
 let state = { mode: 'demo', user: null, server: false };
 const listeners = new Set();
@@ -27,11 +29,18 @@ export async function loadAuth() {
     if (!r.ok || !(r.headers.get('content-type') || '').includes('json')) throw new Error('no server');
     const j = await r.json();
     set({ mode: j.mode === 'pilot' ? 'pilot' : 'demo', user: j.user || null, server: true });
-  } catch {
-    set({ mode: 'demo', user: null, server: false });
+    remember(j.mode === 'pilot' && j.user ? { mode: 'pilot', user: j.user } : null);
+  } catch (e) {
+    // No connection at all (not a page without a server): the account last signed in here, so changes can be made
+    // offline and sent later (src/sync.js). Signing out forgets it (a tp- key).
+    const last = e instanceof TypeError && remembered();
+    set(last ? { ...last, server: true, offline: true } : { mode: 'demo', user: null, server: false });
   }
   return state;
 }
+const LAST = 'tp-offline-auth';
+const remember = (a) => { try { if (a) localStorage.setItem(LAST, JSON.stringify(a)); else localStorage.removeItem(LAST); } catch { /* blocked */ } };
+const remembered = () => { try { const a = JSON.parse(localStorage.getItem(LAST)); return a?.user?.id ? a : null; } catch { return null; } };
 
 export const signIn = async (email, password) => { const j = await call('POST', '/api/auth/login', { email, password }); set({ ...state, user: await adoptLang(j.user) }); return j.user; };
 export const getSetup = (token) => call('GET', `/api/auth/setup/${encodeURIComponent(token)}`);
@@ -42,7 +51,14 @@ export const forgotPassword = (email) => call('POST', '/api/auth/forgot', { emai
 export const sessionCount = () => call('GET', '/api/auth/sessions').then((j) => j.devices);
 // Signing out also clears this browser's saved copy of the record, so the next person on a shared device starts clean.
 // everywhere: ends every session of this account, on every device.
+// Changes made offline and not sent yet are this account's to lose: ask first, then drop only theirs.
 export async function signOut(everywhere = false) {
+  const uid = state.user?.id;
+  if (uid) {
+    const n = await unsent(uid);
+    if (n && !confirm(signOutWarning(n, getLang()))) return false;
+    await dropUnsent(uid);
+  }
   try { await call('POST', everywhere ? '/api/auth/logout-everywhere' : '/api/auth/logout'); } catch { /* already signed out */ }
   try { Object.keys(localStorage).filter((k) => k.startsWith('tp-')).forEach((k) => localStorage.removeItem(k)); } catch { /* blocked */ }
   await clearCaches();
@@ -102,6 +118,12 @@ export const overview = {
   get: () => call('GET', '/api/overview'),
   csvUrl: (range) => `/api/overview?format=csv&range=${encodeURIComponent(range)}`,
 };
+// Activity log (server/routes/66-audit.mjs): admins and leadership. q: { person, student, action, result, from, to, page, size }.
+const auditQs = (q) => new URLSearchParams(Object.entries(q).filter(([, v]) => v !== '' && v != null)).toString();
+export const activityLog = {
+  list: (q) => call('GET', `/api/audit?${auditQs(q)}`),
+  csvUrl: (q) => `/api/audit?${auditQs({ ...q, page: null, size: null, format: 'csv' })}`,
+};
 
 // ── An account becomes a persona in the PERSONAS shape, so every existing screen works unchanged ──
 const COLOURS = { student: '#4F529B', advisor: '#008A60', teacher: '#002855', counsellor: '#E73C3E', coordinator: '#FF8F1C', leadership: '#002855', parent: '#FFB81C', admin: '#002855' };
@@ -144,9 +166,13 @@ export function personaFor(user) {
   // Pilot usage, for leadership and the pilot admin.
   if (kind === 'leadership' || user.admin) p.nav = [...(p.nav || NAV[kind]), ['usage', 'Pilot usage']];
   // Safeguarding reports (src/screens/Reports.jsx): coordinators, counsellors, leadership and admins.
-  if (isModerator(user)) p.nav = [...(p.nav || NAV[kind]), ['reports', 'Reports']];
+  if (isModerator(user) && !(p.nav || NAV[kind]).some(([id]) => id === 'reports')) p.nav = [...(p.nav || NAV[kind]), ['reports', 'Reports']];
   // School overview (src/screens/Overview.jsx): leadership, coordinators and admins.
   if (kind === 'leadership' || kind === 'coordinator' || user.admin) p.nav = [...(p.nav || NAV[kind]), ['overview', 'School overview']];
+  // This week (src/screens/ThisWeek.jsx): anyone who teaches or advises, right after their home; their landing on Mondays.
+  if (kind === 'teacher' || kind === 'advisor' || also.length) { p.nav = [...(p.nav || NAV[kind])]; p.nav.splice(1, 0, ['week', 'This week']); }
+  // Activity log (src/screens/ActivityLog.jsx): admins and leadership.
+  if (kind === 'leadership' || user.admin) p.nav = [...(p.nav || NAV[kind]), ['activitylog', 'Activity log']];
   return p;
 }
 function applyPersona() {

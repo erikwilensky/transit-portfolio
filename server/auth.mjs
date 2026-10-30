@@ -83,7 +83,7 @@ export function updateAccount(a, patch) {
   Object.assign(a, patch); saveAccounts();
 }
 export function removeAccount(id) { accounts = accounts.filter((a) => a.id !== id); endSessionsOf(id); saveAccounts(); }
-export async function setPassword(a, password) { a.password = await hashPassword(password); delete a.setup; delete a.resetRequest; saveAccounts(); }
+export async function setPassword(a, password) { a.password = await hashPassword(password); a.signedUpAt ||= new Date().toISOString(); delete a.setup; delete a.resetRequest; saveAccounts(); }
 
 // ── One-time setup links ──
 // First run (no accounts yet): a setup token held in memory only, printed to the log.
@@ -201,6 +201,9 @@ export function canAct(user, fn, args = []) {
   if (fn === 'restore') return false;
   if (SPOT_FNS.has(fn)) { try { return spotOk(user, fn, args); } catch { return false; } }
   if (fn === 'setHandoverNote') { try { return handoverOk(user, args); } catch { return false; } }
+  if (TR_FNS.has(fn)) { try { return termReflectionOk(user, fn, args); } catch { return false; } }
+  if (PF_FNS.has(fn) || (fn === 'reportItem' && args[0]?.feedbackId)) { try { return peerOk(user, fn, args); } catch { return false; } }
+  if (fn === 'markMilestonesSeen') return milestonesOk(user, args); // only the student, never staff, admins or families
   if (isAdmin(user)) return true;
   if (ADMIN_ONLY.has(fn)) return false;
   if (ANYONE.has(fn)) return true;
@@ -301,3 +304,39 @@ function handoverOk(user, [studentId, , by]) {
   return !!s && (s.advisorId === by || api.previousAdvisorOf(studentId) === by);
 }
 for (const f of ['carryOverGoal', 'closeGoal']) STUDENT_FNS.add(f);
+// ── Term reflection (api.openReflectionWindow, closeReflectionWindow, saveTermReflection, finishTermReflection) ──
+// Opening: an advisor for their own advisees (advisorId is their teacherId), whole-school staff (a coordinator) for any
+// advisory or a whole Year, as themselves; admins too. Closing early: whoever opened it, that advisory's advisor,
+// whole-school staff and admins. Writing: only the student, on their own reflection in a window that includes them.
+const TR_FNS = new Set(['openReflectionWindow', 'closeReflectionWindow', 'saveTermReflection', 'finishTermReflection']);
+function termReflectionOk(user, fn, args) {
+  if (fn === 'saveTermReflection' || fn === 'finishTermReflection') return user.kind === 'student' && !!user.studentId && args[1] === user.studentId && !!api.getReflectionWindow(args[0])?.studentIds.includes(user.studentId);
+  if (isAdmin(user)) return fn === 'closeReflectionWindow' || !args[1] || args[1] === user.teacherId;
+  if (!STAFF.includes(user.kind) || !user.teacherId) return false;
+  const whole = reachOf(user) === null;
+  if (fn === 'closeReflectionWindow') { const w = api.getReflectionWindow(args[0]); return !!w && (whole || w.by === user.teacherId || w.advisorId === user.teacherId); }
+  const spec = args[0] || {};
+  return args[1] === user.teacherId && (whole || (!spec.year && spec.advisorId === user.teacherId));
+}
+// ── Kind feedback from classmates (api.setPeerFeedback, givePeerFeedback, thankPeerFeedback, hidePeerFeedback,
+// setPeerFeedbackYear; reportItem on { feedbackId }) ──
+// Opting a moment in, thanking and hiding: only the student who owns the moment. Giving: only a student, as themselves,
+// on a classmate's moment when they share a current class (never staff or admins writing as a student). Turning a Year
+// off or on: coordinators and leadership as themselves, admins. Reporting feedback: the moment's owner ('student'), staff
+// who can read it (the class's teachers, either student's advisor, whole-school roles) as themselves, admins.
+const PF_FNS = new Set(['setPeerFeedback', 'givePeerFeedback', 'thankPeerFeedback', 'hidePeerFeedback', 'setPeerFeedbackYear']);
+function peerOk(user, fn, args) {
+  const me = user.kind === 'student' && user.studentId;
+  if (fn === 'setPeerFeedback') return !!me && api.getEvent(args[0])?.studentId === me;
+  if (fn === 'givePeerFeedback') { const e = api.getEvent(args[0]); return !!me && args[1] === me && !!e && e.studentId !== me && api.sharedClasses(e.studentId, me).length > 0; }
+  if (fn === 'thankPeerFeedback' || fn === 'hidePeerFeedback') return !!me && api.getPeerFeedback(args[0])?.studentId === me;
+  if (fn === 'setPeerFeedbackYear') return isAdmin(user) ? !args[2] || args[2] === user.teacherId : ['coordinator', 'leadership'].includes(user.kind) && !!user.teacherId && args[2] === user.teacherId;
+  const f = api.getPeerFeedback(args[0].feedbackId), key = args[3]?.key;
+  if (!f) return false;
+  if (isAdmin(user)) return key === 'admin' || (!!user.teacherId && key === user.teacherId);
+  if (me) return key === 'student' && f.studentId === me;
+  if (!STAFF.includes(user.kind) || !user.teacherId || key !== user.teacherId) return false;
+  return reachOf(user) === null || teachesClass(user, f.classId) || [f.studentId, f.fromId].some((sid) => api.getStudent(sid)?.advisorId === user.teacherId);
+}
+// ── Milestones (api.markMilestonesSeen): a student marks their own celebrations seen; nobody does it for them. ──
+const milestonesOk = (user, args) => user.kind === 'student' && !!user.studentId && args[0] === user.studentId;

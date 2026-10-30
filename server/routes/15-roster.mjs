@@ -5,7 +5,8 @@
 import { send, readJson } from '../lib.mjs';
 import { api, changed } from '../store.mjs';
 import * as A from '../auth.mjs';
-import { originOf, setupUrl, requireAdmin, listBody } from './10-auth.mjs';
+import { originOf, setupUrl, requireAdmin, listBody, accountTarget } from './10-auth.mjs';
+import * as L from '../audit.mjs';
 
 const KIND_LABEL = { student: 'Student', advisor: 'Advisor', teacher: 'Teacher', counsellor: 'University counsellor', coordinator: 'Coordinator', leadership: 'Leadership' };
 
@@ -54,6 +55,9 @@ export default (app) => {
       const a = A.createAccount({ email: p.email, name: p.name, kind: p.kind, ...(p.studentId ? { studentId: p.studentId } : { teacherId: p.teacherId }) });
       return { name: a.name, email: a.email, role: KIND_LABEL[a.kind] || a.kind, setupUrl: setupUrl(base, A.newSetup(a)) };
     }));
+    // Activity log: counts, then one line per paused or unpaused account.
+    L.log(req, { action: 'roster-import', detail: { ...Object.fromEntries(['teachers', 'students', 'classes', 'enrolments'].map((k) => [k, roster[k].length])), accountsCreated: created.length, skipped: skipped.length, paused: paused.length, unpaused: unpaused.length } });
+    for (const [list, action] of [[paused, 'account-pause'], [unpaused, 'account-unpause']]) for (const w of list) L.log(req, { action, target: accountTarget(A.accountById(w.id) || w), detail: { why: 'class lists' } });
     send(res, 200, { summary, warnings, newAccounts: { created, skipped: skipped.length }, paused, unpaused, ...listBody() });
   });
 };

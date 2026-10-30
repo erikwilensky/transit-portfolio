@@ -1,0 +1,5 @@
+/* Offline capture (OfflineBar.jsx): changes waiting on this device. */
+.ob-bar { position: fixed; left: 50%; bottom: calc(12px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 110; display: flex; align-items: center; gap: 10px; width: max-content; max-width: calc(100vw - 32px); box-sizing: border-box; padding: 10px 16px; background: var(--navy); color: #fff; border-radius: 12px; font-size: 14px; font-weight: 500; line-height: 1.4; }
+.ob-bar i { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.6); flex: none; }
+.ob-bar.off i { background: var(--b-gold); }
+@media print { .ob-bar { display: none; } }

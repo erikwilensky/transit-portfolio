@@ -921,6 +921,8 @@ export function studentData(sid, alsoTo = []) {
   }
   // Reports about them: reasons and outcomes, never who reported (moderateReport).
   if (own.reports) own.reports = own.reports.map(({ from, ...x }) => x);
+  // Kind feedback they received: the classmate's first name, not their id.
+  if (own.peerFeedback) own.peerFeedback = own.peerFeedback.map(({ fromId, ...x }) => (fromId === sid ? { fromId, ...x } : x));
   return { format: 'nist-transit-portfolio/pdpa-copy/v1', studentId: sid, recordDate: TODAY, student: structuredClone(student), own, mentioned, activity: getActivity(sid) };
 }
 // Removes the student and everything above from the record. Admin only (server/auth.mjs ADMIN_ONLY); the
@@ -1694,14 +1696,15 @@ export function quietAdvisees(advisorId) {
   return store.students.filter((s) => s.advisorId === advisorId && !s.cohortOnly).map((s) => ({ student: s, last: lastOwnMoment(s.id), nudge: lastNudge(s.id) }))
     .filter((q) => !q.last || q.last < since).sort((a, b) => a.student.name.localeCompare(b.student.name));
 }
-export function nudgeStudent(studentId, advisorId, text) {
+// about: what the nudge is for ('reflection:<windowId>': the notification opens the term reflection, not the add flow).
+export function nudgeStudent(studentId, advisorId, text, about) {
   const s = getStudent(studentId), t = teacherById[advisorId];
   if (!s || !t) throw Object.assign(new Error('No such student or advisor.'), { status: 400 });
   if (!canNudge(studentId)) throw Object.assign(new Error(`${s.name.split(' ')[0]} was nudged in the last ${NUDGE_GAP} days.`), { status: 409 });
   const msg = String(text ?? '').trim().slice(0, 500) || NUDGE_TEXT;
-  const n = { id: uid('nu-'), studentId, from: advisorId, text: msg, date: TODAY, ts: nowIso() };
+  const n = { id: uid('nu-'), studentId, from: advisorId, text: msg, date: TODAY, ts: nowIso(), ...(about ? { about: String(about).slice(0, 60) } : {}) };
   (store.nudges ||= []).push(n);
-  notify(toStudent(studentId), `${shortName(t.name)}: ${msg}`, { persona: toStudent(studentId), screen: 'map', param: 'add' });
+  notify(toStudent(studentId), `${shortName(t.name)}: ${msg}`, { persona: toStudent(studentId), screen: 'map', param: about ? 'reflect' : 'add' });
   log(studentId, t.name, 'nudge', 'Sent a nudge to add something');
   emit();
   return n;
@@ -2019,6 +2022,267 @@ export function handoverPreview(parsed) {
   return { fromYear: wasYear, year, newYear: !!(wasYear && year && wasYear !== year), changes, notes, groups: [...groups.values()].sort((a, b) => b.n - a.n) };
 }
 
+// ── Term reflection: a guided look back at the end of a term (src/components/TermReflection.jsx) ──
+// An advisor (their advisees) or whole-school staff (a whole Year) open a window; each student in it picks up to
+// TR_PICKS moments of the term, answers three short questions on each and sets one goal. Kept as a draft until they
+// finish; then it is a reflection station (reflectsOn: the moments) with one reflection per moment, plus the goal.
+// store.reflectionWindows: { id: 'rw-…', title, opens, closes, from, studentIds, advisorId, year, by, at, closedOn? }
+// store.termReflections: { id: 'tr-…', windowId, studentId, status: 'draft' | 'done', step, picks, answers: { [eventId |
+// '_']: { did, learned, next } }, goal: { goalId } | { title, lineId, date } | null, visibility, startedAt, savedAt,
+// doneAt, eventId, goalId }. Both made on first use.
+export const TR_PICKS = 3;
+const trErr = (m, status = 400) => Object.assign(new Error(m), { status });
+const isDay = (d) => /^\d{4}-\d{2}-\d{2}$/.test(String(d || ''));
+const trClip = (v, n) => String(v ?? '').slice(0, n);
+export const getReflectionWindows = () => store.reflectionWindows || [];
+export const getReflectionWindow = (id) => getReflectionWindows().find((w) => w.id === id) || null;
+export const windowOpen = (w) => !!w && !w.closedOn && w.opens <= TODAY && TODAY <= w.closes;
+const windowLive = (w) => !w.closedOn && w.closes >= TODAY; // open now or opening later
+export const termRecord = (windowId, studentId) => (store.termReflections || []).find((r) => r.windowId === windowId && r.studentId === studentId) || null;
+// Terms start in August, January and April (NIST's calendar, near enough to choose "this term's" moments).
+export const termStartOf = (d) => { const y = d.slice(0, 4), m = +d.slice(5, 7); return m >= 8 ? `${y}-08-01` : m >= 4 ? `${y}-04-01` : `${y}-01-01`; };
+export const termName = (d = TODAY) => { const m = +d.slice(5, 7); return `Term ${m >= 8 ? 1 : m >= 4 ? 3 : 2} reflection`; };
+// The end of next term: a goal's date ("By the end of next term").
+export const nextTermEnd = (d = TODAY) => { const y = +d.slice(0, 4) - (+d.slice(5, 7) < 8 ? 1 : 0); return [`${y}-12-11`, `${y + 1}-03-26`, `${y + 1}-06-11`, `${y + 1}-12-11`].filter((x) => x > d)[1]; };
+// Students a spec covers: an advisor's advisees, or everyone in a British Year.
+const trStudents = ({ advisorId, year }) => store.students.filter((s) => !s.cohortOnly && (advisorId ? s.advisorId === advisorId : s.grade + 1 === Number(year)));
+export function openReflectionWindow({ title, opens = TODAY, closes, advisorId = null, year = null } = {}, by = null) {
+  if (by && !teacherById[by]) throw trErr('No such teacher');
+  if (!advisorId === !year) throw trErr('Pick an advisory or a Year');
+  if (advisorId && !teacherById[advisorId]) throw trErr('No such advisor');
+  const name = String(title || '').trim().slice(0, 80) || termName(opens);
+  if (!isDay(opens) || !isDay(closes) || closes < opens || closes < TODAY) throw trErr('Pick when it opens and closes');
+  const busy = new Set(getReflectionWindows().filter(windowLive).flatMap((w) => w.studentIds));
+  const all = trStudents({ advisorId, year }), ids = all.map((s) => s.id).filter((id) => !busy.has(id));
+  if (!ids.length) throw trErr(all.length ? 'These students already have a reflection open' : 'No students to ask', all.length ? 409 : 400);
+  const w = { id: uid('rw-'), title: name, opens, closes, from: termStartOf(opens), studentIds: ids, advisorId: advisorId || null, year: year ? Number(year) : null, by: by || null, at: nowIso() };
+  (store.reflectionWindows ||= []).push(w);
+  if (opens <= TODAY) for (const sid of ids) notify(toStudent(sid), `${name} is open: look back on your term and pick what you are proud of`, { persona: toStudent(sid), screen: 'map', param: 'reflect' });
+  emit();
+  return w;
+}
+export function closeReflectionWindow(id) {
+  const w = getReflectionWindow(id);
+  if (!w) throw trErr('No such reflection', 404);
+  w.closedOn = TODAY;
+  emit();
+  return w;
+}
+// A student's open window that they have not finished yet (the earliest to close), with their draft.
+export function myReflection(studentId) {
+  const w = getReflectionWindows().filter((x) => windowOpen(x) && x.studentIds.includes(studentId) && termRecord(x.id, studentId)?.status !== 'done').sort((a, b) => a.closes.localeCompare(b.closes))[0];
+  return w ? { window: w, record: termRecord(w.id, studentId) } : null;
+}
+// The moments to look back on: this term's (newest first); with fewer than six, the latest earlier ones too (earlier: true).
+export function termMoments(studentId, w) {
+  const evs = getStudentMap(studentId, 'student').events.filter((e) => e.type !== 'goal' && e.type !== 'reflection' && e.date <= TODAY).sort((a, b) => b.date.localeCompare(a.date));
+  const now = evs.filter((e) => e.date >= (w?.from || TERM_START));
+  return [...now, ...evs.filter((e) => !now.includes(e)).slice(0, Math.max(0, 6 - now.length)).map((e) => ({ ...e, earlier: true }))];
+}
+function trClean(studentId, d = {}) {
+  const mine = new Set(store.events.filter((e) => e.studentId === studentId && e.type !== 'goal' && e.type !== 'reflection').map((e) => e.id));
+  const picks = [...new Set([].concat(d.picks || []))].filter((id) => mine.has(id)).slice(0, TR_PICKS);
+  const answers = {};
+  for (const k of [...picks, '_']) { const a = d.answers?.[k]; if (a && typeof a === 'object') answers[k] = { did: trClip(a.did, 1000), learned: trClip(a.learned, 1000), next: trClip(a.next, 1000) }; }
+  const g = d.goal;
+  const own = g?.goalId && store.events.find((e) => e.id === g.goalId && e.studentId === studentId && e.type === 'goal');
+  const goal = own ? { goalId: own.id } : g && typeof g === 'object' && (g.title || g.lineId || g.date) ? { title: trClip(g.title, 120), lineId: typeof g.lineId === 'string' ? g.lineId : null, date: isDay(g.date) ? g.date : null } : null;
+  return { picks, answers, goal, visibility: ['private', 'advisor', 'school'].includes(d.visibility) ? d.visibility : 'advisor', step: Number.isInteger(d.step) ? Math.max(0, Math.min(20, d.step)) : 0 };
+}
+function trOpenFor(windowId, studentId) {
+  const w = getReflectionWindow(windowId), s = getStudent(studentId);
+  if (!w || !s || !w.studentIds.includes(studentId)) throw trErr('This reflection is not for you', 404);
+  if (!windowOpen(w)) throw trErr('This reflection is closed', 410);
+  const r = termRecord(windowId, studentId);
+  if (r?.status === 'done') throw trErr('You already finished this', 409);
+  return { w, s, r };
+}
+// Keeps the student's progress so they can come back to it.
+export function saveTermReflection(windowId, studentId, draft) {
+  let { r } = trOpenFor(windowId, studentId);
+  const at = nowIso();
+  if (!r) (store.termReflections ||= []).push(r = { id: uid('tr-'), windowId, studentId, status: 'draft', startedAt: at });
+  Object.assign(r, trClean(studentId, draft), { savedAt: at });
+  emit();
+  return r;
+}
+// "What I did. What I learned. What next." as one paragraph.
+const trText = (a) => ['did', 'learned', 'next'].map((k) => String(a?.[k] || '').trim()).filter(Boolean).map((t) => (/[.!?…]$/.test(t) ? t : `${t}.`)).join(' ');
+export function finishTermReflection(windowId, studentId, draft) {
+  const { w, s } = trOpenFor(windowId, studentId);
+  const f = trClean(studentId, draft);
+  const keys = f.picks.length ? f.picks : ['_'];
+  const texts = keys.map((k) => [k, trText(f.answers[k])]).filter(([, t]) => t);
+  if (!texts.length) throw trErr('Write a little about what you did first');
+  const g = f.goal;
+  if (g && !g.goalId && (!g.title || g.title.trim().length < 3 || !g.date || g.date <= TODAY || !lineById(g.lineId))) throw trErr('Finish your goal, or skip it');
+  const lanes = [...new Set(f.picks.map((id) => getEvent(id).lineIds.find((l) => s.laneOrder.includes(l))).filter(Boolean))];
+  const e = addStation(studentId, { title: w.title, type: 'reflection', lineIds: lanes.length ? lanes : s.laneOrder.slice(0, 1), summary: trClip(texts[0][1], 200), visibility: f.visibility, via: 'Term reflection' });
+  Object.assign(e, { reflectsOn: f.picks, termReflection: w.id });
+  for (const [k, text] of texts) store.reflections.push({ id: uid('rf-x'), eventId: e.id, about: k === '_' ? null : k, prompt: k === '_' ? 'Looking back at this term' : `Looking back at “${getEvent(k).title}”`, text, parts: f.answers[k], date: TODAY, visibility: f.visibility });
+  let goalId = g?.goalId || null;
+  if (g && !goalId) goalId = addGoal(studentId, { title: g.title.trim(), date: g.date, lineId: laneFor(s, g.lineId), summary: `My goal for next term, from my ${w.title}.`, checkIn: true }).id;
+  const r = saveTermReflection(windowId, studentId, f);
+  Object.assign(r, { status: 'done', doneAt: nowIso(), eventId: e.id, goalId });
+  log(studentId, s.name, 'reflection', `Finished “${w.title}”`);
+  emit();
+  return r;
+}
+// Who has finished: the students of one window (or only an advisor's advisees in it), alphabetically.
+export function reflectionProgress(windowId, advisorId) {
+  const w = getReflectionWindow(windowId); if (!w) return null;
+  const rows = w.studentIds.map(getStudent).filter((s) => s && (!advisorId || s.advisorId === advisorId)).sort((a, b) => a.name.localeCompare(b.name))
+    .map((s) => { const r = termRecord(w.id, s.id); return { student: s, status: r?.status === 'done' ? 'done' : r ? 'started' : 'not started', doneAt: r?.doneAt || null }; });
+  return { window: w, rows, total: rows.length, done: rows.filter((x) => x.status === 'done').length, started: rows.filter((x) => x.status === 'started').length };
+}
+// The advisory page: the latest window over this advisor's advisees, open now or closed in the last 30 days.
+export function advisoryReflection(advisorId) {
+  const mine = new Set(store.students.filter((s) => s.advisorId === advisorId).map((s) => s.id));
+  const w = getReflectionWindows().filter((x) => x.studentIds.some((id) => mine.has(id)) && (x.closedOn || x.closes) >= daysBefore(30)).sort((a, b) => b.opens.localeCompare(a.opens) || b.at.localeCompare(a.at))[0];
+  return w ? reflectionProgress(w.id, advisorId) : null;
+}
+
+// ── Kind feedback from classmates (pilot, Year 9 and up; src/components/PeerFeedback.jsx) ──
+// A student opts a school-visible moment in (e.peerFeedback); classmates in a current class give feedback from set
+// phrases. store.peerFeedback [{ id: 'pf-…', eventId, studentId (the owner), fromId, fromName, classId, parts:
+// [{ phrase, text }], at, thanked?, hidden? }] and store.peerSettings { offYears: [British Years] }, made on first use.
+// A pilot browser holds store.peerMoments (server/scope.mjs): the classmates' opted-in moments it may see.
+export const PEER_PHRASES = { liked: 'I liked how…', think: 'This made me think about…', question: 'A question I have…', try: 'You could try…' };
+export const PEER_MIN_GRADE = 8; // Year 9
+export const PEER_NOTE_MAX = 200;
+export const PEER_DAY_LIMIT = 10;
+const PEER_VIS = ['school', 'publishable'];
+const pfErr = (message, status = 400) => Object.assign(new Error(message), { status });
+const bkkDay = (iso) => new Date(iso).toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
+export const peerYearOff = (year) => (store.peerSettings?.offYears || []).includes(Number(year));
+export const peerEligible = (sid) => { const s = getStudent(sid); return !!s && s.grade >= PEER_MIN_GRADE && !peerYearOff(s.grade + 1); };
+export const peerQualifies = (e) => !!e && e.type !== 'goal' && PEER_VIS.includes(e.visibility) && !e.hidden;
+export const peerOpen = (e) => !!e?.peerFeedback && peerQualifies(e) && peerEligible(e.studentId);
+const peerClasses = (sid) => new Set(getEnrolments().filter((n) => n.studentId === sid && !(n.to && n.to < TODAY)).map((n) => n.classId));
+export function sharedClasses(a, b) { const mine = peerClasses(a); return a === b ? [] : [...peerClasses(b)].filter((c) => mine.has(c)).sort(); }
+export const getPeerFeedback = (id) => (store.peerFeedback || []).find((f) => f.id === id);
+export const peerFeedbackOn = (eventId) => (store.peerFeedback || []).filter((f) => f.eventId === eventId).sort((a, b) => a.at.localeCompare(b.at));
+export const peerGivenBy = (sid) => (store.peerFeedback || []).filter((f) => f.fromId === sid);
+export const peerText = (p) => `${PEER_PHRASES[p.phrase].replace(/…$/, '')} ${p.text}`;
+export const peerGivenToday = (sid) => peerGivenBy(sid).filter((f) => bkkDay(f.at) === bkkDay(new Date().toISOString())).length;
+// Classmates' opted-in moments a student may see: title, first photo, first name, the class they share.
+export function peerMomentsFor(sid) {
+  if (!peerEligible(sid)) return [];
+  if (store.peerMoments) return store.peerMoments;
+  const mine = peerClasses(sid); if (!mine.size) return [];
+  const mates = new Map();
+  for (const n of getEnrolments()) if (mine.has(n.classId) && n.studentId !== sid && !(n.to && n.to < TODAY) && !mates.has(n.studentId)) mates.set(n.studentId, n.classId);
+  return store.events.filter((e) => mates.has(e.studentId) && peerOpen(e)).sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id)).slice(0, 40).map((e) => {
+    const c = getClasses().find((x) => x.id === mates.get(e.studentId));
+    return { eventId: e.id, studentId: e.studentId, name: getStudent(e.studentId).name.split(' ')[0], title: e.title, image: e.evidence?.find(isPhoto)?.url || null, classId: c?.id || null, className: c?.name || '', date: e.date };
+  });
+}
+export function setPeerFeedback(eventId, on) {
+  const e = getEvent(eventId); if (!e) throw pfErr('No such moment.', 404);
+  if (on) {
+    if (!peerEligible(e.studentId)) throw pfErr('Kind feedback is not on for your Year.', 409);
+    if (!peerQualifies(e)) throw pfErr('Only moments the school can see can have feedback from classmates.');
+    e.peerFeedback = true;
+  } else delete e.peerFeedback;
+  emit();
+}
+export function givePeerFeedback(eventId, fromId, parts) {
+  const from = getStudent(fromId); if (!from) throw pfErr('No such student.', 404);
+  if (!peerEligible(fromId)) throw pfErr('Kind feedback is not on for your Year.', 409);
+  const e = getEvent(eventId);
+  if (e?.studentId === fromId) throw pfErr('This is your own moment.');
+  const m = e ? (peerOpen(e) ? { studentId: e.studentId, title: e.title, classId: sharedClasses(e.studentId, fromId)[0] } : null) : (store.peerMoments || []).find((x) => x.eventId === eventId);
+  if (!m) throw pfErr('This moment is not open for feedback.', 409);
+  if (!m.classId) throw pfErr('You can give feedback only to classmates in your classes.', 403);
+  const list = [].concat(parts || []).map((p) => ({ phrase: p?.phrase, text: String(p?.text ?? '').replace(/\s+/g, ' ').trim() }));
+  if (!list.length || list.length > 2 || new Set(list.map((p) => p.phrase)).size !== list.length || list.some((p) => !PEER_PHRASES[p.phrase] || !p.text)) throw pfErr('Pick one or two phrases and finish each one.');
+  if (list.reduce((n, p) => n + p.text.length, 0) > PEER_NOTE_MAX) throw pfErr(`Keep it to ${PEER_NOTE_MAX} characters.`);
+  const at = nowIso();
+  if (peerGivenBy(fromId).filter((f) => bkkDay(f.at) === bkkDay(at)).length >= PEER_DAY_LIMIT) throw pfErr(`You have given ${PEER_DAY_LIMIT} pieces of feedback today. Try again tomorrow.`, 429);
+  const f = { id: uid('pf-'), eventId, studentId: m.studentId, fromId, fromName: from.name.split(' ')[0], classId: m.classId, parts: list, at };
+  (store.peerFeedback ||= []).push(f);
+  notify(toStudent(m.studentId), `${f.fromName} gave you kind feedback on “${m.title}”.`, { persona: toStudent(m.studentId), screen: 'map', param: eventId });
+  emit();
+  return f;
+}
+const ownPeer = (id) => { const f = getPeerFeedback(id); if (!f) throw pfErr('That feedback is gone.', 404); return f; };
+export function thankPeerFeedback(id) {
+  const f = ownPeer(id);
+  if (f.hidden) throw pfErr('That feedback is hidden.', 409);
+  if (f.thanked) return f;
+  f.thanked = nowIso();
+  const e = getEvent(f.eventId);
+  if (f.fromId) notify(toStudent(f.fromId), `${getStudent(f.studentId)?.name.split(' ')[0] || 'A classmate'} said thank you for your feedback on “${e?.title || 'a moment'}”.`, { persona: toStudent(f.fromId), screen: 'map' });
+  emit();
+  return f;
+}
+export function hidePeerFeedback(id) {
+  const f = ownPeer(id);
+  f.hidden = { at: nowIso(), by: 'student' };
+  emit();
+}
+export function setPeerFeedbackYear(year, on, by) {
+  const y = Number(year);
+  if (!(y >= PEER_MIN_GRADE + 1 && y <= 13)) throw pfErr('Pick Year 9 to 13.');
+  const s = (store.peerSettings ||= { offYears: [] }), off = new Set(s.offYears || []);
+  if (on) off.delete(y); else off.add(y);
+  s.offYears = [...off].sort((a, b) => a - b);
+  s.by = by || null; s.at = nowIso();
+  emit();
+}
+// Safeguarding: reportItem({ feedbackId }, …) and moderateReport on such a report (hide, unhide, none).
+const reportItemBase = reportItem, moderateReportBase = moderateReport;
+reportItem = function reportItem(target, reason, note, from) {
+  if (!target?.feedbackId) return reportItemBase(target, reason, note, from);
+  const f = ownPeer(target.feedbackId), e = getEvent(f.eventId); if (!e) throw pfErr('No such moment.', 404);
+  if (!REPORT_REASONS[reason]) throw pfErr('Pick a reason.');
+  const who = reporter(from, e);
+  if (who.role === 'Family') throw pfErr('Families do not see feedback.');
+  const at = nowIso(), list = (store.reports ||= []);
+  const open = list.find((r) => r.from.key === who.key && r.status === 'open' && r.feedbackId === f.id);
+  if (open) return open;
+  if (list.filter((r) => r.from.key === who.key && Date.parse(at) - Date.parse(r.at) < 3600e3).length >= REPORT_LIMIT) throw pfErr('You have sent a lot of reports. Try again later, or speak to a teacher.', 429);
+  const r = { id: uid('rp-'), kind: 'feedback', eventId: e.id, feedbackId: f.id, studentId: e.studentId, reason, note: String(note ?? '').trim().slice(0, 1000), at, from: who, status: 'open', history: [] };
+  list.push(r);
+  for (const k of MODERATOR_KINDS) notify(toRole(k), `New report: kind feedback on “${e.title}” (${getStudent(e.studentId).name}). ${REPORT_REASONS[reason]}.`, { persona: toRole(k), screen: 'reports', param: r.id });
+  emit();
+  return r;
+};
+moderateReport = function moderateReport(id, action, note, by) {
+  const r = getReport(id);
+  if (!r?.feedbackId) return moderateReportBase(id, action, note, by);
+  if (!REPORT_STATUS[action]) throw pfErr('Pick what to do.');
+  if (action === 'photo') throw pfErr('Feedback has no photo.');
+  if (by && !teacherById[by]) throw pfErr('No such teacher.');
+  const f = getPeerFeedback(r.feedbackId), e = getEvent(r.eventId);
+  if (action !== 'none' && !f) throw pfErr('That feedback is gone.', 404);
+  const at = nowIso(), name = by ? teacherById[by].name : 'Pilot admin', to = toStudent(r.studentId), go = e ? { persona: to, screen: 'map', param: e.id } : undefined;
+  if (action === 'hide') { f.hidden = { at, by: name }; notify(to, `A teacher has hidden kind feedback on “${e?.title}”.`, go); }
+  if (action === 'unhide') { delete f.hidden; notify(to, `A teacher has finished looking at kind feedback on “${e?.title}”. It is shown again.`, go); }
+  const entry = { action, note: String(note ?? '').trim().slice(0, 1000), at, by: name };
+  for (const x of store.reports) if (x.feedbackId === r.feedbackId) { x.history.push({ ...entry }); x.status = REPORT_STATUS[action]; }
+  emit();
+  return r;
+};
+// ── Milestones and celebrations (src/milestones.js, src/components/Milestones.jsx) ──
+// Worked out from the map as each viewer reads it (a family or an advisor only from moments they can see), never stored.
+// What is kept: store.milestonesSeen[studentId] = { [key]: at }, so a celebration shows once, on any device.
+import { deriveMilestones, since as milestonesSince, RECENT_DAYS } from './milestones.js';
+export function milestonesOf(studentId, viewer = 'student', opts = {}) {
+  if (!getStudent(studentId)) return [];
+  return deriveMilestones(getStudentMap(studentId, viewer, opts), { today: TODAY, root: rootLine, line: lineById });
+}
+export const familyMilestones = (studentId) => (getStudent(studentId) ? milestonesOf(studentId, familyViewer(studentId), { family: true }) : []);
+export const recentMilestones = (studentId, viewer = 'advisor', days = RECENT_DAYS) => milestonesSince(milestonesOf(studentId, viewer), daysBefore(days));
+export const milestonesSeen = (studentId) => store.milestonesSeen?.[studentId] || null;
+export function markMilestonesSeen(studentId, keys) {
+  if (!getStudent(studentId)) throw Object.assign(new Error('No such student'), { status: 404 });
+  const at = nowIso(), seen = ((store.milestonesSeen ||= {})[studentId] ||= {});
+  for (const k of [].concat(keys || []).slice(0, 100)) if (typeof k === 'string' && k && k.length <= 80 && !seen[k]) seen[k] = at;
+  emit();
+  return seen;
+}
+
 // ── Shared record: with the pilot server, every change is replayed there ──
 // A screen calls a change below; it runs here at once (instant UI) while recording the ids and
 // times it made. The hook (src/sync.js) posts { fn, args, rec } to /api/action, and the server runs
@@ -2075,6 +2339,9 @@ addMomentComment = act('addMomentComment', addMomentComment); editMomentComment 
 reportItem = act('reportItem', reportItem); moderateReport = act('moderateReport', moderateReport);
 spotMoment = act('spotMoment', spotMoment); acceptSpotted = act('acceptSpotted', acceptSpotted); declineSpotted = act('declineSpotted', declineSpotted);
 setHandoverNote = act('setHandoverNote', setHandoverNote); carryOverGoal = act('carryOverGoal', carryOverGoal); closeGoal = act('closeGoal', closeGoal);
+setPeerFeedback = act('setPeerFeedback', setPeerFeedback); givePeerFeedback = act('givePeerFeedback', givePeerFeedback); thankPeerFeedback = act('thankPeerFeedback', thankPeerFeedback); hidePeerFeedback = act('hidePeerFeedback', hidePeerFeedback); setPeerFeedbackYear = act('setPeerFeedbackYear', setPeerFeedbackYear);
+openReflectionWindow = act('openReflectionWindow', openReflectionWindow); closeReflectionWindow = act('closeReflectionWindow', closeReflectionWindow); saveTermReflection = act('saveTermReflection', saveTermReflection); finishTermReflection = act('finishTermReflection', finishTermReflection);
+markMilestonesSeen = act('markMilestonesSeen', markMilestonesSeen);
 // Undo puts a whole earlier copy back, and reset goes back to the seed (sync.js sends it to /api/reset).
 restore = act('restore', restore); resetDemo = act('resetDemo', resetDemo);
 export const MUTATORS = Object.keys(ACTIONS);

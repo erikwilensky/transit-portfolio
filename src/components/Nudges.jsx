@@ -62,7 +62,7 @@ export function NudgeBanner({ studentId, onAdd, simple, version }) {
   const key = n && `tp-nudge-hidden-${n.id}`;
   const [hid, setHid] = useState(null);
   let stored = false; try { stored = !!key && localStorage.getItem(key) === '1'; } catch { /* blocked */ }
-  if (!n || stored || hid === n.id) return null;
+  if (!n || n.about || stored || hid === n.id) return null; // a reminder about something else (a term reflection) shows there
   const hide = () => { try { localStorage.setItem(key, '1'); } catch { /* blocked */ } setHid(n.id); };
   return (
     <div className={`nd-banner${simple ? ' simple' : ''}`} role="status">

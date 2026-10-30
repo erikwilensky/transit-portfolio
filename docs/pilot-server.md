@@ -55,7 +55,7 @@ Run: `npm run build && npm run server` (port 8787, or PORT). In dev: `npm run se
 - Server code that changes the record directly (admin, public views) calls `changed()`; every device
   hears it on the stream and fetches the new state.
 - Browser: `main.jsx` calls `startSync()` after `loadAuth()` (demo, or signed in for pilot), never on
-  `#/s` and `#/v` (`isPublicRoute()`). Changes queue and retry while the server is away (header: "Offline,
+  `#/s` and `#/v` (`isPublicRoute()`). Changes queue and retry while the server is away (kept on the device for a pilot account: see "Offline capture"; header: "Offline,
   saving here"). Undo takes back one change on the server (see "Undo" below); only with no server does
   it put a whole snapshot back (`restore`).
 
@@ -428,6 +428,9 @@ Thailand's PDPA gives a student (and their parent) the right to a copy of their 
   never be left behind by a record-only erase.
 - **Audit**: each copy and erasure appends `{"at","action":"copy"|"erase","by":<account id>,"studentId"}` to
   `DATA_DIR/audit.log`. No names or content.
+- **Activity log**: each copy and erasure is also in the activity log (`pdpa-copy`, `pdpa-erase`; see "Activity log"
+  below). The activity log is kept for safeguarding, so erasure does not remove a student's entries: it replaces their
+  name label (and the names of their removed accounts) with "Erased student" and keeps the ids.
 - **Screens** (pilot only): Accounts has "A student's data" (download, and "Remove this student…" with
   "Type the student's name to confirm" and the reminder that backups hold the data for 30 days);
   the student's Privacy page and the parent's Consent page download their own copy; the PDPA page points
@@ -705,7 +708,7 @@ The site installs on a phone's home screen, in demo and pilot alike.
   names, cache first), the icons, the manifest and `offline.html`. It never touches `/api/*` (any path containing
   `/api/`, uploaded files `/api/files/*` included): those go straight to the network and are never cached, so
   nothing personal stays on a shared device. Page loads always go to the server; with no network (or a 502/503/504/530
-  from the tunnel) the worker shows `offline.html`: "You're offline. Your moments will be here when you're back."
+  from the tunnel) the worker shows the kept app page for a signed-in account (see "Offline capture"), else `offline.html`: "You're offline. Your moments will be here when you're back."
 - **Updates**: `vite.config.js` writes this build's `VERSION` and `SHELL` into `dist/sw.js`, so every deploy is a new
   worker. It calls `skipWaiting()` and `clients.claim()`, drops older caches, and the open app shows
   "A new version is ready · Reload" (`UpdateBar`). The app checks for a new worker whenever it comes back to the front.
@@ -912,6 +915,11 @@ Each person reads the app in English or Thai, and the choice belongs to them, no
   written), weekly digest, header navigation, display menu, account menu, password dialog, feedback dialog, save status,
   and notifications. Notifications are stored once, in English; `noteText(lang, text)` renders the ones families get
   (and the consent answers students get) from their known templates. Names and quoted titles stay as written.
+- **Also in Thai** (`barWords(lang)`, `src/i18n.js`): the bars at the foot of every screen, which `src/main.jsx` renders
+  outside `LangContext` and so read `getLang()`: a refused change (`Refused.jsx`, with the server's reason through
+  `errText`), "A new version is ready" (`UpdateBar`), waiting changes (`OfflineBar`) and the sign-out warning
+  (`signOutWarning(n, lang)`). Also reporting a moment (`Report.jsx`: button, dialog, reasons), "Spotted by" and the
+  evidence viewer's labels and dates.
 - **Never translated**: students' own words (station titles, reflections) stay as written, marked `lang="en"`.
 - **Family letters** (`FamilyLetters.jsx`): a Language choice on the sheet: Thai and English (default: Thai paragraphs,
   then English, on each letter), English only, or Thai only. Still two letters to an A4 page in every choice.
@@ -920,10 +928,13 @@ Each person reads the app in English or Thai, and the choice belongs to them, no
   missing): two parents of different students in separate browsers, one Thai and one English, each keeps theirs after a
   reload and on a second device; the Thai parent's family view, bell and menu are in Thai; the sign-in page remembers ไทย;
   bilingual letters fit two to a page (PDF page count). Screenshots and a PDF go to `SCRATCH` or the temp folder.
+  `node scripts/checks/polish.cjs`: a Thai and an English parent each get the refused-change bar in their own language;
+  the demo's coordinator, counsellor and leadership have Reports in the nav (a subject teacher does not).
 ## Safeguarding: reports and the moderators' queue (`src/api.js`, `src/components/Report.jsx`, `src/screens/Reports.jsx`)
 
 Anyone signed in can report a moment or a moment comment they can see; the school's moderators decide what happens to it.
-Demo and pilot (the Reports screen is in the pilot nav only). No automatic filter.
+Demo and pilot: Reports is in the nav of every moderator (coordinator, counsellor, leadership, admin), the demo's
+personas included (`NAV` in `src/personas.js`; the pilot adds it once, `src/auth.js`). No automatic filter.
 
 - **Record**: `store.reports = [{ id, kind: 'station' | 'comment', eventId, commentId?, studentId (the owner), reason, note, at,
   from: { key, name, role }, status: open | hidden | shown | photo-removed | no-action, history: [{ action, note, at, by }] }]`,
@@ -1037,7 +1048,11 @@ it, and the old advisor stops seeing students who are no longer theirs.
 - **Reach** (`teacherReach`): an ended class place (`to` before today) no longer counts. For a student whose latest
   handover was from this teacher, only links made after the handover date count (their earlier prompts, comments,
   requests, endorsements, sponsorships); being the advisor or teaching a current class still does. So the old advisor
-  keeps students she still teaches, and loses the rest.
+  keeps students she still teaches, and loses the rest. Once a new year has started (`store.yearStart`), the same holds for
+  every teacher: links dated on or before `yearStart.date` (prompts, comments, endorsement and evidence requests,
+  endorsements, sponsorships, class tasks and class endorsements) no longer count, so a subject teacher from an earlier
+  year stops reaching a student unless they advise them, have a current class place with them or supervise their DP
+  work. Links made after the year start count again. Test: `server/test/year-reach.test.mjs`.
 - **Scope**: handovers and notes go to staff only, never to a student or family. Notes: the student's current advisor,
   the note's author and whole-school roles (subject teachers do not get them). `store.handedOver` gives the previous
   advisor `{ studentId, name, grade, homeroom, to, date }` for students she handed over and no longer reaches, so she
@@ -1076,3 +1091,258 @@ not confirmed). Demo mode is unchanged: anyone with the address, cached for a ye
   index cache, the route's 404s and headers, demo mode); browser: `node scripts/checks/protected-files.cjs` (real roster
   from `TP_ROSTER`): Aaron Torres, Mr David Coultas, a teacher with no reach, a parent (family letter) and a signed-out
   browser, each in its own context.
+
+## This week: a summary for teachers and advisors (`src/weekly.js`, `src/week.js`, `src/screens/ThisWeek.jsx`)
+One page for anyone who teaches or advises (pilot only), made in the browser from the part of the record they already
+hold (`scopedSnapshot`). No new route, no mutator, no email.
+- **Where**: "This week" in the top bar, right after their home (`personaFor` in `src/auth.js`, for teachers, advisors and
+  anyone wearing either hat). On a Monday (Bangkok) `#/<persona>` with no screen opens it instead of the home (`parse` in
+  `App.jsx`). `#/<persona>/week` is this week, `#/<persona>/week/last` the week before.
+- **Week** (`src/week.js`, pure): Monday to Sunday in Asia/Bangkok. `weekOf(today, back)` → `{ from, to, upto }` (`upto`:
+  today in the current week, Sunday in a past one); `inWeek(day, w)`, `atInWeek(isoTime, w)` (by its Bangkok day),
+  `dayIn`, `isMonday`, `weekLabel` ("26 Oct to 1 Nov").
+- **Moments added in a week**: non-goal moments dated in it, or that the log says the student added in it (a back-dated
+  moment added this week counts). A class question's answer is a station, so it counts too.
+- **`weeklySummary(persona, back)`** → `{ week, teaches, advises, waiting, classes, advisory, celebrate }`:
+  - `waiting` (what waits now, whichever week is shown): pending endorsement requests (`getRequests`, minus those in
+    `classAnswerGroups`, which show per question and open Review answers), open reports for moderators, the teacher's
+    spotted moments still waiting (`spottedBy`), and threads with unread comments (`unreadComments`), each a link to
+    its screen.
+  - `classes` (`classesOf`): moments added on the class's line, students who added something there, and the answer
+    rate of class questions asked that week (answered of asked, over all its questions).
+  - `advisory`: new moments, how many advisees added something, the latest six, and the existing "Quiet for 3 weeks"
+    group with its nudges (`QuietGroup`).
+  - `celebrate`: up to 5 moments from their students (advisees and class students) added in the week, visible to the
+    school (`school`, `publishable`, not hidden): photos first, then endorsed or reflected on, then newest.
+- **Sign-ups and families this week**: `GET /api/advisor/progress` now also gives each advisee `signedUpAt` (set once,
+  the first time a password is set: `setPassword` in `server/auth.mjs`; accounts that set one before this have none)
+  and `familyAt` (when each family account linked to them was made). `weekSignups(progress, back)` counts them.
+- Tests: `server/test/weekly-summary.test.mjs` (weeks, Bangkok midnight, the progress dates); browser:
+  `node scripts/checks/weekly-summary.cjs` (the real roster from `TP_ROSTER`, skipped without it; screenshots to `SCRATCH`
+  or the temp folder as `tp-week-*.png`).
+## Activity log (`server/audit.mjs`, `server/routes/66-audit.mjs`, `src/screens/ActivityLog.jsx`, pilot only)
+
+Who did what in the pilot, for accountability. Server-side and append-only, outside the replayed record (`state.json`),
+so no mutator, Undo or restore can change it. Demo mode writes nothing.
+
+- **Files**: `DATA_DIR/audit-YYYY-MM.jsonl` (a new file each month, UTC), one JSON line per event:
+  `{ at, actor: { id, name, kind } | null, action, fn?, target: { studentId? | studentIds?, teacherId?, accountId?,
+  reportId?, id?, label? }, detail?, result: 'ok' | 'refused', status, ip }`. `ip` is `clientIp(req)` (so `TRUST_PROXY`
+  applies as for sign-in). `label` is a short name (the student's or the account's). Kept 400 days: older lines are
+  removed when the server starts (`prune()`). Back it up with the rest of `DATA_DIR`. `DATA_DIR/audit.log` (PDPA and
+  See as, earlier) is still written as before.
+- **Never logged**: passwords, setup or invite tokens and links, session cookies, the email typed at a failed sign-in
+  for an unknown address, note, comment, reflection or any other written text. A change's `target.id` is taken only
+  when the record has an item with that id (`getEvent`, `getReport`, …), never from free text.
+- **What is logged** (`action`): every `POST /api/action` as `change` with `fn` and its main student (`touchedBy`),
+  teacher and item, ok or refused (400 not allowed, 403 `canAct`, 422 failed); `report-decision` (`moderateReport`,
+  with `detail.decision`); `undo`; `sign-in`, `sign-in-failed`, `sign-in-locked` (the account tried is the actor),
+  `sign-out`; `password-set` (setup link or change), `setup-link` (new account, reset, advisor reset, forgot, sign-in
+  cards: `detail.why`), `reset-request`, `reset-dismissed`; `account-create`, `account-edit`, `role-change`
+  (`detail.from`/`to`), `account-pause`, `account-unpause`, `account-remove`; `roster-import` (counts; paused and
+  unpaused accounts get their own lines); `see-as-start`, `see-as-stop` (`POST /api/admin/preview/stop`, sent by
+  Exit preview; closing the tab sends nothing); `pdpa-copy`, `pdpa-erase`; `file-refused` (a `GET /api/files/…` refused
+  by protection: one line per actor, or per address when signed out, per hour, with `detail.count` and up to 20 file
+  names; held in memory until the hour ends or the server stops, and shown by the reader meanwhile);
+  `family-join`, `family-remove`, `family-letters`.
+- **Reading**: `GET /api/audit?person=&student=&action=&result=&from=&to=&page=&size=` (admin and leadership; 401
+  signed out, 403 anyone else) → `{ entries (newest first), total, page, size (default 100, up to 500), actions,
+  people }`. `person`: an account id, or part of a name (the actor, or the account the entry is about); `student`: a
+  student id, or part of the label; `from`/`to`: `YYYY-MM-DD`, inclusive, which also limits the months read.
+  `&format=csv` → every matching entry as CSV (cells starting `=`, `+`, `-` or `@` get a leading `'`).
+  Each month file is parsed once and kept in memory while its size and mtime stay the same; a file that only grew
+  parses just the appended lines; pruning, erasure or any other rewrite parses it again (`server/test/audit-cache.test.mjs`).
+- **Screen**: "Activity log" in the nav for admins and leadership: filters (person with suggestions, student, what,
+  result, dates), 50 per page (Newer, Older), "Download as CSV" of the filtered set.
+- Tests: `server/test/activity-log.test.mjs` (written on action, refusals, no secrets, 403, filters, paging, CSV,
+  pruning, erasure keeps ids); browser: `node scripts/checks/activity-log.cjs` (real roster; admin, leadership, an
+  advisor, a student and a teacher, each in its own context).
+## Term reflection: a guided look back at the end of a term (`src/api.js`, `src/components/TermReflection.jsx`)
+
+An advisor (for their advisory) or a coordinator (for a whole Year) opens a reflection window; each student in it gets a
+card on their home, picks up to 3 moments of the term they are proud of, says what they did, learned and will do next,
+sets one goal, and finishes. Demo and pilot.
+
+- **Record** (made on first use): `store.reflectionWindows = [{ id: 'rw-…', title, opens, closes, from (term start, for
+  "this term's" moments), studentIds, advisorId | null, year | null, by, at, closedOn? }]` and `store.termReflections =
+  [{ id: 'tr-…', windowId, studentId, status: 'draft' | 'done', step, picks (≤ 3 event ids), answers: { [eventId | '_']:
+  { did, learned, next } }, goal: { goalId } | { title, lineId, date } | null, visibility, startedAt, savedAt, doneAt,
+  eventId, goalId }]`.
+- **Mutators**: `openReflectionWindow({ title, opens, closes, advisorId | year }, by)` (the advisor's advisees, or every
+  student in that British Year; students already in a live window are left out, 409 when none are left; notifies each
+  student with `go: map/reflect`); `closeReflectionWindow(id)`; `saveTermReflection(windowId, studentId, draft)` (the draft,
+  cleaned: own moments only, at most 3; 410 once closed, 409 once done); `finishTermReflection(windowId, studentId, draft)`:
+  a **reflection station** (`type: 'reflection'`, the window's title, on the picked moments' lines, `reflectsOn: [eventIds]`,
+  `termReflection: windowId`, the student's visibility: Only me / advisor / school) with one reflection per moment
+  (`about`, `prompt: Looking back at “…”`, `parts`), plus a new goal through `addGoal` (or a link to an existing one).
+  Reads: `myReflection(sid)`, `termMoments(sid, w)` (this term's, topped up with earlier ones to six),
+  `reflectionProgress(windowId, advisorId?)`, `advisoryReflection(advisorId)`, `termName()`, `nextTermEnd()`.
+- **canAct** (`TR_FNS` in `server/auth.mjs`, before the admin rule): open: an advisor for `advisorId` = their own
+  `teacherId`, whole-school staff for any advisory or a Year, as themselves; admins. Close: whoever opened it, its advisor,
+  whole-school staff, admins. Save and finish: only the student, their own, in a window that includes them (never staff,
+  admins or families).
+- **Scope**: windows go to whole-school roles whole, to staff when they cover a student in reach (only those ids), to a
+  covered student with only their own id; never to families. A student gets their own record whole; staff in reach only
+  `{ id, windowId, studentId, status, startedAt, doneAt, eventId }` (never a draft's words). The finished station follows
+  the usual visibility rules, so a family sees it only when the student's visibility reaches the family view
+  (`familyViewer`: Years 7–9 at advisor level), and "Only me" reaches nobody else. PDPA: `termReflections` is in the copy
+  and goes with erasure.
+- **Screens**: the student's home (every level, above the map): "Term 1 reflection" with Start / Carry on. Simple: one
+  screen at a time (look back as big cards; per moment the three questions with sentence starters; one goal from the
+  Simple goal pieces: ideas, colour, by the end of next term; review; finish). Standard and Full: one page (look back,
+  what it meant, goal: keep one / new / none, who can see it), "Save and finish later", then Review and Finish. My
+  advisory: "Term reflection" (open with title and dates), then "Reflections: 12 of 23 done", "Who hasn't finished" and
+  "Remind the rest (N)", which sends the existing nudge (`nudgeStudent(sid, tid, text, 'reflection:<windowId>')`: the
+  7-day gap applies; its notification opens the reflection, `#/<persona>/map/reflect`; the "Add something" banner skips
+  it). School overview: "Term reflections" (open for a Year; each window's done count; close). The conference sheet's
+  "Latest reflections" shows it (advisor copy; family copy by visibility).
+- Tests: `server/test/term-reflection.test.mjs`; browser: `node scripts/checks/term-reflection.cjs` (real roster: Ms Jane
+  Altemen opens it for 8C; Aaron Torres finishes at Simple on a phone; a classmate at Standard saves a draft, resumes in a
+  new browser and finishes "Only me"; reminders; conference sheet; families). Screenshots `tp-reflect-*.png`.
+## Offline capture (`src/outbox.js`, `src/sync.js`, `src/components/OfflineBar.jsx`)
+
+A signed-in pilot account can add moments (photos too) with no connection; they go when it is back. Server unchanged.
+- **The queue on the device**: every change (`POST /api/action`) and every photo chosen offline is kept in IndexedDB
+  (`tp-outbox`, store `items`, `{ k, uid, url, body }` or `{ k, uid, upload: { key, name, type }, blob }`), keyed by the
+  signed-in account id and sent in order (`k`); a row is deleted once the server answers. No IndexedDB (a private
+  window, blocked storage): the same queue in memory for that page. Demo mode (no account) keeps the old in-memory queue.
+- **Photos offline**: `uploadFile` (`src/upload.js`), when the upload cannot reach the server and the app is live on
+  it, hands the (shrunk) file to `holdUpload()`, which returns a placeholder `blob:<object url>#tpq-<key>` shown at
+  once. Coming back, the photo is uploaded first (`POST /api/upload`) and every waiting change naming it is rewritten
+  to `api/files/<id>.<ext>` before it is sent (`swapUrls`; an upload the server refuses becomes `""` and goes through
+  `RefusedBar`). After a reload the placeholders are made again from the kept blobs, in this device's copy too.
+- **Opening the app offline**: `loadAuth()` remembers a pilot sign-in (`localStorage['tp-offline-auth']`); with no
+  connection at all (a network error, not a page without a server) it uses that, and `startSync({ user, offline })`
+  runs on this device's copy of the record (`tp-store-*`) with the queue. The service worker keeps the page itself
+  (`index.html`, cached as `?shell`) once a signed-in page posts `'shell'` (`keepShell()` in `src/pwa.js`), and serves
+  it for a page load with no network before `offline.html`. It still never caches `/api/*`. Signing out deletes it with
+  every other cache, so a signed-out phone shows the offline page as before; demo mode never asks for it.
+- **Starting with changes left**: `startSync` takes up this account's rows only, keeps this device's copy (it already
+  shows them), sends them, then fetches the server's copy.
+- **Never under another account**: after being cut off (and on an offline start) `GET /api/auth/me` is asked before the
+  next queued change; a different account (signed in in another tab) or nobody: that account's changes are not sent,
+  dropped from the page's queue and kept on the device under their own account (sent when they sign in here again),
+  and `RefusedBar` says "This browser is now signed in as …". A change the server refuses after reconnecting goes
+  through `RefusedBar` as before.
+- **Status**: the header (`SyncStatus`) shows "3 changes waiting" (Simple level: "Saved on this phone"), with the
+  long words as its title; `OfflineBar` at the foot of the screen: "3 changes waiting. Saved on this phone. They will
+  send when you are back online." (Simple: "Saved on this phone. It will send when you are back online."; Thai too),
+  then "Sending … saved on this phone…" until it is done. Photos do not count as changes of their own.
+- **Signing out** (`signOut`): with changes not sent, it asks first ("2 changes are not sent yet. Sign out anyway?");
+  No keeps everything, Yes drops that account's rows only (other accounts' stay).
+- Tests: `src/outbox.test.mjs` (`npm test`: per-account rows, in-memory fallback, rewriting, the words); browser:
+  `node scripts/checks/offline-capture.cjs` (real roster from `TP_ROSTER`; `context.setOffline`): Aaron Torres on a
+  phone adds a moment with a photo offline, reloads offline, comes back; Mr David Coultas, in his own context, sees the
+  moment and the photo; the sign-out warning; a second account on the same browser never sends Aaron's queue.
+
+## Voice for younger students (`src/voice.js`, `src/components/Voice.jsx`)
+
+Speak to type, read aloud and short voice notes, for the Simple level first and wherever the same flows appear at
+Standard. Every part is feature-detected: a browser without it shows no button and no error. No new mutator, route or
+server change.
+- **Speak to type** (`MicButton`, `SayIt`): a "Say it" mic under the text boxes of the Simple add-a-moment flow (what,
+  what did you learn), Simple goals (what, and "How did it go?"), answers to a question (`AskFlow`), class answers
+  (`ClassPrompts.jsx`'s `AnswerFlow`, every level) and the term reflection (Simple screens and the Standard/Full page). It
+  uses the browser's `SpeechRecognition` / `webkitSpeechRecognition` with `lang` `en-GB`, or `th-TH` when the person's
+  language (`getLang()`) is Thai, `interimResults` and `continuous`. Words appear as they are said, joined to what was
+  typed (`joinSpoken`), and stay editable; typing while it listens keeps the typed words. The first time (per device,
+  `localStorage['tp-mic-note']`) a note under the mic says the browser turns speech into words and the app does not record
+  or keep the voice. Nothing is sent by the app: recognition is the browser's own. A button with `aria-label` and
+  `aria-pressed`; Enter or Space starts and stops it.
+- **Read aloud** (`SpeakButton`, `Said`): a speaker beside each Simple flow's question, the class question card on the
+  home and in its answer flow, and the term reflection's questions; `speechSynthesis`, `en-GB` (or `th-TH` for Thai words,
+  `voiceLangOf`). The display menu has **Read questions aloud** (Off / On, in Thai too; this device only,
+  `localStorage['tp-read-aloud']`): when on, each question is read out as its screen opens.
+- **Voice notes** (`VoiceRecorder`, `VoiceNotes`): one big Record, then Stop (or 60 seconds, `MAX_SECS`), Play again,
+  Record again, Use this. `MediaRecorder` (`audio/webm`, else `audio/mp4` or `audio/ogg`). "Use this" uploads it with
+  `uploadFile` (`POST /api/upload`, `audio/webm` is kept as `.weba`), so offline it goes through `holdUpload` and is sent
+  when the phone is back (see "Offline capture"). Offered in the Simple add flow's "What did you learn?" step (saved with
+  `addStation(..., { files: [voice] })`) and on a student-added moment (`editStation`, the moment's evidence). The record
+  holds an ordinary evidence item `{ kind: 'file', type: 'audio/…', url, caption: 'Voice note' }`, so `/api/files` serves it
+  only to those who may read the moment (see "Protected uploaded files"). Shown as an audio player in the Simple moment
+  view, in the station panel (as before), and on the teacher's Endorsements card (`FileLinks`).
+- Tests: `src/voice.test.mjs` (`npm test`: feature detection, languages, joining words, results, file names, the
+  settings with and without storage, speaking); browser: `node scripts/checks/voice.cjs` (real roster from `TP_ROSTER`;
+  Chromium with `--use-fake-ui-for-media-stream --use-fake-device-for-media-stream`): Aaron Torres on a phone speaks to type
+  with the keyboard (a stand-in recogniser), hears a question read out and turns on Read questions aloud, records a voice
+  note on a moment and asks Mr David Coultas, adds a second one offline; Mr Coultas, in his own context, plays both on his
+  queue (200 from `/api/files`); a signed-out context gets 404; with `SpeechRecognition` stubbed out there is no mic and
+  no error. Screenshots `tp-voice-*.png`.
+## Kind feedback from classmates (`src/api.js`, `src/components/PeerFeedback.jsx`, pilot only)
+
+A student in Year 9 or above can let classmates give kind feedback on a moment. Off by default, per moment. Pilot only (the
+screens check `isPilot()`); no route of its own: it runs on `/api/action` like any change.
+
+- **Record** (made on first use): `e.peerFeedback = true` on an opted-in station; `store.peerFeedback = [{ id: 'pf-…', eventId,
+  studentId (the owner), fromId, fromName (first name), classId (a current class they share), parts: [{ phrase, text }], at,
+  thanked?, hidden?: { at, by } }]`; `store.peerSettings = { offYears: [British Years], by, at }`. Phrases (`PEER_PHRASES`):
+  `liked` "I liked how…", `think` "This made me think about…", `question` "A question I have…", `try` "You could try…".
+- **Who takes part**: `peerEligible(sid)`: `grade >= PEER_MIN_GRADE` (8, so Year 9; the UI shows grade + 1) and the Year not
+  switched off. A moment qualifies (`peerQualifies`) when it is not a goal, is `school` or `publishable` and not hidden;
+  `peerOpen(e)` adds the switch and the owner's eligibility. Classmates: `sharedClasses(a, b)` (enrolments without an ended `to`).
+- **Mutators**: `setPeerFeedback(eventId, on)` (409 when the Year is off; 400 on a moment the school cannot see);
+  `givePeerFeedback(eventId, fromId, parts)` (one or two different phrases, each finished, 200 characters in all
+  (`PEER_NOTE_MAX`); 403 no shared class, 409 not open, 429 after `PEER_DAY_LIMIT` = 10 in a Bangkok day; notifies the owner
+  "Mei gave you kind feedback on “…”"); `thankPeerFeedback(id)` (notifies the giver); `hidePeerFeedback(id)`;
+  `setPeerFeedbackYear(year, on, by)` (Years 9 to 13). No replies, no free text beyond finishing a phrase. Reads:
+  `peerMomentsFor(sid)`, `peerFeedbackOn(eventId)`, `peerGivenBy(sid)`, `peerGivenToday(sid)`, `peerText(part)`.
+- **Safeguarding**: `reportItem({ feedbackId }, reason, note, from)` makes a `kind: 'feedback'` report (`studentId` = the
+  moment's owner, same limits and moderator notifications); `moderateReport` on it: `hide`, `unhide`, `none` (`photo` is
+  refused) and sets `hidden` on the feedback. Reports shows "Kind feedback from a classmate (name)" and the text.
+- **canAct** (`PF_FNS` and `peerOk` in `server/auth.mjs`, before the admin rule): opting in, thanking and hiding: only the
+  moment's owner. Giving: only a student, as themselves, on a moment whose owner shares a current class with them; never
+  staff or admins. Year switch: coordinators and leadership as themselves, admins. Reporting feedback: the owner
+  (`'student'`), staff who read it (the class's teachers, either student's advisor, whole-school roles) as themselves, admins.
+- **Scope** (`server/scope.mjs`): a student gets `store.peerMoments` (classmates' open moments: `{ eventId, studentId, name
+  (first), title, image (first photo), classId, className, date }`, at most 40, never the summary or anything else), the
+  feedback they gave (without `hidden`), and the not-hidden feedback on their own moments without `fromId`. Staff: the class's
+  teachers, the owner's and the giver's advisors and whole-school roles get it whole. Families: nothing. A student's own
+  feedback report keeps its `feedbackId`. Files (`server/files.mjs`): a student may open the photo of a moment in their
+  `peerMomentsFor` list.
+- **PDPA**: `peerFeedback.json` in the copy holds feedback given and received (received ones with the first name, not the
+  id); erasure removes the student's given and received feedback (and the switch goes with their stations).
+- **Screens**: student home at every level, "From your classes" (title, photo, first name, class, what you said and the
+  thank-you; "Give kind feedback" opens the phrase picker). Station panel (and the Simple moment card): the owner's
+  "Let classmates in my classes give kind feedback" switch and the feedback with "Say thank you", "Hide", "Report"; staff
+  read it with full names and can report. My classes, class page: "Kind feedback in this class". School overview: "Kind
+  feedback from classmates" with a switch per Year 9 to 13.
+- Tests: `server/test/peer-feedback.test.mjs`; browser: `node scripts/checks/peer-feedback.cjs` (the real roster from
+  `TP_ROSTER`: two Year 9+ students sharing a class taught by a plain teacher; an outsider; Aaron Torres; a coordinator;
+  screenshots `tp-peer-*.png`).
+## Milestones and celebrations (`src/milestones.js`, `src/api.js`, `src/components/Milestones.jsx`)
+
+Small moments worth marking on a student's own journey, shown once to the student and quietly to their advisor and
+family. Demo and pilot. No new route, no email, no leaderboard: nothing compares one student with another.
+
+- **Derived, not stored**: `deriveMilestones(map, { today, root, line })` (pure, `src/milestones.js`) reads a map as
+  `getStudentMap` gives it. Moments are non-goal stations dated up to today. Milestones (`key`): first moment (`first`);
+  first moment on each school line, a branch counting for its line (`line:<id>`); 5, 10 and 25 moments (`count:<n>`);
+  first endorsement, dated by the endorsement (`endorsed`); first goal done (`goal`, a station with `wasGoal`); a term
+  reflection finished (`reflection`, a `termReflection` station); moments on one line in 3 different months
+  (`steady:<id>`, "Steady on Art"); first spotted moment accepted (`spotted`). Each is `{ key, kind, n?, date, eventId,
+  eventTitle, lineId, lineName, colour, teacher? }`, dated by the moment that made it happen. `milestoneTitle(m, lang)`
+  (English, Thai), `milestoneCheer(m)` (the student's words), `newestFirst`, `since(list, day)`.
+- **Per viewer**: `api.milestonesOf(studentId, viewer)` derives from what that viewer may read, so an advisor's come
+  only from advisor-level moments and a family's (`api.familyMilestones`) only from moments the family view shows (never
+  private or hidden ones). `api.recentMilestones(sid, viewer, days = 14)`.
+- **Seen, once, on any device**: `store.milestonesSeen[studentId] = { [key]: at }`, written by the mutator
+  `markMilestonesSeen(studentId, keys)` (keeps the first time, ignores repeats; replayed with `nowIso()`). The student's
+  page marks a new milestone seen as soon as it sees it and keeps it to show for that page load, so a reload or a second
+  device never shows it again. A record from before milestones (no seen state, milestones already there) is marked seen
+  quietly the first time, without celebrating old ones. Never in a See as preview.
+- **canAct**: `markMilestonesSeen` only by the student, for their own (`milestonesOk` in `server/auth.mjs`, before the
+  admin rule): never staff, admins or families. **Scope**: `milestonesSeen` goes to that student only. PDPA: part of the
+  copy and erased with the student (keyed by student id).
+- **Screens**: the student's home at every level shows the celebration and "My milestones" (newest first). Simple: a
+  big friendly card in the line's colour with a small station arriving on a line (still under
+  `prefers-reduced-motion`), "Yay!" closes it. Standard and Full: a quiet toast at the top right and a badge (a small
+  star) on the map's station for milestones of the last 14 days (`badgeIds` on `MetroMap`). My advisory: "Recent
+  milestones" (advisees, last 14 days, advisor level; a tap opens the student page at that station). The advisor's
+  student page: "Milestones". This week: a "Milestones" block in Celebrate (advisees at advisor level, class students at
+  school level, dated in the week). Family home: "Milestones" (Thai too). Families get no celebration of their own.
+- Tests: `src/milestones.test.mjs` (derivation, `npm test`), `server/test/milestones.test.mjs` (per viewer, seen,
+  replay, canAct, scope, PDPA); browser: `node scripts/checks/milestones.cjs` (real roster from `TP_ROSTER`, in
+  `run.sh`): Aaron Torres adds his first moments at Simple on a phone and sees "First moment" once (not after a reload,
+  not on a second device, which gets "5 moments" live and still under reduced motion); a classmate at Standard gets the
+  toast and the station badge; refusals for advisor, admin and classmate; Ms Jane Altemen sees it on My advisory, his
+  page and This week; his family sees milestones but none from a private moment. Screenshots `tp-ms-*.png`.

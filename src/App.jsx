@@ -1,17 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { applyLens, getAlumMap, getPresentations, getStudent, getStudentMap, getStudents, subscribe, getDrafts, setStudentDrafts, hasPublicCopy, getNotifications, markNotificationsRead, notifyKeys, resetDemo, restore, markOf, changeCount, logLink, addStation, getLang, setLang, getIntensity, setIntensity, INTENSITY, INTENSITY_NAV, INTENSITY_LABEL } from './api.js';
+import { applyLens, getAlumMap, getStudent, getStudentMap, subscribe, getDrafts, setStudentDrafts, hasPublicCopy, getNotifications, markNotificationsRead, notifyKeys, resetDemo, restore, markOf, changeCount, logLink, addStation, getLang, getIntensity, setIntensity, INTENSITY, INTENSITY_NAV, INTENSITY_LABEL } from './api.js';
 import SimpleHome, { ShowFamily, QuickAdd } from './screens/SimpleHome.jsx';
 import { InstallHint } from './components/PhoneApp.jsx';
+import { ReadAloudSetting } from './components/Voice.jsx';
 import IntensityControl from './components/IntensityControl.jsx';
 import { ensureEndorsed } from './tourStory.js';
-import { PERSONAS, KIND_LABEL, NAV, personaById, home, navOf, pilotPersona } from './personas.js';
+import { PERSONAS, KIND_LABEL, personaById, home, navOf, pilotPersona } from './personas.js';
 import Accounts from './screens/Accounts.jsx';
 import Usage from './screens/Usage.jsx';
 import Reports from './screens/Reports.jsx';
 import Overview from './screens/Overview.jsx';
+import ActivityLog from './screens/ActivityLog.jsx';
 import { isModerator } from './api.js';
 import { AccountMenu, PasswordDialog } from './screens/SignIn.jsx';
-import { ago, appUrl, inkOn } from './format.js';
+import { appUrl, inkOn } from './format.js';
 import Studio from './components/Studio.jsx';
 import SharedView from './components/SharedView.jsx';
 import IntegrationsPanel from './components/IntegrationsPanel.jsx';
@@ -35,6 +37,8 @@ import Onboarding from './screens/Onboarding.jsx';
 import Pdpa from './screens/Pdpa.jsx';
 import { FeedbackDialog } from './components/Feedback.jsx';
 import { NudgeBanner } from './components/Nudges.jsx';
+import { TermReflectionCard } from './components/TermReflection.jsx';
+import { StudentMilestones } from './components/Milestones.jsx';
 import Applications from './screens/Applications.jsx';
 import SignalBoard from './screens/SignalBoard.jsx';
 import SchoolLine from './screens/SchoolLine.jsx';
@@ -68,6 +72,9 @@ import { serverMode, undoSince } from './sync.js';
 import { inPreview } from './preview.js'; // admin "See as": no account menu for the person shown
 import { VerifyProvider } from './components/VerifyModal.jsx';
 import { TOURS, tourMinutes, stopCount } from './tour.js';
+import ThisWeek from './screens/ThisWeek.jsx';
+import { TODAY } from './api.js';
+import { isMonday } from './week.js';
 import { QADrawer, TourCard, TourRoute } from './components/TourCards.jsx';
 
 // Routes: #/<persona>/<screen>/<param>, plus public #/s/<token>, #/v/<code> and #/p/<student>[/th] (parent link).
@@ -78,7 +85,8 @@ const parse = () => {
   if (a === 's' || a === 'v' || a === 'p') return { publicKind: a, param: b, lang: c };
   const p = personaById(a);
   const screens = navOf(p).map(([id]) => id).concat(p.kind === 'advisor' ? ['student'] : p.kind === 'student' ? ['poster', 'add', 'snap'] : []);
-  return { persona: p.id, screen: screens.includes(b) ? b : home(p), param: c || null };
+  // Staff with "This week" land on it on Mondays (Bangkok) when the address names no screen.
+  return { persona: p.id, screen: screens.includes(b) ? b : !b && screens.includes('week') && isMonday(TODAY) ? 'week' : home(p), param: c || null };
 };
 
 // Presentations (drafts, letters, custom pages, share links) live in the record, in api.js.
@@ -270,6 +278,7 @@ export default function App() {
                   <div className="vm-row seg">{[['en', 'English'], ['th', 'ภาษาไทย']].map(([k, l]) => <button key={k} className={lang === k ? 'on' : ''} lang={k} onClick={() => chooseLang(k)}>{l}</button>)}</div>
                   <div className="menu-title">{T('Theme')}</div>
                   <div className="vm-row seg">{[[false, 'Light'], [true, 'Dark']].map(([k, l]) => <button key={l} className={dark === k ? 'on' : ''} onClick={() => setDark(k)}>{T(l)}</button>)}</div>
+                  <ReadAloudSetting T={T} />
                 </div>
               )}
             </div>
@@ -337,8 +346,10 @@ export default function App() {
           {persona.admin && route.screen === 'accounts' && <Accounts {...ctx} />}
           {pilot && route.screen === 'usage' && (persona.admin || persona.kind === 'leadership') && <Usage {...ctx} />}
           {isModerator(persona) && route.screen === 'reports' && <Reports {...ctx} focus={route.param} />}
+          {pilot && route.screen === 'week' && (acts(persona, 'teacher') || acts(persona, 'advisor')) && <ThisWeek {...ctx} param={route.param} />}
           {pilot && route.screen === 'overview' && (persona.admin || persona.kind === 'leadership' || persona.kind === 'coordinator') && <Overview {...ctx} />}
-          {route.screen !== 'accounts' && route.screen !== 'usage' && route.screen !== 'reports' && route.screen !== 'overview' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} persona={persona} />}
+          {pilot && route.screen === 'activitylog' && (persona.admin || persona.kind === 'leadership') && <ActivityLog {...ctx} />}
+          {route.screen !== 'accounts' && route.screen !== 'usage' && route.screen !== 'reports' && route.screen !== 'overview' && route.screen !== 'week' && route.screen !== 'activitylog' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} persona={persona} />}
           </ErrorBoundary>
           {pilot && level === 'simple' && <div className="fb-simple"><button onClick={() => setFbOpen(true)}>Something not working? Tell us</button></div>}
         </main>
@@ -383,7 +394,8 @@ function StudentScreens({ screen, param, studentId, drafts, setDrafts, audience,
   // A nudge (banner or notification, #/<persona>/map/add) opens the add flow.
   const [addReq, setAddReq] = useState(0);
   useEffect(() => { if (param === 'add' && screen === 'map') setAddReq((n) => n + 1); }, [param, screen]);
-  const nudge = <><NudgeBanner studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} onAdd={() => setAddReq((n) => n + 1)} /><CarryOverGoals studentId={studentId} version={version} toast={toast} simple={getIntensity(studentId) === 'simple'} /></>;
+  const nudge = <><StudentMilestones studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} /><NudgeBanner studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} onAdd={() => setAddReq((n) => n + 1)} /><CarryOverGoals studentId={studentId} version={version} toast={toast} simple={getIntensity(studentId) === 'simple'} />
+    <TermReflectionCard studentId={studentId} version={version} toast={toast} simple={getIntensity(studentId) === 'simple'} auto={screen === 'map' && param === 'reflect'} /></>;
   // N11: stations a presentation would show but a link cannot, because they are not publishable.
   const [gapFor, setGapFor] = useState(null);
   const gapsOf = (pres) => { const l = applyLens(map, pres, { hiddenLines: pres.filters.hiddenLines }); return map.events.filter((e) => l.visible.has(e.id) && e.type !== 'goal' && e.visibility !== 'publishable'); };

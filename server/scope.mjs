@@ -21,8 +21,11 @@ export function teacherReach(tid) {
   const cut = new Map();
   for (const h of s.handovers || []) cut.set(h.studentId, h);
   for (const [sid, h] of cut) if (h.from !== tid) cut.delete(sid); else cut.set(sid, h.date);
+  // A new year (store.yearStart): every teacher's older links stop counting too; advising, a current class place or
+  // DP supervision (NOW) still do.
+  const year = s.yearStart?.date || '';
   const NOW = '9999';
-  const add = (id, date) => { if (id && !(cut.has(id) && !(String(date ?? '') > cut.get(id)))) out.add(id); };
+  const add = (id, date) => { const d = String(date ?? ''); if (id && !(cut.has(id) && !(d > cut.get(id))) && !(year && !(d > year))) out.add(id); };
   const evStudent = new Map(s.events.map((e) => [e.id, e.studentId]));
   for (const x of s.students) if (x.advisorId === tid) add(x.id, NOW);
   const classes = new Set((s.classes || []).filter((c) => (c.teacherIds || []).includes(tid) || c.teacherId === tid).map((c) => c.id));
@@ -170,6 +173,26 @@ export function scopedSnapshot(user) {
   store.handovers = staff ? (full.handovers || []).filter((h) => inReach(h.studentId)) : [];
   store.handoverNotes = staff ? (full.handoverNotes || []).filter((n) => all || (!!tid && (n.by === tid || (inReach(n.studentId) && api.getStudent(n.studentId)?.advisorId === tid)))) : [];
   store.handedOver = tid ? handedOverBy(tid).filter((h) => !inReach(h.studentId)) : [];
+  // Term reflection (api.openReflectionWindow): a window goes to whole-school roles whole, to staff when it covers a student
+  // in reach (only those ids), and to a student it covers (only their own id); never to families. A student gets their own
+  // reflection whole; staff in reach only whether it is started or done (what they read is the station, by its visibility).
+  store.reflectionWindows = parent ? [] : (full.reflectionWindows || []).flatMap((w) => { const ids = w.studentIds.filter((x) => (self ? x === self : inReach(x))); return all ? [w] : ids.length ? [{ ...w, studentIds: ids }] : []; });
+  store.termReflections = parent ? [] : (full.termReflections || []).filter((r) => (self ? r.studentId === self : inReach(r.studentId)))
+    .map((r) => (self ? r : { id: r.id, windowId: r.windowId, studentId: r.studentId, status: r.status, startedAt: r.startedAt, doneAt: r.doneAt || null, eventId: r.eventId || null }));
+  // Kind feedback from classmates (api.givePeerFeedback): a student gets the classmates' opted-in moments they may see
+  // (title, first photo, first name, shared class: store.peerMoments), the feedback they gave (without whether the owner
+  // hid it) and the feedback on their own moments that is not hidden (the classmate's first name, never their id). Staff:
+  // the class's teachers, either student's advisor and whole-school roles get it whole. Families never.
+  const pfStaff = (f) => all || (!!tid && (teaches.has(f.classId) || [f.studentId, f.fromId].some((sid) => api.getStudent(sid)?.advisorId === tid)));
+  store.peerMoments = self ? api.peerMomentsFor(self) : [];
+  store.peerFeedback = parent ? [] : (full.peerFeedback || []).flatMap((f) => {
+    if (!self) return pfStaff(f) ? [f] : [];
+    const { hidden, fromId, ...x } = f;
+    return f.fromId === self ? [{ ...x, fromId }] : f.studentId === self && !hidden ? [x] : [];
+  });
+  if (!moderator) { const fb = new Map((full.reports || []).filter((r) => r.feedbackId).map((r) => [r.id, r.feedbackId])); store.reports = store.reports.map((r) => (fb.has(r.id) ? { ...r, feedbackId: fb.get(r.id) } : r)); }
+  // Milestones (api.markMilestonesSeen): which celebrations a student has seen, for that student only.
+  store.milestonesSeen = self ? pickBy(full.milestonesSeen, (sid) => sid === self) : {};
   // Everything else (school lines' settings, integrations, rollout, family language, classes, keys other features add).
   for (const [k, v] of Object.entries(full)) if (!(k in store)) store[k] = generic(v, inReach);
   // Counts the whole-school screens show for what they may not open.
@@ -250,3 +273,9 @@ export function handedOverBy(tid) {
   return [...latest.values()].filter((h) => h.from === tid).map((h) => { const s = api.getStudent(h.studentId); return s && { studentId: s.id, name: s.name, grade: s.grade, homeroom: s.homeroom, to: api.getTeacher(h.to)?.name || h.to, date: h.date }; }).filter(Boolean);
 }
 Object.assign(TOUCHES, { carryOverGoal: (a) => T([ev(a[0])]), closeGoal: (a) => T([ev(a[0])]), setHandoverNote: (a) => T([a[0]], [a[2] ?? '?']) });
+Object.assign(TOUCHES, { openReflectionWindow: (a) => T([], [a[1]]), closeReflectionWindow: () => T([]), saveTermReflection: (a) => T([a[1]]), finishTermReflection: (a) => T([a[1]]) });
+Object.assign(TOUCHES, {
+  setPeerFeedback: (a) => T([ev(a[0])]), givePeerFeedback: (a) => T([a[1]]), setPeerFeedbackYear: (a) => T([], [a[2]]),
+  thankPeerFeedback: (a) => T([api.getPeerFeedback(a[0])?.studentId ?? '?']), hidePeerFeedback: (a) => T([api.getPeerFeedback(a[0])?.studentId ?? '?']),
+});
+Object.assign(TOUCHES, { markMilestonesSeen: (a) => T([a[0]]) });

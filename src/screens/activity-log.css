@@ -1,0 +1,13 @@
+/* Activity log (src/screens/ActivityLog.jsx) */
+.al-filters { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; align-items: end; }
+.al-filters .auth-field input, .al-filters .auth-field select { padding: 0 10px; height: 40px; font-size: 15px; }
+.al-clear { justify-self: start; }
+.al-count { margin: 0 0 8px; }
+.al-table td:first-child { white-space: nowrap; }
+.al-table td small { overflow-wrap: anywhere; }
+.al-refused td { background: color-mix(in srgb, #E73C3E 6%, transparent); }
+.al-no { color: #B3261E; font-weight: 600; }
+:root[data-theme="dark"] .al-no { color: #ffb4ab; }
+.al-none { color: var(--muted); }
+.al-pages { display: flex; gap: 12px; align-items: center; justify-content: center; margin-top: 12px; }
+@media (max-width: 640px) { .al-filters { grid-template-columns: 1fr 1fr; } .al-dl { width: 100%; } }

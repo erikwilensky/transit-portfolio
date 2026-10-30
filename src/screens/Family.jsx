@@ -2,6 +2,7 @@ import { inkOn } from '../format.js';
 import { useMemo, useState } from 'react';
 import { answerConsent, applyLens, consentOnFile, familyViewer, getConsentReqs, getDigest, getFamily, getLang, getStudent, getStudentMap, setFamily, TERM_START, TODAY, youngStudent } from '../api.js';
 import MetroMap from '../components/MetroMap.jsx';
+import { FamilyMilestones } from '../components/Milestones.jsx';
 import StationPanel from '../components/StationPanel.jsx';
 import { consentText, dateIn, LangContext, lineName, tr } from '../i18n.js';
 import { chooseLang, exportUrl, isPilot } from '../auth.js';
@@ -124,6 +125,7 @@ function FamilyMap({ persona, childId, go, lang, version }) {
           <section className="pv-intro">
             <h3>{say.thisTerm}</h3>
             {term.length ? <ul>{term.map((e) => <li key={e.id}><button className="linkish" lang="en" onClick={() => setSel(e.id)}>{e.title}</button> <small>{dateIn(lang, e.date)} · {e.lineIds.map((id) => lineName(lang, map.lines.find((l) => l.id === id)?.name || id)).join(', ')}</small></li>)}</ul> : <p className="fineprint">{say.none}</p>}
+            <FamilyMilestones childId={childId} lang={lang} version={version} onOpen={setSel} />
             <h3>{say.ask}</h3>
             <ul>{QUESTIONS.map((q) => <li key={q}>{tr(lang, q)}</li>)}</ul>
           </section>

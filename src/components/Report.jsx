@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { getReports, getStudent, hasPublicCopy, REPORT_REASONS, reportItem } from '../api.js';
 import { personaById } from '../personas.js';
+import { useT } from '../i18n.js';
 import './safeguarding.css';
 
 const STAFF = ['advisor', 'teacher', 'counsellor', 'coordinator', 'leadership'];
@@ -26,13 +27,14 @@ export function ReportButton({ event, comment, simple = false, toast }) {
   const from = reporterFor(event, comment);
   const [open, setOpen] = useState(false);
   const [sent, setSent] = useState(false);
+  const t = useT();
   if (!from || (comment && comment.by === (from.key === 'student' ? 'student' : from.key))) return null;
   const mine = getReports().find((r) => r.from?.key === from.key && r.status === 'open' && sameItem(r, event, comment));
-  if (mine || sent) return <span className="sg-sent">{simple ? 'You told a teacher about this' : 'Reported. A teacher will look at it.'}</span>;
+  if (mine || sent) return <span className="sg-sent">{simple ? 'You told a teacher about this' : t('Reported. A teacher will look at it.')}</span>;
   return (
     <>
-      <button className={simple ? 'ghost sg-report simple' : 'linkish sg-report'} onClick={() => setOpen(true)}>{simple ? 'Something wrong? Tell a teacher' : 'Report'}</button>
-      {open && createPortal(<ReportDialog event={event} comment={comment} from={from} simple={simple} onClose={() => setOpen(false)} onSent={() => { setSent(true); setOpen(false); toast?.('Thank you. A teacher will look at it.'); }} />, document.body)}
+      <button className={simple ? 'ghost sg-report simple' : 'linkish sg-report'} onClick={() => setOpen(true)}>{simple ? 'Something wrong? Tell a teacher' : t('Report')}</button>
+      {open && createPortal(<ReportDialog event={event} comment={comment} from={from} simple={simple} onClose={() => setOpen(false)} onSent={() => { setSent(true); setOpen(false); toast?.(t('Thank you. A teacher will look at it.')); }} />, document.body)}
     </>
   );
 }
@@ -41,24 +43,25 @@ function ReportDialog({ event, comment, from, simple, onClose, onSent }) {
   const [reason, setReason] = useState(null);
   const [note, setNote] = useState('');
   const [err, setErr] = useState(null);
+  const t = useT();
   const send = () => {
     setErr(null);
-    try { reportItem(comment ? { commentId: comment.id } : { eventId: event.id }, reason, note, from); onSent(); } catch (x) { setErr(x.message || 'That did not work.'); }
+    try { reportItem(comment ? { commentId: comment.id } : { eventId: event.id }, reason, note, from); onSent(); } catch (x) { setErr(x.message || t('That did not work.')); }
   };
   const what = comment ? 'this comment' : 'this moment';
   return (
     <div className="modal-back" onClick={onClose}>
-      <div className={`modal sg-dialog${simple ? ' simple' : ''}`} role="dialog" aria-label={`Report ${what}`} onClick={(e) => e.stopPropagation()}>
-        <button className="panel-close" onClick={onClose} aria-label="Close">×</button>
-        <h2>{simple ? 'Tell a teacher' : `Report ${what}`}</h2>
-        <p className="fineprint">“{comment ? (comment.text.length > 80 ? `${comment.text.slice(0, 77)}…` : comment.text) : event.title}”. {from.key === 'student' ? 'A teacher who looks after safety will see it.' : 'The school’s safeguarding staff will look at it. The student is not told who reported it.'}</p>
-        <div className="sg-reasons" role="radiogroup" aria-label="What is wrong">
-          {Object.entries(REPORT_REASONS).map(([k, l]) => <button key={k} role="radio" aria-checked={reason === k} className={reason === k ? 'on' : ''} onClick={() => setReason(k)}>{l}</button>)}
+      <div className={`modal sg-dialog${simple ? ' simple' : ''}`} role="dialog" aria-label={comment ? `Report ${what}` : t('Report this moment')} onClick={(e) => e.stopPropagation()}>
+        <button className="panel-close" onClick={onClose} aria-label={t('Close')}>×</button>
+        <h2>{simple ? 'Tell a teacher' : comment ? `Report ${what}` : t('Report this moment')}</h2>
+        <p className="fineprint">“{comment ? (comment.text.length > 80 ? `${comment.text.slice(0, 77)}…` : comment.text) : event.title}”. {from.key === 'student' ? 'A teacher who looks after safety will see it.' : t('The school’s safeguarding staff will look at it. The student is not told who reported it.')}</p>
+        <div className="sg-reasons" role="radiogroup" aria-label={t('What is wrong')}>
+          {Object.entries(REPORT_REASONS).map(([k, l]) => <button key={k} role="radio" aria-checked={reason === k} className={reason === k ? 'on' : ''} onClick={() => setReason(k)}>{t(l)}</button>)}
         </div>
-        <label className="fb-label" htmlFor="sg-note">Anything else? (optional)</label>
+        <label className="fb-label" htmlFor="sg-note">{t('Anything else? (optional)')}</label>
         <textarea id="sg-note" rows={3} maxLength={1000} value={note} onChange={(e) => setNote(e.target.value)} />
         {err && <p className="auth-err" role="alert">{err}</p>}
-        <div className="sg-foot"><button className="ghost" onClick={onClose}>Cancel</button><button className="primary" disabled={!reason} onClick={send}>Send report</button></div>
+        <div className="sg-foot"><button className="ghost" onClick={onClose}>{t('Cancel')}</button><button className="primary" disabled={!reason} onClick={send}>{t('Send report')}</button></div>
       </div>
     </div>
   );

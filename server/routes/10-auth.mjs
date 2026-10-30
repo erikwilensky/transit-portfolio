@@ -4,6 +4,7 @@ import { send, readJson, cookies, middleware, PORT, clientIp, isHttps } from '..
 import { mailReady, mailLink } from '../mail.mjs';
 import { api, changed } from '../store.mjs';
 import * as A from '../auth.mjs';
+import * as L from '../audit.mjs';
 
 export { canAct } from '../auth.mjs';
 
@@ -31,9 +32,12 @@ const signIn = (req, res, a, body = {}) => {
 };
 // A new setup link for an account, emailed when mail is set up. Never logged.
 async function makeLink(req, a, kind) {
+  L.log(req, { action: 'setup-link', ...(kind === 'forgot' ? { actor: L.actorOf(a) } : {}), target: accountTarget(a), detail: { why: kind } });
   const url = setupUrl(originOf(req), A.newSetup(a, { keepPassword: kind === 'forgot' }));
   return { setupUrl: url, emailed: await mailLink({ to: a.email, name: a.name, url, kind }) };
 }
+// Activity log (server/audit.mjs): the account an entry is about, by id and name.
+export const accountTarget = (a) => ({ accountId: a.id, label: a.name, studentId: a.studentId, teacherId: a.teacherId });
 const FORGOT_IP = 100, FORGOT_EMAIL = 3; // per 15 minutes
 export const requireAdmin = (req) => { if (!req.user) throw bad(401, 'Sign in first.'); if (!A.isAdmin(req.user)) throw bad(403, 'Only an admin can do that.'); };
 
@@ -89,16 +93,20 @@ export default (app) => {
     const { email, password } = await readJson(req);
     const e = A.normEmail(email); const ip = clientIp(req);
     const t = A.throttle(e, ip);
-    if (t.blocked) return send(res, 429, { error: A.BLOCKED }, { 'retry-after': '900' });
+    // Activity log: the account tried (an unknown email is noted without the address).
+    const tried = (action, status, who = A.accountByEmail(e)) => L.log(req, { action, actor: L.actorOf(who), target: who ? {} : { label: 'Unknown email' }, status });
+    if (t.blocked) { tried('sign-in-locked', 429); return send(res, 429, { error: A.BLOCKED }, { 'retry-after': '900' }); }
     if (t.delay) await sleep(t.delay);
     const a = A.accountByEmail(e);
-    if (!(await A.checkPassword(a, password))) { A.noteFailure(e, ip); return send(res, 401, { error: 'That email and password do not match.' }); }
+    if (!(await A.checkPassword(a, password))) { A.noteFailure(e, ip); tried(A.failCount(`e:${e}`) >= A.EMAIL_LIMIT ? 'sign-in-locked' : 'sign-in-failed', 401, a); return send(res, 401, { error: 'That email and password do not match.' }); }
     A.noteSuccess(e);
-    if (a.paused) return send(res, 403, { error: A.PAUSED, paused: true });
+    if (a.paused) { tried('sign-in', 403, a); return send(res, 403, { error: A.PAUSED, paused: true }); }
+    tried('sign-in', 200, a);
     signIn(req, res, a);
   });
 
   app.post('/api/auth/logout', (req, res) => {
+    if (req.user) L.log(req, { action: 'sign-out' });
     A.endSession(cookies(req)[A.COOKIE]);
     send(res, 200, { ok: true }, { 'set-cookie': A.cookieHeader(req, '', 0) });
   });
@@ -108,11 +116,12 @@ export default (app) => {
     const { current, password } = await readJson(req);
     const ip = clientIp(req); const e = req.user.email;
     const t = A.throttle(e, ip);
-    if (t.blocked) throw bad(429, A.BLOCKED);
+    if (t.blocked) { L.log(req, { action: 'password-set', status: 429 }); throw bad(429, A.BLOCKED); }
     if (t.delay) await sleep(t.delay);
-    if (!(await A.checkPassword(req.user, current))) { A.noteFailure(e, ip); throw bad(400, 'Your current password is not right.'); }
+    if (!(await A.checkPassword(req.user, current))) { A.noteFailure(e, ip); L.log(req, { action: 'password-set', status: 400 }); throw bad(400, 'Your current password is not right.'); }
     const p = A.passwordProblem(password); if (p) throw bad(400, p);
     await A.setPassword(req.user, password);
+    L.log(req, { action: 'password-set', detail: { how: 'change' } });
     A.endSessionsOf(req.user.id, cookies(req)[A.COOKIE]);
     send(res, 200, { ok: true });
   });
@@ -136,7 +145,9 @@ export default (app) => {
     // After the reply, so its timing says nothing either.
     if (!e || e.length > 254 || A.bump(`fe:${e}`) > FORGOT_EMAIL) return;
     const a = A.accountByEmail(e); if (!a) return;
-    if (!(mailReady() && (await makeLink(req, a, 'forgot')).emailed)) A.noteResetRequest(a);
+    const emailed = mailReady() && (await makeLink(req, a, 'forgot')).emailed;
+    if (!emailed) A.noteResetRequest(a);
+    L.log(req, { action: 'reset-request', actor: L.actorOf(a), detail: { emailed: !!emailed } });
   });
 
   // One-time setup links: the first admin, and every account an admin creates or resets.
@@ -156,13 +167,15 @@ export default (app) => {
       const a = A.createAccount({ email, name, kind: 'admin' });
       await A.setPassword(a, password);
       A.clearFirstRun();
+      L.log(req, { action: 'account-create', actor: L.actorOf(a), target: accountTarget(a), detail: { kind: 'admin', firstRun: true } });
       return signIn(req, res, a);
     }
     const a = A.accountBySetup(token);
-    if (!a) throw bad(404, 'This setup link has expired or was already used. Ask an admin for a new one.');
-    if (a.paused) throw bad(403, A.PAUSED);
+    if (!a) { L.log(req, { action: 'password-set', actor: null, detail: { how: 'setup link' }, status: 404 }); throw bad(404, 'This setup link has expired or was already used. Ask an admin for a new one.'); }
+    if (a.paused) { L.log(req, { action: 'password-set', actor: L.actorOf(a), detail: { how: 'setup link' }, status: 403 }); throw bad(403, A.PAUSED); }
     await A.setPassword(a, password);
     A.endSessionsOf(a.id); A.noteSuccess(a.email);
+    L.log(req, { action: 'password-set', actor: L.actorOf(a), detail: { how: 'setup link' } });
     signIn(req, res, a);
   });
 
@@ -179,6 +192,7 @@ export default (app) => {
     if (!name) throw bad(400, 'Add a name.');
     const link = resolveLink(b);
     const a = A.createAccount({ email, name, kind: b.kind, admin: !!b.admin, ...link });
+    L.log(req, { action: 'account-create', target: accountTarget(a), detail: { kind: a.kind, admin: A.isAdmin(a) } });
     const l = await makeLink(req, a, 'new');
     send(res, 201, { account: A.publicUser(a), ...l, ...listBody() });
   });
@@ -192,7 +206,10 @@ export default (app) => {
     const link = resolveLink({ ...a, ...b, kind });
     const admin = kind === 'admin' || (kind === 'leadership' && (b.admin ?? a.admin));
     if (wasAdmin && !admin && A.allAccounts().filter(A.isAdmin).length === 1) throw bad(400, 'Keep at least one admin.');
+    const was = { kind: a.kind, admin: wasAdmin };
     A.updateAccount(a, { kind, name: String(b.name || a.name).trim(), admin: !!admin, ...link });
+    const roleChanged = was.kind !== a.kind || was.admin !== A.isAdmin(a);
+    L.log(req, { action: roleChanged ? 'role-change' : 'account-edit', target: accountTarget(a), detail: roleChanged ? { from: was.kind + (was.admin && was.kind !== 'admin' ? '+admin' : ''), to: a.kind + (A.isAdmin(a) && a.kind !== 'admin' ? '+admin' : '') } : undefined });
     send(res, 200, { account: A.publicUser(a), ...listBody() });
   });
   app.post('/api/admin/accounts/:id/reset', async (req, res, { id }) => {
@@ -207,12 +224,14 @@ export default (app) => {
     requireAdmin(req);
     const a = A.accountById(id); if (!a) throw bad(404, 'No such account.');
     A.dismissResetRequest(a);
+    L.log(req, { action: 'reset-dismissed', target: accountTarget(a) });
     send(res, 200, listBody());
   });
   app.delete('/api/admin/accounts/:id', (req, res, { id }) => {
     requireAdmin(req);
     const a = A.accountById(id); if (!a) throw bad(404, 'No such account.');
     if (a.id === req.user.id) throw bad(400, 'You cannot remove your own account.');
+    L.log(req, { action: 'account-remove', target: accountTarget(a), detail: { kind: a.kind } });
     A.removeAccount(id);
     send(res, 200, listBody());
   });
