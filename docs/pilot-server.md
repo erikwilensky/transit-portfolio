@@ -1925,3 +1925,50 @@ number on the bell.
   Full each switch to ไทย, walk every student screen and dialog, fail on visible English UI left over, axe on each with
   `lang="th"`, then switch back to English).
 - Not done: teacher and family screens beyond what the Thai family work covers; a พ.ศ. toggle in the menu.
+
+## School events (`src/api.js`, `src/components/SchoolEvents.jsx`)
+
+Sports day, a trip, a concert, a service day, Week Without Walls: the school adds it once, and afterwards every student it
+was for is asked to add something from it.
+- **Staff screen** "School events" (`#/<persona>/events`, pilot; every member of staff and admins). Admins, coordinators and
+  leadership add, edit and remove events: name, first and last day, who it is for (whole school, some Years, some homerooms
+  or some classes, with the number of students shown), a suggested school line, an optional photo (an ordinary upload) and
+  an optional question. "Import from CSV": a header row `title,start,end,years,line` (dates `2026-11-20` or `20/11/2026`, end
+  empty for one day; Years `8`, `7-9` or `8;9`, empty for the whole school; line a school line's name or empty); every row
+  is checked first and any problem stops the whole import. Each finished event shows "N of M added something" and a bar
+  per homeroom, with names on request (Added something / Said not for me / Not yet). Whole-school roles and admins count
+  every student; an advisor or teacher counts only their advisees and the students in their current classes
+  (`staffStudentsOf`). Managers send **one reminder per event**, once it is over, to each student who has neither added
+  something nor dismissed the card (kind `class`, "Add something from “…” to your journey", opening the card's flow via
+  `#/me/map/se~<id>`). Advisors and teachers see the counts but do not send it.
+- **Student**: from the morning after the last day, for `SE_CARD_DAYS` (5) days (and 3 days after a reminder), a card at the
+  top of the home: "Add something from Sports day" (the event's photo, the dates, "Add it", "Not for me"). At Simple it opens
+  the guided add flow with the title filled, the line picked and the event's question as the reflection question; at
+  Standard and Full the add dialog with title, date and line filled. The card goes once they add something or dismiss it.
+  Standard and Full also get a small "Coming up" strip (from 28 days before until the event ends) with "Set a goal", which
+  opens the goal dialog with the name, first day and line filled. Thai: their own block at the end of `src/i18n.js`.
+- **The moment**: `addStation(sid, { …, schoolEvent })` links it only when the event was for that student (otherwise the field
+  is ignored): `e.schoolEvent`, `e.source = { system: 'School event', ref: <title> }` (so the name stays after the event is
+  removed), the line put on their map if missing (`laneFor`), and the question as the reflection's prompt. The station panel,
+  the Simple moment and the family view show "School event <name>" (`schoolEventName(e)`, Thai for families too).
+- **Record**: `store.schoolEvents[] { id: 'se-…', title, start, end, for: { kind, years, homerooms, classIds }, lineId, photo,
+  question, by, at, studentIds (resolved when saved; cohort-only records never), reminded: { date, at, by, n } | null,
+  editedAt }`; `store.schoolEventAdds[] { id: 'sx-…', eventId, studentId, momentId, added, dismissed, date, at }`, one per
+  student who added or dismissed. Both made on first use.
+- **Mutators**: `addSchoolEvent(f, by)`, `editSchoolEvent(id, f, by)`, `removeSchoolEvent(id, by)`, `importSchoolEvents(rows, by)`,
+  `remindSchoolEvent(id, by)` (400 before it is over, 409 the second time), `dismissSchoolEvent(id, studentId)`. Reads:
+  `schoolEventsFor(sid)` → `{ cards, coming }`, `schoolEventProgress(id, { teacherId, whole })`, `schoolEventsForStaff`,
+  `schoolEventStudents(for)`, `parseEventsCsv(text)` → `{ rows, errors }` (pure).
+- **canAct** (`schoolEventOk` in `server/auth.mjs`): managing and the reminder, admins (as themselves, `by` their teacher id or
+  null), coordinators and leadership (as themselves); nobody else. Dismissing: only a student it was for, for themselves.
+- **Scope**: whole-school roles get everything. A student: the events for them (`studentIds` just themselves) and their own
+  rows. A family: their children's events (only their ids), no rows. An advisor or teacher: events with any of their advisees
+  or class students (only those ids) and those students' rows; a row's `momentId` only when they receive the moment, so a
+  private moment from an event is counted, never sent. **Activity log**: every change with its event id (`getSchoolEvent` is
+  a known item) and the acting teacher. **PDPA**: a student's rows are their own (copy and erasure).
+- Tests: `server/test/school-events.test.mjs`; `node scripts/checks/school-events.cjs` (real roster, skipped without it: the
+  admin adds Sports day for Year 8 with a photo and imports a CSV; Aaron Torres at Simple on a phone adds a moment from the
+  card; an 8C classmate at Standard sets a goal from Coming up and dismisses the card; Ms Jane Altemen sees 8C's count and
+  names; a coordinator sends the one reminder; a Year 10 student never gets it; Aaron's family sees the name; refusals; the
+  activity log; axe). `thai-students.cjs` sweeps the card, its flow and Coming up in Thai.
+- Not done: a notification when an event ends (the card is the prompt), a reminder per advisor, and events from the SIS calendar.

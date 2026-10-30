@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { addGoal, addReflection, addStation, completeGoal, deleteStation, editStation, endorserChoices, getEvent, getPromptsFor, getStudent, getTeacher, getTeachers, requestFor, setVisibility, snapshot, teachersOf, TODAY } from '../api.js';
+import { addGoal, addReflection, addStation, completeGoal, deleteStation, editStation, endorserChoices, getEvent, getLine, getPromptsFor, getStudent, getTeacher, getTeachers, requestFor, setVisibility, snapshot, teachersOf, TODAY } from '../api.js';
 import { fmtDate } from '../format.js';
 import { isPilot } from '../auth.js';
 import { evidenceFor } from '../upload.js';
@@ -7,6 +7,8 @@ import { UploadStatus, useUpload } from '../components/FileAttach.jsx';
 import { SUGGEST } from '../components/AddStation.jsx';
 import { OpenPrompts } from '../components/ClassPrompts.jsx';
 import { MyTasks } from '../components/ClassTasks.jsx';
+import { EventCards } from '../components/SchoolEvents.jsx';
+import { schoolEventName } from '../api.js';
 import { ExampleAsks, Examples, promptsFrom } from '../components/SubjectPrompts.jsx';
 import { SpottedForMe } from '../components/Spotted.jsx';
 import { PeerFromClasses, PeerOnMoment } from '../components/PeerFeedback.jsx';
@@ -78,6 +80,7 @@ export default function SimpleHome({ map, studentId, toast, version, addRequest,
       </section>
 
       <MyTasks studentId={studentId} simple toast={toast} version={version} />
+      <EventCards studentId={studentId} simple toast={toast} version={version} focusId={focusId} onAdd={(p) => setAdding(p)} />
       <OpenPrompts studentId={studentId} simple toast={toast} version={version} />
       <ExampleAsks studentId={studentId} simple toast={toast} version={version} />
       <SpottedForMe studentId={studentId} simple toast={toast} version={version} />
@@ -124,7 +127,7 @@ export default function SimpleHome({ map, studentId, toast, version, addRequest,
         <GoalCard e={openGoal} map={map} toast={toast} onDone={(id) => { setOpen(null); setFinishing(id); }} />
       </div></div>}
       {finishing && <DoneFlow id={finishing} studentId={studentId} toast={toast} onClose={() => setFinishing(null)} />}
-      {adding && <QuickAdd map={map} studentId={studentId} toast={toast} onClose={() => setAdding(false)} />}
+      {adding && <QuickAdd map={map} studentId={studentId} toast={toast} prefill={adding === true ? null : adding} onClose={() => setAdding(false)} />}
       {asking && <AskFlow q={asking} studentId={studentId} onClose={() => setAsking(null)} onDone={() => { setAsking(null); toast('Saved. Your advisor can read it.'); }} />}
       {openEvent && <Moment e={openEvent} map={map} toast={toast} onClose={() => setOpen(null)} onReflect={() => { setOpen(null); setAsking({ event: openEvent, prompt: `What did “${openEvent.title}” teach you?` }); }} />}
     </div>
@@ -170,15 +173,17 @@ export function Steps({ n, at }) {
 
 // Adding a moment, one question at a time. Also the phone app's "Add a moment" and "Take a photo" (#/me/add,
 // #/me/snap), for any student at any level: camera starts on the photo, then asks the same questions.
-export function QuickAdd({ map, studentId, toast, onClose, camera = false }) {
-  return <AddFlow map={map} studentId={studentId} camera={camera} onClose={onClose} onDone={(e, t) => { onClose(); toast(`${WARM[e.title.length % WARM.length]} “${e.title}” is on your journey.${t ? ` You asked ${t.name} to check it.` : ''}`); }} />;
+export function QuickAdd({ map, studentId, toast, onClose, camera = false, prefill = null }) {
+  return <AddFlow map={map} studentId={studentId} camera={camera} prefill={prefill} onClose={onClose} onDone={(e, t) => { onClose(); toast(`${WARM[e.title.length % WARM.length]} “${e.title}” is on your journey.${t ? ` You asked ${t.name} to check it.` : ''}`); }} />;
 }
-function AddFlow({ map, studentId, onClose, onDone, camera }) {
+// prefill (a school event's card, SchoolEvents.jsx): { title, date, lineIds, schoolEvent, question }; its line is picked for them.
+function AddFlow({ map, studentId, onClose, onDone, camera, prefill }) {
   const [step, setStep] = useState(camera ? -1 : 0);
-  const [f, setF] = useState({ title: '', image: null, imageCaption: 'Photo', line: null, reflection: '', voice: null });
+  const [f, setF] = useState({ title: prefill?.title || '', image: null, imageCaption: 'Photo', line: null, reflection: '', voice: null });
+  const preLine = prefill?.lineIds?.[0] || null;
   const [recording, setRecording] = useState(false);
   const [more, setMore] = useState(false);
-  const lines = map.lines.filter((l) => l.status !== 'ended');
+  const lines = [...map.lines.filter((l) => l.status !== 'ended'), ...(preLine && !map.lines.some((l) => l.id === preLine) && getLine(preLine) ? [getLine(preLine)] : [])];
   const set = (p) => setF((x) => ({ ...x, ...p }));
   const photo = useUpload();
   const pickPhoto = (e) => { const file = e.target.files?.[0]; e.target.value = ''; photo.run(file, (r) => set({ image: evidenceFor(r, file.name).url, imageCaption: 'Photo' })); };
@@ -195,7 +200,7 @@ function AddFlow({ map, studentId, onClose, onDone, camera }) {
   const pickLine = (id) => { const p = getPromptsFor(studentId, id); set({ line: id }); setGuided(!!p && p.source !== 'default'); setQi(0); setAnswers([]); setUsedStarter(false); setMore(false); setStep(2); };
   const save = (teacher) => {
     const snap = snapshot();
-    const e = addStation(studentId, { title: f.title.trim(), lineIds: [f.line], type: 'project', image: f.image, imageCaption: f.imageCaption, files: f.voice ? [f.voice] : [], reflection: reflection() || null, visibility: 'advisor', via: 'Simple add', requestFrom: teacher?.id || null, promptId: prompts && (qn || usedStarter) ? prompts.id : null });
+    const e = addStation(studentId, { title: f.title.trim(), lineIds: [f.line], ...(prefill?.schoolEvent ? { date: prefill.date, schoolEvent: prefill.schoolEvent } : {}), type: 'project', image: f.image, imageCaption: f.imageCaption, files: f.voice ? [f.voice] : [], reflection: reflection() || null, visibility: 'advisor', via: 'Simple add', requestFrom: teacher?.id || null, promptId: prompts && (qn || usedStarter) ? prompts.id : null });
     onDone(e, teacher, snap);
   };
   const steps = (who.length ? 4 : 3) + (qn ? qn - 1 : 0) + (camera ? 1 : 0);
@@ -220,11 +225,11 @@ function AddFlow({ map, studentId, onClose, onDone, camera }) {
         </>}
         {step === 0 && <>
           <Said text="What did you do?" />
-          <input className="sh-input" autoFocus value={f.title} onChange={(e) => set({ title: e.target.value })} placeholder="e.g. Joined the robotics club" aria-label="What did you do?" onKeyDown={(e) => e.key === 'Enter' && f.title.trim() && !photo.busy && setStep(1)} />
+          <input className="sh-input" autoFocus value={f.title} onChange={(e) => set({ title: e.target.value })} placeholder="e.g. Joined the robotics club" aria-label="What did you do?" onKeyDown={(e) => e.key === 'Enter' && f.title.trim() && !photo.busy && (preLine ? pickLine(preLine) : setStep(1))} />
           <SayIt value={f.title} onChange={(title) => set({ title })} />
           <p className="sh-sub">Add a photo if you have one</p>
           <PhotoPick f={f} set={set} photo={photo} pickPhoto={pickPhoto} />
-          <div className="sh-next"><button className="primary" disabled={!f.title.trim() || photo.busy} onClick={() => setStep(1)}>{photo.busy ? 'Wait for the photo…' : 'Next'}</button></div>
+          <div className="sh-next"><button className="primary" disabled={!f.title.trim() || photo.busy} onClick={() => (preLine ? pickLine(preLine) : setStep(1))}>{photo.busy ? 'Wait for the photo…' : 'Next'}</button></div>
         </>}
         {step === 1 && <>
           <Said text="Which colour does it go with?" />
@@ -232,7 +237,7 @@ function AddFlow({ map, studentId, onClose, onDone, camera }) {
           <div className="sh-next"><button className="ghost" onClick={() => setStep(0)}>Back</button></div>
         </>}
         {step === 2 && !qn && <>
-          <Said text="What did you learn?" />
+          <Said text={prefill?.question || 'What did you learn?'} />
           {prompts?.note ? <p className="sp-note">{prompts.note}</p> : <p className="sh-sub">One or two sentences is plenty. You can skip this.</p>}
           <div className="sh-starters">{(prompts?.starters?.length ? prompts.starters : STARTERS).map((s) => <button key={s} onClick={() => { setUsedStarter(!!prompts); set({ reflection: `${f.reflection ? `${f.reflection} ` : ''}${shown(s).replace('…', ' ')}` }); }}>{s}</button>)}</div>
           <textarea className="sh-input" rows={3} value={f.reflection} onChange={(e) => set({ reflection: e.target.value })} aria-label="What did you learn?" />
@@ -467,6 +472,7 @@ function Moment({ e, map, onClose, onReflect, toast }) {
         {img && <img src={img.url} alt={photoAlt(img, e.title)} />}
         <span className="sh-line">{l?.name}</span>
         <h2>{e.title}</h2>
+        {schoolEventName(e) && <p className="se-on"><span>School event</span> <b>{schoolEventName(e)}</b></p>}
         <HiddenNotice item={e} />
         <p className="sh-sub">{fmtDate(e.date)} · <Badge e={e} /></p>
         {e.summary && <p>{e.summary}</p>}

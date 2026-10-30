@@ -211,6 +211,7 @@ export function canAct(user, fn, args = []) {
   if (CF_FNS.has(fn)) { try { return confOk(user, fn, args); } catch { return false; } }
   if (SP_FNS.has(fn)) { try { return subjectPromptOk(user, fn, args); } catch { return false; } }
   if (CAS_FNS.has(fn)) { try { return casOk(user, fn, args); } catch { return false; } }
+  if (SE_FNS.has(fn)) { try { return schoolEventOk(user, fn, args); } catch { return false; } }
   if (isAdmin(user)) return true;
   if (ADMIN_ONLY.has(fn)) return false;
   if (ANYONE.has(fn)) return true;
@@ -492,6 +493,23 @@ function casOk(user, fn, args) {
   if (!STAFF.includes(user.kind) || !user.teacherId || args[1] !== user.teacherId) return false;
   if (via === 'supervisor') return x.supervisor?.kind === 'staff' && x.supervisor.teacherId === user.teacherId;
   return via === 'coordinator' && api.isCasCoordinator({ kind: user.kind, teacherId: user.teacherId });
+}
+
+// ── School events (api.addSchoolEvent, editSchoolEvent, removeSchoolEvent, importSchoolEvents, remindSchoolEvent,
+// dismissSchoolEvent) ──
+// Adding, editing, removing, importing and the one reminder: admins, coordinators and leadership, as themselves (an admin
+// with no staff record as null). Dismissing the card: only a student it was for, on their own.
+// A moment from it is an ordinary addStation; api.addStation links it only when the event was for that student.
+const SE_FNS = new Set(['addSchoolEvent', 'editSchoolEvent', 'removeSchoolEvent', 'importSchoolEvents', 'remindSchoolEvent', 'dismissSchoolEvent']);
+export const SE_MANAGERS = ['coordinator', 'leadership'];
+export const manageSchoolEvents = (u) => !!u && (isAdmin(u) || (SE_MANAGERS.includes(u.kind) && !!u.teacherId));
+function schoolEventOk(user, fn, a) {
+  const me = user.kind === 'student' && user.studentId;
+  if (fn === 'dismissSchoolEvent') return !!me && a[1] === me && !!api.getSchoolEvent(a[0])?.studentIds.includes(me);
+  if (!manageSchoolEvents(user)) return false;
+  const by = a[{ addSchoolEvent: 1, editSchoolEvent: 2, removeSchoolEvent: 1, importSchoolEvents: 1, remindSchoolEvent: 1 }[fn]] ?? null;
+  if (by !== (user.teacherId ?? null)) return false;
+  return fn === 'addSchoolEvent' || fn === 'importSchoolEvents' || !!api.getSchoolEvent(a[0]);
 }
 
 // ── System health (routes/69-health.mjs): how many sessions are live, and for how many people ──

@@ -5,6 +5,7 @@ import MomentComments, { commentViewer } from './MomentComments.jsx';
 import { HiddenNotice, ReportButton } from './Report.jsx';
 import { PeerOnMoment } from './PeerFeedback.jsx';
 import { CheckinTimeline } from './GoalCheckins.jsx';
+import { schoolEventName } from '../api.js';
 import { ATL, LEARNER_PROFILE, setTags, addCheckIn, addReflection, completeGoal, deleteStation, editStation, getTeacher, requestEndorsement, getEvent, requestFor, resubmit, setVisibility, snapshot, TODAY, endorserChoices } from '../api.js';
 import { createPortal } from 'react-dom';
 import { photoAlt } from '../a11y.js';
@@ -32,6 +33,7 @@ export default function StationPanel({ event, map, onClose, readOnly = false, on
           <button className="panel-close" onClick={onClose} aria-label={t('Close')}>×</button>
           <div className="panel-type">{event.lineIds.length > 1 ? `${t('Interchange')} · ` : ''}{t(TYPE_LABEL[event.type])}</div>
           <h2>{event.title}</h2>
+          {schoolEventName(event) && <p className="se-on"><span>{t('School event')}</span> <b lang="en">{schoolEventName(event)}</b></p>}
           <HiddenNotice item={event} />
           <div className="panel-date">{fmtDate(event.date)} · {termText(lang, fmtTerm(event.date, map.student.g9StartYear, map.student.startGrade, map.student.endGrade))}</div>
           <div className="chips">
