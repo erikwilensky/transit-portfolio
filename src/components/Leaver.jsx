@@ -63,7 +63,7 @@ export function LeaverDoc({ view, url }) {
     </section>
   );
   return (
-    <article className={`lv-doc lv-${view.template}`} aria-label={`${view.name}: leaver portfolio`}>
+    <article className={`lv-doc lv-${view.template}`} translate="no" lang="en" aria-label={`${view.name}: leaver portfolio`}>
       <PrintHead kicker="Leaver portfolio" />
       {view.template === 'two-column'
         ? <div className="lv-cols"><aside className="lv-side">{head}{skills}{endorsements}</aside><div className="lv-main">{statement}{moments}</div></div>

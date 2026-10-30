@@ -90,6 +90,8 @@ import NotificationSettings, { nsT } from './components/NotificationSettings.jsx
 import { audienceOf, bellView } from './notify-kinds.js';
 import { getNotifyPrefs, onNotifyPrefs } from './notify-prefs.js';
 import { clearReadNotifications } from './api.js';
+import { useStudentThai } from './thai.js';
+import { recordWords } from './api.js';
 
 // Routes: #/<persona>/<screen>/<param>, plus public #/s/<token>, #/v/<code> and #/p/<student>[/th] (parent link).
 // A screen set this persona uses: their own kind, or another hat they wear in the pilot (persona.also).
@@ -200,6 +202,8 @@ export default function App() {
   const tourRef = useRef(null);
   useEffect(() => { const k = (e) => tourRef.current?.key(e); addEventListener('keydown', k); return () => removeEventListener('keydown', k); }, []);
   useEffect(() => { if (!auto || !tourState) return undefined; const t = setTimeout(() => tourRef.current?.advance(), 12000); return () => clearTimeout(t); }, [auto, tourState]);
+  // Thai for students: a student's screens in Thai at display time (src/thai.js).
+  useStudentThai(!route.publicKind && personaById(route.persona)?.kind === 'student' && getLang() === 'th', recordWords, version);
 
   const go = (persona, screen, param) => {
     // A notification's target may be a pilot key (st:…, t:…): in the demo that stays on the current persona.
