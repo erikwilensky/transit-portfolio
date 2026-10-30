@@ -30,7 +30,8 @@ function Strip({ line }) {
 
 export function ConferenceSheet({ d, by }) {
   const s = d.student;
-  const max = Math.max(d.prep ? 3 : 4, Math.min(10, 14 - d.lines.length) - (d.prep ? 4 : 0)); // more lines (or the student's prep), fewer rows, so the page always fits
+  // More lines (or the student's prep, or the next steps after the conference), fewer rows, so the page always fits.
+  const max = Math.max(d.prep && d.steps ? 2 : d.prep || d.steps ? 3 : 4, Math.min(10, 14 - d.lines.length) - (d.prep ? 4 : 0) - (d.steps ? (d.steps.staff ? 4 : 3) : 0));
   const extra = d.moments.length - max;
   const colour = (e) => d.lines.find((l) => e.lineIds.includes(l.id))?.colour || '#9aa6b8';
   return (
@@ -76,6 +77,15 @@ export function ConferenceSheet({ d, by }) {
         </section>
       )}
 
+      {d.steps && (
+        <section className="cf-sec cf-steps">
+          <h3>Our next steps<small>{`after the conference · ${d.steps.round}`}</small></h3>
+          {d.steps.family && <p><b>What we will try at home:</b> {clip(d.steps.family, 200)}</p>}
+          {d.steps.student && <p><b>What I will do next:</b> {clip(d.steps.student, 200)}</p>}
+          {d.steps.staff && <p className="cf-staff"><b>Private staff note</b> <small>(advisor copy only)</small> {clip(d.steps.staff, 200)}</p>}
+        </section>
+      )}
+
       <div className="cf-cols">
         <section className="cf-sec">
           <h3>Latest reflections</h3>
@@ -102,7 +112,7 @@ export function ConferenceSheet({ d, by }) {
       <section className="cf-talk">
         <h3>Talking points</h3>
         <ol>{d.points.map((p) => <li key={p}>{p}</li>)}</ol>
-        <div className="cf-lines" aria-label="Notes">{[0, 1, 2, 3].map((i) => <span key={i} />)}</div>
+        <div className="cf-lines" aria-hidden="true">{[0, 1, 2, 3].map((i) => <span key={i} />)}</div>
       </section>
 
       <footer className="cf-foot">Prepared by {by} on {printDate()} · confidential to the student, family and school</footer>

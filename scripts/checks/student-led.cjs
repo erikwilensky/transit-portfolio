@@ -4,7 +4,8 @@
 // goal. The advisor sees "Prepared: 1 of 23", books his time and opens Conference mode from the booking list: one moment a
 // screen with its photo, then the goal; it keeps working offline (the photo and a private staff note, sent when back). Aaron
 // adds "What I will do next" in his own Conference mode; his parent joins from a family letter in Thai and adds "What we
-// will try at home". Each sees the conference note; the conference sheet carries his prep (one A4 page). axe on every new
+// will try at home". Each sees the conference note; the conference sheet carries his prep and, after the conference, both
+// lines (the staff note only on the advisor copy; each copy one A4 page). axe on every new
 // screen. Each account has its own browser context. TP_ROSTER=/path/to/transit-roster.json (default: the project mount).
 // Screenshots and a PDF: tp-slc-* in SCRATCH or the temp folder.
 const { chromium } = require('playwright');
@@ -244,6 +245,19 @@ let srv;
     fs.writeFileSync(SH + 'sheet.pdf', pdf);
     const pages = (pdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) || []).length;
     ok(pages === 1, `the sheet with his prep still prints on ${pages} A4 page`);
+    await t.emulateMedia({ media: 'screen' });
+    const st = await t.locator('.cf-sheet .cf-steps').textContent();
+    ok(/Our next steps/.test(st) && /What we will try at home:.*Saturdays/.test(st) && /What I will do next:.*bridge contest/.test(st) && /Private staff note.*robotics club/.test(st), 'after the conference the sheet has both lines and, on the advisor copy, the private staff note');
+    ok((await t.locator('.cf-sheet').textContent()).split('robotics club').length === 2, 'the staff note once (not again under "For the advisor only")');
+    await t.locator('.cf-bar input[type=checkbox]').check(); await t.waitForSelector('.cf-sheet.family');
+    const fs2 = await t.locator('.cf-sheet.family').textContent();
+    ok(/Saturdays/.test(await t.locator('.cf-sheet.family .cf-steps').textContent()) && /bridge contest/.test(fs2) && !/robotics club|Private staff note/.test(fs2), 'the family copy: both lines, never the staff note');
+    await audit(t, 'advisor: the family copy of the sheet with the next steps');
+    await t.emulateMedia({ media: 'print' });
+    const fpdf = await t.pdf({ format: 'A4', printBackground: true, preferCSSPageSize: true });
+    fs.writeFileSync(SH + 'sheet-family.pdf', fpdf);
+    const fpages = (fpdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) || []).length;
+    ok(fpages === 1, `the family copy with the next steps prints on ${fpages} A4 page`);
     await t.emulateMedia({ media: 'screen' });
     ok(!errs.length, `no page errors${errs.length ? `: ${errs.join(' | ')}` : ''}`);
   } finally {

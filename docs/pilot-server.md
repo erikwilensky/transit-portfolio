@@ -2163,15 +2163,20 @@ Demo and pilot (the demo record has no rounds, so nothing shows until one is ope
   "Write our line", in Thai or English (`slcWords`), the student's own words marked `lang="en"`.
 - **Conference sheet**: `conferenceSheet` carries `prep` (`sheetPrep`, the latest round's): "In Aaron’s words" with the moments to
   show, proud, hard and the goal, read as the sheet's reader may (the family copy drops moments the family view does not show).
-  The moment list gives way so the sheet stays one A4 page.
+  The moment list gives way so the sheet stays one A4 page. After the conference it also carries `steps` (`sheetSteps(sid,
+  family)`, the latest round with a line or a staff note): "Our next steps" with "What we will try at home" and "What I will do
+  next" on both copies, and the advisor's private staff note for that round (the advisor note `Conference (<round>): …`) only
+  on the advisor copy, never the family copy (where it is not even read); that note is then not repeated under "For the
+  advisor only". The moment list gives way again, so either copy stays one A4 page.
 - Tests: `server/test/student-led.test.mjs` (picks filtered, replay, canAct for every role, notifications and Thai, scope, the sheet,
   PDPA); browser: `node scripts/checks/student-led.cjs` (real roster: Ms Altemen opens a round for 8C; Aaron Torres prepares at Simple
   on a phone; she sees "Prepared: 1 of 23", books him and opens Conference mode from the booking list, goes offline (photo still
   shows, staff note sent when back), switches to ไทย; Aaron writes his line in his own Conference mode; his parent joins from a
   family letter in Thai and writes theirs; another family gets nothing and is refused (403); the sheet carries the prep on one
-  A4 page; axe on each screen; each account in its own browser context). `thai-students.cjs` sweeps the prep, Conference mode and
+  A4 page, and after the conference both lines, with the staff note on the advisor copy only (the family copy checked
+  and printed too, one A4 page each); axe on each screen; each account in its own browser context). `thai-students.cjs` sweeps the prep, Conference mode and
   the note in Thai. Screenshots and a PDF: `tp-slc-*` in `SCRATCH` or the temp folder.
-- Not done: a round's prep cannot be copied into the next round; the conference note is not on the printed sheet.
+- Not done: a round's prep cannot be copied into the next round.
 ## Class photo drop (`src/api.js`, `src/components/PhotoDrop.jsx`, `server/routes/71-photo-drop.mjs`)
 
 A teacher takes photos in a lesson, on a trip or in a practical and gives each one to the students in it. Each student

@@ -3466,6 +3466,22 @@ export function sheetPrep(studentId, viewer = 'advisor') {
   if (!picks.length && !p.proud && !p.hard && !goal) return null;
   return { ready: p.status === 'ready', picks, proud: p.proud, hard: p.hard, goal };
 }
+// The conference sheet, after a student-led conference (the latest round with a line or a staff note): the family's line ("What we will try at
+// home") and the student's ("What I will do next") on both copies; the advisor's private staff note (the advisor
+// note "Conference (<round>): …" that Conference mode saves) only on the advisor copy. null when there is nothing to show.
+export function sheetSteps(studentId, family = false) {
+  const notes = getNotes(studentId);
+  const rounds = getConferenceRounds().filter((r) => r.studentIds.includes(studentId))
+    .sort((a, b) => b.days[0].date.localeCompare(a.days[0].date) || b.at.localeCompare(a.at));
+  for (const r of rounds) {
+    const n = confNoteOf(r.id, studentId), tag = `Conference (${r.title}): `;
+    const note = notes.filter((x) => x.text.startsWith(tag)).pop() || null;
+    if (!n?.family && !n?.student && !note) continue;
+    const out = { round: r.title, family: n?.family?.text || '', student: n?.student?.text || '', note: family ? null : note, staff: family || !note ? '' : note.text.slice(tag.length) };
+    return out.family || out.student || out.staff ? out : null;
+  }
+  return null;
+}
 // A student's conference notes (the family's and their own lines), newest round first.
 export const confNotesFor = (studentId) => getConfNotes().filter((n) => n.studentId === studentId && (n.family || n.student) && getConferenceRound(n.roundId))
   .map((n) => ({ ...n, round: getConferenceRound(n.roundId) })).sort((a, b) => b.round.days[0].date.localeCompare(a.round.days[0].date));
