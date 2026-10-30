@@ -55,6 +55,7 @@ export default function SimpleHome({ map, studentId, toast, version, addRequest,
   useEffect(() => { if (addRequest) setAdding(true); }, [addRequest]); // a nudge's "Add something"
   const [asking, setAsking] = useState(null); // { event, prompt, signal }
   const [open, setOpen] = useState(focusId?.startsWith('ev-') ? focusId : null); // a notification's moment
+  useEffect(() => { if (focusId?.startsWith('ev-')) setOpen(focusId); }, [focusId]); // search opens one
   const first = map.student.name.split(' ')[0];
   const moments = map.events.filter((e) => e.type !== 'goal' && e.type !== 'reflection').sort((a, b) => b.date.localeCompare(a.date));
   const signals = map.signals.filter((g) => g.open && g.eventId);

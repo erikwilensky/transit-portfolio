@@ -1,0 +1,66 @@
+/* Search (Search.jsx): the top bar's box and its results, the phone sheet, staff's station panel, Simple level's finder. */
+.tsearch { position: relative; }
+.ts-box { display: flex; align-items: center; gap: 6px; border: 1px solid rgba(255,255,255,.35); border-radius: 999px; padding: 0 10px; height: 34px; color: #fff; background: rgba(255,255,255,.06); }
+.ts-box:focus-within { background: var(--surface); color: var(--ink); border-color: var(--surface); outline: 2px solid var(--b-gold); outline-offset: 1px; }
+.ts-box input { border: 0; background: transparent; color: inherit; font: inherit; font-size: 14px; width: 180px; outline: none; padding: 0; }
+.ts-box input::placeholder { color: currentColor; opacity: .82; }
+.ts-glass { flex: none; display: block; }
+.ts-kbd { color: var(--ink); }
+.ts-box:focus-within .ts-kbd { display: none; }
+.ts-phone, .ts-x { display: none; }
+.ts-pop { position: absolute; top: calc(100% + 6px); right: 0; width: min(560px, calc(100vw - 32px)); max-height: min(70vh, 640px); display: flex; flex-direction: column; background: var(--surface); color: var(--ink); border: 1px solid var(--rule); border-radius: 14px; z-index: 90; overflow: hidden; }
+.ts-pop[hidden] { display: none; }
+.ts-filters { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--rule); align-items: center; }
+.ts-filters select { border: 1px solid var(--rule); background: var(--bg); color: var(--ink); border-radius: 8px; padding: 5px 8px; font: inherit; font-size: 13px; }
+.ts-chip { border: 1px solid var(--navy); background: var(--navy); color: #fff; border-radius: 999px; padding: 4px 10px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.ts-page { margin: 8px 12px 0; align-self: flex-start; font-size: 13.5px; }
+.ts-list { overflow: auto; padding: 4px 6px 8px; flex: 0 1 auto; min-height: 0; }
+.ts-gl { font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 10px 8px 4px; }
+.ts-gl small { font-weight: 500; margin-left: 4px; }
+.ts-opt { display: flex; gap: 10px; align-items: flex-start; padding: 8px; border-radius: 9px; cursor: pointer; }
+.ts-opt.on { background: color-mix(in srgb, var(--b-purple) 14%, transparent); outline: 2px solid var(--b-purple); outline-offset: -2px; }
+.ts-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; background: var(--c); }
+.ts-txt { min-width: 0; flex: 1; display: grid; gap: 1px; }
+.ts-txt b { font-weight: 600; font-size: 14.5px; overflow-wrap: anywhere; }
+.ts-txt small { color: var(--muted); font-size: 12.5px; }
+.ts-snip { font-size: 13px; color: var(--ink); overflow-wrap: anywhere; } .ts-snip i { font-style: normal; color: var(--muted); }
+.ts-go { color: var(--muted); font-size: 18px; align-self: center; }
+.ts-list mark, .sf mark { background: color-mix(in srgb, var(--b-gold) 55%, transparent); color: inherit; border-radius: 3px; padding: 0 1px; }
+.ts-none, .ts-more { margin: 0; padding: 10px 14px; font-size: 13.5px; color: var(--muted); }
+.ts-more { border-top: 1px solid var(--rule); }
+.sr-panel { position: fixed; inset: 64px 0 0 auto; width: min(420px, 100%); z-index: 60; pointer-events: none; }
+.sr-panel .station-panel { pointer-events: auto; }
+@media (max-width: 1100px) { .ts-box input { width: 140px; } }
+@media (max-width: 600px) {
+  .tsearch .ts-box { display: none; }
+  .ts-phone { display: inline-grid; }
+  .tsearch.sheet { position: fixed; inset: 0; z-index: 95; background: var(--surface); color: var(--ink); display: flex; flex-direction: column; padding: 10px 16px; }
+  .tsearch.sheet .ts-phone { display: none; }
+  .tsearch.sheet .ts-box { display: flex; background: var(--bg); color: var(--ink); border-color: var(--rule); height: 42px; }
+  .tsearch.sheet .ts-box input { width: auto; flex: 1; font-size: 16px; }
+  .tsearch.sheet .ts-x { display: inline-grid; place-items: center; border: 0; background: none; color: inherit; font-size: 24px; width: 36px; height: 36px; cursor: pointer; }
+  .tsearch.sheet .ts-pop { position: static; width: 100%; max-height: none; flex: 1; border: 0; border-radius: 0; margin-top: 8px; }
+  .sr-panel { inset: auto 0 0 0; }
+}
+/* Simple level */
+.sf { color: var(--ink); }
+.sf-big { display: flex; align-items: center; justify-content: center; gap: 10px; width: min(560px, calc(100% - 32px)); margin: 14px auto 0; min-height: 56px; border: 2px solid var(--navy); border-radius: 16px; background: var(--surface); color: var(--navy); font: inherit; font-size: 18px; font-weight: 600; cursor: pointer; }
+.sf-big:hover { background: var(--surface-2); }
+:root[data-theme="dark"] .sf-big { color: var(--ink); border-color: var(--b-sky); }
+.sf h3 { font-size: 14px; color: var(--muted); font-weight: 600; margin: 16px 0 8px; }
+.sf-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.sf-chip { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 14px; border: 1px solid var(--rule); border-radius: 999px; background: var(--bg); color: var(--ink); font: inherit; font-size: 15.5px; cursor: pointer; text-align: left; }
+.sf-chip i, .sf-line i { width: 12px; height: 12px; border-radius: 50%; background: var(--c, var(--muted)); flex: none; }
+.sf-chip.line { border: 2px solid var(--c, var(--rule)); font-weight: 600; }
+.sf-type { margin-top: 18px; width: 100%; min-height: 48px; border: 1px dashed var(--muted); border-radius: 12px; background: none; color: var(--ink); font: inherit; font-size: 16px; cursor: pointer; }
+.sf-back { margin-top: 12px; font-size: 15px; }
+.sf-line { display: flex; align-items: center; gap: 8px; color: var(--ink) !important; font-size: 18px !important; }
+.sf-moments { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.sf-moments button { width: 100%; display: grid; gap: 2px; text-align: left; min-height: 52px; padding: 10px 14px; border: 1px solid var(--rule); border-left: 6px solid var(--c, var(--rule)); border-radius: 12px; background: var(--bg); color: var(--ink); font: inherit; font-size: 16px; cursor: pointer; }
+.sf-moments small { color: var(--muted); font-size: 13.5px; }
+.sf-empty { color: var(--muted); font-size: 15px; }
+.sf .sf-box { margin-top: 10px; border-color: var(--rule); color: var(--ink); background: var(--bg); height: 48px; }
+.sf .sf-box:focus-within { background: var(--bg); }
+.sf .sf-box input { width: auto; flex: 1; font-size: 17px; border: 0 !important; padding: 0 !important; background: transparent !important; }
+.sf .ts-list { padding: 4px 0; max-height: 50vh; }
+.sf .ts-txt b { font-size: 16px; }
