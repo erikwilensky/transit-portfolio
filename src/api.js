@@ -671,6 +671,7 @@ export function addStation(studentId, f) {
     about: f.about || '', evidence: f.evidence || [...(f.image ? [{ kind: 'image', url: f.image, caption: f.imageCaption || 'Photo' }] : []), ...(f.files || [])],
     verification: 'student-added', visibility: f.visibility || 'advisor', source: { system: f.via || 'Manual entry', ref: null },
     ...(f.cas ? { cas: f.cas } : {}),
+    ...(f.promptId ? { promptId: String(f.promptId).slice(0, 80) } : {}), // written with subject prompts (getPromptsFor)
   };
   store.events.push(e);
   if (f.reflection) store.reflections.push({ id: uid('rf-x'), eventId: e.id, text: f.reflection, prompt: 'Quick reflection', date: e.date, visibility: f.visibility || 'advisor' });
@@ -2935,6 +2936,178 @@ export function confProgress(roundId, advisorId) {
   const waiting = kids.filter((s) => !confBookingOf(roundId, s.id));
   return { total: kids.length, booked: kids.length - waiting.length, waiting, students: kids };
 }
+// ── Subject prompts: what makes a good moment on a line, a few guiding questions, sentence starters and examples ──
+// (src/components/SubjectPrompts.jsx). store.subjectPrompts [{ id: 'sp-…', lineId (a school line), classId (null: the whole
+// line), by (teacherId | null), at, note, questions (3–6), starters, examples }], made on first use. One per class and one per
+// line: writing again replaces it and keeps its id. An example is the teacher's own { id, title, text, status: 'teacher' } or
+// a student's publishable moment { id, eventId, studentId, status: 'asked' | 'yes' | 'no', askedAt, answeredAt? }, shown to
+// other students only once that student says yes (answerExampleAsk), and only while the moment stays publishable on the line.
+// Which prompts a student sees on a line: their class's (a class on that line they are in now), else the line's, else the
+// built-in defaults (DEFAULT_PROMPTS). A moment written with them carries promptId (addStation's f.promptId), for the counts.
+export const SP_LIMITS = { note: 400, question: 200, starter: 80, minQuestions: 3, maxQuestions: 6, starters: 8, examples: 3 };
+const D = (note, questions, starters) => ({ note, questions, starters });
+export const DEFAULT_PROMPTS = {
+  science: D('A good science moment says what you set out to find out, what you did and what the results showed, even when the experiment did not go to plan.',
+    ['What were you trying to find out?', 'What did you do, step by step?', 'What happened? What did you notice or measure?', 'What does it show, and what surprised you?', 'What would you change if you did it again?'],
+    ['I wanted to find out…', 'First we…', 'I noticed that…', 'This shows that…', 'Next time I would…']),
+  computing: D('A good computing moment says what you built or solved, how it works and what you learnt when it went wrong.',
+    ['What did you build, code or fix?', 'What problem was it solving, and for whom?', 'What went wrong, and how did you sort it out?', 'What would you add or improve next?'],
+    ['I built…', 'The tricky part was…', 'I fixed it by…', 'Next I want to…']),
+  environment: D('A good environment moment says what you did for the place around you, what changed and why it matters.',
+    ['What did you do, and where?', 'Why does it matter for the environment?', 'What changed because of it?', 'What would you like to do next?'],
+    ['We…', 'It matters because…', 'Afterwards…', 'Next I would like to…']),
+  sport: D('A good sport moment says what you trained for or played, how you improved and how you worked with others.',
+    ['What did you play, train for or compete in?', 'What did you get better at?', 'What was hard, and how did you keep going?', 'How did you help your team or others?'],
+    ['I trained for…', 'I got better at…', 'It was hard when…', 'I helped the team by…']),
+  service: D('A good service moment says who you worked with, what you did together and what you learnt about what they needed.',
+    ['Who did you help or work with?', 'What did you do together?', 'What did you learn about what they needed?', 'What difference did it make, to them and to you?'],
+    ['I worked with…', 'Together we…', 'I learnt that they needed…', 'It made a difference because…']),
+  music: D('A good music moment says what you played, sang or wrote, how you practised and how it felt to perform or share it.',
+    ['What did you play, sing or write?', 'How did you practise or prepare?', 'What went well, and what was tricky?', 'How did it feel to perform or share it?'],
+    ['I played…', 'To get ready I…', 'The tricky part was…', 'Performing felt…']),
+  design: D('A good design moment shows what you designed, who it was for and how it changed after you tested it.',
+    ['What did you design or make?', 'Who was it for, and what did they need?', 'What did you test, and what did you change?', 'What would you improve next time?'],
+    ['I designed…', 'It was for…', 'After testing I changed…', 'Next time I would…']),
+  languages: D('A good languages moment says what you read, wrote, said or understood, and what you can do now that you could not before.',
+    ['What did you read, write, say or listen to?', 'Which language, and who was it with or for?', 'What can you do now that you could not before?', 'What would you like to try next?'],
+    ['I read…', 'I wrote…', 'Now I can…', 'Next I want to try…']),
+  art: D('A good art moment shows what you made, the ideas behind it and the choices you made along the way.',
+    ['What did you make?', 'Where did the idea come from?', 'What choices did you make, and why?', 'What would you try differently next time?'],
+    ['I made…', 'My idea came from…', 'I chose to…', 'Next time I would try…']),
+};
+const spErr = (message, status = 400) => Object.assign(new Error(message), { status });
+const sPrompts = () => (store.subjectPrompts ||= []);
+export const getSubjectPrompts = () => store.subjectPrompts || [];
+export const getSubjectPrompt = (id) => getSubjectPrompts().find((p) => p.id === id);
+const schoolLine = (id) => { const l = lineById(id); return !!l && !l.studentId && !l.parentLineId; };
+export const schoolLines = () => store.lines.filter((l) => !l.studentId && !l.parentLineId && l.status !== 'ended');
+// The prompts written for exactly this class, or for exactly this line (not the ones it falls back to).
+export const subjectPromptFor = ({ classId, lineId } = {}) => getSubjectPrompts().find((p) => (classId ? p.classId === classId : !p.classId && p.lineId === lineId)) || null;
+// A moment that can be an example on a line: publishable, not hidden, not a goal, on that line or one of its sub-lines.
+export const exampleOk = (e, lineId) => !!e && e.visibility === 'publishable' && !e.hidden && e.type !== 'goal' && e.lineIds.some((l) => rootLine(l) === lineId);
+const exampleText = (e) => {
+  const r = store.reflections.find((f) => f.eventId === e.id && f.visibility === 'publishable' && String(f.text || '').trim());
+  const t = String(r?.text || e.summary || e.about || '').trim();
+  return t.length > 300 ? `${t.slice(0, 299).trimEnd()}…` : t;
+};
+// What other students see of a student's example: the moment's title, a line of it and the Year, never the name or ids.
+// null while the student has not said yes, or once the moment is no longer a publishable one on the line.
+export function exampleView(x, lineId) {
+  if (!x?.eventId || x.status !== 'yes') return null;
+  const e = getEvent(x.eventId), s = e && getStudent(e.studentId);
+  if (!s || !exampleOk(e, lineId)) return null;
+  return { id: x.id, status: 'yes', title: e.title, text: exampleText(e), year: s.grade + 1 };
+}
+// A student's publishable moments a teacher may pick from: on the line, of the class's students now (classId) or anyone
+// in this record (a line), newest first.
+export function exampleChoices(lineId, classId = null) {
+  const who = classId ? new Set(nowIn(classId) || []) : null;
+  return store.events.filter((e) => exampleOk(e, lineId) && (!who || who.has(e.studentId)) && getStudent(e.studentId))
+    .sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id)).slice(0, 60)
+    .map((e) => { const s = getStudent(e.studentId); return { eventId: e.id, studentId: s.id, title: e.title, date: e.date, name: s.name, year: s.grade + 1, text: exampleText(e) }; });
+}
+// How many moments were written with these prompts (in this person's record); a default's id is `sp-default-<line>`.
+export const promptUses = (id) => store.events.filter((e) => e.promptId === id && e.type !== 'goal').length;
+const shownExamples = (p) => (p.examples || []).flatMap((x) => {
+  if (x.status === 'teacher') return x.title || x.text ? [{ id: x.id, title: x.title, text: x.text, year: null }] : [];
+  if (!x.eventId) return x.status === 'yes' && x.title ? [{ id: x.id, title: x.title, text: x.text || '', year: x.year ?? null }] : []; // the server's copy for others
+  const v = exampleView(x, p.lineId);
+  return v ? [{ id: v.id, title: v.title, text: v.text, year: v.year }] : [];
+});
+// The prompts a student sees when adding a moment on a line (a sub-line counts for its school line). classId: a class's
+// own (a class task); otherwise their current class on that line that has prompts, newest first. null off the school lines.
+export function getPromptsFor(studentId, lineId, classId = null) {
+  const root = rootLine(lineId);
+  if (!schoolLine(root)) return null;
+  const mine = classId ? [classId] : getEnrolments().filter((n) => n.studentId === studentId && !(n.to && n.to < TODAY)).map((n) => n.classId);
+  const classes = new Set(mine.filter((id) => classById(id)?.lineId === root));
+  const own = getSubjectPrompts().filter((p) => p.classId && classes.has(p.classId) && p.lineId === root).sort((a, b) => b.at.localeCompare(a.at))[0]
+    || getSubjectPrompts().find((p) => !p.classId && p.lineId === root);
+  const line = lineById(root);
+  if (!own) return DEFAULT_PROMPTS[root] ? { id: `sp-default-${root}`, source: 'default', lineId: root, line, classId: null, className: '', by: null, teacher: null, ...structuredClone(DEFAULT_PROMPTS[root]), examples: [] } : null;
+  return { id: own.id, source: own.classId ? 'class' : 'line', lineId: root, line, classId: own.classId || null, className: (own.classId && classById(own.classId)?.name) || '', by: own.by || null,
+    teacher: (own.by && teacherById[own.by]) || null, note: own.note, questions: [...own.questions], starters: [...own.starters], examples: shownExamples(own) };
+}
+// A class's or a line's prompts as their writers manage them: the stored ones (or null), what students see, and the uses.
+export function promptsAdmin({ classId, lineId } = {}) {
+  const c = classId ? classById(classId) : null;
+  const root = c ? c.lineId : lineId;
+  const own = root ? subjectPromptFor(classId ? { classId } : { lineId: root }) : null;
+  const fallback = classId && root ? subjectPromptFor({ lineId: root }) : null;
+  const examples = (own?.examples || []).map((x) => {
+    if (!x.eventId) return { ...x };
+    const e = getEvent(x.eventId), s = getStudent(x.studentId);
+    return { ...x, title: e?.title || x.title || 'A moment', name: s?.name || null, year: s ? s.grade + 1 : x.year ?? null, gone: !!e && !exampleOk(e, root) };
+  });
+  const effective = own || fallback;
+  return { own, examples, fallback, source: own ? (classId ? 'class' : 'line') : fallback ? 'line' : 'default', lineId: root || null, line: (root && lineById(root)) || null,
+    shown: effective ? { note: effective.note, questions: effective.questions, starters: effective.starters } : (DEFAULT_PROMPTS[root] || null),
+    uses: own ? promptUses(own.id) : 0, defaultId: root ? `sp-default-${root}` : null };
+}
+// Example requests a student has not answered yet.
+export const exampleAsksFor = (studentId) => getSubjectPrompts().flatMap((p) => (p.examples || []).filter((x) => x.studentId === studentId && x.status === 'asked')
+  .map((x) => ({ promptId: p.id, exampleId: x.id, event: getEvent(x.eventId) || null, teacher: (p.by && teacherById[p.by]) || null, className: (p.classId && classById(p.classId)?.name) || '', line: lineById(p.lineId) || null })))
+  .filter((a) => a.event);
+// Write (or rewrite) a class's or a line's prompts. target: { classId } (a class on a line) or { lineId } (a school line).
+// spec: { note, questions, starters, examples: [{ eventId } | { keep: exampleId } | { title, text }] }.
+export function setSubjectPrompts(target = {}, spec = {}, by = null) {
+  const c = target?.classId ? classById(target.classId) : null;
+  if (target?.classId && !c) throw spErr('No such class', 404);
+  const lineId = c ? c.lineId : target?.lineId;
+  if (c && !lineId) throw spErr('This class is not on a line yet');
+  if (!schoolLine(lineId)) throw spErr('Pick a school line');
+  if (by && !teacherById[by]) throw spErr('No such teacher');
+  const one = (s, n) => String(s ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
+  const list = (xs, n) => [...new Set([].concat(xs || []).map((x) => one(x, n)).filter(Boolean))];
+  const questions = list(spec?.questions, SP_LIMITS.question);
+  if (questions.length < SP_LIMITS.minQuestions || questions.length > SP_LIMITS.maxQuestions) throw spErr(`Write ${SP_LIMITS.minQuestions} to ${SP_LIMITS.maxQuestions} questions`);
+  const starters = list(spec.starters, SP_LIMITS.starter).slice(0, SP_LIMITS.starters);
+  const note = String(spec.note ?? '').trim().slice(0, SP_LIMITS.note);
+  const old = subjectPromptFor(c ? { classId: c.id } : { lineId });
+  const inClass = c ? new Set(nowIn(c.id) || []) : null;
+  const examples = [], fresh = [];
+  for (const x of [].concat(spec.examples || [])) {
+    if (examples.length >= SP_LIMITS.examples) break;
+    if (x?.keep) { const was = old?.examples.find((o) => o.id === x.keep); if (was && !examples.some((o) => o.id === was.id)) examples.push({ ...was }); continue; }
+    if (x?.eventId) {
+      const e = getEvent(x.eventId);
+      if (!exampleOk(e, lineId)) throw spErr('An example has to be a publishable moment on this line');
+      if (inClass && !inClass.has(e.studentId)) throw spErr('An example has to be from a student in this class');
+      if (examples.some((o) => o.eventId === e.id)) continue;
+      const was = old?.examples.find((o) => o.eventId === e.id);
+      const ex = was ? { ...was } : { id: uid('spx-'), eventId: e.id, studentId: e.studentId, status: 'asked', askedAt: nowIso() };
+      if (!was) fresh.push(e);
+      examples.push(ex);
+      continue;
+    }
+    const title = one(x?.title, 120), text = String(x?.text ?? '').trim().slice(0, 1000);
+    if (title || text) examples.push({ id: uid('spx-'), title, text, status: 'teacher' });
+  }
+  const p = old || { id: uid('sp-'), lineId, classId: c?.id || null };
+  Object.assign(p, { by: by || null, at: nowIso(), note, questions, starters, examples });
+  if (!old) sPrompts().push(p);
+  const t = by && teacherById[by];
+  for (const e of fresh) notify(toStudent(e.studentId), `${t?.name || 'Your teacher'} would like to show your moment “${e.title}” to other students as an example. Your name is not shown.`, { persona: toStudent(e.studentId), screen: 'map' });
+  emit();
+  return p;
+}
+// Back to the line's prompts (a class) or the built-in ones (a line). Moments written with them keep their promptId.
+export function clearSubjectPrompts(promptId) {
+  if (!getSubjectPrompt(promptId)) throw spErr('No such prompts', 404);
+  store.subjectPrompts = sPrompts().filter((x) => x.id !== promptId);
+  emit();
+  return true;
+}
+// A student says yes or no to their moment being an example (and can change their mind later).
+export function answerExampleAsk(promptId, exampleId, studentId, yes) {
+  const p = getSubjectPrompt(promptId), x = p?.examples.find((o) => o.id === exampleId);
+  if (!x || x.studentId !== studentId) throw spErr('This is not your moment', 404);
+  x.status = yes ? 'yes' : 'no'; x.answeredAt = nowIso();
+  const s = getStudent(studentId);
+  if (p.by && s) notify(toTeacher(p.by), `${s.name.split(' ')[0]} said ${yes ? 'yes' : 'no'} to showing “${getEvent(x.eventId)?.title || 'their moment'}” as an example`, { persona: toTeacher(p.by), screen: p.classId ? 'classes' : 'prompts', ...(p.classId ? { param: p.classId } : {}) });
+  emit();
+  return x;
+}
 
 // ── Shared record: with the pilot server, every change is replayed there ──
 // A screen calls a change below; it runs here at once (instant UI) while recording the ids and
@@ -3000,6 +3173,7 @@ createExhibition = act('createExhibition', createExhibition); removeExhibitionSl
 saveLeaver = act('saveLeaver', saveLeaver); shareLeaver = act('shareLeaver', shareLeaver); revokeLeaver = act('revokeLeaver', revokeLeaver); commentLeaver = act('commentLeaver', commentLeaver); doneLeaverComment = act('doneLeaverComment', doneLeaverComment);
 checkInGoal = act('checkInGoal', checkInGoal); snoozeCheckins = act('snoozeCheckins', snoozeCheckins); sendEncouragement = act('sendEncouragement', sendEncouragement);
 openConferenceRound = act('openConferenceRound', openConferenceRound); editConferenceRound = act('editConferenceRound', editConferenceRound); closeConferenceRound = act('closeConferenceRound', closeConferenceRound); bookConference = act('bookConference', bookConference); cancelConference = act('cancelConference', cancelConference); blockConferenceSlot = act('blockConferenceSlot', blockConferenceSlot); sendConferenceReminders = act('sendConferenceReminders', sendConferenceReminders);
+setSubjectPrompts = act('setSubjectPrompts', setSubjectPrompts); clearSubjectPrompts = act('clearSubjectPrompts', clearSubjectPrompts); answerExampleAsk = act('answerExampleAsk', answerExampleAsk);
 // Undo puts a whole earlier copy back, and reset goes back to the seed (sync.js sends it to /api/reset).
 restore = act('restore', restore); resetDemo = act('resetDemo', resetDemo);
 export const MUTATORS = Object.keys(ACTIONS);

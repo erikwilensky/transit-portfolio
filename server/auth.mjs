@@ -209,6 +209,7 @@ export function canAct(user, fn, args = []) {
   if (GC_FNS.has(fn)) { try { return checkinOk(user, fn, args); } catch { return false; } }
   if (TK_FNS.has(fn)) { try { return taskOk(user, fn, args); } catch { return false; } }
   if (CF_FNS.has(fn)) { try { return confOk(user, fn, args); } catch { return false; } }
+  if (SP_FNS.has(fn)) { try { return subjectPromptOk(user, fn, args); } catch { return false; } }
   if (isAdmin(user)) return true;
   if (ADMIN_ONLY.has(fn)) return false;
   if (ANYONE.has(fn)) return true;
@@ -452,4 +453,21 @@ function confOk(user, fn, args) {
     return (staff || admin) && !!tid && by === tid && api.getStudent(b.studentId)?.advisorId === tid;
   }
   return false;
+}
+// ── Subject prompts (api.setSubjectPrompts, clearSubjectPrompts, answerExampleAsk) ──
+// A class's prompts: a teacher of that class (in its teacherIds), as themselves. A line's prompts: coordinators (heads of
+// department) and leadership, as themselves. Admins: either, as themselves or with no staff record (by null). An example
+// from a student's moment: only one the writer can reach. Saying yes or no to an example: only that student.
+const SP_FNS = new Set(['setSubjectPrompts', 'clearSubjectPrompts', 'answerExampleAsk']);
+const LINE_PROMPT_KINDS = ['coordinator', 'leadership'];
+function subjectPromptOk(user, fn, args) {
+  if (fn === 'answerExampleAsk') return user.kind === 'student' && !!user.studentId && args[2] === user.studentId && !!api.getSubjectPrompt(args[0])?.examples.some((x) => x.id === args[1] && x.studentId === user.studentId);
+  const admin = isAdmin(user), by = args[fn === 'setSubjectPrompts' ? 2 : 1] ?? null;
+  if (admin ? !!by && by !== user.teacherId : !(STAFF.includes(user.kind) && !!user.teacherId && by === user.teacherId)) return false;
+  const target = fn === 'setSubjectPrompts' ? args[0] : api.getSubjectPrompt(args[0]);
+  if (!target || typeof target !== 'object') return false;
+  if (!admin && !(target.classId ? teachesClass(user, target.classId) : LINE_PROMPT_KINDS.includes(user.kind))) return false;
+  if (fn !== 'setSubjectPrompts') return true;
+  const reach = reachOf(user);
+  return [].concat(args[1]?.examples || []).every((x) => { if (!x?.eventId) return true; const sid = api.getEvent(x.eventId)?.studentId; return !!sid && (reach === null || reach.has(sid)); });
 }

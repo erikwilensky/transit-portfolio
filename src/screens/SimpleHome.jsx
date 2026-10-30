@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { addGoal, addReflection, addStation, completeGoal, deleteStation, editStation, endorserChoices, getEvent, getStudent, getTeacher, getTeachers, requestFor, setVisibility, snapshot, teachersOf, TODAY } from '../api.js';
+import { addGoal, addReflection, addStation, completeGoal, deleteStation, editStation, endorserChoices, getEvent, getPromptsFor, getStudent, getTeacher, getTeachers, requestFor, setVisibility, snapshot, teachersOf, TODAY } from '../api.js';
 import { fmtDate } from '../format.js';
 import { isPilot } from '../auth.js';
 import { evidenceFor } from '../upload.js';
@@ -7,6 +7,7 @@ import { UploadStatus, useUpload } from '../components/FileAttach.jsx';
 import { SUGGEST } from '../components/AddStation.jsx';
 import { OpenPrompts } from '../components/ClassPrompts.jsx';
 import { MyTasks } from '../components/ClassTasks.jsx';
+import { ExampleAsks, Examples, promptsFrom } from '../components/SubjectPrompts.jsx';
 import { SpottedForMe } from '../components/Spotted.jsx';
 import { PeerFromClasses, PeerOnMoment } from '../components/PeerFeedback.jsx';
 import MomentComments, { NewBadge, useUnread } from '../components/MomentComments.jsx';
@@ -76,6 +77,7 @@ export default function SimpleHome({ map, studentId, toast, version, addRequest,
 
       <MyTasks studentId={studentId} simple toast={toast} version={version} />
       <OpenPrompts studentId={studentId} simple toast={toast} version={version} />
+      <ExampleAsks studentId={studentId} simple toast={toast} version={version} />
       <SpottedForMe studentId={studentId} simple toast={toast} version={version} />
       <PeerFromClasses studentId={studentId} simple toast={toast} version={version} />
       <GoalCheckins studentId={studentId} simple toast={toast} version={version} />
@@ -179,16 +181,32 @@ function AddFlow({ map, studentId, onClose, onDone, camera }) {
   const photo = useUpload();
   const pickPhoto = (e) => { const file = e.target.files?.[0]; e.target.value = ''; photo.run(file, (r) => set({ image: evidenceFor(r, file.name).url, imageCaption: 'Photo' })); };
   const who = useMemo(() => (f.line ? checkers(studentId, f.line) : []), [studentId, f.line]);
+  // Subject prompts (SubjectPrompts.jsx): a teacher's for this line go one question per screen; the built-in ones show their
+  // note and starters, with "Help me with questions" for the same screens.
+  const prompts = useMemo(() => (f.line ? getPromptsFor(studentId, f.line) : null), [studentId, f.line]);
+  const [guided, setGuided] = useState(false);
+  const [qi, setQi] = useState(0);
+  const [answers, setAnswers] = useState([]);
+  const [usedStarter, setUsedStarter] = useState(false);
+  const qn = guided && prompts ? prompts.questions.length : 0;
+  const reflection = () => (qn ? prompts.questions.map((q, i) => (answers[i]?.trim() ? `${q}\n${answers[i].trim()}` : null)).filter(Boolean).join('\n\n') : f.reflection.trim());
+  const pickLine = (id) => { const p = getPromptsFor(studentId, id); set({ line: id }); setGuided(!!p && p.source !== 'default'); setQi(0); setAnswers([]); setUsedStarter(false); setMore(false); setStep(2); };
   const save = (teacher) => {
     const snap = snapshot();
-    const e = addStation(studentId, { title: f.title.trim(), lineIds: [f.line], type: 'project', image: f.image, imageCaption: f.imageCaption, files: f.voice ? [f.voice] : [], reflection: f.reflection.trim() || null, visibility: 'advisor', via: 'Simple add', requestFrom: teacher?.id || null });
+    const e = addStation(studentId, { title: f.title.trim(), lineIds: [f.line], type: 'project', image: f.image, imageCaption: f.imageCaption, files: f.voice ? [f.voice] : [], reflection: reflection() || null, visibility: 'advisor', via: 'Simple add', requestFrom: teacher?.id || null, promptId: prompts && (qn || usedStarter) ? prompts.id : null });
     onDone(e, teacher, snap);
   };
+  const steps = (who.length ? 4 : 3) + (qn ? qn - 1 : 0) + (camera ? 1 : 0);
+  const at = (step === 2 ? 2 + qi : step === 3 ? 3 + (qn ? qn - 1 : 0) : step) + (camera ? 1 : 0);
+  const voice = f.voice ? <div className="sh-voice"><VoiceNotes evidence={[f.voice]} /><button type="button" className="ghost" onClick={() => set({ voice: null })}>Remove voice note</button></div>
+    : recording ? <VoiceRecorder onAdded={(v) => { set({ voice: v }); setRecording(false); }} onCancel={() => setRecording(false)} />
+    : <VoiceStart onClick={() => setRecording(true)} />;
+  const finish = (has) => (who.length ? <button className="primary" onClick={() => setStep(3)}>{has ? 'Next' : 'Skip'}</button> : <button className="primary" onClick={() => save(null)}>{has ? 'Add it' : 'Skip and add it'}</button>);
   return (
     <div className="modal-back" onClick={onClose}>
       <div className="modal sh-flow" role="dialog" aria-label="Add something I did" onClick={(e) => e.stopPropagation()}>
         <button className="panel-close" onClick={onClose} aria-label="Close">×</button>
-        <Steps n={(who.length ? 4 : 3) + (camera ? 1 : 0)} at={step + (camera ? 1 : 0)} />
+        <Steps n={steps} at={at} />
         {step === -1 && <>
           <Said text="Take a photo" />
           <p className="sh-sub">Of something you did, made or took part in. Then say what it was.</p>
@@ -208,22 +226,38 @@ function AddFlow({ map, studentId, onClose, onDone, camera }) {
         </>}
         {step === 1 && <>
           <Said text="Which colour does it go with?" />
-          <div className="sh-lines">{lines.map((l) => <button key={l.id} style={{ '--c': l.colour }} className={f.line === l.id ? 'on' : ''} onClick={() => { set({ line: l.id }); setMore(false); setStep(2); }}><i />{l.name}</button>)}</div>
+          <div className="sh-lines">{lines.map((l) => <button key={l.id} style={{ '--c': l.colour }} className={f.line === l.id ? 'on' : ''} onClick={() => pickLine(l.id)}><i />{l.name}</button>)}</div>
           <div className="sh-next"><button className="ghost" onClick={() => setStep(0)}>Back</button></div>
         </>}
-        {step === 2 && <>
+        {step === 2 && !qn && <>
           <Said text="What did you learn?" />
-          <p className="sh-sub">One or two sentences is plenty. You can skip this.</p>
-          <div className="sh-starters">{STARTERS.map((s) => <button key={s} onClick={() => set({ reflection: `${f.reflection ? `${f.reflection} ` : ''}${s.replace('…', ' ')}` })}>{s}</button>)}</div>
+          {prompts?.note ? <p className="sp-note">{prompts.note}</p> : <p className="sh-sub">One or two sentences is plenty. You can skip this.</p>}
+          <div className="sh-starters">{(prompts?.starters?.length ? prompts.starters : STARTERS).map((s) => <button key={s} onClick={() => { setUsedStarter(!!prompts); set({ reflection: `${f.reflection ? `${f.reflection} ` : ''}${s.replace('…', ' ')}` }); }}>{s}</button>)}</div>
           <textarea className="sh-input" rows={3} value={f.reflection} onChange={(e) => set({ reflection: e.target.value })} aria-label="What did you learn?" />
           <SayIt value={f.reflection} onChange={(reflection) => set({ reflection })} />
-          {f.voice ? <div className="sh-voice"><VoiceNotes evidence={[f.voice]} /><button type="button" className="ghost" onClick={() => set({ voice: null })}>Remove voice note</button></div>
-            : recording ? <VoiceRecorder onAdded={(voice) => { set({ voice }); setRecording(false); }} onCancel={() => setRecording(false)} />
-            : <VoiceStart onClick={() => setRecording(true)} />}
-          <div className="sh-next"><button className="ghost" onClick={() => setStep(1)}>Back</button>
-            {who.length ? <button className="primary" onClick={() => setStep(3)}>{f.reflection.trim() ? 'Next' : 'Skip'}</button> : <button className="primary" onClick={() => save(null)}>{f.reflection.trim() ? 'Add it' : 'Skip and add it'}</button>}</div>
+          {prompts?.questions.length > 0 && <button type="button" className="ghost sp-help" onClick={() => { setGuided(true); setQi(0); setAnswers(f.reflection.trim() ? [f.reflection] : []); }}>Help me with questions</button>}
+          {voice}
+          <div className="sh-next"><button className="ghost" onClick={() => setStep(1)}>Back</button>{finish(!!f.reflection.trim())}</div>
           {!who.length && <p className="sh-note">Only you and your advisor can see it at first.</p>}
         </>}
+        {step === 2 && qn > 0 && (() => {
+          const q = prompts.questions[qi], last = qi === qn - 1, val = answers[qi] || '';
+          const put = (v) => setAnswers((xs) => { const n = [...xs]; n[qi] = v; return n; });
+          return <div className="sp-guided" key={qi}>
+            <p className="sp-from">{qi === 0 ? promptsFrom(prompts) : `Question ${qi + 1} of ${qn}`}</p>
+            {qi === 0 && prompts.note && <p className="sp-note">{prompts.note}</p>}
+            <Said text={q} />
+            {prompts.starters.length > 0 && <div className="sh-starters" role="group" aria-label="Ways to start">{prompts.starters.map((s) => <button key={s} onClick={() => put(`${val ? `${val} ` : ''}${s.replace('…', ' ')}`)}>{s}</button>)}</div>}
+            <textarea className="sh-input" rows={3} value={val} onChange={(e) => put(e.target.value)} aria-label={q} />
+            <SayIt value={val} onChange={put} />
+            {qi === 0 && <Examples examples={prompts.examples} simple />}
+            {last && voice}
+            <div className="sh-next"><button className="ghost" onClick={() => (qi ? setQi(qi - 1) : setStep(1))}>Back</button>
+              {last ? finish(answers.some((a) => a?.trim())) : <button className="primary" onClick={() => setQi(qi + 1)}>{val.trim() ? 'Next question' : 'Skip this one'}</button>}</div>
+            {!last && <button type="button" className="linkish sp-skip" onClick={() => (who.length ? setStep(3) : save(null))}>{answers.some((a) => a?.trim()) ? 'That is enough, carry on' : 'Skip the questions'}</button>}
+            {last && !who.length && <p className="sh-note">Only you and your advisor can see it at first.</p>}
+          </div>;
+        })()}
         {step === 3 && who.length > 0 && <>
           <Said text="Ask a teacher to check it?" />
           <p className="sh-sub">A teacher can say it really happened. You can skip this.</p>

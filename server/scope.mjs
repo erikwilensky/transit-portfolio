@@ -210,6 +210,13 @@ export function scopedSnapshot(user) {
   const keptTasks = new Set(store.teacherTasks.filter(taskMine).map((t) => t.id));
   store.handIns = parent ? [] : (full.handIns || []).filter((r) => (self ? r.studentId === self : keptTasks.has(r.taskId) && inReach(r.studentId)));
   Object.assign(store, confScope(full, { user, all, self, parent, tid, inReach }));
+  // Subject prompts (api.setSubjectPrompts): school guidance every student and member of staff receives, families never. An
+  // example from a student's moment goes whole (ids, status) to that student and to staff who reach them; anyone else gets
+  // it only once the student said yes and while it is still publishable, as its title, a line of it and the Year.
+  store.subjectPrompts = parent ? [] : (full.subjectPrompts || []).map((p) => ({ ...p, examples: (p.examples || []).flatMap((x) => {
+    if (!x.eventId || x.studentId === self || (staff && inReach(x.studentId))) return [x];
+    const v = api.exampleView(x, p.lineId); return v ? [v] : [];
+  }) }));
   // Everything else (school lines' settings, integrations, rollout, family language, classes, keys other features add).
   for (const [k, v] of Object.entries(full)) if (!(k in store)) store[k] = generic(v, inReach);
   // Counts the whole-school screens show for what they may not open.
@@ -330,4 +337,8 @@ Object.assign(TOUCHES, {
   openConferenceRound: (a) => T([], [a[1]]), editConferenceRound: (a) => T([], [a[2]]), closeConferenceRound: (a) => T([], [a[1]]),
   bookConference: (a) => T([a[1]], [a[3] !== 'family' ? a[3] ?? '?' : null]), cancelConference: (a) => T([api.getConfBooking(a[0])?.studentId ?? '?'], [a[1] !== 'family' ? a[1] ?? '?' : null]),
   blockConferenceSlot: (a) => T([], [a[5]]), sendConferenceReminders: () => T([]),
+});
+Object.assign(TOUCHES, {
+  setSubjectPrompts: (a) => T([].concat(a[1]?.examples || []).filter((x) => x?.eventId).map((x) => ev(x.eventId) ?? '?'), [a[2]]),
+  clearSubjectPrompts: (a) => T([], [a[1]]), answerExampleAsk: (a) => T([a[2]]),
 });

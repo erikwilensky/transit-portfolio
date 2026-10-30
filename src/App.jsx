@@ -81,6 +81,7 @@ import { isMonday } from './week.js';
 import { QADrawer, TourCard, TourRoute } from './components/TourCards.jsx';
 import { LeaverBuilder, PublicLeaver } from './components/Leaver.jsx';
 import { leaverAllowed } from './api.js';
+import SubjectPromptsScreen from './components/SubjectPrompts.jsx';
 
 // Routes: #/<persona>/<screen>/<param>, plus public #/s/<token>, #/v/<code> and #/p/<student>[/th] (parent link).
 // A screen set this persona uses: their own kind, or another hat they wear in the pilot (persona.also).
@@ -372,7 +373,8 @@ export default function App() {
           {pilot && route.screen === 'overview' && (persona.admin || persona.kind === 'leadership' || persona.kind === 'coordinator') && <Overview {...ctx} />}
           {pilot && route.screen === 'activitylog' && (persona.admin || persona.kind === 'leadership') && <ActivityLog {...ctx} />}
           {pilot && route.screen === 'screens' && (persona.admin || ['advisor', 'teacher', 'counsellor', 'coordinator', 'leadership'].includes(persona.kind)) && <Exhibitions {...ctx} />}
-          {route.screen !== 'screens' && route.screen !== 'accounts' && route.screen !== 'usage' && route.screen !== 'reports' && route.screen !== 'overview' && route.screen !== 'week' && route.screen !== 'activitylog' && route.screen !== 'leaver' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} persona={persona} />}
+          {pilot && route.screen === 'prompts' && (persona.admin || persona.kind === 'coordinator' || persona.kind === 'leadership') && <SubjectPromptsScreen {...ctx} />}
+          {route.screen !== 'prompts' && route.screen !== 'screens' && route.screen !== 'accounts' && route.screen !== 'usage' && route.screen !== 'reports' && route.screen !== 'overview' && route.screen !== 'week' && route.screen !== 'activitylog' && route.screen !== 'leaver' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} persona={persona} />}
           </ErrorBoundary>
           {pilot && level === 'simple' && <div className="fb-simple"><button onClick={() => setFbOpen(true)}>Something not working? Tell us</button></div>}
         </main>

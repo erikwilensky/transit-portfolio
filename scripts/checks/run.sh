@@ -41,5 +41,6 @@ echo "== goal-checkins (starts its own clean pilot server on the real roster)"; 
 echo "== accessibility (starts its own demo server and a clean pilot server on the real roster)"; node accessibility.cjs || fail=1
 echo "== class-tasks (starts its own clean pilot server on the real roster, twice: today and two days later)"; node class-tasks.cjs || fail=1
 echo "== conference-booking (starts its own clean pilot server on the real roster)"; node conference-booking.cjs || fail=1
+echo "== subject-prompts (starts its own clean pilot server on the real roster)"; node subject-prompts.cjs || fail=1
 echo "== leaver-portfolio (starts its own clean pilot server on the real roster)"; node leaver-portfolio.cjs || fail=1
 echo "== tours";node tours.cjs | grep -E "end url|ERRS|soon|boom|empty|hs" ; exit $fail

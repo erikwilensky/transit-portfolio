@@ -175,6 +175,8 @@ export function personaFor(user) {
   if (kind === 'leadership' || user.admin) p.nav = [...(p.nav || NAV[kind]), ['activitylog', 'Activity log']];
   // School screens (src/screens/Exhibitions.jsx): every member of staff and admins.
   if (['advisor', 'teacher', 'counsellor', 'coordinator', 'leadership'].includes(kind) || user.admin) p.nav = [...(p.nav || NAV[kind]), ['screens', 'School screens']];
+  // Subject prompts for every line (src/components/SubjectPrompts.jsx): coordinators, leadership and admins.
+  if (kind === 'coordinator' || kind === 'leadership' || user.admin) p.nav = [...(p.nav || NAV[kind]), ['prompts', 'Subject prompts']];
   return p;
 }
 function applyPersona() {
