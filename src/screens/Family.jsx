@@ -7,6 +7,7 @@ import StationPanel from '../components/StationPanel.jsx';
 import { consentText, dateIn, LangContext, lineName, tr } from '../i18n.js';
 import { chooseLang, exportUrl, isPilot } from '../auth.js';
 import { FamilyBooking } from '../components/ConferenceBooking.jsx';
+import { FamilyNotesHint } from '../components/FamilyNotes.jsx';
 
 // N1: a parent's own screens, in English or Thai. One parent, two children:
 // Ploy (Year 11) decides what her family sees; Pim (Year 7) needs her parent's consent first.
@@ -127,6 +128,7 @@ function FamilyMap({ persona, childId, go, lang, version, toast }) {
           <section className="pv-intro">
             <h2>{say.thisTerm}</h2>
             {term.length ? <ul>{term.map((e) => <li key={e.id}><button className="linkish" lang="en" onClick={() => setSel(e.id)}>{e.title}</button> <small>{dateIn(lang, e.date)} · {e.lineIds.map((id) => lineName(lang, map.lines.find((l) => l.id === id)?.name || id)).join(', ')}</small></li>)}</ul> : <p className="fineprint">{say.none}</p>}
+            <FamilyNotesHint childId={childId} lang={lang} />
             <FamilyMilestones childId={childId} lang={lang} version={version} onOpen={setSel} />
             <h2>{say.ask}</h2>
             <ul>{QUESTIONS.map((q) => <li key={q}>{tr(lang, q)}</li>)}</ul>

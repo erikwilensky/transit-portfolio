@@ -39,22 +39,24 @@ export function ReportButton({ event, comment, simple = false, toast }) {
   );
 }
 
-function ReportDialog({ event, comment, from, simple, onClose, onSent }) {
+// target/what/quote: another kind of item (a family note: { familyNoteId }, 'this note', its words).
+export function ReportDialog({ event, comment, from, simple, onClose, onSent, target, what: whatOf, quote }) {
   const [reason, setReason] = useState(null);
   const [note, setNote] = useState('');
   const [err, setErr] = useState(null);
   const t = useT();
   const send = () => {
     setErr(null);
-    try { reportItem(comment ? { commentId: comment.id } : { eventId: event.id }, reason, note, from); onSent(); } catch (x) { setErr(x.message || t('That did not work.')); }
+    try { reportItem(target || (comment ? { commentId: comment.id } : { eventId: event.id }), reason, note, from); onSent(); } catch (x) { setErr(x.message || t('That did not work.')); }
   };
-  const what = comment ? 'this comment' : 'this moment';
+  const what = whatOf || (comment ? 'this comment' : 'this moment');
+  const said = quote ?? comment?.text;
   return (
     <div className="modal-back" onClick={onClose}>
-      <div className={`modal sg-dialog${simple ? ' simple' : ''}`} role="dialog" aria-label={comment ? `Report ${what}` : t('Report this moment')} onClick={(e) => e.stopPropagation()}>
+      <div className={`modal sg-dialog${simple ? ' simple' : ''}`} role="dialog" aria-label={whatOf || comment ? `Report ${what}` : t('Report this moment')} onClick={(e) => e.stopPropagation()}>
         <button className="panel-close" onClick={onClose} aria-label={t('Close')}>×</button>
-        <h2>{simple ? 'Tell a teacher' : comment ? `Report ${what}` : t('Report this moment')}</h2>
-        <p className="fineprint">“{comment ? (comment.text.length > 80 ? `${comment.text.slice(0, 77)}…` : comment.text) : event.title}”. {from.key === 'student' ? 'A teacher who looks after safety will see it.' : t('The school’s safeguarding staff will look at it. The student is not told who reported it.')}</p>
+        <h2>{simple ? 'Tell a teacher' : whatOf || comment ? `Report ${what}` : t('Report this moment')}</h2>
+        <p className="fineprint">“{said != null ? (said.length > 80 ? `${said.slice(0, 77)}…` : said) : event.title}”. {from.key === 'student' ? 'A teacher who looks after safety will see it.' : t('The school’s safeguarding staff will look at it. The student is not told who reported it.')}</p>
         <div className="sg-reasons" role="radiogroup" aria-label={t('What is wrong')}>
           {Object.entries(REPORT_REASONS).map(([k, l]) => <button key={k} role="radio" aria-checked={reason === k} className={reason === k ? 'on' : ''} onClick={() => setReason(k)}>{t(l)}</button>)}
         </div>

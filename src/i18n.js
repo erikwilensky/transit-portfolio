@@ -760,6 +760,32 @@ Object.assign(STU, {
   'In Year 11 this is a practice run: everything works, so you are ready next year.': 'ใน Year 11 เป็นการฝึกทำ ทุกอย่างใช้ได้จริง ปีหน้าคุณจะพร้อม', 'It is on your': 'ตอนนี้อยู่บนสาย', 'line now, waiting for': 'ของคุณแล้ว รอ', 'to check it.': 'ตรวจ',
   'One or two sentences is plenty.': 'หนึ่งหรือสองประโยคก็พอแล้ว', You: 'คุณ', 'Started, not finished': 'เริ่มแล้ว ยังไม่เสร็จ',
 });
+// ── Family encouragement (src/components/FamilyNotes.jsx): the student's side, and the family's thank-you notice. Only keys
+// not already known are added. The family's own screens carry their Thai in the component. ──
+for (const [k, v] of Object.entries({
+  'Notes from your family': 'ข้อความจากครอบครัว', 'From your family': 'จากครอบครัวของคุณ', 'Notes from family': 'ข้อความจากครอบครัว',
+  'Proud of you': 'ภูมิใจในตัวลูกนะ', 'Well done': 'เก่งมาก', 'Tell me more at dinner': 'มื้อเย็นนี้เล่าให้ฟังหน่อยนะ', 'Keep going': 'สู้ต่อไปนะ',
+  'Open the moment': 'เปิดดูเรื่องนี้', 'Show again': 'แสดงอีกครั้ง', 'Show 1 hidden note': 'แสดงข้อความที่ซ่อนไว้ 1 ข้อความ',
+  'Hidden. You will not see it here.': 'ซ่อนแล้ว คุณจะไม่เห็นข้อความนี้ที่นี่', 'Report this note': 'รายงานข้อความนี้', 'Tell a teacher': 'บอกครู',
+  'Send report': 'ส่งรายงาน', 'Cancel': 'ยกเลิก', 'What is wrong': 'มีอะไรไม่ถูกต้อง',
+  'Let my family leave kind notes on moments they can see': 'ให้ครอบครัวเขียนข้อความให้กำลังใจในเรื่องที่ครอบครัวเห็นได้',
+  'Your family can leave a short kind note on moments they can see. Your advisor and teachers can read them too.': 'ครอบครัวเขียนข้อความสั้น ๆ ให้กำลังใจในเรื่องที่เห็นได้ ครูที่ปรึกษาและครูผู้สอนอ่านได้ด้วย',
+  'Your family can leave notes again.': 'ครอบครัวเขียนข้อความถึงคุณได้อีกครั้งแล้ว',
+  'Notes from family are off. You can turn them on again here.': 'ปิดข้อความจากครอบครัวแล้ว เปิดอีกครั้งได้ที่นี่',
+})) STU[k] ??= v;
+STU_RE.push(
+  [/^From (.+)$/, (m) => `จาก ${m[1]}`], [/^on “(.+)”$/, (m) => `ในเรื่อง “${m[1]}”`],
+  [/^Show (\d+) hidden notes$/, (m) => `แสดงข้อความที่ซ่อนไว้ ${m[1]} ข้อความ`],
+  [/^A teacher has hidden a note from your family on “(.+)”\.$/, (m) => `ครูซ่อนข้อความจากครอบครัวในเรื่อง “${m[1]}” ไว้ชั่วคราว`],
+  [/^A teacher has finished looking at a note from your family on “(.+)”\. It is shown again\.$/, (m) => `ครูตรวจดูข้อความจากครอบครัวในเรื่อง “${m[1]}” เสร็จแล้ว ข้อความแสดงอีกครั้ง`],
+);
+NOTE_TH.push([/^(.+) said thank you for your note on “(.+)”\.$/, (m) => `${m[1]} ขอบคุณสำหรับข้อความของคุณในเรื่อง “${m[2]}”`]);
+for (const [k, v] of Object.entries({
+  'This moment is not shared with the family.': 'เรื่องนี้ไม่ได้แบ่งปันให้ครอบครัวเห็น', 'Notes from family are turned off for now.': 'ปิดรับข้อความจากครอบครัวไว้ชั่วคราว',
+  'You already left a note on this moment. You can change it.': 'คุณเขียนข้อความในเรื่องนี้แล้ว แก้ไขได้', 'Keep it to 280 characters.': 'เขียนได้ไม่เกิน 280 ตัวอักษร',
+  'Write a few words or pick a reaction.': 'เขียนสักสองสามคำ หรือเลือกคำให้กำลังใจ', 'Only the person who wrote a note can change it.': 'เฉพาะผู้เขียนข้อความเท่านั้นที่แก้ไขได้',
+  'That note is gone.': 'ไม่มีข้อความนี้แล้ว', 'Pick one of the reactions.': 'เลือกคำให้กำลังใจหนึ่งคำ',
+})) ERR_TH[k] ??= v;
 // Keys written with the spaces JSX leaves around them: the page is matched without them (src/thai.js keeps the spaces).
 for (const k of Object.keys(STU)) if (k !== k.trim()) { STU[k.trim()] ??= STU[k].trim(); delete STU[k]; }
 const plainTh = (s) => STU[s] ?? (Object.hasOwn(TH, s) && !['Year', 'T'].includes(s) ? TH[s] : null) ?? (ERR_TH[s] || null);

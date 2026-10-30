@@ -225,6 +225,7 @@ export function scopedSnapshot(user) {
   const casCoord = isAdmin(user) || (staff && api.isCasCoordinator({ kind: user?.kind, teacherId: tid }));
   const casOut = ({ code, ...x }) => ({ ...x, ...(code ? { code: { expires: code.expires } } : {}), ...(self ? {} : { about: api.casAbout(x) }) });
   store.casHours = parent ? [] : (full.casHours || []).filter((x) => (self ? x.studentId === self : casCoord || (!!tid && x.supervisor?.kind === 'staff' && x.supervisor.teacherId === tid))).map(casOut);
+  Object.assign(store, familyNotesScope(full, store, { user, all, self, parent, tid, shown, moderator }));
   // Everything else (school lines' settings, integrations, rollout, family language, classes, keys other features add).
   for (const [k, v] of Object.entries(full)) if (!(k in store)) store[k] = generic(v, inReach);
   // Counts the whole-school screens show for what they may not open.
@@ -357,3 +358,25 @@ Object.assign(TOUCHES, {
 });
 // Notification settings: "Clear read" in your own bell (canAct checks the keys).
 Object.assign(TOUCHES, { clearReadNotifications: () => T([]) });
+
+// ── Family encouragement (api.addFamilyNote): notes go only with the moments the person receives. A family: notes on their
+// children's moments (a note a moderator hid only to its writer, with the notice), never whether the student hid one from
+// their own view; and which children turned notes off. The student: notes on their own moments that are not hidden, without
+// the writer's account id. Staff: the advisor, a current class's teachers and whole-school roles; other staff nothing. ──
+function familyNotesScope(full, store, { user, all, self, parent, tid, shown, moderator }) {
+  const kids = new Set(parent ? user.children || [] : []), me = parent ? `u:${user.id}` : null;
+  const notes = (full.familyNotes || []).filter((n) => shown.has(n.eventId));
+  const out = {
+    familyNotes: parent ? notes.filter((n) => kids.has(n.studentId) && (!n.hidden || n.by === me)).map(({ studentHidden, ...n }) => n)
+      : self ? notes.filter((n) => n.studentId === self && !n.hidden).map(({ by, ...n }) => n)
+        : notes.filter((n) => all || (!!tid && api.familyNoteReader(tid, n.studentId))),
+  };
+  if (parent) out.privacy = Object.fromEntries([...kids].filter((sid) => full.privacy?.[sid]?.familyNotes === false).map((sid) => [sid, { familyNotes: false }]));
+  if (!moderator) { const fn = new Map((full.reports || []).filter((r) => r.familyNoteId).map((r) => [r.id, r.familyNoteId])); out.reports = store.reports.map((r) => (fn.has(r.id) ? { ...r, familyNoteId: fn.get(r.id) } : r)); }
+  return out;
+}
+const famNote = (id) => api.getFamilyNote(id)?.studentId ?? '?';
+Object.assign(TOUCHES, {
+  addFamilyNote: (a) => T([ev(a[0])]), editFamilyNote: (a) => T([famNote(a[0])]), deleteFamilyNote: (a) => T([famNote(a[0])]),
+  thankFamilyNote: (a) => T([famNote(a[0])]), setFamilyNoteHidden: (a) => T([famNote(a[0])]),
+});

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { applyLens, consentOnFile, exportRecord, getPrivacy, remindParent, getStudentMap, setPrivacy, setVisibility, TODAY } from '../api.js';
 import { VIS_LABEL } from '../format.js';
 import { exportUrl, isPilot, leaverArchive } from '../auth.js';
+import { FamilyNotesSwitch } from '../components/FamilyNotes.jsx';
 
 const VIEWERS = [['advisor', 'My advisor'], ['school', 'School staff'], ['public', 'Anyone with a link']];
 const count = (m) => ({ st: m.events.length, rf: m.events.reduce((n, e) => n + e.reflections.length, 0) + m.events.filter((e) => e.type === 'reflection').length });
@@ -85,6 +86,12 @@ export default function Privacy({ studentId, drafts, toast, go, persona, version
           <label className="pv-row"><span>Don't show my moments on school screens</span>
             <input type="checkbox" checked={p.screens === false} onChange={(e) => { setPrivacy(studentId, { screens: !e.target.checked }); toast(e.target.checked ? 'Your moments will not be shown on school screens.' : 'Your publishable moments may be shown on school screens.'); }} />
           </label>
+        </div>}
+
+        {isPilot() && <div className="card-sec pv-family-notes">
+          <h3>Notes from family</h3>
+          <p className="fineprint">Your family can leave a short kind note on moments they can see. Your advisor and teachers can read them too.</p>
+          <FamilyNotesSwitch studentId={studentId} onChange={(on) => { setPrivacy(studentId, { familyNotes: on }); toast(on ? 'Your family can leave notes again.' : 'Notes from family are off. You can turn them on again here.'); }} />
         </div>}
 
         <div className="card-sec pv-export">
