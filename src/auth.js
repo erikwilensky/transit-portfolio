@@ -194,3 +194,10 @@ async function adoptLang(user) {
   if (!user || user.lang || user.kind !== 'parent' || !l || l === 'en') return user;
   try { await call('POST', '/api/auth/prefs', { lang: l }); return { ...user, lang: l }; } catch { return user; }
 }
+// Class list sync from the SIS (server/routes/67-sis.mjs): status and change reports; nothing applies without an admin.
+export const sisSync = {
+  status: () => call('GET', '/api/admin/sis'),
+  check: () => call('POST', '/api/admin/sis/check'),
+  apply: (id, opts = {}) => call('POST', `/api/admin/sis/reports/${encodeURIComponent(id)}/apply`, opts), // opts: { pauseLeavers }
+  dismiss: (id) => call('POST', `/api/admin/sis/reports/${encodeURIComponent(id)}/dismiss`),
+};

@@ -4,6 +4,7 @@ import { AdminCards } from '../components/SignInCards.jsx';
 import { AdminFamily } from '../components/FamilyLetters.jsx';
 import RosterImport from './RosterImport.jsx';
 import SubjectLines from './SubjectLines.jsx';
+import SisSync from '../components/SisSync.jsx';
 import '../auth.css';
 
 const ago = (iso) => { const m = Math.round((Date.now() - new Date(iso)) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`; };
@@ -83,6 +84,7 @@ export default function Accounts({ toast, persona }) {
           <button className="linkish" onClick={() => setLink(null)}>Done</button>
         </section>
       )}
+      <SisSync toast={toast} onApplied={setData} />
       {roster && <RosterImport key={String(roster)} startOfYear={roster === 'year'} onClose={() => setRoster(false)} onDone={(j) => { setData(j); toast('Class lists imported'); }} />}
       {cards && <AdminCards toast={toast} onClose={() => setCards(false)} onMade={() => admin.list().then(setData, () => {})} />}
       {letters && <AdminFamily toast={toast} onClose={() => setLetters(false)} onChange={() => admin.list().then(setData, () => {})} />}

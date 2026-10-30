@@ -30,6 +30,28 @@ export function leaversOf(summary) {
 const returning = (roster) => { const ids = new Set([...roster.teachers, ...roster.students].map((x) => x.id)); return A.allAccounts().filter((a) => a.paused && ids.has(a.studentId || a.teacherId)); };
 const who = (a) => ({ id: a.id, name: a.name, email: a.email, kind: a.kind });
 
+// Imports a checked roster as the admin in req, then pauses (when asked) and unpauses accounts and makes the new ones.
+// Also used by the SIS sync (server/sis.mjs) when an admin applies a change report: action/detail name it in the log.
+export function applyRoster(req, roster, { pauseLeavers = false, action = 'roster-import', detail = {} } = {}) {
+  const summary = api.importRoster(roster);
+  changed({ fn: 'importRoster', by: 'admin' });
+  // Leavers' accounts are paused only when asked; anyone paused who is back in the file is unpaused.
+  const { paused, unpaused } = A.batchAccounts(() => ({
+    paused: pauseLeavers ? leaversOf(summary).map((a) => (A.pauseAccount(a), who(a))) : [],
+    unpaused: returning(roster).map((a) => (A.unpauseAccount(a), who(a))),
+  }));
+  const { todo, skipped } = newAccountsFor(roster);
+  const base = originOf(req);
+  const created = A.batchAccounts(() => todo.map((p) => {
+    const a = A.createAccount({ email: p.email, name: p.name, kind: p.kind, ...(p.studentId ? { studentId: p.studentId } : { teacherId: p.teacherId }) });
+    return { name: a.name, email: a.email, role: KIND_LABEL[a.kind] || a.kind, setupUrl: setupUrl(base, A.newSetup(a)) };
+  }));
+  // Activity log: counts, then one line per paused or unpaused account.
+  L.log(req, { action, detail: { ...detail, ...Object.fromEntries(['teachers', 'students', 'classes', 'enrolments'].map((k) => [k, roster[k].length])), accountsCreated: created.length, skipped: skipped.length, paused: paused.length, unpaused: unpaused.length } });
+  for (const [list, act] of [[paused, 'account-pause'], [unpaused, 'account-unpause']]) for (const w of list) L.log(req, { action: act, target: accountTarget(A.accountById(w.id) || w), detail: { why: 'class lists' } });
+  return { summary, newAccounts: { created, skipped: skipped.length }, paused, unpaused, ...listBody() };
+}
+
 export default (app) => {
   app.post('/api/admin/roster', async (req, res) => {
     if (A.MODE !== 'pilot') return send(res, 403, { error: 'Class lists are imported in the pilot only.' });
@@ -42,22 +64,6 @@ export default (app) => {
       const summary = api.previewRoster(roster);
       return send(res, 200, { summary, warnings, newAccounts: { toCreate: todo.length, skipped: skipped.length }, leavers: leaversOf(summary).map(who), returning: returning(roster).map(who), handover: api.handoverPreview(roster), counts: Object.fromEntries(['teachers', 'students', 'classes', 'enrolments'].map((k) => [k, roster[k].length])) });
     }
-    const summary = api.importRoster(roster);
-    changed({ fn: 'importRoster', by: 'admin' });
-    // Leavers' accounts are paused only when asked; anyone paused who is back in the file is unpaused.
-    const { paused, unpaused } = A.batchAccounts(() => ({
-      paused: b.pauseLeavers ? leaversOf(summary).map((a) => (A.pauseAccount(a), who(a))) : [],
-      unpaused: returning(roster).map((a) => (A.unpauseAccount(a), who(a))),
-    }));
-    const { todo, skipped } = newAccountsFor(roster);
-    const base = originOf(req);
-    const created = A.batchAccounts(() => todo.map((p) => {
-      const a = A.createAccount({ email: p.email, name: p.name, kind: p.kind, ...(p.studentId ? { studentId: p.studentId } : { teacherId: p.teacherId }) });
-      return { name: a.name, email: a.email, role: KIND_LABEL[a.kind] || a.kind, setupUrl: setupUrl(base, A.newSetup(a)) };
-    }));
-    // Activity log: counts, then one line per paused or unpaused account.
-    L.log(req, { action: 'roster-import', detail: { ...Object.fromEntries(['teachers', 'students', 'classes', 'enrolments'].map((k) => [k, roster[k].length])), accountsCreated: created.length, skipped: skipped.length, paused: paused.length, unpaused: unpaused.length } });
-    for (const [list, action] of [[paused, 'account-pause'], [unpaused, 'account-unpause']]) for (const w of list) L.log(req, { action, target: accountTarget(A.accountById(w.id) || w), detail: { why: 'class lists' } });
-    send(res, 200, { summary, warnings, newAccounts: { created, skipped: skipped.length }, paused, unpaused, ...listBody() });
+    send(res, 200, { ...applyRoster(req, roster, { pauseLeavers: b.pauseLeavers }), warnings });
   });
 };

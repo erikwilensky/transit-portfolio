@@ -134,3 +134,60 @@ S2001,C-BIO12,2026-08-12,
 
 With CSVs there is no `school` block: the school year is taken from today's date and ended class places
 get today's date. A full test set is in `src/imports/fixtures/roster/`.
+
+## SIS sync
+
+Instead of uploading a file, the pilot can fetch the class lists from the school information system (SIS) every night.
+Each check makes a **change report** on **Accounts › Class list sync**; nothing changes until an admin presses
+**Apply these changes** (the same import as a file: new accounts get setup links, advisor changes become year handovers,
+class places that are gone end) or **Dismiss**. Press **Check now** for a check at any time. The last 10 reports are kept
+with who applied or dismissed them.
+
+A report is never staged when the feed has problems (the same rules as a file, listed on the panel), or when more than
+10% of the students in the record are missing from it (a broken export would otherwise make them all leavers). If such a
+drop is real, import the file by hand.
+
+### Settings
+
+Environment variables for the pilot server. With Docker Compose, add them to `.env.pilot` next to `docker-compose.yml`
+(the pilot service reads it; the demo does not), then run `scripts/deploy-mac.sh`:
+
+```sh
+SIS_URL=https://sis.example.org/api/transit/class-lists   # the feed (GET, returns JSON)
+SIS_TOKEN=paste-the-token-here                           # sent as "Authorization: Bearer <token>"
+SIS_SYNC_AT=02:00                                        # nightly, Bangkok time (TP_TZ); off = only Check now
+#SIS_MAP=sis-map.json                                    # only when the SIS sends its own format; see below
+```
+
+The token is read from the environment only. It is never written to the data folder or the activity log and never
+sent to the browser: the panel shows only Connected / Not connected, when it last checked, and the last error.
+
+### The feed
+
+Either a `transit-roster/1` JSON file as above (sent as is), or the SIS's own JSON with a **mapping file**: a JSON file
+in the pilot's data folder (in Docker, the folder mounted at `/data`, e.g. `transit-pilot-data/sis-map.json`), named by
+`SIS_MAP` (relative to the data folder, or an absolute path).
+
+```json
+{
+  "format": "sis-map/1",
+  "school": { "name": "=NIST International School", "academicYear": "meta.year", "exportedAt": "meta.generated", "source": "=SIS API" },
+  "teachers": { "from": "staff", "fields": { "id": "staff_id", "name": "full_name", "email": "contact.email",
+    "roles": { "path": "roles", "split": "|", "map": { "TEACHER": "teacher", "HRT": ["teacher", "advisor"] } }, "department": "dept" } },
+  "students": { "from": "pupils", "fields": { "id": "pupil_id", "name": "name.display", "year": { "path": "grade", "add": 1 },
+    "programme": "prog", "homeroom": "form", "advisorId": "tutor.id" } },
+  "classes": { "from": "sections", "fields": { "id": "code", "name": "title", "year": { "path": "grade", "add": 1 }, "teacherIds": "teachers[].id" } },
+  "enrolments": { "from": "sections[].pupils[]", "fields": { "studentId": "pupil_id", "classId": "^.code", "from": "start" } }
+}
+```
+
+- `from`: where the list is, as a dotted path (`data.staff`). `list[]` goes through each item of a list, so
+  `sections[].pupils[]` is every pupil of every section.
+- `fields`: one entry per field of the tables above. A field that is not listed is read under its own name (`subject`,
+  `level`, `line`, `email`, …), so list only what is named differently.
+- A field is a dotted path in the item (`contact.email`; `teachers[].id` makes a list), `"=text"` for a fixed value, or
+  `{ "path", "map", "add", "split" }`: `split` cuts a text into a list, `map` replaces the SIS's values with ours (a
+  value may become a list), `add` adds a number (US grade 11 + 1 = Year 12).
+- `^.` starts from the item one level up: in `sections[].pupils[]`, `^.code` is the section's code.
+- `school` takes the same kind of values from the top of the feed. Without `exportedAt`, ended class places get the
+  day of the check.

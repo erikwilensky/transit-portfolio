@@ -1346,3 +1346,52 @@ family. Demo and pilot. No new route, no email, no leaderboard: nothing compares
   not on a second device, which gets "5 moments" live and still under reduced motion); a classmate at Standard gets the
   toast and the station badge; refusals for advisor, admin and classmate; Ms Jane Altemen sees it on My advisory, his
   page and This week; his family sees milestones but none from a private moment. Screenshots `tp-ms-*.png`.
+
+## Class list sync from the SIS (`server/sis.mjs`, `server/routes/67-sis.mjs`, `src/components/SisSync.jsx`, pilot only)
+
+The class lists can come from the school information system every night instead of an uploaded file. Nothing is applied
+by itself: each check makes a change report that waits on Accounts until an admin applies or dismisses it. Settings, the
+feed and the mapping file: `docs/roster-format.md`, "SIS sync".
+
+- **Settings** (environment only, never in a data file): `SIS_URL` (the feed), `SIS_TOKEN` (sent as
+  `Authorization: Bearer`), `SIS_SYNC_AT` (default `02:00`, `TP_TZ` time, Bangkok by default; `off` for no nightly check),
+  `SIS_MAP` (a field-mapping file, relative to `DATA_DIR`), `SIS_TIMEOUT_MS` (default 60000). Without `SIS_URL` the panel
+  says "Not set up" and files are imported as before. Demo mode: every route is 403 and nothing runs.
+- **A check** (`check(req)` in `server/sis.mjs`; one at a time): fetch → a `transit-roster/1` file as is, anything else
+  through `SIS_MAP` (`mapFeed`) → `api.parseRoster` → `buildReport`, compared with the record. Report statuses: `ready`
+  (waiting for an admin), `nothing` (no changes), `invalid` (validation errors: the parser's `errors` and `missing`),
+  `refused` (more than 10% of the record's students are gone from the feed: never staged, and the warning says to import
+  a file by hand if it is right), then `applied`, `dismissed`, or `replaced` (a newer check came first). A failed fetch
+  (unreachable, timeout, HTTP 401/403 "refused the token", not JSON, no map) makes no report: it sets `lastError`.
+- **Report**: `{ id, at, by: { id, name } | null (nightly), mapped, status, school, counts, added / changed / leaving:
+  { students, teachers, classes: { n, items (up to 200) } }, enrolments: { joins, ends, updated }, handover (as
+  handoverPreview), accounts: { toCreate, leavers }, drop: { students, of, pct }, warnings, errors, base }`. `changed`
+  items list `{ field, from, to }` (students: name, year, homeroom, advisor, programme, email, house; staff: name, email,
+  roles, department; classes: name, subject, year, level, teachers). `leaving` leaves out records an applied report
+  already had as gone (nobody is removed from the record, so they would otherwise come back every night).
+- **Files**: `DATA_DIR/sis-sync.json` `{ status: { lastChecked, lastOk, lastError: { at, message }, lastScheduledDay },
+  gone, reports (newest first, the last 10, each with `applied`/`dismissed` `{ at, by }`) }`; `DATA_DIR/sis-pending.json`
+  `{ id, roster }`, the validated roster of the one `ready` report (removed on apply, dismiss or a newer check).
+- **Routes** (admin only): `GET /api/admin/sis` → `{ configured, connected, lastChecked, lastError, syncAt, tz, mapped,
+  checking, reports }` (never the URL or token); `POST /api/admin/sis/check` (Check now; 409 when not set up) → the same,
+  plus `error`; `POST /api/admin/sis/reports/:id/apply { pauseLeavers? }` → the roster import's answer (summary, setup
+  links for new accounts, paused, unpaused, accounts list) plus `sis`; 409 unless the report is `ready`, and when the
+  record's class lists changed since the check (`base` ≠ `store.rosterImport.at`: someone imported a file); `POST
+  /api/admin/sis/reports/:id/dismiss` → `{ sis }`.
+- **Apply** runs `applyRoster(req, roster, opts)` (exported from `server/routes/15-roster.mjs`, which the file import now
+  uses too): `api.importRoster` (so the year handover, ended class places and leavers' lists work as for a file), new
+  accounts with setup links, unpaused returners, and the leavers' accounts paused when the admin ticks the box.
+- **Nightly**: a timer every 30 s (and once a second after start) runs one check per local day when the time is between
+  `SIS_SYNC_AT` and three hours later (`dueDay`), so a server restarted at 03:00 still checks that night and one started
+  at noon waits for the next night.
+- **Activity log**: `sis-fetch` (`detail.how` admin or schedule; the report status and counts, or `error` with status
+  502; the nightly check has no actor), `sis-apply` (the import's counts and `detail.report`; paused and unpaused
+  accounts get their own lines), `sis-dismiss` (`target.id` the report).
+- **Screen**: Accounts › Class list sync: Connected / Not connected / Not checked yet, last checked, the nightly time,
+  the last error; Check now; the waiting report (counts, then new, changed and leaving people and classes, class places
+  joining and ending, advisor handovers, sign-in accounts to make, warnings) with "Apply these changes" and "Dismiss";
+  after applying, "Download sign-in links (CSV)"; the last 10 checks with who applied or dismissed them.
+- Tests: `server/test/sis-sync.test.mjs` (a mock SIS on localhost: good feed, mapped feed, bad token, 10% drop refused,
+  invalid feed, stale report, dismiss, the last 10, the nightly run, applying a new year runs the handover, no token in
+  any file or answer); browser: `node scripts/checks/sis-sync.cjs` (a mock SIS serving the real roster from `TP_ROSTER`,
+  then a modified copy in memory; screenshots `tp-sis-*.png`).
