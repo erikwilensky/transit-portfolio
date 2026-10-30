@@ -61,6 +61,7 @@ const ABOUT = {
   spotted: 'Moments a teacher spotted and suggested for your journey, and whether you added them.',
   termReflections: 'Your end-of-term reflections: the moments you picked, your answers and goal, finished or still a draft.',
   peerFeedback: 'Kind feedback you gave classmates, and feedback classmates gave you (with their first name), whether it was thanked or hidden.',
+  handIns: 'Tasks teachers set your classes that you handed in (or were given more time or a reminder for): when, which moment, what you ticked.',
 };
 const README = (s, files, accounts, when) => [
   `Everything NIST Transit Portfolio holds about ${s.name} (student id ${s.id})`,

@@ -1672,6 +1672,166 @@ export function answersCsv(promptId) {
   return `﻿${[head, ...rows].map((r) => r.map(cell).join(',')).join('\r\n')}\r\n`;
 }
 
+// ── Class tasks: a teacher sets a task for a class; each student hands it in as a moment on its line ──
+// store.teacherTasks: { id: 'tk-…', classId, teacherId, title, brief, due, lineId, checklist: [text], needsFile, date, at,
+// studentIds (the class when it was set), editedAt }. store.handIns: one row per student who has anything on a task:
+// { id: 'hi-…', taskId, studentId, due (an extension, or null), reminded (the due date reminded for), date, at, eventId,
+// ticked: [index], again } (eventId null until handed in). A hand-in is a station on the task's line with an endorsement
+// request to the teacher who set it, so endorse/declineRequest decide it. Both lists are made on first use.
+const tTasks = () => (store.teacherTasks ||= []);
+const tRows = () => (store.handIns ||= []);
+const ymd = /^\d{4}-\d{2}-\d{2}$/;
+const dayAfter = (d, n = 1) => new Date(Date.parse(d) + n * 864e5).toISOString().slice(0, 10);
+const WEEKDAY = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+// "today", "tomorrow", "Friday" (within a week), else "6 Nov 2026".
+export function dueWords(due) {
+  if (!ymd.test(due || '')) return '';
+  const n = Math.round((Date.parse(due) - Date.parse(TODAY)) / 864e5);
+  return n === 0 ? 'today' : n === 1 ? 'tomorrow' : n > 1 && n < 7 ? WEEKDAY[new Date(Date.parse(due)).getUTCDay()] : `${Number(due.slice(8))} ${MON[Number(due.slice(5, 7)) - 1]} ${due.slice(0, 4)}`;
+}
+export const getTask = (id) => tTasks().find((t) => t.id === id);
+const rowOf = (taskId, studentId) => tRows().find((r) => r.taskId === taskId && r.studentId === studentId);
+const rowFor = (taskId, studentId) => rowOf(taskId, studentId) || (tRows().push({ id: uid('hi-'), taskId, studentId, due: null, reminded: null, date: null, at: null, eventId: null, ticked: [] }), tRows().at(-1));
+export const taskDue = (t, studentId) => rowOf(t.id, studentId)?.due || t.due;
+const handInRequest = (t, e) => (e && store.requests.find((r) => r.eventId === e.id && r.teacherId === t.teacherId)) || null;
+// One student's state on a task. status: none | overdue (not handed in, past due) | handed | late (after the due date);
+// check: waiting | more (asked for more) | endorsed | null.
+export function taskStatus(t, studentId) {
+  const row = rowOf(t.id, studentId) || null, due = row?.due || t.due;
+  const event = (row?.eventId && getEvent(row.eventId)) || null;
+  if (!event) return { row, due, event: null, request: null, status: TODAY > due ? 'overdue' : 'none', check: null };
+  const request = handInRequest(t, event);
+  const check = event.verification === 'teacher-endorsed' ? 'endorsed' : request?.status === 'returned' ? 'more' : request?.status === 'pending' ? 'waiting' : null;
+  return { row, due, event, request, status: row.date > due ? 'late' : 'handed', check };
+}
+function taskFields(f, c, old = {}) {
+  const title = String(f.title ?? old.title ?? '').trim().slice(0, 120);
+  if (title.length < 3) throw Object.assign(new Error('Give the task a title'), { status: 400 });
+  const due = f.due ?? old.due;
+  if (!ymd.test(due || '')) throw Object.assign(new Error('Pick a due date'), { status: 400 });
+  const lineId = f.lineId !== undefined ? f.lineId : old.lineId ?? c?.lineId ?? null;
+  const l = lineId && lineById(lineId);
+  if (!l || l.studentId) throw Object.assign(new Error('Pick a line for the hand-ins'), { status: 400 });
+  const checklist = (Array.isArray(f.checklist) ? f.checklist : old.checklist || []).map((x) => String(x ?? '').trim().slice(0, 120)).filter(Boolean);
+  if (checklist.length > 5) throw Object.assign(new Error('Up to 5 checklist items'), { status: 400 });
+  return { title, brief: String(f.brief ?? old.brief ?? '').trim().slice(0, 600), due, lineId, checklist, needsFile: !!(f.needsFile ?? old.needsFile) };
+}
+const taskView = (t) => ({ ...t, teacher: teacherById[t.teacherId] || null, className: classById(t.classId)?.name || '', line: lineById(t.lineId) || null });
+// A class's tasks, newest first, with counts: handed (on time), late, notYet (overdue among them), waiting (to look at), endorsed.
+export function tasksForClass(classId) {
+  return tTasks().filter((t) => t.classId === classId).map((t) => {
+    const st = t.studentIds.map((sid) => taskStatus(t, sid));
+    const n = (k, v) => st.filter((x) => x[k] === v).length;
+    return { ...taskView(t), handed: n('status', 'handed'), late: n('status', 'late'), notYet: n('status', 'none') + n('status', 'overdue'), overdue: n('status', 'overdue'), waiting: n('check', 'waiting'), endorsed: n('check', 'endorsed') };
+  }).sort((a, b) => b.at.localeCompare(a.at) || b.id.localeCompare(a.id));
+}
+// The hand-in grid: one row per student the task was set for; to look at first, then asked for more, overdue, not yet, endorsed.
+const GRID_ORDER = ['waiting', 'more', 'overdue', 'none', 'endorsed', 'other'];
+export function taskGrid(taskId) {
+  const t = getTask(taskId);
+  if (!t) return null;
+  const rows = t.studentIds.map((sid) => ({ studentId: sid, student: getStudent(sid) || null, ...taskStatus(t, sid) })).map((r) => ({
+    ...r, photo: r.event?.evidence.find((x) => x.kind === 'image') || null, files: r.event?.evidence.filter((x) => x.kind !== 'image') || [],
+    text: (r.event && store.reflections.filter((x) => x.eventId === r.event.id && x.prompt === t.title).map((x) => x.text).join('\n\n')) || '', key: r.check || (r.event ? 'other' : r.status),
+  })).sort((a, b) => GRID_ORDER.indexOf(a.key) - GRID_ORDER.indexOf(b.key) || (a.student?.name || '~').localeCompare(b.student?.name || '~'));
+  return { task: taskView(t), rows };
+}
+// A student's tasks: open ones (not handed in, or asked for more) by due date, then ones handed in during the last week.
+export function tasksFor(studentId) {
+  return tTasks().filter((t) => t.studentIds.includes(studentId)).map((t) => ({ ...taskView(t), ...taskStatus(t, studentId) }))
+    .map((x) => ({ ...x, open: !x.event || x.check === 'more', reason: x.check === 'more' ? x.request?.reason || '' : '' }))
+    .filter((x) => x.open || (x.row?.date || '') >= daysBefore(7))
+    .sort((a, b) => b.open - a.open || a.due.localeCompare(b.due) || a.at.localeCompare(b.at));
+}
+// "Waiting for you": the teacher's tasks with hand-ins to look at, and those requests.
+export function taskHandInWaits(teacherId) {
+  return tTasks().filter((t) => t.teacherId === teacherId).map((t) => ({ task: taskView(t), requests: t.studentIds.map((sid) => taskStatus(t, sid)).filter((x) => x.check === 'waiting').map((x) => x.request) }))
+    .filter((g) => g.requests.length);
+}
+export function setTask(classId, teacherId, f = {}) {
+  const c = classById(classId), tr = teacherById[teacherId];
+  if (!c) throw Object.assign(new Error('No such class'), { status: 404 });
+  if (!tr) throw Object.assign(new Error('No such teacher'), { status: 400 });
+  const t = { id: uid('tk-'), classId, teacherId, ...taskFields(f, c), date: TODAY, at: nowIso(), studentIds: nowIn(classId) || [], editedAt: null };
+  tTasks().push(t);
+  for (const sid of t.studentIds) notify(toStudent(sid), `${shortName(tr.name)} set a task: “${t.title}”, due ${dueWords(t.due)}`, { persona: toStudent(sid), screen: 'map' });
+  emit();
+  return t;
+}
+export function editTask(taskId, teacherId, f = {}) {
+  const t = getTask(taskId);
+  if (!t) throw Object.assign(new Error('No such task'), { status: 404 });
+  const was = t.due;
+  Object.assign(t, taskFields(f, classById(t.classId), t), { editedAt: nowIso() });
+  if (t.due !== was) for (const sid of t.studentIds) if (!rowOf(t.id, sid)?.eventId && !rowOf(t.id, sid)?.due) notify(toStudent(sid), `“${t.title}” is now due ${dueWords(t.due)}`, { persona: toStudent(sid), screen: 'map' });
+  emit();
+  return t;
+}
+// More time for one student (due: a date, or null to go back to the task's date). A new date is reminded again.
+export function extendTask(taskId, studentId, due, teacherId) {
+  const t = getTask(taskId);
+  if (!t || !t.studentIds.includes(studentId)) throw Object.assign(new Error('This task is not for that student'), { status: 404 });
+  if (due !== null && !ymd.test(due || '')) throw Object.assign(new Error('Pick a date'), { status: 400 });
+  const row = rowFor(taskId, studentId);
+  row.due = due && due !== t.due ? due : null; row.reminded = null;
+  const tr = teacherById[teacherId] || teacherById[t.teacherId];
+  notify(toStudent(studentId), `${tr ? shortName(tr.name) : 'Your teacher'} gave you until ${dueWords(row.due || t.due)} for “${t.title}”`, { persona: toStudent(studentId), screen: 'map' });
+  emit();
+  return row;
+}
+// Hand in: a station on the task's line (the student's sub-line of it if they have one), what they did as its reflection,
+// and an endorsement request to the teacher who set it. Asked for more: the same station gets the new words and files,
+// and the request is pending again.
+export function handInTask(taskId, studentId, { text = '', ticked = [], image = null, imageCaption = 'Photo', files = [] } = {}) {
+  const t = getTask(taskId), s = getStudent(studentId);
+  if (!t || !s || !t.studentIds.includes(studentId)) throw Object.assign(new Error('This task is not for you'), { status: 404 });
+  const words = String(text || '').trim().slice(0, 4000);
+  const extra = (Array.isArray(files) ? files : []).filter((x) => x && typeof x.url === 'string').slice(0, 5);
+  if (t.needsFile && !image && !extra.length) throw Object.assign(new Error('This task needs a photo or a file'), { status: 400 });
+  if (!words && !image && !extra.length) throw Object.assign(new Error('Say what you did first'), { status: 400 });
+  const tick = [...new Set((Array.isArray(ticked) ? ticked : []).filter((i) => Number.isInteger(i) && i >= 0 && i < t.checklist.length))].sort((a, b) => a - b);
+  const now = taskStatus(t, studentId);
+  if (now.event && now.check !== 'more') throw Object.assign(new Error('You already handed this in'), { status: 409 });
+  const row = rowFor(taskId, studentId);
+  if (now.event) {
+    now.event.evidence = [...now.event.evidence, ...(image ? [{ kind: 'image', url: image, caption: imageCaption }] : []), ...extra];
+    if (words) store.reflections.push({ id: uid('rf-x'), eventId: now.event.id, text: words, prompt: t.title, date: TODAY, visibility: now.event.visibility });
+    Object.assign(now.request, { status: 'pending', resubmitted: true, date: TODAY, fresh: true });
+    Object.assign(row, { again: nowIso(), ticked: tick });
+    notify(toTeacher(t.teacherId), `${s.name.split(' ')[0]} handed in “${t.title}” again`, { persona: toTeacher(t.teacherId), screen: 'classes', param: `${t.classId}~task~${t.id}` });
+    log(studentId, s.name, 'request', `Handed in “${t.title}” again`);
+  } else {
+    const lane = laneFor(s, t.lineId);
+    const e = addStation(studentId, { title: t.title, lineIds: [lane], type: 'project', image, imageCaption, files: extra, visibility: 'advisor', via: 'Class task',
+      requestFrom: teacherById[t.teacherId] ? t.teacherId : null, requestNote: `Hand-in for “${t.title}”` });
+    e.task = t.id;
+    if (words) store.reflections.push({ id: uid('rf-x'), eventId: e.id, text: words, prompt: t.title, date: e.date, visibility: 'advisor' });
+    Object.assign(row, { date: TODAY, at: nowIso(), eventId: e.id, ticked: tick });
+  }
+  emit();
+  return row;
+}
+// The day before a task is due: one notification to each student still in the class who has not handed it in (an
+// extension's date counts, and is reminded once too). The server runs it (server/routes/68-tasks.mjs); nobody else may.
+export function remindDueTasks() {
+  const tomorrow = dayAfter(TODAY);
+  let n = 0;
+  for (const t of tTasks()) {
+    const still = new Set(nowIn(t.classId) || []);
+    for (const sid of t.studentIds) {
+      if (!still.has(sid)) continue;
+      const row = rowOf(t.id, sid), due = row?.due || t.due;
+      if (due !== tomorrow || row?.eventId || row?.reminded === due) continue;
+      rowFor(t.id, sid).reminded = due;
+      notify(toStudent(sid), `Reminder: “${t.title}” is due tomorrow`, { persona: toStudent(sid), screen: 'map' });
+      n++;
+    }
+  }
+  if (n) emit();
+  return n;
+}
+
 // ── Advisor nudges: a friendly note to an advisee who has gone quiet ──
 // store.nudges = [{ id, studentId, from (teacher id), text, date, ts }], made on first use. At most one per student per 7 days.
 export const NUDGE_TEXT = "Your advisor would love to see what you've been up to. Add one thing from this week.";
@@ -2616,6 +2776,7 @@ importCandidates = act('importCandidates', importCandidates); eraseStudent = act
 setSubjectLine = act('setSubjectLine', setSubjectLine);
 askClass = act('askClass', askClass); remindClass = act('remindClass', remindClass); answerPrompt = act('answerPrompt', answerPrompt); skipPrompt = act('skipPrompt', skipPrompt);
 nudgeStudent = act('nudgeStudent', nudgeStudent);
+setTask = act('setTask', setTask); editTask = act('editTask', editTask); extendTask = act('extendTask', extendTask); handInTask = act('handInTask', handInTask); remindDueTasks = act('remindDueTasks', remindDueTasks);
 addMomentComment = act('addMomentComment', addMomentComment); editMomentComment = act('editMomentComment', editMomentComment); deleteMomentComment = act('deleteMomentComment', deleteMomentComment); markCommentsRead = act('markCommentsRead', markCommentsRead);
 reportItem = act('reportItem', reportItem); moderateReport = act('moderateReport', moderateReport);
 spotMoment = act('spotMoment', spotMoment); acceptSpotted = act('acceptSpotted', acceptSpotted); declineSpotted = act('declineSpotted', declineSpotted);
