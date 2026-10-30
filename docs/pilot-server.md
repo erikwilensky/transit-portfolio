@@ -1861,3 +1861,43 @@ number on the bell.
   and Clear read; Aaron Torres turns everything off and sets quiet hours: at 22:30 Bangkok (Playwright clock) no number,
   at 07:30 the number counts only the safeguarding notice, which is still in his bell; the demo keeps settings per device;
   axe on the dialog and the bell. Screenshots `tp-ns-*.png`.
+
+## Search (`src/search.js`, `src/components/Search.jsx`)
+
+- **Where**: a box in the top bar ("Search your portfolio", "Search students and moments", "Search your family view"); `/`
+  from anywhere focuses it (Ctrl+K still opens the launcher, and `/` opens the launcher only where there is no search, as
+  for alumni and external readers). An ARIA combobox (`#tsearch-q`, `aria-controls="tsearch"`, `aria-activedescendant`) over
+  one listbox whose options are grouped by kind (Students, Moments, Goals, Reflections, Teachers' notes, Lines), the
+  matching words in `<mark>`, a snippet of the field that matched. Filters: type, line, date (last 30 days, this term,
+  this school year, before it). Arrows, Home/End, Enter; Escape closes the list, then the station panel, then clears. On a
+  phone it opens as a full sheet. Simple level: no text box; a big "Find something I did" on the home and a search icon in
+  the bar open a dialog with recent moments and line chips first, and "Type a word instead".
+- **Opening a result**: a student goes to their own map with the station open (`#/me/map/<eventId>`, Simple level too).
+  Staff and families get the read-only station panel over the screen they are on. A student result (staff) narrows the
+  search to that student and offers their page where one exists (an advisee's page, or `classes/<class>~<student>` for a
+  class they teach).
+- **What is searched**: only the part of the record this browser already holds (no new server data, no route). Per student,
+  the map as that person's screens read it (`mapFor(api, persona, sid)`): a student's own `getStudentMap(id, 'student')`; a
+  family `getStudentMap(child, familyViewer(child), { family: true })`; whole-school roles and the student's advisor
+  `getStudentMap(id, 'advisor')`; any other teacher the school level plus moments the student asked them about or they
+  sponsor (as My classes shows it). So private moments and reflections never reach any staff search, and in a pilot,
+  students outside reach are not in the browser at all. Docs: moments and goals (title, summary, about, evidence captions,
+  learner profile and ATL tags, line names), reflections, teachers' notes (endorsement notes, a sponsor's check-ins, staff
+  comments on a moment; for the student also a teacher's reflection question), the student's lines; staff also students
+  (name, homeroom, Year, programme) and advisor notes (advisor and whole-school roles only).
+- **Index**: built on the first search, kept per signed-in person; each api change marks it stale and the next search
+  re-reads only docs whose text changed (`setDocs`). Words: lower case, split on non-letters; Thai with `Intl.Segmenter`
+  where the browser has it. A query word matches the start of a word; a Thai word also matches anywhere (word breaks in Thai
+  are a guess, and without a segmenter that is the only way). Every query word must match. At most 50 results (`LIMIT`),
+  best first (title, then summary and notes, then the rest; newer first on a tie), with the total shown.
+- **Size** (real roster, `scripts/checks/search.cjs`): Aaron with 300 moments, first search with the index built about 4 ms,
+  then under 1 ms; a coordinator over 960 students (1,260 docs), first search about 23 ms, then about 2 ms.
+- `window.__tpSearch(q, filters, { cold })` returns `{ ms, buildMs, docs, total, titles }` for the browser checks.
+- Tests: `node --test src/search.test.mjs` (index, Thai, highlights, filters, visibility); `server/test/search.test.mjs`
+  (each person's scoped snapshot loaded and searched: only what was sent, never private for staff, nothing without reach);
+  `node scripts/checks/search.cjs` (real roster, skipped when missing; separate browser contexts: Aaron Torres finds his
+  moments at Simple and Standard level and a Thai-titled one by a Thai word; Mr David Coultas finds Aaron by name and
+  homeroom and his school-visible moment, not his private one, and sees a new moment as soon as it is added; a teacher with
+  no reach finds nothing of Aaron; his family finds the family view; a coordinator's timing; phone sheet; axe).
+- Not done: Thai labels beyond the box, groups and filters; searching presentations, share links or class tasks; spelling
+  variants (British/US) and typo tolerance.

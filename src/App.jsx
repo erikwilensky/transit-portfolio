@@ -66,6 +66,7 @@ import Poster from './screens/Poster.jsx';
 import AlumJourney from './screens/AlumJourney.jsx';
 import ImportFile from './screens/ImportFile.jsx';
 import Logo from './components/Logo.jsx';
+import { TopSearch, SimpleFind, openSearch } from './components/Search.jsx';
 import NavBar from './components/NavBar.jsx';
 import Launcher from './components/Launcher.jsx';
 import ShareDialog from './components/ShareDialog.jsx';
@@ -172,12 +173,12 @@ export default function App() {
     };
     addEventListener('keydown', k, true); return () => removeEventListener('keydown', k, true);
   }, [menu]);
-  // F16: / or Ctrl+K opens the launcher from anywhere (except while typing).
+  // F16: Ctrl+K opens the launcher from anywhere; / goes to search (the launcher where there is none), except while typing.
   useEffect(() => {
     const k = (e) => {
       const typing = e.target.closest?.('input, textarea, select, [contenteditable]');
       if ((e.key === 'k' || e.key === 'K') && (e.ctrlKey || e.metaKey)) { e.preventDefault(); setLaunch((v) => !v); }
-      else if (e.key === '/' && !typing && !e.ctrlKey && !e.metaKey) { e.preventDefault(); setLaunch(true); }
+      else if (e.key === '/' && !typing && !e.ctrlKey && !e.metaKey) { e.preventDefault(); if (!openSearch()) setLaunch(true); }
     };
     addEventListener('keydown', k); return () => removeEventListener('keydown', k);
   }, []);
@@ -265,7 +266,8 @@ export default function App() {
           <NavBar items={nav} hrefOf={(id) => `#/${persona.id}/${id}`} isOn={(id) => route.screen === id || (id === 'advisory' && route.screen === 'student')} onGo={(id) => go(persona.id, id)} moreLabel={T('More')} />
           <div className="nav-right">
             <SyncStatus />
-            <button className="icon-btn nav-search" onClick={() => setLaunch(true)} aria-label="Jump to anything (Ctrl+K)" title="Jump to anything (/ or Ctrl+K)"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" strokeWidth="1.8" /><path d="M11 11l3.5 3.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg></button>
+            <TopSearch key={persona.id} persona={persona} go={go} toast={toast} version={version} lang={lang} simple={level === 'simple'} />
+            <button className="icon-btn nav-search" onClick={() => setLaunch(true)} aria-label="Jump to anything (Ctrl+K)" title="Jump to anything (Ctrl+K)"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" strokeWidth="1.8" /><path d="M11 11l3.5 3.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg></button>
             <div className="menu-wrap">
               <button className="persona-btn" onClick={() => setMenu(menu === 'persona' ? null : 'persona')} aria-expanded={menu === 'persona'} aria-haspopup="menu">
                 <span className="av" style={{ background: persona.colour, color: inkOn(persona.colour) }}>{persona.initials}</span>
@@ -478,7 +480,7 @@ function StudentScreens({ screen, param, studentId, drafts, setDrafts, audience,
   const level = getIntensity(studentId);
   if (screen === 'leaver' && !leaverAllowed(studentId)) screen = 'map'; // under Year 11: no leaver portfolio
   if (screen === 'cas' && !casAllowed(studentId)) screen = 'map'; // CAS: Years 12 and 13
-  if (level === 'simple' && screen === 'map') return <>{nudge}<SimpleHome map={map} studentId={studentId} toast={toast} version={version} addRequest={addReq} focusId={param} /></>;
+  if (level === 'simple' && screen === 'map') return <>{nudge}<SimpleFind big persona={persona} go={go} version={version} /><SimpleHome map={map} studentId={studentId} toast={toast} version={version} addRequest={addReq} focusId={param} /></>;
   if (screen === 'leaver' && leaverAllowed(studentId)) return <LeaverBuilder studentId={studentId} version={version} toast={toast} />;
   if (screen === 'poster') return <Poster map={map} publicMap={publicMap} drafts={myDrafts} toast={toast} />;
   if (screen === 'family') return <ShowFamily map={map} toast={toast} version={version} />;
