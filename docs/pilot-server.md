@@ -1525,3 +1525,46 @@ their map; the server refuses the mutators).
   rely on the CSS colour fix in `a11y.css` rather than their own markup. axe cannot judge everything, and nothing has
   been tried yet with a real screen reader (VoiceOver, NVDA, TalkBack). The Thai words for the new
   options are in `src/i18n.js`; the sign-in page has no display menu (it uses this device's last choice).
+
+## CAS experiences and hours, Years 12 and 13 (`src/api.js`, `src/components/Cas.jsx`, `src/screens/CasDashboard.jsx`, `server/routes/47-cas.mjs`)
+
+Builds on the demo's CAS material: an experience is a station with `e.cas = { strand, outcomes, from, to }` (the same field
+"Counts for CAS?" sets on any station), so the coordinator's outcome grid, the map and imports read it as before.
+
+- **Experiences**: `api.logCasExperience(studentId, { title, strand: 'C'|'A'|'S', from, to?, outcomes: [1..7], summary, reflection,
+  evidence, visibility, hours? })` → `{ event, entry }`. A station of type `cas` on the **CAS line** (`cas`, a school line made the
+  first time anyone logs, put on that student's map; left out of onboarding), never private (advisor at least), its reflection
+  dated today. Only students in Years 12 and 13 (`api.casAllowed`).
+- **Hours**: `store.casHours = [{ id, studentId, eventId, date, hours, note, supervisor, status: pending|confirmed|returned, at,
+  decided?: { via, by, name, at, comment }, code?: { hash, expires } }]`. `api.logCasHours(studentId, eventId, { date, hours, note,
+  supervisor })` on any CAS station of theirs; `withdrawCasHours(id, studentId)` (not once confirmed). `supervisor` is
+  `{ kind: 'staff', teacherId }`, `{ kind: 'outside', name, email }` (no account, never emailed) or null (the coordinator confirms).
+  Hours: more than 0, at most 24 in one go (quarter hours), never in the future. A staff supervisor is notified (`casconfirm`).
+- **Confirming**: `api.confirmCasHours(id, by, { via, comment? })` and `returnCasHours(id, by, { via, comment })` (a note is required,
+  except by code). `via: 'supervisor'`: the staff member the entry names, as themselves; `'coordinator'`: a CAS coordinator or admin
+  on anyone's behalf; `'code'`: only the server. The student is notified either way.
+- **CAS coordinators**: account kind `coordinator` (the class lists' role), or any teacher marked on Accounts ("CAS coordinators",
+  `api.setCasCoordinator(teacherId, on)`, admin only; `teacher.casCoordinator`, kept by later imports). A marked teacher's reach
+  (`teacherReach`) gains every student in Years 12 and 13. `api.isCasCoordinator(persona)`.
+- **Outside supervisor's code**: `POST /api/cas/code { entryId }` (the student, a CAS coordinator, an admin) → `{ code: 'ABCD-2345',
+  expires }`, 30 days (`CAS_CODE_DAYS`); a new code replaces the old; only its SHA-256 is in the record (`api.setCasCode`, never
+  through `/api/action`). The student shows or prints the card (QR of `#/c/<code>`). `GET /api/public/cas/:code` → `{ student (first
+  name), year, title, strand, date, hours, note, supervisor, expires }`; `POST /api/public/cas/:code { email, ok, comment? }` →
+  `{ status }`: the email must be the one the student gave. One time only. Wrong codes and emails count per address (`CAS_TRIES`,
+  30 in 15 minutes, then 429); five wrong emails end that code. Activity log: `cas-code`, `cas-confirm` (never the code).
+- **canAct** (`server/auth.mjs`, `casOk`): logging and taking back only the student; confirming as above; `setCasCode` nobody;
+  `setCasCoordinator` admins. **Scope** (`server/scope.mjs`): `casHours` go to the student (without the code's hash), CAS coordinators
+  and admins, and a staff supervisor only for the entries naming them, each with `about: { name, year, title, strand }`, without the
+  student entering their reach. Never families, advisors or other teachers (they see the station, by its visibility).
+- **Screens**: students in Years 12 and 13 get **CAS** (`#/me/cas`, pilot navigation): coverage of strands and the seven outcomes,
+  hours confirmed and waiting, "Log a new experience", and per experience "Log more hours", "Add a reflection", "Show code".
+  Staff named as supervisor get **CAS to confirm** (`#/me/casconfirm`, in the navigation once an entry names them). CAS
+  coordinators get **CAS outcomes** (`#/me/cas`): per student Hours (confirmed, waiting) and Flags (`api.casCohort`: Nothing logged
+  yet, No Service yet, Outcome missing, No reflection in 6 weeks: `CAS_QUIET_DAYS`), a filter by advisor, the hours in the side
+  panel and "Hours waiting for confirmation", each with Confirm (for the supervisor) and Not right. The supervisor's page (`#/c`,
+  `#/c/<code>`) loads on its own, signed out, never the record.
+- PDPA: hours entries carry `studentId`, so a copy and erasure include them.
+- Tests: `server/test/cas-hours.test.mjs`; `node scripts/checks/cas-hours.cjs` (a clean pilot on the real roster: picks a Year 12
+  or 13 student and a teacher who neither teaches nor advises them; the student logs, the teacher confirms, the coordinator's grid
+  updates live, an outside supervisor confirms by code on a phone, the coordinator confirms one on a supervisor's behalf; axe on
+  every new screen).

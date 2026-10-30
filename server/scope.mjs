@@ -39,6 +39,8 @@ export function teacherReach(tid) {
   for (const t of s.classTasks || []) if (t.teacherId === tid) [...(t.submitted || []), ...(t.late || [])].forEach((sid) => add(sid, t.date || t.due));
   for (const e of [...(s.inbox || []), ...(s.dismissed || [])]) if (e.classEndorsement?.teacherId === tid) add(e.studentId, e.classEndorsement.date);
   try { for (const r of api.getDpCore()) if (r.supervisor?.id === tid) add(r.student.id, NOW); } catch { /* partial record */ }
+  // A teacher marked as CAS coordinator on Accounts (api.setCasCoordinator): every student in Years 12 and 13.
+  if ((s.teachers || []).find((t) => t.id === tid)?.casCoordinator) for (const x of s.students) if (x.grade >= 11) add(x.id, NOW);
   return new Set([...out].filter((id) => api.getStudent(id)));
 }
 
@@ -94,7 +96,7 @@ export function scopedSnapshot(user) {
   const store = {};
   store.students = full.students.filter((s) => inReach(s.id));
   // The staff directory: names and roles only.
-  store.teachers = (full.teachers || []).map((t) => ({ id: t.id, name: t.name, role: t.role, ...(t.pilot ? { pilot: true } : {}) }));
+  store.teachers = (full.teachers || []).map((t) => ({ id: t.id, name: t.name, role: t.role, ...(t.pilot ? { pilot: true } : {}), ...(t.casCoordinator ? { casCoordinator: true } : {}) }));
   store.lines = full.lines.filter((l) => !l.studentId || inReach(l.studentId));
   store.events = full.events.filter(showEvent);
   const shown = new Map(store.events.map((e) => [e.id, e.studentId]));
@@ -200,6 +202,12 @@ export function scopedSnapshot(user) {
   // (they read it only through a link the student gives them).
   store.leaver = parent ? {} : Object.fromEntries(Object.entries(full.leaver || {}).filter(([sid]) => inReach(sid))
     .map(([sid, p]) => [sid, sid === self ? p : { ...p, links: (p.links || []).map(({ token, ...l }) => l) }]));
+  // CAS hours (api.logCasHours): the student's own; CAS coordinators (role coordinator or marked on Accounts) and admins every
+  // one; a staff supervisor only the entries naming them, with what each is about (`about`), even for a student outside
+  // their reach. Never families or other staff. A code's hash never leaves the server (only when it expires).
+  const casCoord = isAdmin(user) || (staff && api.isCasCoordinator({ kind: user?.kind, teacherId: tid }));
+  const casOut = ({ code, ...x }) => ({ ...x, ...(code ? { code: { expires: code.expires } } : {}), ...(self ? {} : { about: api.casAbout(x) }) });
+  store.casHours = parent ? [] : (full.casHours || []).filter((x) => (self ? x.studentId === self : casCoord || (!!tid && x.supervisor?.kind === 'staff' && x.supervisor.teacherId === tid))).map(casOut);
   // Everything else (school lines' settings, integrations, rollout, family language, classes, keys other features add).
   for (const [k, v] of Object.entries(full)) if (!(k in store)) store[k] = generic(v, inReach);
   // Counts the whole-school screens show for what they may not open.
@@ -291,3 +299,8 @@ Object.assign(TOUCHES, {
   pauseExhibition: (a) => T([], [a[2]]), revokeExhibition: (a) => T([], [a[1]]),
 });
 Object.assign(TOUCHES, { saveLeaver: own0, shareLeaver: own0, revokeLeaver: own0, doneLeaverComment: own0, commentLeaver: (a) => T([a[0]], [a[1] ?? '?']) });
+const casOwner = (id) => (st().casHours || []).find((x) => x.id === id)?.studentId ?? '?';
+Object.assign(TOUCHES, {
+  logCasExperience: own0, logCasHours: (a) => T([a[0], ev(a[1])]), withdrawCasHours: (a) => T([casOwner(a[0])]), setCasCode: (a) => T([casOwner(a[0])]),
+  confirmCasHours: (a) => T([casOwner(a[0])], [a[1]]), returnCasHours: (a) => T([casOwner(a[0])], [a[1]]), setCasCoordinator: (a) => T([], [a[0]]),
+});

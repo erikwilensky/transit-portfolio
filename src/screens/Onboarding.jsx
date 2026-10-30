@@ -10,7 +10,7 @@ export default function Onboarding({ map, studentId, onDone }) {
   const [picked, setPicked] = useState([]);
   const [arrived, setArrived] = useState(0);
   const [tpl, setTpl] = useState('postcard');
-  const lines = getSchoolLines();
+  const lines = getSchoolLines().filter((l) => l.id !== 'cas'); // the CAS line comes with the first CAS experience (api.logCasExperience)
   const chosen = picked.map((id) => lines.find((l) => l.id === id));
   useEffect(() => {
     if (step !== 2) return undefined;

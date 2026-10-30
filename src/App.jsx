@@ -80,6 +80,8 @@ import { isMonday } from './week.js';
 import { QADrawer, TourCard, TourRoute } from './components/TourCards.jsx';
 import { LeaverBuilder, PublicLeaver } from './components/Leaver.jsx';
 import { leaverAllowed } from './api.js';
+import { CasConfirm, CasLog } from './components/Cas.jsx';
+import { casAllowed, casToConfirm, isCasCoordinator } from './api.js';
 
 // Routes: #/<persona>/<screen>/<param>, plus public #/s/<token>, #/v/<code> and #/p/<student>[/th] (parent link).
 // A screen set this persona uses: their own kind, or another hat they wear in the pilot (persona.also).
@@ -88,7 +90,7 @@ const parse = () => {
   const [a, b, c] = location.hash.replace(/^#\/?/, '').split('/');
   if (a === 's' || a === 'v' || a === 'p' || a === 'l') return { publicKind: a, param: b, lang: c };
   const p = personaById(a);
-  const screens = navOf(p).map(([id]) => id).concat(p.kind === 'advisor' ? ['student'] : p.kind === 'student' ? ['poster', 'add', 'snap', 'leaver'] : []);
+  const screens = navOf(p).map(([id]) => id).concat(p.kind === 'advisor' ? ['student'] : p.kind === 'student' ? ['poster', 'add', 'snap', 'leaver', 'cas'] : []).concat(p.teacherId && p.kind !== 'student' ? ['cas', 'casconfirm'] : []);
   // Staff with "This week" land on it on Mondays (Bangkok) when the address names no screen.
   return { persona: p.id, screen: screens.includes(b) ? b : !b && screens.includes('week') && isMonday(TODAY) ? 'week' : home(p), param: c || null };
 };
@@ -219,6 +221,11 @@ export default function App() {
   const changeLevel = (v) => { setIntensity(persona.studentId, v); if (INTENSITY_NAV[v] && !INTENSITY_NAV[v].includes(route.screen)) go(persona.id, 'map'); toast(`Interface set to ${v}. Your map and everything on it stay the same.`); };
   const nav = navOf(persona).filter(([id]) => !level || !INTENSITY_NAV[level] || INTENSITY_NAV[level].includes(id)).map(([id, l]) => [id, T(INTENSITY_LABEL[level]?.[id] || l)]);
   if (persona.kind === 'student' && leaverAllowed(studentId)) nav.push(['leaver', 'Leaver portfolio']); // Years 11 to 13
+  // CAS (src/components/Cas.jsx): Years 12 and 13 log experiences and hours (pilot); staff named as supervisor confirm; a teacher
+  // marked as CAS coordinator on Accounts gets the cohort grid.
+  if (pilot && persona.kind === 'student' && casAllowed(studentId)) nav.push(['cas', 'CAS']);
+  if (persona.kind !== 'student' && persona.teacherId && casToConfirm(persona.teacherId).length) nav.push(['casconfirm', 'CAS to confirm']);
+  if (persona.kind !== 'student' && persona.kind !== 'coordinator' && isCasCoordinator(persona)) nav.push(['cas', 'CAS outcomes']);
   const keys = notifyKeys(persona);
   const notes = getNotifications(keys);
   const unread = notes.filter((n) => !n.read).length;
@@ -340,7 +347,8 @@ export default function App() {
           {acts(persona, 'advisor') && route.screen === 'student' && (getStudent(route.param?.split('~')[0] || 'st-01') ? <AdvisorStudent studentId={route.param?.split('~')[0] || 'st-01'} focus={route.param?.split('~')[1]} {...ctx} /> : <NotInRecord onBack={() => go(persona.id, 'advisory')} />)}
           {acts(persona, 'teacher') && route.screen === 'queue' && <TeacherQueue teacherId={persona.teacherId} focus={route.param} {...ctx} />}
           {pilot && acts(persona, 'teacher') && route.screen === 'classes' && <MyClasses teacherId={persona.teacherId} param={route.param} {...ctx} />}
-          {persona.kind === 'coordinator' && route.screen === 'cas' && <CasDashboard {...ctx} />}
+          {persona.kind !== 'student' && isCasCoordinator(persona) && route.screen === 'cas' && <CasDashboard {...ctx} />}
+          {persona.kind !== 'student' && persona.teacherId && route.screen === 'casconfirm' && <CasConfirm {...ctx} />}
           {persona.kind === 'counsellor' && route.screen === 'letter' && (getStudent(route.param || 'st-01') ? <ReferenceLetter {...ctx} studentId={route.param || 'st-01'} /> : <NotInRecord onBack={() => go(persona.id, 'applications')} />)}
           {persona.kind === 'leadership' && route.screen === 'dashboard' && <SchoolDashboard {...ctx} />}
           {persona.kind === 'leadership' && route.screen === 'scan' && <ScanIn {...ctx} />}
@@ -371,7 +379,7 @@ export default function App() {
           {pilot && route.screen === 'overview' && (persona.admin || persona.kind === 'leadership' || persona.kind === 'coordinator') && <Overview {...ctx} />}
           {pilot && route.screen === 'activitylog' && (persona.admin || persona.kind === 'leadership') && <ActivityLog {...ctx} />}
           {pilot && route.screen === 'screens' && (persona.admin || ['advisor', 'teacher', 'counsellor', 'coordinator', 'leadership'].includes(persona.kind)) && <Exhibitions {...ctx} />}
-          {route.screen !== 'screens' && route.screen !== 'accounts' && route.screen !== 'usage' && route.screen !== 'reports' && route.screen !== 'overview' && route.screen !== 'week' && route.screen !== 'activitylog' && route.screen !== 'leaver' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} persona={persona} />}
+          {route.screen !== 'screens' && route.screen !== 'accounts' && route.screen !== 'usage' && route.screen !== 'reports' && route.screen !== 'overview' && route.screen !== 'week' && route.screen !== 'activitylog' && route.screen !== 'leaver' && route.screen !== 'cas' && route.screen !== 'casconfirm' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} persona={persona} />}
           </ErrorBoundary>
           {pilot && level === 'simple' && <div className="fb-simple"><button onClick={() => setFbOpen(true)}>Something not working? Tell us</button></div>}
         </main>
@@ -445,6 +453,7 @@ function StudentScreens({ screen, param, studentId, drafts, setDrafts, audience,
   if (map.student.onboarding) return <Onboarding map={map} studentId={studentId} onDone={() => { toast('Your map is ready.'); go(persona.id, 'map'); }} />;
   const level = getIntensity(studentId);
   if (screen === 'leaver' && !leaverAllowed(studentId)) screen = 'map'; // under Year 11: no leaver portfolio
+  if (screen === 'cas' && !casAllowed(studentId)) screen = 'map'; // CAS: Years 12 and 13
   if (level === 'simple' && screen === 'map') return <>{nudge}<SimpleHome map={map} studentId={studentId} toast={toast} version={version} addRequest={addReq} focusId={param} /></>;
   if (screen === 'leaver' && leaverAllowed(studentId)) return <LeaverBuilder studentId={studentId} version={version} toast={toast} />;
   if (screen === 'poster') return <Poster map={map} publicMap={publicMap} drafts={myDrafts} toast={toast} />;
@@ -452,6 +461,7 @@ function StudentScreens({ screen, param, studentId, drafts, setDrafts, audience,
   if (screen === 'links') return <ShareLinks studentId={studentId} drafts={myDrafts} updateDraft={updateDraft} toast={toast} version={version} />;
   if (screen === 'activity') return <Activity studentId={studentId} version={version} />;
   if (screen === 'privacy') return <Privacy studentId={studentId} drafts={myDrafts} toast={toast} go={go} persona={persona} version={version} />;
+  if (screen === 'cas' && casAllowed(studentId)) return <CasLog studentId={studentId} version={version} toast={toast} go={go} persona={persona} />;
   if (screen === 'map') return <>{nudge}<StudentMap map={map} studentId={studentId} toast={toast} version={version} focusId={param} go={go} persona={persona} addRequest={addReq} /></>;
   if (screen === 'studio') return <>{newLink && <ShareDialog link={newLink.link} title={newLink.title} onClose={() => setNewLink(null)} />}
     {gapFor && <ShareGaps pres={gapFor} gaps={gapsOf(gapFor)} lines={map.lines} toast={toast} onClose={() => setGapFor(null)} onShare={() => { const p = gapFor; setGapFor(null); share(myDrafts.find((x) => x.id === p.id) || p); }} />}<Studio key={studentId} level={level} map={publicMap} drafts={myDrafts} audience={(level === 'simple' && !['general', 'university', 'employer'].includes(audience)) || (level === 'standard' && audience === 'custom') ? 'general' : audience} setAudience={setAudience} tier={level === 'simple' ? 'template' : level === 'standard' && tier === 'code' ? 'builder' : tier} setTier={setTier} updateDraft={updateDraft} onShare={askShare} toast={toast} /></>;
