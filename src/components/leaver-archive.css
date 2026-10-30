@@ -1,0 +1,19 @@
+/* End of year: leaver archive (LeaverArchive.jsx), on Accounts. NIST navy, no gradients or shadows. */
+.la h2 { margin: 0; }
+.la .auth-lede, .la .fineprint { margin: 0; }
+.la-bar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
+.la-sum { margin: 0; font-size: 14.5px; color: var(--muted); }
+.la-list { display: flex; flex-direction: column; gap: 12px; }
+.la-all { display: inline-flex; gap: 8px; align-items: center; font-size: 14.5px; font-weight: 600; }
+.la-scroll { max-height: 520px; overflow: auto; border-radius: 8px; }
+.la-table td:first-child { width: 36px; }
+.la-table input[type="checkbox"], .la-all input { width: 18px; height: 18px; accent-color: var(--navy); }
+.la-er { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
+.la-due { border: 1.5px solid #E73C3E; border-left-width: 6px; border-radius: 8px; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; background: var(--surface); }
+.la-due h3 { margin: 0; font-size: 16px; }
+.la-due > p { margin: 0; color: var(--muted); font-size: 14px; }
+.la-due ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.la-due li { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: flex-start; justify-content: space-between; border-top: 1px solid var(--rule); padding-top: 10px; }
+.la-due li small { display: block; color: var(--muted); font-size: 12.5px; }
+.la-due .acc-erase { width: 100%; }
+:root[data-theme="dark"] .la-table input[type="checkbox"], :root[data-theme="dark"] .la-all input { accent-color: #9DB4D6; }

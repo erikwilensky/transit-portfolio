@@ -45,4 +45,5 @@ echo "== subject-prompts (starts its own clean pilot server on the real roster)"
 echo "== leaver-portfolio (starts its own clean pilot server on the real roster)"; node leaver-portfolio.cjs || fail=1
 echo "== cas-hours (starts its own clean pilot server on the real roster)"; node cas-hours.cjs || fail=1
 echo "== system-health (starts its own clean pilot server with a temporary backups folder)"; node system-health.cjs || fail=1
+echo "== leaver-archive (starts its own clean pilot server on the real roster)"; node leaver-archive.cjs || fail=1
 echo "== tours";node tours.cjs | grep -E "end url|ERRS|soon|boom|empty|hs" ; exit $fail

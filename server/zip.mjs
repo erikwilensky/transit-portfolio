@@ -52,3 +52,45 @@ export function unzip(buf) {
   }
   return out;
 }
+
+// A streaming ZIP writer (stored entries) for big downloads: each entry goes to `out` as it is added, so only one
+// entry is in memory at a time. zipStream(res) → { add(name, data) (await it: it waits for the socket), end() }.
+// Offsets are 32-bit (no ZIP64), so one download stays under 4 GB; past that add() throws.
+export function zipStream(out, when = new Date()) {
+  const [time, date] = dosTime(when);
+  const central = [];
+  let offset = 0, count = 0;
+  const write = (buf) => new Promise((resolve, reject) => {
+    if (out.destroyed) return reject(new Error('Download closed'));
+    if (out.write(buf)) return resolve();
+    const done = () => { out.off('close', gone); resolve(); };
+    const gone = () => { out.off('drain', done); reject(new Error('Download closed')); };
+    out.once('drain', done); out.once('close', gone);
+  });
+  return {
+    async add(name, data) {
+      const body = Buffer.isBuffer(data) ? data : Buffer.from(String(data));
+      if (offset + body.length + 1024 > 0xffffffff || count >= 0xffff) throw new Error('Download too big for one ZIP');
+      const fname = Buffer.from(name), crc = crc32(body);
+      const h = Buffer.alloc(30);
+      h.writeUInt32LE(0x04034b50, 0); h.writeUInt16LE(20, 4); h.writeUInt16LE(0x0800, 6); h.writeUInt16LE(0, 8);
+      h.writeUInt16LE(time, 10); h.writeUInt16LE(date, 12); h.writeUInt32LE(crc, 14);
+      h.writeUInt32LE(body.length, 18); h.writeUInt32LE(body.length, 22); h.writeUInt16LE(fname.length, 26); h.writeUInt16LE(0, 28);
+      const c = Buffer.alloc(46);
+      c.writeUInt32LE(0x02014b50, 0); c.writeUInt16LE(20, 4); c.writeUInt16LE(20, 6); c.writeUInt16LE(0x0800, 8); c.writeUInt16LE(0, 10);
+      c.writeUInt16LE(time, 12); c.writeUInt16LE(date, 14); c.writeUInt32LE(crc, 16);
+      c.writeUInt32LE(body.length, 20); c.writeUInt32LE(body.length, 24); c.writeUInt16LE(fname.length, 28); c.writeUInt32LE(offset, 42);
+      central.push(c, fname); count++;
+      offset += 30 + fname.length + body.length;
+      await write(Buffer.concat([h, fname])); await write(body);
+    },
+    async end() {
+      const cd = Buffer.concat(central);
+      const e = Buffer.alloc(22);
+      e.writeUInt32LE(0x06054b50, 0); e.writeUInt16LE(count, 8); e.writeUInt16LE(count, 10);
+      e.writeUInt32LE(cd.length, 12); e.writeUInt32LE(offset, 16);
+      await write(Buffer.concat([cd, e]));
+      await new Promise((resolve) => out.end(resolve));
+    },
+  };
+}

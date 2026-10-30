@@ -6,6 +6,7 @@ import RosterImport from './RosterImport.jsx';
 import SubjectLines from './SubjectLines.jsx';
 import SisSync from '../components/SisSync.jsx';
 import { CasCoordinators } from '../components/Cas.jsx';
+import LeaverArchive from '../components/LeaverArchive.jsx';
 import '../auth.css';
 
 const ago = (iso) => { const m = Math.round((Date.now() - new Date(iso)) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`; };
@@ -90,6 +91,7 @@ export default function Accounts({ toast, persona }) {
       {cards && <AdminCards toast={toast} onClose={() => setCards(false)} onMade={() => admin.list().then(setData, () => {})} />}
       {letters && <AdminFamily toast={toast} onClose={() => setLetters(false)} onChange={() => admin.list().then(setData, () => {})} />}
       {form && <AccountForm form={form} setForm={setForm} data={data} onSubmit={save} />}
+      <LeaverArchive toast={toast} onErased={() => admin.list().then(setData, (x) => setErr(x.message))} />
       <table className="acc-table">
         <thead><tr><th>Name</th><th>Role</th><th>Linked to</th><th>Status</th><th><span className="sr-only">Actions</span></th></tr></thead>
         <tbody>
