@@ -774,3 +774,70 @@ export function studentThai(s) {
   const d = thaiDates(s); if (d !== s && !/[A-Za-z]{2,}/.test(d)) return d;
   return null;
 }
+
+// ── Student-led conferences (src/components/StudentLed.jsx): the family's line in Thai or English, the student's screens and
+// Conference mode in Thai, and the notifications. Keys are written trimmed (this block comes after the trim above).
+const SLC = {
+  en: {
+    head: (f) => `After ${f}’s conference`, intro: (f) => `One line each, kept on ${f}’s conference note. ${f} and the advisor see it too.`,
+    home: 'What we will try at home', next: (f) => `What ${f} will do next`, none: 'Not written yet.', notYet: (f) => `${f} has not written theirs yet.`,
+    by: (a) => `Written by ${a}`, ph: 'e.g. Read together for 20 minutes after dinner', write: 'Write our line', change: 'Change our line',
+    save: 'Save', cancel: 'Cancel', saved: 'Saved on the conference note',
+  },
+  th: {
+    head: (f) => `หลังการประชุมของ ${f}`, intro: (f) => `เขียนคนละหนึ่งบรรทัด เก็บไว้ในบันทึกการประชุมของ ${f} ซึ่ง ${f} และครูที่ปรึกษาจะเห็นด้วย`,
+    home: 'สิ่งที่เราจะลองทำที่บ้าน', next: (f) => `สิ่งที่ ${f} จะทำต่อไป`, none: 'ยังไม่ได้เขียน', notYet: (f) => `${f} ยังไม่ได้เขียน`,
+    by: (a) => `เขียนโดย ${a}`, ph: 'เช่น อ่านหนังสือด้วยกัน 20 นาทีหลังอาหารเย็น', write: 'เขียนบรรทัดของเรา', change: 'แก้ไขบรรทัดของเรา',
+    save: 'บันทึก', cancel: 'ยกเลิก', saved: 'บันทึกในบันทึกการประชุมแล้ว',
+  },
+};
+export const slcWords = (lang) => SLC[lang === 'th' ? 'th' : 'en'];
+NOTE_TH.push(
+  [/^Your family wrote on your conference note$/, () => 'ครอบครัวของคุณเขียนในบันทึกการประชุมของคุณแล้ว'],
+  [/^(.+) wrote on your conference note$/, (m) => `${m[1]} เขียนในบันทึกการประชุมของคุณแล้ว`],
+  [/^(.+) wrote on (.+)’s conference note$/, (m) => `${m[1]} เขียนในบันทึกการประชุมของ ${m[2]} แล้ว`],
+);
+Object.assign(ERR_TH, {
+  'Write one line first': 'โปรดเขียนหนึ่งบรรทัดก่อน', 'Pick something to show, or say what you are proud of': 'เลือกสิ่งที่จะนำเสนอ หรือบอกว่าคุณภูมิใจในเรื่องอะไร',
+  'This conference has finished': 'การประชุมนี้จบแล้ว', 'This conference is not for you': 'การประชุมนี้ไม่ใช่ของคุณ', 'This conference is not for this student': 'การประชุมนี้ไม่ใช่ของนักเรียนคนนี้',
+});
+Object.assign(STU, {
+  'Today is your conference': 'วันนี้เป็นวันประชุมของคุณ', 'Get ready for my conference': 'เตรียมตัวสำหรับการประชุมของฉัน',
+  'You are ready. You can still change it before the day.': 'คุณพร้อมแล้ว ยังแก้ไขได้ก่อนถึงวันประชุม',
+  'Pick a few things to show your family and say what you are proud of. It takes about 5 minutes.': 'เลือกสิ่งที่อยากให้ครอบครัวดูสักสองสามอย่าง และบอกว่าคุณภูมิใจในเรื่องอะไร ใช้เวลาประมาณ 5 นาที',
+  'No time booked yet. Your family picks one.': 'ยังไม่ได้จองเวลา ครอบครัวของคุณจะเป็นคนเลือก', 'Start my conference': 'เริ่มการประชุมของฉัน', 'Change it': 'แก้ไข', 'Get ready': 'เตรียมตัว',
+  'My conference note': 'บันทึกการประชุมของฉัน', 'What we will try at home': 'สิ่งที่เราจะลองทำที่บ้าน', 'What I will do next': 'สิ่งที่ฉันจะทำต่อไป',
+  'Your family adds this on their Family page.': 'ครอบครัวของคุณเขียนส่วนนี้ในหน้าครอบครัวของพวกเขา', 'Not written yet.': 'ยังไม่ได้เขียน', 'What will you do next?': 'คุณจะทำอะไรต่อไป',
+  'Change my line': 'แก้ไขบรรทัดของฉัน', 'Write what I will do next': 'เขียนสิ่งที่ฉันจะทำต่อไป', 'Open my conference': 'เปิดการประชุมของฉัน', 'Saved on your conference note': 'บันทึกในบันทึกการประชุมของคุณแล้ว',
+  'This shows…': 'สิ่งนี้แสดงว่า…', 'I am proud of it because…': 'ฉันภูมิใจเพราะ…', 'I learned…': 'ฉันได้เรียนรู้ว่า…', 'I am proud that…': 'ฉันภูมิใจที่…', 'I am proud of how I…': 'ฉันภูมิใจที่ฉัน…',
+  'I found it tricky to…': 'ฉันรู้สึกว่ายากที่จะ…', 'I kept going by…': 'ฉันไม่ยอมแพ้โดย…', 'I will try to…': 'ฉันจะพยายาม…', 'Next I will…': 'ต่อไปฉันจะ…',
+  'What do you want to show?': 'คุณอยากนำเสนออะไร',
+  'Nothing on your journey to show yet. That is fine: you can still say what you are proud of.': 'ยังไม่มีอะไรบนเส้นทางให้นำเสนอ ไม่เป็นไร คุณยังบอกได้ว่าภูมิใจในเรื่องอะไร',
+  'What do you want to say about it?': 'คุณอยากพูดถึงเรื่องนี้ว่าอย่างไร', 'What are you proud of?': 'คุณภูมิใจในเรื่องอะไร', 'What was hard?': 'อะไรที่ยาก', 'One thing is enough.': 'แค่เรื่องเดียวก็พอ',
+  'What is your goal?': 'เป้าหมายของคุณคืออะไร', 'A goal I have': 'เป้าหมายที่ฉันมีอยู่', 'One thing you want to do next.': 'สิ่งหนึ่งที่คุณอยากทำต่อไป',
+  'I am proud of': 'ฉันภูมิใจใน', 'Something that was hard': 'สิ่งที่ยาก', 'Your advisor can see it. You show it to your family at the conference.': 'ครูที่ปรึกษาเห็นได้ คุณนำเสนอให้ครอบครัวดูในวันประชุม',
+  'I am ready': 'ฉันพร้อมแล้ว', 'You are ready for your conference. On the day, open it and show your family.': 'คุณพร้อมสำหรับการประชุมแล้ว ในวันประชุมเปิดขึ้นมาแล้วนำเสนอให้ครอบครัวดู', 'Try it now': 'ลองดูตอนนี้',
+  'You are ready. On the day, open Conference mode and show it, one screen at a time. You can still change it before then.': 'คุณพร้อมแล้ว ในวันประชุมเปิดโหมดการประชุมแล้วนำเสนอทีละหน้าจอ ยังแก้ไขได้ก่อนถึงวันนั้น',
+  'Try Conference mode': 'ลองโหมดการประชุม', 'Short is fine: this is a chat with your family, not a speech.': 'สั้น ๆ ก็พอ นี่คือการคุยกับครอบครัว ไม่ใช่การกล่าวสุนทรพจน์',
+  'Your progress is kept: save and come back any time.': 'ระบบเก็บสิ่งที่ทำไว้ บันทึกแล้วกลับมาทำต่อได้ทุกเมื่อ', 'You lead the conference: these are your notes for it.': 'คุณเป็นผู้นำการประชุม นี่คือโน้ตของคุณสำหรับการประชุม',
+  '1. What to show': '1. สิ่งที่จะนำเสนอ', '2. In your words': '2. ด้วยคำพูดของคุณ', 'What you want to say about it': 'สิ่งที่คุณอยากพูดถึงเรื่องนี้', '3. Looking back': '3. มองย้อนกลับ', '2. Looking back': '2. มองย้อนกลับ',
+  'What I am proud of': 'สิ่งที่ฉันภูมิใจ', 'One thing that was hard': 'สิ่งหนึ่งที่ยาก', '4. One goal': '4. เป้าหมายหนึ่งอย่าง', '3. One goal': '3. เป้าหมายหนึ่งอย่าง', 'One goal': 'เป้าหมายหนึ่งอย่าง',
+  'e.g. Read five books this term': 'เช่น อ่านหนังสือห้าเล่มในภาคเรียนนี้',
+  'Conference mode': 'โหมดการประชุม', 'Offline: this still works. What you write is kept here and sent when you are back online.': 'ออฟไลน์: ยังใช้งานได้ สิ่งที่เขียนจะเก็บไว้ในเครื่องนี้และส่งเมื่อกลับมาออนไลน์',
+  'Full screen': 'เต็มจอ', 'I picked a few things to show you.': 'ฉันเลือกบางอย่างมาให้ดู', 'What I will show you': 'สิ่งที่ฉันจะนำเสนอ', 'Let’s talk about my journey together.': 'มาคุยเรื่องเส้นทางของฉันด้วยกัน',
+  'Nothing prepared yet. You can still talk through the journey together.': 'ยังไม่ได้เตรียมอะไร ยังคุยเรื่องเส้นทางด้วยกันได้', 'Our next steps': 'ก้าวต่อไปของเรา',
+  'One line each, to keep on the conference note.': 'คนละหนึ่งบรรทัด เก็บไว้ในบันทึกการประชุม', 'Saved on the conference note': 'บันทึกในบันทึกการประชุมแล้ว',
+});
+STU_RE.push(
+  [/^Pick up to (\d+) moments to show, say what you are proud of, one thing that was hard and one goal\.$/, (m) => `เลือกช่วงเวลาที่อยากนำเสนอได้สูงสุด ${m[1]} อย่าง บอกว่าคุณภูมิใจในเรื่องอะไร เรื่องหนึ่งที่ยาก และเป้าหมายหนึ่งอย่าง`],
+  [/^Pick up to (\d+) moments\. Private moments are not here\.$/, (m) => `เลือกได้สูงสุด ${m[1]} ช่วงเวลา ช่วงเวลาส่วนตัวไม่แสดงที่นี่`],
+  [/^Tap up to (\d+) things\.$/, (m) => `แตะเลือกได้สูงสุด ${m[1]} อย่าง`],
+  [/^Your conference: (.+)$/, (m) => `การประชุมของคุณ: ${thaiDates(m[1]).replace(/, (\d\d:\d\d)$/, ' เวลา $1 น.')}`],
+  [/^Written by (.+)$/, (m) => `เขียนโดย ${m[1]}`],
+  [/^A goal I have · (.+)$/, (m) => `เป้าหมายที่ฉันมีอยู่ · ${thaiDates(m[1])}`],
+  [/^Well done, (.+)!$/, (m) => `เก่งมาก ${m[1]}!`],
+  [/^Screen (\d+) of (\d+)$/, (m) => `หน้าจอ ${m[1]} จาก ${m[2]}`],
+  [/^Moment (\d+) of (\d+)$/, (m) => `ช่วงเวลาที่ ${m[1]} จาก ${m[2]}`],
+  [/^Hi, I’m (.+)!$/, (m) => `สวัสดี ฉันชื่อ ${m[1]}!`],
+  [/^(.+)’s conference$/, (m) => `การประชุมของ ${m[1]}`],
+);

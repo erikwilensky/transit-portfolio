@@ -11,6 +11,7 @@ import { printDate, printDocument, usePrintTitle } from '../print.js';
 import { confDay, confSlotText, confWords, errText } from '../i18n.js';
 import { conferenceSheetLink } from '../conference.js';
 import Logo from './Logo.jsx';
+import { ConferenceMode, prepMark, RoundPrep, StudentLedCard } from './StudentLed.jsx';
 import './conference-booking.css';
 
 const addDays = (d, n) => new Date(Date.parse(d) + n * 864e5).toISOString().slice(0, 10);
@@ -94,6 +95,7 @@ function AdvisorRound({ r, advisorId, persona, version, toast, startDay }) {
   const [editing, setEditing] = useState(false);
   const [waiting, setWaiting] = useState(false);
   const [print, setPrint] = useState(false);
+  const [mode, setMode] = useState(null); // a student's Conference mode (StudentLed.jsx)
   const mine = r.advisorId === advisorId || r.by === advisorId;
   const by = r.by && r.by !== advisorId ? getTeacher(r.by)?.name : null;
   const edit = (f) => { const snap = snapshot(); try { editConferenceRound(r.id, f, advisorId); setEditing(false); toast('Conference details saved', snap); } catch (e) { toast(e.message); } };
@@ -110,21 +112,23 @@ function AdvisorRound({ r, advisorId, persona, version, toast, startDay }) {
         {mine && !r.closedOn && !editing && <button className="ghost" onClick={() => setEditing(true)}>Edit</button>}
         {mine && !r.closedOn && <button className="ghost" onClick={() => { const snap = snapshot(); closeConferenceRound(r.id, advisorId); toast(`Booking for ${r.title} is closed`, snap); }}>Close booking</button>}
       </div>
+      <RoundPrep r={r} advisorId={advisorId} version={version} onMode={setMode} />
       {waiting && <ul className="cb-waiting">{p.waiting.map((s) => <li key={s.id}>{s.name}</li>)}</ul>}
       {editing && <RoundForm idp={`cb-ed-${r.id}`} start={r} label="Save" onSave={edit} onCancel={() => setEditing(false)} />}
       {grid && <>
         <div className="seg small cb-days" role="group" aria-label="Day">
           {r.days.map((d) => <button key={d.date} className={d.date === day ? 'on' : ''} aria-pressed={d.date === day} onClick={() => setDay(d.date)}>{confDay('en', d.date)}</button>)}
         </div>
-        <DayGrid r={r} advisorId={advisorId} date={day} students={p.students} version={version} toast={toast} />
+        <DayGrid r={r} advisorId={advisorId} date={day} students={p.students} version={version} toast={toast} onMode={setMode} />
         <button className="ghost" onClick={() => setPrint(true)}>Print the day’s schedule</button>
       </>}
+      {mode && <ConferenceMode roundId={r.id} studentId={mode} by={advisorId} version={version} onClose={() => setMode(null)} />}
       {print && <DaySchedule r={r} advisorId={advisorId} date={day} persona={persona} onClose={() => setPrint(false)} />}
     </div>
   );
 }
 
-function DayGrid({ r, advisorId, date, students, version, toast }) {
+function DayGrid({ r, advisorId, date, students, version, toast, onMode }) {
   const g = useMemo(() => confGrid(r.id, advisorId), [r, advisorId, version]); // eslint-disable-line react-hooks/exhaustive-deps
   const [pick, setPick] = useState({});
   const slots = g?.days.find((d) => d.date === date)?.slots || [];
@@ -142,7 +146,8 @@ function DayGrid({ r, advisorId, date, students, version, toast }) {
           return (
             <li key={x.time} className={`cb-slot ${x.state}`}>
               <span className="cb-time">{x.time}<small>–{x.end}</small></span>
-              {x.state === 'booked' && <><span className="cb-who"><b>{s?.name || 'Booked'}</b><small>{x.booking.by === 'family' ? 'Booked by the family' : x.booking.by === advisorId ? 'Booked by you' : `Booked by ${getTeacher(x.booking.by)?.name || 'staff'}`}</small></span>
+              {x.state === 'booked' && <><span className="cb-who"><b>{s?.name || 'Booked'}</b><small>{x.booking.by === 'family' ? 'Booked by the family' : x.booking.by === advisorId ? 'Booked by you' : `Booked by ${getTeacher(x.booking.by)?.name || 'staff'}`}</small>{s && <small className={`cb-prep${prepMark(r.id, s.id) === 'Prepared' ? ' ready' : ''}`}>{prepMark(r.id, s.id)}</small>}</span>
+                {s && onMode && <button className="ghost small-btn" onClick={() => onMode(s.id)}>Conference mode<span className="sr-only"> for {s.name}</span></button>}
                 {!passed && <button className="linkish" onClick={() => run(() => cancelConference(x.booking.id, advisorId), `Cancelled ${first(s)}’s conference. The family is told.`)}>Cancel<span className="sr-only"> {s?.name}’s booking at {x.time}</span></button>}</>}
               {x.state === 'blocked' && <><span className="cb-who"><b>Blocked</b><small>Families cannot book it</small></span>
                 <button className="linkish" onClick={() => run(() => blockConferenceSlot(r.id, advisorId, date, x.time, false, advisorId), `${x.time} is free again`)}>Unblock<span className="sr-only"> {x.time}</span></button></>}
@@ -293,15 +298,15 @@ function ChildPicker({ r, c, siblings, lang, toast, version }) {
 }
 
 // ── The student: when their conference is ──
-export function StudentConference({ studentId, version, simple }) {
+export function StudentConference({ studentId, version, simple, toast }) {
   const list = useMemo(() => studentConferences(studentId), [studentId, version]); // eslint-disable-line react-hooks/exhaustive-deps
-  if (!list.length) return null;
+  const led = <StudentLedCard studentId={studentId} version={version} simple={simple} toast={toast || (() => {})} />;
+  if (!list.length) return led;
   const { booking: b, round: r, advisor } = list[0];
-  return (
+  return <>{led}
     <section className={`cb-student${simple ? ' simple' : ''}`} aria-labelledby="cb-st-h">
       <h2 id="cb-st-h">Your conference</h2>
       <p><b>{whenEn(b.date, b.time)}</b> with {shortName(advisor?.name || 'your advisor')} and your family · {r.online ? 'online' : r.location}</p>
       {list.length > 1 && <small>Then {list.slice(1).map((x) => whenEn(x.booking.date, x.booking.time)).join(', ')}</small>}
-    </section>
-  );
+    </section></>;
 }

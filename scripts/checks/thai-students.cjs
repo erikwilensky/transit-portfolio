@@ -209,6 +209,24 @@ let srv;
       await a.locator('.tr-pick').first().click(); await a.click('.tr-flow .sh-next .primary');
       await sweep(a, AARON, 'Aaron: term reflection, a moment'); await close(a);
     }
+    // Student-led conferences: get ready one question a screen, then Conference mode on his own phone.
+    const cr = await act(alT, 'openConferenceRound', [{ title: 'Student-led conferences', slot: 15, days: [{ date: day(3), from: '15:00', to: '17:00' }], breaks: [], location: 'Room 8C', advisorId: ALTEMEN }, ALTEMEN]);
+    await a.reload(); await a.waitForSelector('.slc-card'); await sweep(a, AARON, 'Aaron: get ready for my conference');
+    if (await openSweep(a, AARON, '.slc-card .primary', 'Aaron: conference prep, what to show')) {
+      const next = async (label) => { await a.click('.slc-flow .sh-next .primary'); await sweep(a, AARON, `Aaron: conference prep, ${label}`); };
+      await a.locator('.slc-flow .tr-pick').first().click(); await next('a moment');
+      await a.fill('.slc-flow textarea', 'I tested it twice.'); await next('proud');
+      await a.fill('.slc-flow textarea', 'I kept going.'); await next('hard');
+      await next('goal'); await next('review');
+      await a.click('.slc-flow .sh-next .primary'); await a.waitForTimeout(300); await sweep(a, AARON, 'Aaron: conference prep, ready');
+      await a.click('.slc-flow .sh-next .primary'); await a.waitForSelector('.slc-mode'); await sweep(a, AARON, 'Aaron: Conference mode, hello');
+      await audit(a, 'Aaron, Conference mode in Thai', ['.slc-mode']);
+      for (const label of ['a moment', 'looking back', 'next steps']) { await a.click('.slc-foot .primary'); await sweep(a, AARON, `Aaron: Conference mode, ${label}`); }
+      await close(a);
+      await act(alT, 'writeConfNote', [cr.id, AARON, 'family', 'Read together after dinner', ALTEMEN]);
+      await a.reload(); await a.waitForSelector('.slc-note'); await sweep(a, AARON, 'Aaron: my conference note');
+      if (await openSweep(a, AARON, '.slc-note .slc-card-btns .primary', 'Aaron: my conference note, what I will do next')) await a.click('.slc-note .sh-next .ghost');
+    }
     await a.reload(); await a.waitForSelector('.simple .sh-actions');
     await a.locator('.sh-goal').first().waitFor({ timeout: 4000 }).catch(() => {});
     await sweep(a, AARON, 'Aaron: Simple home with a goal, an encouragement and a check-in');
@@ -242,12 +260,17 @@ let srv;
     await act(mT, 'setPeerFeedback', [mm.id, true]);
     await act(y10Adv, 'addMomentComment', [r2.id, Y10.advisorId, 'Great work out there.']);
     await act(y10Adv, 'openReflectionWindow', [{ title: 'Term 1 reflection', opens: day(0), closes: day(14), advisorId: Y10.advisorId }, Y10.advisorId]);
+    await act(y10Adv, 'openConferenceRound', [{ title: 'Student-led conferences', slot: 15, days: [{ date: day(3), from: '15:00', to: '17:00' }], breaks: [], location: 'Room 10', advisorId: Y10.advisorId }, Y10.advisorId]);
     await act(y10Adv, 'nudgeStudent', [Y10.id, Y10.advisorId, 'Add something from this week.', 'quiet']);
     const s = await ctx(Y10.id);
     await s.goto(`${U}/#/me/map`); await s.waitForSelector('.home');
     await toThai(s); await s.waitForTimeout(500);
     await sweep(s, Y10.id, 'Year 10: map');
     await audit(s, 'Year 10, map in Thai');
+    if (await openSweep(s, Y10.id, '.slc-card .primary', 'Year 10: get ready for my conference')) {
+      await s.locator('.slc-flow .tr-pick').first().click(); await sweep(s, Y10.id, 'Year 10: conference prep, a moment picked');
+      await s.locator('.slc-flow input[name=slc-g]').nth(-1).check().catch(() => {}); await close(s);
+    }
     await s.screenshot({ path: path.join(SH, 'y10-map.png') });
     await s.goto(`${U}/#/me/map/${r1.id}`); await s.waitForSelector('.station-panel.open');
     ok((await s.locator('.station-panel.open h2, .station-panel.open h1').first().innerText()).trim() === 'Reflection', 'a moment called “Reflection” keeps its title, in English');

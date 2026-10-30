@@ -212,6 +212,11 @@ export function scopedSnapshot(user) {
   const keptTasks = new Set(store.teacherTasks.filter(taskMine).map((t) => t.id));
   store.handIns = parent ? [] : (full.handIns || []).filter((r) => (self ? r.studentId === self : keptTasks.has(r.taskId) && inReach(r.studentId)));
   Object.assign(store, confScope(full, { user, all, self, parent, tid, inReach }));
+  // Student-led conferences (api.saveConfPrep, writeConfNote): the prep goes to the student, their advisor and whole-school
+  // roles; the conference note (the family's and the student's lines) to those and the family. No other staff.
+  const confMine = (sid) => inReach(sid) && (all || sid === self || (!!tid && api.getStudent(sid)?.advisorId === tid));
+  store.confPreps = (full.confPreps || []).filter((p) => confMine(p.studentId));
+  store.confNotes = (full.confNotes || []).filter((n) => confMine(n.studentId) || (parent && inReach(n.studentId)));
   // Subject prompts (api.setSubjectPrompts): school guidance every student and member of staff receives, families never. An
   // example from a student's moment goes whole (ids, status) to that student and to staff who reach them; anyone else gets
   // it only once the student said yes and while it is still publishable, as its title, a line of it and the Year.
@@ -346,6 +351,7 @@ Object.assign(TOUCHES, {
   bookConference: (a) => T([a[1]], [a[3] !== 'family' ? a[3] ?? '?' : null]), cancelConference: (a) => T([api.getConfBooking(a[0])?.studentId ?? '?'], [a[1] !== 'family' ? a[1] ?? '?' : null]),
   blockConferenceSlot: (a) => T([], [a[5]]), sendConferenceReminders: () => T([]),
 });
+Object.assign(TOUCHES, { saveConfPrep: (a) => T([a[1]]), writeConfNote: (a) => T([a[1]], [a[4] !== 'family' && a[4] !== 'student' ? a[4] ?? '?' : null]) });
 Object.assign(TOUCHES, {
   setSubjectPrompts: (a) => T([].concat(a[1]?.examples || []).filter((x) => x?.eventId).map((x) => ev(x.eventId) ?? '?'), [a[2]]),
   clearSubjectPrompts: (a) => T([], [a[1]]), answerExampleAsk: (a) => T([a[2]]),

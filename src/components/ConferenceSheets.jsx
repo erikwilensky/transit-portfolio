@@ -30,7 +30,7 @@ function Strip({ line }) {
 
 export function ConferenceSheet({ d, by }) {
   const s = d.student;
-  const max = Math.max(4, Math.min(10, 14 - d.lines.length)); // more lines, fewer rows, so the page always fits
+  const max = Math.max(d.prep ? 3 : 4, Math.min(10, 14 - d.lines.length) - (d.prep ? 4 : 0)); // more lines (or the student's prep), fewer rows, so the page always fits
   const extra = d.moments.length - max;
   const colour = (e) => d.lines.find((l) => e.lineIds.includes(l.id))?.colour || '#9aa6b8';
   return (
@@ -65,6 +65,16 @@ export function ConferenceSheet({ d, by }) {
         )}
         {!d.moments.length && <p className="cf-none">Nothing added this term yet.</p>}
       </section>
+
+      {d.prep && (
+        <section className="cf-sec cf-prep">
+          <h3>{`In ${d.first}’s words`}<small>{d.prep.ready ? 'ready for the conference' : 'getting ready'}</small></h3>
+          {d.prep.picks.length > 0 && <p><b>To show:</b> {d.prep.picks.map((x) => `“${clip(x.title, 40)}”`).join(', ')}</p>}
+          {d.prep.proud && <p><b>Proud of:</b> {clip(d.prep.proud, 140)}</p>}
+          {d.prep.hard && <p><b>Was hard:</b> {clip(d.prep.hard, 140)}</p>}
+          {d.prep.goal && <p><b>Goal:</b> {clip(d.prep.goal, 90)}</p>}
+        </section>
+      )}
 
       <div className="cf-cols">
         <section className="cf-sec">

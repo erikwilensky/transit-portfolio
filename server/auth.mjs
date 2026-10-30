@@ -209,6 +209,7 @@ export function canAct(user, fn, args = []) {
   if (GC_FNS.has(fn)) { try { return checkinOk(user, fn, args); } catch { return false; } }
   if (TK_FNS.has(fn)) { try { return taskOk(user, fn, args); } catch { return false; } }
   if (CF_FNS.has(fn)) { try { return confOk(user, fn, args); } catch { return false; } }
+  if (SLC_FNS.has(fn)) { try { return slcOk(user, fn, args); } catch { return false; } }
   if (SP_FNS.has(fn)) { try { return subjectPromptOk(user, fn, args); } catch { return false; } }
   if (CAS_FNS.has(fn)) { try { return casOk(user, fn, args); } catch { return false; } }
   if (isAdmin(user)) return true;
@@ -455,6 +456,22 @@ function confOk(user, fn, args) {
     return (staff || admin) && !!tid && by === tid && api.getStudent(b.studentId)?.advisorId === tid;
   }
   return false;
+}
+// ── Student-led conferences (api.saveConfPrep, writeConfNote) ──
+// Getting ready: only the student, on their own prep, in a round that includes them. The lines at the end: a parent for
+// their own children (the family's line, as 'family'), the student their own line (as 'student'), and the student's
+// advisor or whole-school staff either line, as themselves. Admins too, as themselves. Nobody else.
+const SLC_FNS = new Set(['saveConfPrep', 'writeConfNote']);
+function slcOk(user, fn, args) {
+  const r = api.getConferenceRound(args[0]), sid = args[1];
+  if (!r || !r.studentIds.includes(sid)) return false;
+  if (fn === 'saveConfPrep') return user.kind === 'student' && !!user.studentId && sid === user.studentId;
+  const [, , who, , by] = args;
+  if (user.kind === 'parent') return who === 'family' && by === 'family' && (user.children || []).includes(sid);
+  if (user.kind === 'student') return who === 'student' && by === 'student' && sid === user.studentId;
+  const tid = user.teacherId || null;
+  if (!tid || by !== tid || !(STAFF.includes(user.kind) || isAdmin(user))) return false;
+  return isAdmin(user) || reachOf(user) === null || api.getStudent(sid)?.advisorId === tid;
 }
 // ── Subject prompts (api.setSubjectPrompts, clearSubjectPrompts, answerExampleAsk) ──
 // A class's prompts: a teacher of that class (in its teacherIds), as themselves. A line's prompts: coordinators (heads of

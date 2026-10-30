@@ -7,6 +7,7 @@ import StationPanel from '../components/StationPanel.jsx';
 import { consentText, dateIn, LangContext, lineName, tr } from '../i18n.js';
 import { chooseLang, exportUrl, isPilot } from '../auth.js';
 import { FamilyBooking } from '../components/ConferenceBooking.jsx';
+import { FamilyConfNotes } from '../components/StudentLed.jsx';
 
 // N1: a parent's own screens, in English or Thai. One parent, two children:
 // Ploy (Year 11) decides what her family sees; Pim (Year 7) needs her parent's consent first.
@@ -117,6 +118,7 @@ function FamilyMap({ persona, childId, go, lang, version, toast }) {
     <>
       <Head persona={persona} childId={childId} screen="family" go={go} lang={lang} title={say.homeT(s.name)} lede={youngStudent(s) ? say.homeYoung(f) : say.homeOld(f)} />
       <FamilyBooking persona={persona} lang={lang} version={version} toast={toast} />
+      <FamilyConfNotes persona={persona} lang={lang} version={version} toast={toast} />
       {empty ? (
         <div className="card-sec fam-empty">
           <p>{say.empty(f)}</p>

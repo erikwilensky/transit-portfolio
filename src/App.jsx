@@ -455,7 +455,7 @@ function StudentScreens({ screen, param, studentId, drafts, setDrafts, audience,
   useEffect(() => { if (param === 'add' && screen === 'map') setAddReq((n) => n + 1); }, [param, screen]);
   const nudge = <><StudentMilestones studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} /><NudgeBanner studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} onAdd={() => setAddReq((n) => n + 1)} /><CarryOverGoals studentId={studentId} version={version} toast={toast} simple={getIntensity(studentId) === 'simple'} />
     <TermReflectionCard studentId={studentId} version={version} toast={toast} simple={getIntensity(studentId) === 'simple'} auto={screen === 'map' && param === 'reflect'} />
-    <StudentConference studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} /></>;
+    <StudentConference studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} toast={toast} /></>;
   // N11: stations a presentation would show but a link cannot, because they are not publishable.
   const [gapFor, setGapFor] = useState(null);
   const gapsOf = (pres) => { const l = applyLens(map, pres, { hiddenLines: pres.filters.hiddenLines }); return map.events.filter((e) => l.visible.has(e.id) && e.type !== 'goal' && e.visibility !== 'publishable'); };

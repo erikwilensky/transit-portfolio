@@ -83,3 +83,8 @@
   .cf-sheet { page: conference; width: 210mm; height: 297mm; min-height: 0; overflow: hidden; margin: 0; border: 0; break-after: page; break-inside: avoid; }
   .cf-sheet:last-child { break-after: auto; }
 }
+/* Student-led conferences: the student's own prep, in their words (src/conference.js sheetPrep). */
+.cf-prep { border-left: 0.8mm solid #002855; padding: 1mm 0 1mm 3mm; }
+.cf-prep h3 small { margin-left: 2mm; text-transform: none; letter-spacing: 0; font-weight: 400; }
+.cf-prep p { margin: 0 0 0.8mm; }
+.cf-prep b { color: #002855; font-weight: 600; }

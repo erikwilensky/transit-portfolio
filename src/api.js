@@ -2941,6 +2941,114 @@ export function confProgress(roundId, advisorId) {
   const waiting = kids.filter((s) => !confBookingOf(roundId, s.id));
   return { total: kids.length, booked: kids.length - waiting.length, waiting, students: kids };
 }
+// ── Student-led conferences: the student gets ready, presents, and everyone adds one line (src/components/StudentLed.jsx) ──
+// While a conference round has a day to come, each student in it prepares: up to SLC_PICKS moments to show (their own, never
+// private ones, so the advisor can see them), a line of their own words on each, what they are proud of, one thing that
+// was hard and one goal (one of their goals, or a few words). On the day they present it in Conference mode. At the end the
+// family and the student each add one line; the advisor may write either for them, and keeps a private note (addNote).
+// store.confPreps: { id: 'cp-…', roundId, studentId, picks: [eventId], says: { [eventId]: text }, proud, hard, goal: { goalId } |
+//   { title } | null, step, status: 'draft' | 'ready', startedAt, savedAt, readyAt? }
+// store.confNotes: { id: 'cn-…', roundId, studentId, family: { text, by, at } | null, student: { text, by, at } | null }.
+// Both made on first use. by: 'family' | 'student' | the advisor's teacher id.
+export const SLC_PICKS = 3;
+export const SLC_MAX = { say: 300, proud: 400, hard: 400, goal: 120, line: 200 };
+const slcErr = (m, status = 400) => Object.assign(new Error(m), { status });
+export const getConfPreps = () => store.confPreps || [];
+export const confPrepOf = (roundId, studentId) => getConfPreps().find((p) => p.roundId === roundId && p.studentId === studentId) || null;
+export const getConfNotes = () => store.confNotes || [];
+export const confNoteOf = (roundId, studentId) => getConfNotes().find((n) => n.roundId === roundId && n.studentId === studentId) || null;
+// Prep stays open while the round has a day to come (closing booking does not stop the conferences).
+export const prepOpen = (r, studentId) => !!r && r.studentIds.includes(studentId) && r.days.some((d) => d.date >= TODAY);
+export const youngConf = (studentId) => (getStudent(studentId)?.grade ?? 99) <= 8; // Years 7 to 9: short and warm
+const nextDay = (r) => r.days.find((d) => d.date >= TODAY)?.date || '';
+// The round a student gets ready for: the earliest with a day to come.
+export function myConfPrep(studentId) {
+  const r = getConferenceRounds().filter((x) => prepOpen(x, studentId)).sort((a, b) => nextDay(a).localeCompare(nextDay(b)))[0];
+  return r ? { round: r, prep: confPrepOf(r.id, studentId), booking: confBookingOf(r.id, studentId) } : null;
+}
+// The moments a student may show: their own, not private, not goals, up to today (newest first).
+export const prepMoments = (studentId) => store.events.filter((e) => e.studentId === studentId && e.type !== 'goal' && e.visibility !== 'private' && !e.hidden && e.date <= TODAY)
+  .sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+const slcClip = (v, n) => String(v ?? '').trim().slice(0, n);
+function prepClean(studentId, d = {}) {
+  const ok = new Set(prepMoments(studentId).map((e) => e.id));
+  const picks = [...new Set([].concat(d.picks || []))].filter((id) => ok.has(id)).slice(0, SLC_PICKS);
+  const says = {}; for (const id of picks) { const t = slcClip(d.says?.[id], SLC_MAX.say); if (t) says[id] = t; }
+  const g = d.goal, own = g?.goalId && store.events.find((e) => e.id === g.goalId && e.studentId === studentId && e.type === 'goal');
+  const goal = own ? { goalId: own.id } : g?.title && slcClip(g.title, SLC_MAX.goal) ? { title: slcClip(g.title, SLC_MAX.goal) } : null;
+  return { picks, says, proud: slcClip(d.proud, SLC_MAX.proud), hard: slcClip(d.hard, SLC_MAX.hard), goal, step: Number.isInteger(d.step) ? Math.max(0, Math.min(20, d.step)) : 0 };
+}
+// Saves the student's prep; ready: true marks it ready (it can still be changed until the day).
+export function saveConfPrep(roundId, studentId, draft = {}, ready = false) {
+  const r = getConferenceRound(roundId), s = getStudent(studentId);
+  if (!r || !s || !r.studentIds.includes(studentId)) throw slcErr('This conference is not for you', 404);
+  if (!prepOpen(r, studentId)) throw slcErr('This conference has finished', 410);
+  const f = prepClean(studentId, draft);
+  if (ready && !f.picks.length && !f.proud) throw slcErr('Pick something to show, or say what you are proud of');
+  const at = nowIso();
+  let p = confPrepOf(roundId, studentId);
+  if (!p) (store.confPreps ||= []).push(p = { id: uid('cp-'), roundId, studentId, status: 'draft', startedAt: at });
+  Object.assign(p, f, { savedAt: at });
+  if (ready && p.status !== 'ready') { p.status = 'ready'; p.readyAt = at; log(studentId, s.name, 'reflection', `Got ready for “${r.title}”`); }
+  emit();
+  return p;
+}
+// One line each at the end: who is 'family' ("What we will try at home") or 'student' ("What I will do next").
+export function writeConfNote(roundId, studentId, who, text, by) {
+  const r = getConferenceRound(roundId), s = getStudent(studentId);
+  if (!r || !s || !r.studentIds.includes(studentId)) throw slcErr('This conference is not for this student', 404);
+  if (who !== 'family' && who !== 'student') throw slcErr('Say whose line it is');
+  if (!(by === who || teacherById[by])) throw slcErr('Say who is writing');
+  const t = slcClip(text, SLC_MAX.line);
+  if (!t) throw slcErr('Write one line first');
+  let n = confNoteOf(roundId, studentId);
+  if (!n) (store.confNotes ||= []).push(n = { id: uid('cn-'), roundId, studentId, family: null, student: null });
+  n[who] = { text: t, by, at: nowIso() };
+  const f = s.name.split(' ')[0], adv = s.advisorId;
+  const writer = teacherById[by] ? shortName(teacherById[by].name) : null;
+  if (by !== 'student') notify(toStudent(studentId), `${writer || 'Your family'} wrote on your conference note`, { persona: toStudent(studentId), screen: 'map' });
+  if (by !== 'family') notify(toFamily(studentId), `${writer || f} wrote on ${f}’s conference note`, { persona: toFamily(studentId), screen: 'family', param: studentId });
+  if (!writer && adv) notify(toTeacher(adv), `${by === 'family' ? `${s.name}’s family` : s.name} wrote on the conference note`, { persona: toTeacher(adv), screen: 'advisory', param: `conf~${r.id}` });
+  log(studentId, by === 'family' ? `${s.name}’s family` : by === 'student' ? s.name : teacherById[by].name, 'reflection', `Wrote on the conference note for “${r.title}”`);
+  emit();
+  return n;
+}
+// What Conference mode shows: the moments with a photo and the student's words, proud, hard, the goal.
+export function conferenceDeck(roundId, studentId, viewer = 'advisor') {
+  const r = getConferenceRound(roundId), s = getStudent(studentId), p = confPrepOf(roundId, studentId);
+  if (!r || !s) return null;
+  const map = getStudentMap(studentId, viewer);
+  const ev = (id) => map.events.find((e) => e.id === id);
+  const moments = (p?.picks || []).map(ev).filter(Boolean).map((e) => ({
+    id: e.id, title: e.title, date: e.date, say: p.says?.[e.id] || '', summary: e.summary || '',
+    photo: e.evidence?.find((v) => v.kind === 'image')?.url || null, line: map.lines.find((l) => e.lineIds.includes(l.id)) || null,
+  }));
+  const g = p?.goal?.goalId ? ev(p.goal.goalId) : null;
+  const goal = g ? { title: g.title, date: g.date, own: true } : p?.goal?.title ? { title: p.goal.title } : null;
+  return { round: r, student: s, first: s.name.split(' ')[0], young: youngConf(studentId), prep: p, moments, proud: p?.proud || '', hard: p?.hard || '', goal,
+    note: confNoteOf(roundId, studentId), booking: confBookingOf(roundId, studentId), advisor: teacherById[s.advisorId] || null };
+}
+// Who has prepared, for one advisor's students in a round.
+export function prepProgress(roundId, advisorId) {
+  const { students } = confProgress(roundId, advisorId);
+  const rows = students.map((s) => { const p = confPrepOf(roundId, s.id); return { student: s, status: p?.status === 'ready' ? 'ready' : p ? 'started' : 'not started', note: !!confNoteOf(roundId, s.id) }; });
+  return { rows, total: rows.length, ready: rows.filter((x) => x.status === 'ready').length, started: rows.filter((x) => x.status === 'started').length };
+}
+// The conference sheet (src/conference.js): the student's prep for their latest round, as the sheet's reader may see it
+// (viewer: 'advisor', or the family view's), the goal by title. null when there is nothing in it yet.
+export function sheetPrep(studentId, viewer = 'advisor') {
+  const rounds = getConferenceRounds().filter((r) => r.studentIds.includes(studentId)).sort((a, b) => b.days[0].date.localeCompare(a.days[0].date) || b.at.localeCompare(a.at));
+  const p = rounds.map((r) => confPrepOf(r.id, studentId)).find(Boolean);
+  if (!p) return null;
+  const map = getStudentMap(studentId, viewer), ev = (id) => map.events.find((e) => e.id === id);
+  const picks = p.picks.map(ev).filter(Boolean).map((e) => ({ id: e.id, title: e.title, say: p.says?.[e.id] || '' }));
+  const goal = p.goal?.goalId ? ev(p.goal.goalId)?.title || '' : p.goal?.title || '';
+  if (!picks.length && !p.proud && !p.hard && !goal) return null;
+  return { ready: p.status === 'ready', picks, proud: p.proud, hard: p.hard, goal };
+}
+// A student's conference notes (the family's and their own lines), newest round first.
+export const confNotesFor = (studentId) => getConfNotes().filter((n) => n.studentId === studentId && (n.family || n.student) && getConferenceRound(n.roundId))
+  .map((n) => ({ ...n, round: getConferenceRound(n.roundId) })).sort((a, b) => b.round.days[0].date.localeCompare(a.round.days[0].date));
 // ── Subject prompts: what makes a good moment on a line, a few guiding questions, sentence starters and examples ──
 // (src/components/SubjectPrompts.jsx). store.subjectPrompts [{ id: 'sp-…', lineId (a school line), classId (null: the whole
 // line), by (teacherId | null), at, note, questions (3–6), starters, examples }], made on first use. One per class and one per
@@ -3330,6 +3438,7 @@ createExhibition = act('createExhibition', createExhibition); removeExhibitionSl
 saveLeaver = act('saveLeaver', saveLeaver); shareLeaver = act('shareLeaver', shareLeaver); revokeLeaver = act('revokeLeaver', revokeLeaver); commentLeaver = act('commentLeaver', commentLeaver); doneLeaverComment = act('doneLeaverComment', doneLeaverComment);
 checkInGoal = act('checkInGoal', checkInGoal); snoozeCheckins = act('snoozeCheckins', snoozeCheckins); sendEncouragement = act('sendEncouragement', sendEncouragement);
 openConferenceRound = act('openConferenceRound', openConferenceRound); editConferenceRound = act('editConferenceRound', editConferenceRound); closeConferenceRound = act('closeConferenceRound', closeConferenceRound); bookConference = act('bookConference', bookConference); cancelConference = act('cancelConference', cancelConference); blockConferenceSlot = act('blockConferenceSlot', blockConferenceSlot); sendConferenceReminders = act('sendConferenceReminders', sendConferenceReminders);
+saveConfPrep = act('saveConfPrep', saveConfPrep); writeConfNote = act('writeConfNote', writeConfNote);
 setSubjectPrompts = act('setSubjectPrompts', setSubjectPrompts); clearSubjectPrompts = act('clearSubjectPrompts', clearSubjectPrompts); answerExampleAsk = act('answerExampleAsk', answerExampleAsk);
 logCasExperience = act('logCasExperience', logCasExperience); logCasHours = act('logCasHours', logCasHours); withdrawCasHours = act('withdrawCasHours', withdrawCasHours); confirmCasHours = act('confirmCasHours', confirmCasHours); returnCasHours = act('returnCasHours', returnCasHours); setCasCode = act('setCasCode', setCasCode); setCasCoordinator = act('setCasCoordinator', setCasCoordinator);
 // Undo puts a whole earlier copy back, and reset goes back to the seed (sync.js sends it to /api/reset).
