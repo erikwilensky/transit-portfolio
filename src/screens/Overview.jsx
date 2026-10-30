@@ -41,7 +41,7 @@ export default function Overview({ persona, version, toast }) {
         <div className="tile"><b><Val v={t.moments} /></b><span>moments, {r.label.toLowerCase()}</span></div>
         <div className="tile"><b><Val v={t.endorsements} /></b><span>endorsements given</span></div>
       </div>
-      <section className="card-sec us-scroll" aria-labelledby="ov-y">
+      <section className="card-sec us-scroll" aria-labelledby="ov-y" tabIndex={0}>
         <h2 id="ov-y">By Year</h2>
         <table className="us-table ov-years">
           <thead><tr><th>Year</th>{COLS.map(([k, l]) => <th key={k}>{l}</th>)}</tr></thead>
@@ -51,7 +51,7 @@ export default function Overview({ persona, version, toast }) {
         </table>
       </section>
       <div className="us-two">
-        <section className="card-sec us-scroll" aria-labelledby="ov-l">
+        <section className="card-sec us-scroll" aria-labelledby="ov-l" tabIndex={0}>
           <h2 id="ov-l">By line</h2>
           <table className="us-table ov-lines">
             <thead><tr><th>Line</th><th>Moments</th><th>Endorsed</th></tr></thead>
