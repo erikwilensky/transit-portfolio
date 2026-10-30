@@ -901,3 +901,9 @@ STU_RE.push(
   [/^· (\d+) to look at$/, (m) => `· ดูอีก ${m[1]} รายการ`],
   [/^[A-Z0-9][A-Za-z0-9 ]+(, [A-Z0-9][A-Za-z0-9 ]+)+$/, (m) => { const p = m[0].split(', ').map((x) => studentThai(x)); return p.every((x) => x != null) ? p.join(', ') : null; }],
 );
+// Not seen lately (src/components/NotSeen.jsx): a subject teacher's nudge, on the student's banner and in their bell.
+Object.assign(STU, { 'Add one thing you did for this subject.': 'เพิ่มสิ่งหนึ่งที่คุณทำในวิชานี้' });
+STU_RE.push(
+  [/^(.+) would love to see something from (.+): “(.+)”$/, (m) => `${m[1]} อยากเห็นผลงานของคุณในวิชา ${m[2]}: “${m[3]}”`],
+  [/^(.+) would love to see something from (.+)$/, (m) => `${m[1]} อยากเห็นผลงานของคุณในวิชา ${m[2]}`],
+);

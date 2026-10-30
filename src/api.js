@@ -3908,6 +3908,144 @@ moderateReport = function moderateReport(id, action, note, by) {
   return r;
 };
 
+// ── Not seen lately: a subject teacher's students with nothing for their class for a few weeks (src/components/NotSeen.jsx) ──
+// Activity for a class: the student's moments on its line (a sub-line counts), reflections on them, its tasks' hand-ins,
+// spotted moments and class photos from it, answers to its class questions. Private moments count too (in a pilot the server
+// works it out: store.lineSeen, server/scope.mjs), but only the date is ever shown. store.classNudges = [{ id: 'sn-…',
+// classId, studentId, from, lineId, note, date, ts }] and store.classJoins = { 'sid|classId': date } (a place added to a
+// class that already existed), both made on first use. One nudge per student per class per NUDGE_GAP days.
+export const NSL_WEEKS = [2, 4, 6], NSL_DEFAULT = 4, NSL_NEW_DAYS = 14, NSL_NOTE_MAX = 140, NSL_OPEN_DAYS = 14;
+const nslErr = (message, status = 400) => Object.assign(new Error(message), { status });
+const cNudgeList = () => store.classNudges || [];
+// The last day each student did something for each class: Map classId → Map studentId → date.
+export function classSeen(classIds) {
+  const want = getClasses().filter((c) => classIds.includes(c.id));
+  const out = new Map(want.map((c) => [c.id, new Map()]));
+  if (!want.length) return out;
+  const ids = new Set(want.map((c) => c.id));
+  const { out: places } = currentPlaces(ids);
+  const inClass = new Map(); // studentId → [classId]
+  for (const [cid, sids] of places) for (const sid of sids) (inClass.get(sid) || inClass.set(sid, []).get(sid)).push(cid);
+  const byLine = new Map();
+  for (const c of want) if (c.lineId) (byLine.get(c.lineId) || byLine.set(c.lineId, []).get(c.lineId)).push(c.id);
+  const taskClass = new Map((store.teacherTasks || []).filter((t) => ids.has(t.classId)).map((t) => [t.id, t.classId]));
+  const spotClass = new Map((store.spotted || []).filter((x) => ids.has(x.classId)).map((x) => [x.id, x.classId]));
+  const promptClass = new Map((store.classPrompts || []).filter((p) => ids.has(p.classId)).map((p) => [p.id, p.classId]));
+  const see = (cid, sid, d) => { if (!d || d > TODAY) return; const m = out.get(cid); if (!m.has(sid) || d > m.get(sid)) m.set(sid, d); };
+  const added = new Map(); // 'sid|title' → the day the log says they added it (a back-dated moment counts on that day)
+  for (const a of store.activity) {
+    if (a.kind !== 'station' || !inClass.has(a.studentId)) continue;
+    const t = /^Added “(.*)”/.exec(a.text || ''), d = a.ts?.slice(0, 10), k = t && `${a.studentId}|${t[1]}`;
+    if (t && d && !(added.get(k) >= d)) added.set(k, d);
+  }
+  const root = rootIndex(), evClasses = new Map();
+  for (const e of store.events) {
+    const mine = inClass.get(e.studentId);
+    if (!mine || e.type === 'goal' || e.alum) continue;
+    const cs = new Set();
+    for (const l of e.lineIds || []) for (const cid of byLine.get(root(l)) || []) cs.add(cid);
+    for (const cid of [taskClass.get(e.task), spotClass.get(e.spotted?.id)]) if (cid) cs.add(cid);
+    const hit = [...cs].filter((cid) => mine.includes(cid));
+    if (!hit.length) continue;
+    evClasses.set(e.id, [e.studentId, hit]);
+    const day = [e.date, added.get(`${e.studentId}|${e.title}`)].filter((d) => d && d <= TODAY).sort().at(-1);
+    for (const cid of hit) see(cid, e.studentId, day);
+  }
+  for (const r of store.reflections) { const x = evClasses.get(r.eventId); if (x) for (const cid of x[1]) see(cid, x[0], r.date); }
+  for (const a of store.classAnswers || []) { const cid = promptClass.get(a.promptId); if (cid && !a.skipped && inClass.get(a.studentId)?.includes(cid)) see(cid, a.studentId, a.date); }
+  for (const h of store.handIns || []) { const cid = taskClass.get(h.taskId); if (cid && h.eventId && inClass.get(h.studentId)?.includes(cid)) see(cid, h.studentId, h.date); }
+  out.events = evClasses; out.prompts = promptClass; // for openClassNudges
+  return out;
+}
+// One class: the server's days (pilot, store.lineSeen: private moments included, and paused accounts) or worked out here.
+const seenFor = (classId) => {
+  const pre = store.lineSeen?.[classId];
+  if (pre) return { last: new Map(Object.entries(pre.last || {})), paused: new Set(pre.paused || []) };
+  return { last: classSeen([classId]).get(classId) || new Map(), paused: new Set() };
+};
+// When a student joined the class: the class list's own date, else the day a later import added the place (null: from the start).
+const joinedOn = (classId, sid) => getEnrolments().find((e) => e.classId === classId && e.studentId === sid)?.from || store.classJoins?.[`${sid}|${classId}`] || null;
+export const classNudgesOf = (classId, studentId) => cNudgeList().filter((n) => n.classId === classId && n.studentId === studentId).sort((a, b) => b.date.localeCompare(a.date) || String(b.ts).localeCompare(String(a.ts)));
+export const lastClassNudge = (classId, studentId) => classNudgesOf(classId, studentId)[0] || null;
+export const canClassNudge = (classId, studentId) => { const n = lastClassNudge(classId, studentId); return !n || dayDiff(n.date, TODAY) >= NUDGE_GAP; };
+// A class's students with nothing for it in `weeks` weeks (or ever): { c, line, noLine?, weeks, quiet: [{ student, last, nudge,
+// can }], left: { paused, isNew } } (never first, then the longest ago, then by name). Null for no such class.
+export function notSeenLately(classId, weeks = NSL_DEFAULT) {
+  const c = getClasses().find((x) => x.id === classId);
+  if (!c) return null;
+  const line = (c.lineId && lineById(c.lineId)) || null;
+  const w = NSL_WEEKS.includes(+weeks) ? +weeks : NSL_DEFAULT;
+  const base = { c, line, weeks: w, quiet: [], left: { paused: 0, isNew: 0 } };
+  if (!line) return { ...base, noLine: true };
+  const sids = currentPlaces(new Set([c.id])).out.get(c.id) || [];
+  const { last, paused } = seenFor(c.id), since = daysBefore(w * 7), fresh = daysBefore(NSL_NEW_DAYS);
+  for (const sid of sids) {
+    if (paused.has(sid)) { base.left.paused++; continue; }
+    const j = joinedOn(c.id, sid);
+    if (j && j > fresh) { base.left.isNew++; continue; }
+    const d = last.get(sid) || null;
+    if (d && d >= since) continue;
+    base.quiet.push({ student: getStudent(sid), last: d, nudge: lastClassNudge(c.id, sid), can: canClassNudge(c.id, sid) });
+  }
+  base.quiet.sort((a, b) => (a.last || '').localeCompare(b.last || '') || a.student.name.localeCompare(b.student.name));
+  return base;
+}
+// What a student reads: "Mr Coultas would love to see something from Science" (made when shown, never stored).
+export const classNudgeText = (n) => `${shortName(teacherById[n.from]?.name || 'Your teacher')} would love to see something from ${lineById(n.lineId)?.name || 'your class'}`;
+// A teacher of the class nudges one or more of its students (several: "Nudge all N"). note: an optional short line.
+export function nudgeClass(classId, studentIds, teacherId, note) {
+  const c = getClasses().find((x) => x.id === classId), t = teacherById[teacherId];
+  if (!c || !t) throw nslErr('No such class or teacher.');
+  if (!c.teacherIds?.includes(teacherId)) throw nslErr('Only a teacher of this class can nudge its students.', 403);
+  if (!c.lineId || !lineById(c.lineId)) throw nslErr('This class is not on a line yet.');
+  const ids = [...new Set([].concat(studentIds ?? []))];
+  if (!ids.length) throw nslErr('Pick at least one student.');
+  const here = new Set(currentPlaces(new Set([c.id])).out.get(c.id) || []);
+  for (const sid of ids) {
+    const s = getStudent(sid);
+    if (!s || !here.has(sid)) throw nslErr('That student is not in this class.');
+    if (!canClassNudge(c.id, sid)) throw nslErr(`${s.name.split(' ')[0]} was nudged for this class in the last ${NUDGE_GAP} days.`, 409);
+  }
+  const text = String(note ?? '').replace(/\s+/g, ' ').trim().slice(0, NSL_NOTE_MAX);
+  const lineName = lineById(c.lineId).name, out = [];
+  for (const sid of ids) {
+    const n = { id: uid('sn-'), classId: c.id, studentId: sid, from: teacherId, lineId: c.lineId, note: text, date: TODAY, ts: nowIso() };
+    (store.classNudges ||= []).push(n);
+    notify(toStudent(sid), `${classNudgeText(n)}${text ? `: “${text}”` : ''}`, { persona: toStudent(sid), screen: 'map', param: `add~${c.lineId}` }, 'teacher');
+    log(sid, t.name, 'nudge', `Sent a nudge to add something on ${lineName}`);
+    out.push(n);
+  }
+  emit();
+  return out;
+}
+// The student's side: per class, the latest nudge from the last NSL_OPEN_DAYS days, until they do something for that class.
+export function openClassNudges(studentId) {
+  const latest = new Map();
+  for (const n of cNudgeList()) if (n.studentId === studentId && dayDiff(n.date, TODAY) <= NSL_OPEN_DAYS) { const p = latest.get(n.classId); if (!p || String(n.ts) > String(p.ts)) latest.set(n.classId, n); }
+  if (!latest.size) return [];
+  // Done since: anything the log says they did after the nudge to a moment that counts for that class, or a class question answered.
+  const seen = classSeen([...latest.keys()]), titles = new Map(), me = getStudent(studentId)?.name;
+  const title = new Map(store.events.filter((e) => e.studentId === studentId).map((e) => [e.id, e.title]));
+  for (const [id, [sid, cids]] of seen.events) if (sid === studentId) { const t = title.get(id); for (const cid of cids) (titles.get(cid) || titles.set(cid, new Set()).get(cid)).add(`“${t}”`); }
+  const done = (n) => store.activity.some((a) => a.studentId === studentId && a.actor === me && String(a.ts) >= String(n.ts) && [...(titles.get(n.classId) || [])].some((t) => a.text?.includes(t)))
+    || (store.classAnswers || []).some((a) => a.studentId === studentId && !a.skipped && seen.prompts.get(a.promptId) === n.classId && String(a.at) >= String(n.ts));
+  return [...latest.values()].filter((n) => lineById(n.lineId) && !done(n))
+    .sort((a, b) => String(b.ts).localeCompare(String(a.ts)))
+    .map((n) => ({ ...n, text: classNudgeText(n), line: lineById(n.lineId) }));
+}
+// The advisor's count: subject nudges this student got in the last `days` days (an advisor's copy has only ids and dates).
+export const subjectNudgeCount = (studentId, days = 30) => cNudgeList().filter((n) => n.studentId === studentId && n.date >= daysBefore(days)).length;
+// A later class list that adds a student to a class that was already there: remember the day, so they count as new.
+const importRosterNsl = importRoster;
+importRoster = function importRoster(parsed) {
+  const had = new Set(getClasses().map((c) => c.id)), before = new Set(getEnrolments().map((e) => `${e.studentId}|${e.classId}`));
+  const out = importRosterNsl(parsed);
+  let n = 0;
+  for (const e of getEnrolments()) { const k = `${e.studentId}|${e.classId}`; if (had.has(e.classId) && !before.has(k) && !e.from) { (store.classJoins ||= {})[k] = TODAY; n++; } }
+  if (n) emit();
+  return out;
+};
+
 // ── Shared record: with the pilot server, every change is replayed there ──
 // A screen calls a change below; it runs here at once (instant UI) while recording the ids and
 // times it made. The hook (src/sync.js) posts { fn, args, rec } to /api/action, and the server runs
@@ -3979,6 +4117,7 @@ setSubjectPrompts = act('setSubjectPrompts', setSubjectPrompts); clearSubjectPro
 logCasExperience = act('logCasExperience', logCasExperience); logCasHours = act('logCasHours', logCasHours); withdrawCasHours = act('withdrawCasHours', withdrawCasHours); confirmCasHours = act('confirmCasHours', confirmCasHours); returnCasHours = act('returnCasHours', returnCasHours); setCasCode = act('setCasCode', setCasCode); setCasCoordinator = act('setCasCoordinator', setCasCoordinator);
 addFamilyNote = act('addFamilyNote', addFamilyNote); editFamilyNote = act('editFamilyNote', editFamilyNote); deleteFamilyNote = act('deleteFamilyNote', deleteFamilyNote); thankFamilyNote = act('thankFamilyNote', thankFamilyNote); setFamilyNoteHidden = act('setFamilyNoteHidden', setFamilyNoteHidden);
 addSchoolEvent = act('addSchoolEvent', addSchoolEvent); editSchoolEvent = act('editSchoolEvent', editSchoolEvent); removeSchoolEvent = act('removeSchoolEvent', removeSchoolEvent); importSchoolEvents = act('importSchoolEvents', importSchoolEvents); dismissSchoolEvent = act('dismissSchoolEvent', dismissSchoolEvent); remindSchoolEvent = act('remindSchoolEvent', remindSchoolEvent);
+nudgeClass = act('nudgeClass', nudgeClass);
 // Undo puts a whole earlier copy back, and reset goes back to the seed (sync.js sends it to /api/reset).
 restore = act('restore', restore); resetDemo = act('resetDemo', resetDemo);
 export const MUTATORS = Object.keys(ACTIONS);

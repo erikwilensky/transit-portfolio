@@ -25,6 +25,7 @@ const RULES = [
   ['digest', /weekly digest/i],
   ['milestone', /\bmilestone/i],
   ['system', /is open: look back on your term/],
+  ['teacher', / would love to see something from /], // a subject teacher's nudge (Not seen lately)
   ['teacher', / endorsed “”| asked for more evidence| sent you a reflection prompt| approved your new line|^Your line “”| added a goal you agreed| will sponsor “”| can't sponsor “”| checked in on “”| would like to show your moment| marked your CAS project|was due .*Can you upload/],
 ];
 // The kind of a notification from its words and where it leads ('system' when nothing fits).

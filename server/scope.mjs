@@ -426,3 +426,37 @@ Object.assign(TOUCHES, {
 });
 // Class photo drop: the students given a photo, as the sending teacher (canAct's own rules are dropOk in auth.mjs).
 Object.assign(TOUCHES, { dropPhotos: (a) => T([...new Set([].concat(a[2]?.photos || []).flatMap((p) => [].concat(p?.studentIds || [])))], [a[1] ?? '?']) });
+// ── Not seen lately (api.nudgeClass, notSeenLately) ──
+// classNudges: the student gets their own; a teacher of that class gets it whole; the student's advisor and whole-school roles
+// only that one was sent ({ id, studentId, date }: a count); families and other staff nothing. lineSeen: for each class this
+// person teaches, the last day each student did something for it, worked out on the whole record (a private moment counts,
+// only its date goes) and its students whose accounts are paused. classJoins: staff, for students in reach.
+let pausedOf = () => new Set();
+export const setPausedStudents = (fn) => { pausedOf = fn; };
+const scopedSnapshotNsl = scopedSnapshot;
+scopedSnapshot = function scopedSnapshot(user) {
+  const out = scopedSnapshotNsl(user), store = out.store, full = st();
+  const reach = reachOf(user), all = reach === null;
+  const self = user?.kind === 'student' ? user.studentId : null, parent = user?.kind === 'parent';
+  const tid = !self && !parent ? user?.teacherId : null;
+  const inReach = (sid) => !!sid && (all || reach.has(sid));
+  const teaches = (full.classes || []).filter((c) => !!tid && (c.teacherIds || []).includes(tid)).map((c) => c.id);
+  const mineT = new Set(teaches);
+  store.classNudges = parent ? [] : (full.classNudges || []).flatMap((n) => {
+    if (self) return n.studentId === self ? [n] : [];
+    if (!tid && !all) return [];
+    if (!inReach(n.studentId)) return [];
+    if (mineT.has(n.classId)) return [n];
+    return all || api.getStudent(n.studentId)?.advisorId === tid ? [{ id: n.id, studentId: n.studentId, date: n.date }] : [];
+  });
+  store.classJoins = self || parent ? {} : Object.fromEntries(Object.entries(full.classJoins || {}).filter(([k]) => inReach(k.split('|')[0])));
+  store.lineSeen = {};
+  if (teaches.length) {
+    const seen = api.classSeen(teaches), paused = pausedOf();
+    const places = new Map(teaches.map((id) => [id, []]));
+    for (const n of full.enrolments || []) if (places.has(n.classId) && !(n.to && n.to < api.TODAY)) places.get(n.classId).push(n.studentId);
+    for (const id of teaches) store.lineSeen[id] = { last: Object.fromEntries(seen.get(id) || []), paused: places.get(id).filter((sid) => paused.has(sid)) };
+  }
+  return out;
+};
+Object.assign(TOUCHES, { nudgeClass: (a) => T([].concat(a[1] ?? []), [a[2] ?? '?']) });

@@ -216,6 +216,7 @@ export function canAct(user, fn, args = []) {
   if (PH_FNS.has(fn)) { try { return phraseOk(user, fn, args); } catch { return false; } }
   if (FN_FNS.has(fn) || (fn === 'reportItem' && args[0]?.familyNoteId)) { try { return familyNoteOk(user, fn, args); } catch { return false; } }
   if (SE_FNS.has(fn)) { try { return schoolEventOk(user, fn, args); } catch { return false; } }
+  if (fn === 'nudgeClass') { try { return nslOk(user, args); } catch { return false; } }
   if (isAdmin(user)) return true;
   if (ADMIN_ONLY.has(fn)) return false;
   if (ANYONE.has(fn)) return true;
@@ -589,3 +590,14 @@ function dropOk(user, fn, args) {
   const reach = reachOf(user);
   return reach === null || reach.has(sid);
 }
+// ── Not seen lately (api.nudgeClass): only a teacher of that class (whole-school staff and admins too, only for a class
+// they teach), as themselves, for students in it now. Never students or families. Paused student accounts are left out of
+// the teacher's list (server/scope.mjs, store.lineSeen).
+import { setPausedStudents } from './scope.mjs';
+function nslOk(user, [classId, studentIds, teacherId]) {
+  if (!(STAFF.includes(user.kind) || isAdmin(user)) || !user.teacherId || teacherId !== user.teacherId || !teachesClass(user, classId)) return false;
+  const ids = [].concat(studentIds ?? []);
+  const here = new Set((st().enrolments || []).filter((n) => n.classId === classId && !(n.to && n.to < api.TODAY)).map((n) => n.studentId));
+  return ids.length > 0 && ids.every((sid) => typeof sid === 'string' && here.has(sid));
+}
+setPausedStudents(() => new Set(accounts.filter((a) => a.paused && a.kind === 'student' && a.studentId).map((a) => a.studentId)));

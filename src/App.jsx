@@ -40,6 +40,7 @@ import Onboarding from './screens/Onboarding.jsx';
 import Pdpa from './screens/Pdpa.jsx';
 import { FeedbackDialog } from './components/Feedback.jsx';
 import { NudgeBanner } from './components/Nudges.jsx';
+import { ClassNudgeBanner } from './components/NotSeen.jsx';
 import { TermReflectionCard } from './components/TermReflection.jsx';
 import { StudentConference } from './components/ConferenceBooking.jsx';
 import { StudentMilestones } from './components/Milestones.jsx';
@@ -459,8 +460,10 @@ function StudentScreens({ screen, param, studentId, drafts, setDrafts, audience,
   const [newLink, setNewLink] = useState(null);
   // A nudge (banner or notification, #/<persona>/map/add) opens the add flow.
   const [addReq, setAddReq] = useState(0);
-  useEffect(() => { if (param === 'add' && screen === 'map') setAddReq((n) => n + 1); }, [param, screen]);
-  const nudge = <><StudentMilestones studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} /><NudgeBanner studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} onAdd={() => setAddReq((n) => n + 1)} /><CarryOverGoals studentId={studentId} version={version} toast={toast} simple={getIntensity(studentId) === 'simple'} />
+  // A subject nudge (Not seen lately, #/<persona>/map/add~<lineId>) opens it on that line: addReq is then { n, lineIds }.
+  const addOn = (lineId) => setAddReq((n) => (lineId ? { n: (n?.n ?? n) + 1, lineIds: [lineId] } : (n?.n ?? n) + 1));
+  useEffect(() => { if (screen === 'map' && (param === 'add' || String(param || '').startsWith('add~'))) addOn(String(param).split('~')[1]); }, [param, screen]); // eslint-disable-line react-hooks/exhaustive-deps
+  const nudge = <><StudentMilestones studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} /><NudgeBanner studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} onAdd={() => addOn()} /><ClassNudgeBanner studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} onAdd={addOn} /><CarryOverGoals studentId={studentId} version={version} toast={toast} simple={getIntensity(studentId) === 'simple'} />
     <TermReflectionCard studentId={studentId} version={version} toast={toast} simple={getIntensity(studentId) === 'simple'} auto={screen === 'map' && param === 'reflect'} />
     <StudentConference studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} toast={toast} /></>;
   // N11: stations a presentation would show but a link cannot, because they are not publishable.

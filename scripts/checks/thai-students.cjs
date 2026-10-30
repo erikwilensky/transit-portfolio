@@ -167,6 +167,7 @@ let srv;
     await act(cT, 'setTask', [CLASS, COULTAS, { title: 'Cell diagram', due: day(1), brief: 'Draw and label a plant cell.', checklist: ['Label the nucleus'], needs: 'photo' }]);
     await act(cT, 'askClass', [CLASS, COULTAS, { question: 'What surprised you in the lab this week?' }]);
     await act(cT, 'spotMoment', [[AARON], COULTAS, { title: 'Helped tidy the lab', note: 'Thank you for staying behind.', lineId: 'science', classId: CLASS }]);
+    await act(cT, 'nudgeClass', [CLASS, [AARON], COULTAS, 'A photo from the lab would be great.']); // Not seen lately: the banner and the bell
     // Class photos (PhotoDrop.jsx): two photos from a practical, after the spotted moment.
     await act(cT, 'dropPhotos', [CLASS, COULTAS, { title: 'Electricity practical', lineId: 'science', note: 'Great wiring.', photos: [{ url: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', studentIds: [AARON] }, { url: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', studentIds: [AARON] }] }]);
     await act(alT, 'openReflectionWindow', [{ title: 'Term 1 reflection', opens: day(0), closes: day(14), advisorId: ALTEMEN }, ALTEMEN]);

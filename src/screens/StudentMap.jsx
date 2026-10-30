@@ -34,7 +34,7 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
   const [selected, setSelected] = useState(focusId && focusId.startsWith('ev-') ? focusId : null);
   const [signal, setSignal] = useState(null);
   const [adding, setAdding] = useState(null); // null | {} prefill
-  useEffect(() => { if (addRequest) setAdding({}); }, [addRequest]); // a nudge's "Add something"
+  useEffect(() => { if (addRequest) setAdding(addRequest.lineIds ? { lineIds: addRequest.lineIds } : {}); }, [addRequest]); // a nudge's "Add something"
   const [newIds, setNewIds] = useState(() => new Set(focusId && focusId.startsWith('ev-') && getStore().events.find((e) => e.id === focusId)?.verification === 'student-added' ? [focusId] : []));
   const [tourStage, setTourStage] = useState(focusId === 'tour' ? 'signal' : null);
   const [seeAs, setSeeAs] = useState('student');
