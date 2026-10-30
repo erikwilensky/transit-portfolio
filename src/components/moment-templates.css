@@ -1,0 +1,47 @@
+/* Moment templates (MomentTemplates.jsx): "Use a guide", the guided parts, and the coordinators' screen. */
+.mt-offer { display: grid; gap: 6px; }
+.mt-offer-h { font-size: 14px; font-weight: 600; color: var(--ink); }
+.mt-offer-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.mt-offer-list button { display: grid; gap: 1px; text-align: left; padding: 7px 12px; border-radius: 10px; border: 1px solid var(--rule); background: var(--bg); color: var(--ink); font: inherit; font-size: 14px; cursor: pointer; max-width: 100%; }
+.mt-offer-list button:hover, .mt-offer-list button:focus-visible { border-color: var(--navy); }
+.mt-offer-list b { font-weight: 600; } .mt-offer-list small { color: var(--muted); font-size: 12.5px; }
+.mt-offer.big { border-top: 1px solid var(--rule); padding-top: 10px; }
+.mt-offer.big .mt-offer-h { font-size: 16px; }
+.mt-offer.big .mt-offer-list { display: grid; }
+.mt-offer.big .mt-offer-list button { padding: 12px 16px; border-radius: 14px; border-width: 2px; font-size: 16px; }
+.mt-offer.big .mt-offer-list small { font-size: 14px; }
+
+.mt-step { display: grid; gap: 12px; }
+.mt-from { margin: 0; display: flex; gap: 8px; flex-wrap: wrap; align-items: baseline; font-size: 14px; color: var(--ink); }
+.mt-from b { font-weight: 600; color: var(--navy); }
+:root[data-theme="dark"] .mt-from b { color: var(--b-sky); }
+
+.mt-fields { border: 1px solid var(--rule); border-radius: var(--radius); padding: 10px 14px; margin: 0; display: grid; gap: 10px; min-width: 0; }
+.mt-fields legend { display: flex; gap: 10px; align-items: baseline; font-size: 14px; font-weight: 600; padding: 0 4px; }
+.mt-fields legend .linkish { font-weight: 400; font-size: 13px; }
+.mt-field { display: grid; gap: 3px; }
+.mt-field label { font-size: 14px; font-weight: 600; }
+.mt-field small { color: var(--muted); font-size: 13px; }
+.mt-field textarea { font: inherit; font-size: 14px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--rule); background: var(--bg); color: var(--ink); width: 100%; min-width: 0; }
+.mt-guide-note { margin: 0; font-size: 14px; color: var(--muted); }
+.mt-guide-note b { color: var(--ink); font-weight: 600; }
+
+.mt-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 6px; }
+.mt-tabs a { padding: 6px 14px; border-radius: 999px; border: 1px solid var(--rule); color: var(--ink); text-decoration: none; font-size: 14px; }
+.mt-tabs a.on { background: var(--ink); border-color: var(--ink); color: var(--bg); font-weight: 600; }
+.mt-page .page-head { display: flex; gap: 14px; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; }
+.mt-page .page-head > div { flex: 1 1 320px; min-width: 0; }
+.mt-card header > div { display: grid; gap: 2px; }
+.mt-card.off h2 { color: var(--muted); }
+.mt-badge { font-style: normal; font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--rule); color: var(--ink); }
+.mt-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.mt-parts { margin: 6px 0 0; padding-left: 20px; display: grid; gap: 4px; font-size: 14px; }
+.mt-parts b { font-weight: 600; }
+.mt-parts small { color: var(--muted); }
+.mt-part { display: grid; gap: 6px; padding-bottom: 8px; border-bottom: 1px solid var(--rule); }
+.mt-part:last-of-type { border-bottom: 0; }
+.mt-edit .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.mt-guided { display: grid; gap: 12px; }
+.modal .mt-field textarea { min-height: 64px; }
+.mt-card header > .mt-acts { display: flex; flex: 0 1 auto; gap: 8px; flex-wrap: wrap; align-items: flex-start; }
+.mt-acts button { width: auto; }

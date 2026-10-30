@@ -93,7 +93,7 @@ let srv;
     await dlg.locator('label:has-text("Title") input').fill('Plant cell poster');
     await dlg.locator('textarea').fill('Draw and label a plant cell. Use your notes from Tuesday.');
     await dlg.locator('input[type=date]').fill(tomorrow);
-    ok((await dlg.locator('select').inputValue()) === 'science', 'the line starts as the class’s line (Science)');
+    ok((await dlg.locator('label:has-text("Hand-ins go on") select').inputValue()) === 'science', 'the line starts as the class’s line (Science)');
     await dlg.locator('.tk-add').click(); await dlg.locator('.tk-item input').nth(0).fill('Label the nucleus');
     await dlg.locator('.tk-add').click(); await dlg.locator('.tk-item input').nth(1).fill('Label the cell wall');
     await dlg.locator('.cp-check input').check();

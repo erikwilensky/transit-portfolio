@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { answerExampleAsk, clearSubjectPrompts, DEFAULT_PROMPTS, exampleAsksFor, exampleChoices, getClasses, getTeacher, promptsAdmin, promptUses, schoolLines, setSubjectPrompts, snapshot, SP_LIMITS } from '../api.js';
 import { fmtDate } from '../format.js';
 import './subject-prompts.css';
+import { MomentTemplatesScreen, PromptTabs } from './MomentTemplates.jsx';
 
 // Subject prompts (api.setSubjectPrompts, getPromptsFor): what to write on a line. Students: IdeasPanel (the Standard/Full
 // add dialog), Examples and promptsFrom (the Simple flow in SimpleHome.jsx), ExampleAsks (yes or no to an example). Teachers:
@@ -168,12 +169,16 @@ export function PromptEditor({ target, title, teacherId, onClose, toast }) {
 }
 
 // Coordinators (heads of department), leadership and admins: every school line's prompts, and the classes' own.
-export default function SubjectPromptsScreen({ persona, toast, version }) {
+export default function SubjectPromptsScreen(props) {
+  return props.param === 'templates' ? <MomentTemplatesScreen {...props} /> : <LinePrompts {...props} />; // moment templates: a tab beside these
+}
+function LinePrompts({ persona, toast, version, go }) {
   const lines = useMemo(() => schoolLines(), [version]); // eslint-disable-line react-hooks/exhaustive-deps
   const [editing, setEditing] = useState(null);
   const teacherId = persona.teacherId || null;
   return (
     <div className="page sp-page">
+      <PromptTabs persona={persona} go={go} at="prompts" />
       <header className="page-head"><div>
         <div className="kicker">Subject prompts</div>
         <h1>What to write on each line</h1>

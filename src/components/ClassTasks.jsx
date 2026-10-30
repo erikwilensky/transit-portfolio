@@ -7,6 +7,8 @@ import { CHIPS } from '../screens/TeacherQueue.jsx';
 import { Said, SayIt } from './Voice.jsx';
 import './class-tasks.css';
 import PhraseTools from './Phrases.jsx';
+import { GuideFields, GuideSelect, GuideStep } from './MomentTemplates.jsx';
+import { getIntensity, liveTemplate, templateText } from '../api.js';
 
 // Class tasks (api.setTask, handInTask): a teacher sets a task for a class from My classes; each student hands it in as a
 // moment on its line, from the top of their home. Teacher: SetTaskDialog, ClassTaskList (class page), TaskGrid
@@ -20,7 +22,7 @@ const CHECK = { waiting: 'To look at', more: 'Asked for more', endorsed: 'Endors
 // ── Teacher ──
 export function SetTaskDialog({ c, teacherId, task, onClose, toast }) {
   const lines = getSchoolLines();
-  const [f, setF] = useState(() => ({ title: task?.title || '', brief: task?.brief || '', due: task?.due || '', lineId: task?.lineId || c.lineId || '', checklist: task?.checklist?.length ? [...task.checklist] : [], needsFile: !!task?.needsFile }));
+  const [f, setF] = useState(() => ({ title: task?.title || '', brief: task?.brief || '', due: task?.due || '', lineId: task?.lineId || c.lineId || '', checklist: task?.checklist?.length ? [...task.checklist] : [], needsFile: !!task?.needsFile, templateId: task?.templateId || null }));
   const [err, setErr] = useState(null);
   const set = (p) => setF((x) => ({ ...x, ...p }));
   const n = task ? task.studentIds.length : c.studentIds?.length ?? c.students?.length ?? 0;
@@ -56,6 +58,7 @@ export function SetTaskDialog({ c, teacherId, task, onClose, toast }) {
           ))}
           {f.checklist.length < 5 && <button type="button" className="ghost tk-add" onClick={() => set({ checklist: [...f.checklist, ''] })}>Add a checklist item</button>}
         </fieldset>
+        <GuideSelect value={f.templateId} lineId={f.lineId} onChange={(templateId) => set({ templateId })} />
         <label className="cp-check"><input type="checkbox" checked={f.needsFile} onChange={(e) => set({ needsFile: e.target.checked })} /><span><span>Needs a photo or a file</span><small>Students cannot hand in without one.</small></span></label>
         {err && <p className="up-error" role="alert">{err}</p>}
         <div className="cp-foot"><span>{task ? `Set for ${plural(n, 'student')}` : `${plural(n, 'student')} will get it`}</span><button className="ghost" onClick={onClose}>Cancel</button>
@@ -77,7 +80,7 @@ export function ClassTaskList({ c, teacherId, go, persona, version, toast }) {
         return (
           <article key={t.id} className="cp-item tk-item-card">
             <header>
-              <div><b>{t.title}</b><small>Due {fmtDate(t.due)} · on {t.line?.name || 'a line'}{t.checklist.length ? ` · ${plural(t.checklist.length, 'checklist item')}` : ''}{t.needsFile ? ' · needs a photo or file' : ''}</small></div>
+              <div><b>{t.title}</b><small>Due {fmtDate(t.due)} · on {t.line?.name || 'a line'}{t.checklist.length ? ` · ${plural(t.checklist.length, 'checklist item')}` : ''}{t.needsFile ? ' · needs a photo or file' : ''}{t.templateId && liveTemplate(t.templateId) ? ` · guide: ${liveTemplate(t.templateId).name}` : ''}</small></div>
               <span className="cp-n"><b>{t.handed + t.late} of {m}</b><small>handed in{t.late ? `, ${t.late} late` : ''}</small></span>
             </header>
             <div className="cp-acts">
@@ -223,7 +226,12 @@ export function MyTasks({ studentId, simple, toast, version }) {
 }
 
 function HandInFlow({ t, who, studentId, onClose, onDone }) {
-  const steps = ['brief', ...(t.checklist.length ? ['check'] : []), 'words', 'file', 'done'];
+  // A guide on the task (MomentTemplates.jsx): Simple, one part per screen; Standard and Full, its labelled fields.
+  const tpl = useMemo(() => liveTemplate(t.templateId), [t.templateId]);
+  const simple = getIntensity(studentId) === 'simple';
+  const [ans, setAns] = useState([]);
+  const put = (j, v) => setAns((xs) => { const n = [...xs]; n[j] = v; return n; });
+  const steps = ['brief', ...(t.checklist.length ? ['check'] : []), ...(!tpl ? ['words'] : simple ? tpl.fields.map((_, j) => `g${j}`) : ['guide']), 'file', 'done'];
   const [i, setI] = useState(0);
   const step = steps[i];
   const [ticked, setTicked] = useState(t.row?.ticked || []);
@@ -235,7 +243,8 @@ function HandInFlow({ t, who, studentId, onClose, onDone }) {
   const phone = useMemo(() => typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches, []);
   const pick = (e) => { const file = e.target.files?.[0]; e.target.value = ''; up.run(file, (r) => { const ev = evidenceFor(r, file.name); if (ev.kind === 'image') setImage(ev.url); else setFiles((f) => [...f, ev]); }); };
   const has = !!image || files.length > 0;
-  const send = () => { try { handInTask(t.id, studentId, { text: text.trim(), ticked, image, files }); setErr(null); setI(steps.indexOf('done')); } catch (e) { setErr(e.message); } };
+  const words = tpl ? templateText(tpl, ans) : text.trim();
+  const send = () => { try { handInTask(t.id, studentId, { text: words, ticked, image, files, templateId: tpl && words ? tpl.id : null }); setErr(null); setI(steps.indexOf('done')); } catch (e) { setErr(e.message); } };
   const close = step === 'done' ? onDone : onClose;
   const more = t.check === 'more';
   return (
@@ -248,6 +257,7 @@ function HandInFlow({ t, who, studentId, onClose, onDone }) {
           <div className="tk-big"><Said text={t.title} />{t.brief && <p>{t.brief}</p>}</div>
           <p className={`sh-sub${t.status === 'overdue' ? ' tk-due late' : ''}`}>{t.status === 'overdue' ? <><b>Late.</b> It {due(t.due)}.</> : `It is ${due(t.due)}.`}{t.needsFile ? ' You need a photo or a file.' : ''}</p>
           {more && <blockquote className="q-note">{who} asked for more{t.reason ? `: “${t.reason}”` : '.'}</blockquote>}
+          {tpl && <p className="mt-guide-note"><span>{`${who} gave you a guide:`}</span> <b>{tpl.name}</b></p>}
           <div className="sh-next"><button className="ghost" onClick={onClose}>Not now</button><button className="primary" autoFocus onClick={() => setI(1)}>{more ? 'Add more' : 'Start'}</button></div>
         </>}
         {step === 'check' && <>
@@ -264,6 +274,15 @@ function HandInFlow({ t, who, studentId, onClose, onDone }) {
           <SayIt value={text} onChange={setText} />
           <div className="sh-next"><button className="ghost" onClick={() => setI(i - 1)}>Back</button><button className="primary" disabled={text.trim().length < 3 && !t.needsFile} onClick={() => setI(i + 1)}>Next</button></div>
         </>}
+        {/^g\d+$/.test(step) && <>
+          <GuideStep key={step} t={tpl} i={+step.slice(1)} value={ans[+step.slice(1)] || ''} onChange={(v) => put(+step.slice(1), v)} />
+          <div className="sh-next"><button className="ghost" onClick={() => setI(i - 1)}>Back</button><button className="primary" onClick={() => setI(i + 1)}>{(ans[+step.slice(1)] || '').trim() ? 'Next' : 'Skip this one'}</button></div>
+        </>}
+        {step === 'guide' && <>
+          <h2>{more ? 'What did you add?' : 'What did you do?'}</h2>
+          <GuideFields t={tpl} answers={ans} onChange={setAns} />
+          <div className="sh-next"><button className="ghost" onClick={() => setI(i - 1)}>Back</button><button className="primary" disabled={words.length < 3 && !t.needsFile} onClick={() => setI(i + 1)}>Next</button></div>
+        </>}
         {step === 'file' && <>
           <h2>{t.needsFile ? 'Add a photo or a file' : 'Add a photo or a file?'}</h2>
           <p className="sh-sub">{t.needsFile ? `${who} asked for one.` : 'You can skip this.'}</p>
@@ -278,7 +297,7 @@ function HandInFlow({ t, who, studentId, onClose, onDone }) {
           <UploadStatus up={up} />
           {err && <p className="up-error" role="alert">{err}</p>}
           <div className="sh-next"><button className="ghost" onClick={() => setI(i - 1)}>Back</button>
-            <button className="primary" disabled={up.busy || (t.needsFile && !has) || (!has && text.trim().length < 3)} onClick={send}>{up.busy ? 'Wait for the upload…' : has || t.needsFile ? 'Hand it in' : 'Skip and hand it in'}</button></div>
+            <button className="primary" disabled={up.busy || (t.needsFile && !has) || (!has && words.length < 3)} onClick={send}>{up.busy ? 'Wait for the upload…' : has || t.needsFile ? 'Hand it in' : 'Skip and hand it in'}</button></div>
         </>}
         {step === 'done' && <>
           <h2>Handed in!</h2>

@@ -216,6 +216,7 @@ export function canAct(user, fn, args = []) {
   if (PH_FNS.has(fn)) { try { return phraseOk(user, fn, args); } catch { return false; } }
   if (FN_FNS.has(fn) || (fn === 'reportItem' && args[0]?.familyNoteId)) { try { return familyNoteOk(user, fn, args); } catch { return false; } }
   if (SE_FNS.has(fn)) { try { return schoolEventOk(user, fn, args); } catch { return false; } }
+  if (MT_FNS.has(fn)) { try { return momentTemplateOk(user, fn, args); } catch { return false; } }
   if (isAdmin(user)) return true;
   if (ADMIN_ONLY.has(fn)) return false;
   if (ANYONE.has(fn)) return true;
@@ -588,4 +589,16 @@ function dropOk(user, fn, args) {
   if (!STAFF.includes(user.kind) || !user.teacherId || key !== user.teacherId) return false;
   const reach = reachOf(user);
   return reach === null || reach.has(sid);
+}
+// ── Moment templates (api.saveMomentTemplate, setMomentTemplateOff) ──
+// The school's templates and the built-in ones' lines and on/off: coordinators and leadership as themselves, admins (as
+// themselves, or by null without a staff record). Nobody else. Putting a guide on a class task or question goes with that
+// task or question (taskOk, askClass); the mutator checks the guide is on.
+const MT_FNS = new Set(['saveMomentTemplate', 'setMomentTemplateOff']);
+const MT_KINDS = ['coordinator', 'leadership'];
+function momentTemplateOk(user, fn, args) {
+  const by = args[fn === 'saveMomentTemplate' ? 1 : 2] ?? null;
+  if (fn === 'saveMomentTemplate' ? !args[0] || typeof args[0] !== 'object' : !api.getMomentTemplate(args[0])) return false;
+  if (isAdmin(user)) return by === null || by === user.teacherId;
+  return MT_KINDS.includes(user.kind) && !!user.teacherId && by === user.teacherId;
 }

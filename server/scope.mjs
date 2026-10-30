@@ -235,6 +235,8 @@ export function scopedSnapshot(user) {
   store.casHours = parent ? [] : (full.casHours || []).filter((x) => (self ? x.studentId === self : casCoord || (!!tid && x.supervisor?.kind === 'staff' && x.supervisor.teacherId === tid))).map(casOut);
   Object.assign(store, familyNotesScope(full, store, { user, all, self, parent, tid, shown, moderator }));
   Object.assign(store, schoolEventScope(full, { all, self, parent, staff, tid, inReach, shown }));
+  // Moment templates (api.saveMomentTemplate): school guidance every student and member of staff receives, families never.
+  store.momentTemplates = parent ? [] : full.momentTemplates || [];
   // Class photo drop (api.dropPhotos): the batch goes only to the teacher who sent it. In their spotted copy a "Not for me"
   // stays declined (they see who said no). A student's answered offer keeps only the photos they kept (none after "Not for
   // me" or expiry), so a photo they turned down no longer opens for them. Their own photo reports keep the photo id.
@@ -426,3 +428,5 @@ Object.assign(TOUCHES, {
 });
 // Class photo drop: the students given a photo, as the sending teacher (canAct's own rules are dropOk in auth.mjs).
 Object.assign(TOUCHES, { dropPhotos: (a) => T([...new Set([].concat(a[2]?.photos || []).flatMap((p) => [].concat(p?.studentIds || [])))], [a[1] ?? '?']) });
+// Moment templates: no student, acting as the writer (canAct's own rules are momentTemplateOk in auth.mjs).
+Object.assign(TOUCHES, { saveMomentTemplate: (a) => T([], [a[1]]), setMomentTemplateOff: (a) => T([], [a[2]]) });
