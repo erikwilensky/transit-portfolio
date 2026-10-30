@@ -4,6 +4,7 @@ import { fmtDate } from '../format.js';
 import { evidenceFor } from '../upload.js';
 import { UploadStatus, useUpload } from './FileAttach.jsx';
 import './class-prompts.css';
+import { shown } from '../thai.js';
 import { Said, SayIt, SpeakButton } from './Voice.jsx';
 
 // Class prompts (api.askClass, answerPrompt): a teacher asks a whole class one question; each student answers it
@@ -123,7 +124,7 @@ function AnswerFlow({ p, who, studentId, onClose, onDone }) {
         {step === 1 && <>
           <Said text={p.question} />
           <p className="sh-sub">One or two sentences is plenty.</p>
-          <div className="sh-starters">{STARTERS.map((s) => <button key={s} onClick={() => setText(`${text ? `${text} ` : ''}${s.replace('…', ' ')}`)}>{s}</button>)}</div>
+          <div className="sh-starters">{STARTERS.map((s) => <button key={s} onClick={() => setText(`${text ? `${text} ` : ''}${shown(s).replace('…', ' ')}`)}>{s}</button>)}</div>
           <textarea className="sh-input" rows={4} autoFocus value={text} onChange={(e) => setText(e.target.value)} aria-label="Your answer" />
           <SayIt value={text} onChange={setText} />
           <div className="sh-next"><button className="ghost" onClick={() => setStep(0)}>Back</button><button className="primary" disabled={text.trim().length < 3} onClick={() => setStep(2)}>Next</button></div>

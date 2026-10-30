@@ -4,6 +4,7 @@ import { evidenceFor } from '../upload.js';
 import { UploadStatus, evKind, useUpload } from './FileAttach.jsx';
 import { MAX_SECS, canListen, canRecord, canSpeak, clock, hush, joinSpoken, markMicNoteSeen, micNoteSeen, onReadAloud, readAloudOn, recognitionCtor, recordType, setReadAloud, speak, speechLang, transcript, voiceFileName } from '../voice.js';
 import './voice.css';
+import { shown } from '../thai.js';
 
 // Speak to type: a mic beside a text box. What is said appears as it is said, and stays editable.
 export function MicButton({ value = '', onChange, label = 'Say it instead of typing' }) {
@@ -54,13 +55,13 @@ export function SpeakButton({ text, auto = true, label = 'Read this out loud' })
   const [on, setOn] = useState(false);
   useEffect(() => {
     if (!canSpeak() || !auto || !readAloudOn() || !text) return undefined;
-    const u = speak(text); if (u) { setOn(true); u.onend = () => setOn(false); }
+    const u = speak(shown(text)); if (u) { setOn(true); u.onend = () => setOn(false); }
     return () => hush();
   }, [text, auto]);
   const mine = useRef(false); mine.current = on;
   useEffect(() => () => { if (mine.current) hush(); }, []);
   if (!canSpeak() || !text) return null;
-  const go = () => { if (on) { hush(); setOn(false); return; } const u = speak(text); if (u) { setOn(true); u.onend = u.onerror = () => setOn(false); } };
+  const go = () => { if (on) { hush(); setOn(false); return; } const u = speak(shown(text)); if (u) { setOn(true); u.onend = u.onerror = () => setOn(false); } };
   return (
     <button type="button" className={`vc-speak${on ? ' on' : ''}`} aria-label={on ? 'Stop reading' : label} title={on ? 'Stop reading' : label} aria-pressed={on} onClick={go}>
       <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor" /><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>

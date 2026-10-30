@@ -7,6 +7,7 @@ import { advisoryOf, advisoryReflection, canNudge, closeReflectionWindow, family
 import { fmtDate, inkOn } from '../format.js';
 import { ideasFor, Steps } from '../screens/SimpleHome.jsx';
 import './term-reflection.css';
+import { shown } from '../thai.js';
 import { Said, SayIt, SpeakButton } from './Voice.jsx';
 
 const Q = [['did', 'What did you do?', ['I made…', 'I helped…', 'I took part in…', 'I tried…']], ['learned', 'What did you learn?', ['I learned that…', 'I got better at…', 'It was hard when…']], ['next', 'What next?', ['Next time I will…', 'I want to try…', 'I will keep…']]];
@@ -111,7 +112,7 @@ function SimpleFlow({ w, studentId, rec, toast, onClose }) {
             {Q.map(([k, label, starters]) => (
               <div key={k} className="tr-q">
                 <div className="vc-said"><label htmlFor={`tr-${k}`}>{label}</label><SpeakButton text={label} auto={false} /></div>
-                <div className="sh-starters">{starters.map((s) => <button key={s} onClick={() => setAns(cur, { [k]: `${ans(cur)[k] ? `${ans(cur)[k].trimEnd()} ` : ''}${s.replace('…', ' ')}` })}>{s}</button>)}</div>
+                <div className="sh-starters">{starters.map((s) => <button key={s} onClick={() => setAns(cur, { [k]: `${ans(cur)[k] ? `${ans(cur)[k].trimEnd()} ` : ''}${shown(s).replace('…', ' ')}` })}>{s}</button>)}</div>
                 <textarea id={`tr-${k}`} className="sh-input" rows={2} value={ans(cur)[k] || ''} onChange={(e) => setAns(cur, { [k]: e.target.value })} />
                 <SayIt value={ans(cur)[k] || ''} onChange={(v) => setAns(cur, { [k]: v })} />
               </div>

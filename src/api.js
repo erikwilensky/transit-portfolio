@@ -3182,3 +3182,19 @@ export const MUTATORS = Object.keys(ACTIONS);
 // browser, never takes another tab's save, and every change is offered to the guard first (true: refused, not run).
 export const setActionGuard = (fn) => { guard = fn; };
 export function loadPreview(snap) { previewOnly = true; clearTimeout(saveTimer); apply(snap); }
+
+// ── Thai for students (src/thai.js): every piece of text in the record, so Thai shown at display time never replaces
+// someone's own words that happen to match an interface string. Machine fields and the app's own messages (activity,
+// notifications) are left out, and so is `prompt` (the questions answered, mostly the app's own wording).
+const NOT_WORDS = new Set(['activity', 'notifications', 'linkViews', 'rosterImport', 'answered', 'intensity', 'family']);
+const NOT_WORD_KEYS = new Set(['id', 'type', 'kind', 'status', 'verification', 'visibility', 'role', 'audience', 'theme', 'layout', 'tier', 'prompt', 'phrase', 'url', 'token', 'date', 'at', 'ts', 'colour']);
+export function recordWords() {
+  const out = new Set();
+  const walk = (v) => {
+    if (typeof v === 'string') { const s = v.trim(); if (s && /[A-Za-z]/.test(s)) out.add(s); }
+    else if (Array.isArray(v)) v.forEach(walk);
+    else if (v && typeof v === 'object') for (const k in v) if (!NOT_WORD_KEYS.has(k)) walk(v[k]);
+  };
+  for (const k in store) if (!NOT_WORDS.has(k)) walk(store[k]);
+  return out;
+}

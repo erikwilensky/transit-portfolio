@@ -41,7 +41,7 @@ export default function SharedView({ publicMap, drafts, links }) {
             <p>The student has withdrawn access. Ask them for a new link.</p>
           </div>
         ) : (
-          <div className={`browser-body theme-${pres.theme}`}>
+          <div className={`browser-body theme-${pres.theme}`} translate="no" lang="en">
             <div className="share-note">
               <span>Shared read-only by {publicMap.student.name}</span>
               <span>Link expires {fmtDate(link.expiresAt)}</span>

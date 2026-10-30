@@ -17,6 +17,7 @@ import { Said, SayIt, VoiceNotes, VoiceRecorder } from '../components/Voice.jsx'
 import { CheckinTimeline, GoalCheckins } from '../components/GoalCheckins.jsx';
 import { canRecord } from '../voice.js';
 import { photoAlt } from '../a11y.js';
+import { shown } from '../thai.js';
 
 // Simple: the student interface for Years 7 and 8 (and anyone who picks it). Not the full app with parts hidden,
 // but its own calmer design: one question per screen, big buttons, plain words, and a map drawn as a few
@@ -232,7 +233,7 @@ function AddFlow({ map, studentId, onClose, onDone, camera }) {
         {step === 2 && !qn && <>
           <Said text="What did you learn?" />
           {prompts?.note ? <p className="sp-note">{prompts.note}</p> : <p className="sh-sub">One or two sentences is plenty. You can skip this.</p>}
-          <div className="sh-starters">{(prompts?.starters?.length ? prompts.starters : STARTERS).map((s) => <button key={s} onClick={() => { setUsedStarter(!!prompts); set({ reflection: `${f.reflection ? `${f.reflection} ` : ''}${s.replace('…', ' ')}` }); }}>{s}</button>)}</div>
+          <div className="sh-starters">{(prompts?.starters?.length ? prompts.starters : STARTERS).map((s) => <button key={s} onClick={() => { setUsedStarter(!!prompts); set({ reflection: `${f.reflection ? `${f.reflection} ` : ''}${shown(s).replace('…', ' ')}` }); }}>{s}</button>)}</div>
           <textarea className="sh-input" rows={3} value={f.reflection} onChange={(e) => set({ reflection: e.target.value })} aria-label="What did you learn?" />
           <SayIt value={f.reflection} onChange={(reflection) => set({ reflection })} />
           {prompts?.questions.length > 0 && <button type="button" className="ghost sp-help" onClick={() => { setGuided(true); setQi(0); setAnswers(f.reflection.trim() ? [f.reflection] : []); }}>Help me with questions</button>}
@@ -247,7 +248,7 @@ function AddFlow({ map, studentId, onClose, onDone, camera }) {
             <p className="sp-from">{qi === 0 ? promptsFrom(prompts) : `Question ${qi + 1} of ${qn}`}</p>
             {qi === 0 && prompts.note && <p className="sp-note">{prompts.note}</p>}
             <Said text={q} />
-            {prompts.starters.length > 0 && <div className="sh-starters" role="group" aria-label="Ways to start">{prompts.starters.map((s) => <button key={s} onClick={() => put(`${val ? `${val} ` : ''}${s.replace('…', ' ')}`)}>{s}</button>)}</div>}
+            {prompts.starters.length > 0 && <div className="sh-starters" role="group" aria-label="Ways to start">{prompts.starters.map((s) => <button key={s} onClick={() => put(`${val ? `${val} ` : ''}${shown(s).replace('…', ' ')}`)}>{s}</button>)}</div>}
             <textarea className="sh-input" rows={3} value={val} onChange={(e) => put(e.target.value)} aria-label={q} />
             <SayIt value={val} onChange={put} />
             {qi === 0 && <Examples examples={prompts.examples} simple />}
@@ -422,7 +423,7 @@ function DoneFlow({ id, studentId, toast, onClose }) {
         {step === 1 && <>
           <Said text="How did it go?" />
           <p className="sh-sub">One sentence is plenty.</p>
-          <div className="sh-starters">{STARTERS.map((s) => <button key={s} onClick={() => set({ text: `${f.text ? `${f.text} ` : ''}${s.replace('…', ' ')}` })}>{s}</button>)}</div>
+          <div className="sh-starters">{STARTERS.map((s) => <button key={s} onClick={() => set({ text: `${f.text ? `${f.text} ` : ''}${shown(s).replace('…', ' ')}` })}>{s}</button>)}</div>
           <textarea className="sh-input" rows={3} autoFocus value={f.text} onChange={(ev) => set({ text: ev.target.value })} aria-label="How did it go?" />
           <SayIt value={f.text} onChange={(text) => set({ text })} />
           <div className="sh-next"><button className="ghost" onClick={() => setStep(0)}>Back</button><button className="primary" onClick={finish}>{f.text.trim() ? 'Save' : 'Skip and finish'}</button></div>
@@ -441,7 +442,7 @@ function AskFlow({ q, studentId, onClose, onDone }) {
         <button className="panel-close" onClick={onClose} aria-label="Close">×</button>
         <p className="sh-sub">About “{q.event.title}”</p>
         <Said text={q.prompt} />
-        <div className="sh-starters">{STARTERS.map((s) => <button key={s} onClick={() => setText(`${text ? `${text} ` : ''}${s.replace('…', ' ')}`)}>{s}</button>)}</div>
+        <div className="sh-starters">{STARTERS.map((s) => <button key={s} onClick={() => setText(`${text ? `${text} ` : ''}${shown(s).replace('…', ' ')}`)}>{s}</button>)}</div>
         <textarea className="sh-input" rows={4} autoFocus value={text} onChange={(e) => setText(e.target.value)} aria-label="Your answer" />
         <SayIt value={text} onChange={setText} />
         <div className="sh-next"><button className="primary" disabled={text.trim().length < 5} onClick={() => { addReflection({ studentId, eventId: q.event.id, prompt: q.prompt, text: text.trim(), visibility: 'advisor', signal: q.signal }); onDone(); }}>Save my answer</button></div>

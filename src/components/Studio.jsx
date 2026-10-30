@@ -162,7 +162,7 @@ function StudioInner({ level = 'full', map, drafts, audience, setAudience, tier,
           )}
         </aside>
 
-        <div className={`studio-preview theme-${pres.theme}`}>
+        <div className={`studio-preview theme-${pres.theme}`} translate="no" lang="en">
           {printable && !custom && <PrintHead kicker={LENSES[pres.audience].label} />}
           {custom
             ? <CustomView map={map} lens={lens} design={design} editable={editing} selectedBlockId={blockId} onSelectBlock={setBlockId} onChange={history.commit} onOpenStation={setSelected} />

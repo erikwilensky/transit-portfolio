@@ -1696,3 +1696,27 @@ line's over the built-in ones (`DEFAULT_PROMPTS`, one set per school line, Briti
   another Science class gets the built-in ones; a coordinator's Subject prompts screen; axe on each).
 - Not done: Thai versions of the built-in prompts; prompts per Year group; class tasks do not show them yet (they can
   call `getPromptsFor(studentId, lineId, classId)`).
+
+## Thai for students
+
+- **What**: a student whose language is ไทย (display menu, saved per account by `/api/auth/prefs`) sees every screen in
+  Thai at Simple, Standard and Full: home, map, station panel, add flows, goals and check-ins, class tasks and questions,
+  term reflection, milestones, kind feedback, the leaver builder, the display menu, notifications and server errors.
+- **How**: `src/thai.js` (`useStudentThai`, mounted in `App.jsx` for student personas only) translates at display time: a
+  MutationObserver rewrites text nodes and `aria-label`/`placeholder`/`title`/`alt` through `studentThai()` (the
+  `STU` dictionary and `STU_RE` patterns, in their own block at the end of `src/i18n.js`), sets `<html lang="th">`, and
+  restores English when switched off. Notifications are matched by their known patterns at display time, so names and
+  quoted titles stay as written. Student-facing server errors are added to `ERR_TH` (shown by `errText`).
+- **Own words**: `recordWords()` (`src/api.js`) collects every string in the record (titles, notes, comments, names,
+  line names, teachers' prompts) except the app's own messages (`activity`, `notifications`) and machine fields; any
+  text equal to one is never translated. Anything under `translate="no"` is skipped: the leaver document, the Studio
+  preview and shared views stay in English for outside readers.
+- **Built-in prompts**: every `DEFAULT_PROMPTS` note, question and starter has Thai; Simple starters insert the Thai text.
+- **Dates**: Thai month and weekday names with Gregorian years (`12 ต.ค. 2026`). Buddhist Era years are a device option
+  (`localStorage['tp-thai-be'] = '1'`, `setThaiBE()` in `src/i18n.js`); no menu toggle yet.
+- **Lines**: line names stay English, with a Thai gloss on line chips and pickers (`Science (วิทยาศาสตร์)`).
+- Tests: `server/test/thai-students.test.mjs`; `node scripts/checks/thai-students.cjs` (real roster, skipped when
+  missing; separate browser contexts: Aaron Torres at Simple on a phone, a Year 10 student at Standard and a Year 12 at
+  Full each switch to ไทย, walk every student screen and dialog, fail on visible English UI left over, axe on each with
+  `lang="th"`, then switch back to English).
+- Not done: teacher and family screens beyond what the Thai family work covers; a พ.ศ. toggle in the menu.
