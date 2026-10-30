@@ -4,12 +4,12 @@ import RecordInspector from './RecordInspector.jsx';
 import MomentComments, { commentViewer } from './MomentComments.jsx';
 import { HiddenNotice, ReportButton } from './Report.jsx';
 import { PeerOnMoment } from './PeerFeedback.jsx';
-import { ATL, LEARNER_PROFILE, setTags, addCheckIn, addReflection, completeGoal, deleteStation, editStation, getTeacher, getTeachers, requestEndorsement, getEvent, requestFor, resubmit, setVisibility, snapshot, TODAY, endorserChoices } from '../api.js';
+import { ATL, LEARNER_PROFILE, setTags, addCheckIn, addReflection, completeGoal, deleteStation, editStation, getTeacher, requestEndorsement, getEvent, requestFor, resubmit, setVisibility, snapshot, TODAY, endorserChoices } from '../api.js';
 import { createPortal } from 'react-dom';
 import EvidenceDoc, { docLabel } from './EvidenceDoc.jsx';
 import { AttachButton, FileView, FILE_ICON, PendingFiles, VoiceNote, evKind, fileLabel, isUploaded } from './FileAttach.jsx';
 import { docFor, useEvidenceDocs } from '../evidence/load.js';
-import { fmtDate, fmtTerm, TYPE_LABEL, VIS_LABEL, VERIFY_HELP } from '../format.js';
+import { fmtTerm, TYPE_LABEL, VIS_LABEL, VERIFY_HELP } from '../format.js';
 import { dateIn, daysIn, lineName, termText, tr, useLang } from '../i18n.js';
 
 const KIND_ICON = { link: '↗', file: '▤', image: '▣', grade: '✓', certificate: '★' };
@@ -195,6 +195,7 @@ function FileRow({ ev, onOpen, t }) {
 // F8: evidence opens. Images full size; everything else as the real thing it stands for
 // (a certificate, a result slip, a repository, a report), stamped with where it came from.
 function EvidenceView({ ev, event, student, doc, onClose }) {
+  const lang = useLang(), t = (s) => tr(lang, s);
   const poster = event.evidence.find((x) => x.kind === 'image')?.url;
   return createPortal(
     <div className="modal-back ev-back" onClick={onClose} onKeyDown={(k) => k.key === 'Escape' && onClose()}>
@@ -202,16 +203,16 @@ function EvidenceView({ ev, event, student, doc, onClose }) {
         <button className="panel-close" onClick={onClose} aria-label="Close" autoFocus>×</button>
         {ev.kind === 'image' ? <img src={ev.url} alt={ev.caption} /> : isUploaded(ev) ? (
           <div className="ev-doc">
-            <div className="ev-doc-stamp">{event.verification === 'student-added' ? 'Added by the student' : 'Uploaded'} · {fmtDate(event.date)}</div>
+            <div className="ev-doc-stamp">{t(event.verification === 'student-added' ? 'Added by the student' : 'Uploaded')} · {dateIn(lang, event.date)}</div>
             <h2>{ev.caption}</h2>
-            <p className="fineprint">{fileLabel(ev)} attached to “{event.title}”</p>
+            <p className="fineprint">{fileLabel(ev)} {t('attached to')} “{event.title}”</p>
             <FileView ev={ev} />
           </div>
         ) : (
           <div className="ev-doc">
-            <div className="ev-doc-stamp">{event.source?.system || 'Uploaded'}{event.source?.ref ? ` · ${event.source.ref}` : ''} · {fmtDate(event.date)}</div>
+            <div className="ev-doc-stamp">{event.source?.system || t('Uploaded')}{event.source?.ref ? ` · ${event.source.ref}` : ''} · {dateIn(lang, event.date)}</div>
             <h2>{ev.caption}</h2>
-            <p className="fineprint">{docLabel(doc) || (ev.kind === 'link' ? 'Linked page' : ev.kind === 'grade' ? 'Gradebook extract' : ev.kind === 'certificate' ? 'Certificate' : 'Document')} attached to “{event.title}”{ev.kind === 'link' && ev.url && ev.url !== '#' ? <> · <span className="ev-url">{ev.url.replace(/^https?:\/\//, '')}</span></> : null}</p>
+            <p className="fineprint">{docLabel(doc) || t(ev.kind === 'link' ? 'Linked page' : ev.kind === 'grade' ? 'Gradebook extract' : ev.kind === 'certificate' ? 'Certificate' : 'Document')} {t('attached to')} “{event.title}”{ev.kind === 'link' && ev.url && ev.url !== '#' ? <> · <span className="ev-url">{ev.url.replace(/^https?:\/\//, '')}</span></> : null}</p>
             {doc ? <EvidenceDoc d={doc} event={event} student={student} poster={poster} /> : (
               <div className="ev-doc-body">{(event.about || event.summary).split('. ').map((x, i) => <p key={i}>{x.replace(/\.$/, '')}.</p>)}</div>
             )}

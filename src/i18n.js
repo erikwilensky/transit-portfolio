@@ -43,7 +43,33 @@ const TH = {
   'Signed in': 'เข้าสู่ระบบแล้ว', 'Seeing as': 'กำลังดูในฐานะ', 'Display settings': 'การแสดงผล', Language: 'ภาษา', Theme: 'ธีม', Light: 'สว่าง', Dark: 'มืด',
   // voice (src/components/Voice.jsx)
   'Read questions aloud': 'อ่านคำถามออกเสียง', Off: 'ปิด', On: 'เปิด', 'Questions will be read out loud.': 'จะอ่านคำถามออกเสียงให้ฟัง',
+  // polish: what a family still met in English (spotted moments, the evidence viewer, reporting a moment)
+  'Spotted by': 'สังเกตเห็นโดย', 'a teacher': 'ครู', 'Added by the student': 'นักเรียนเพิ่มเอง', Uploaded: 'อัปโหลด', 'attached to': 'แนบกับ',
+  'Linked page': 'หน้าเว็บที่ลิงก์ไว้', 'Gradebook extract': 'ข้อมูลจากสมุดคะแนน', Certificate: 'เกียรติบัตร', Document: 'เอกสาร',
+  Report: 'รายงาน', 'Report this moment': 'รายงานรายการนี้', 'Reported. A teacher will look at it.': 'รายงานแล้ว ครูจะตรวจดู',
+  'Thank you. A teacher will look at it.': 'ขอบคุณ ครูจะตรวจดู', 'What is wrong': 'มีอะไรไม่ถูกต้อง',
+  'The school’s safeguarding staff will look at it. The student is not told who reported it.': 'เจ้าหน้าที่ดูแลความปลอดภัยของโรงเรียนจะตรวจดู นักเรียนจะไม่ทราบว่าใครเป็นผู้รายงาน',
+  'Anything else? (optional)': 'มีอะไรเพิ่มเติมไหม (ไม่บังคับ)', Cancel: 'ยกเลิก', 'Send report': 'ส่งรายงาน', 'That did not work.': 'ไม่สำเร็จ โปรดลองอีกครั้ง',
+  'Inappropriate content': 'เนื้อหาไม่เหมาะสม', 'Personal information shown': 'แสดงข้อมูลส่วนตัว', 'Unkind or bullying': 'ไม่สุภาพหรือกลั่นแกล้ง', 'Something else': 'เรื่องอื่น ๆ',
 };
+
+// The bars at the foot of every screen (src/main.jsx renders them outside LangContext, so they pass getLang()):
+// a refused change (src/components/Refused.jsx), a new version (UpdateBar), and the sign-out warning (src/auth.js).
+const BAR = {
+  en: {
+    nowAs: (who) => `This browser is now signed in as ${who}, from another window.`, out: 'This browser was signed out in another window.',
+    early: 'Reload before changing anything.', kept: 'Your changes wait on this device until you sign in again.', lost: 'Your last change was not saved.',
+    refused: (why) => `That change was not saved: ${why}.`, why: 'the server did not accept it', reload: 'Reload', ok: 'OK',
+    update: 'A new version is ready', signOut: (n) => `${n} change${n === 1 ? ' is' : 's are'} not sent yet. Sign out anyway?`,
+  },
+  th: {
+    nowAs: (who) => `เบราว์เซอร์นี้เข้าสู่ระบบในชื่อ ${who} จากอีกหน้าต่างหนึ่งแล้ว`, out: 'เบราว์เซอร์นี้ออกจากระบบจากอีกหน้าต่างหนึ่งแล้ว',
+    early: 'โปรดโหลดหน้าใหม่ก่อนแก้ไขสิ่งใด', kept: 'สิ่งที่คุณแก้ไขจะรออยู่ในเครื่องนี้จนกว่าคุณจะเข้าสู่ระบบอีกครั้ง', lost: 'การแก้ไขล่าสุดของคุณยังไม่ได้บันทึก',
+    refused: (why) => `การแก้ไขนั้นยังไม่ได้บันทึก: ${why}`, why: 'เซิร์ฟเวอร์ไม่รับการแก้ไขนี้', reload: 'โหลดใหม่', ok: 'ตกลง',
+    update: 'มีเวอร์ชันใหม่พร้อมใช้งานแล้ว', signOut: (n) => `ยังมี ${n} รายการที่ยังไม่ได้ส่ง ต้องการออกจากระบบหรือไม่`,
+  },
+};
+export const barWords = (lang) => BAR[lang === 'th' ? 'th' : 'en'];
 
 // Line names, translated part by part ("Science · Biology").
 const LINE_TH = {
@@ -111,6 +137,10 @@ const ERR_TH = {
   'There is already a school account with that email. Use another email for your family account.': 'อีเมลนี้เป็นบัญชีของโรงเรียนอยู่แล้ว โปรดใช้อีเมลอื่นสำหรับบัญชีครอบครัว',
   'There is already a family account with that email, and that is not its password. Sign in first, then open the link again.': 'มีบัญชีครอบครัวที่ใช้อีเมลนี้อยู่แล้ว แต่รหัสผ่านไม่ถูกต้อง โปรดเข้าสู่ระบบก่อน แล้วเปิดลิงก์อีกครั้ง',
   'You are signed in with a school account. Sign out first, then open the link again.': 'คุณเข้าสู่ระบบด้วยบัญชีของโรงเรียนอยู่ โปรดออกจากระบบก่อน แล้วเปิดลิงก์อีกครั้ง',
+  // why a change was refused (src/components/Refused.jsx)
+  'Not allowed for your account': 'บัญชีของคุณทำสิ่งนี้ไม่ได้',
+  'this browser is signed in as someone else': 'เบราว์เซอร์นี้เข้าสู่ระบบในชื่อของคนอื่นอยู่',
+  'a photo could not be uploaded': 'อัปโหลดรูปภาพไม่สำเร็จ',
 };
 export const errText = (lang, msg) => (lang === 'th' && ERR_TH[msg]) || msg;
 

@@ -16,7 +16,7 @@ import path from 'node:path';
 import { send, readJson, clientIp, DATA_DIR, writeAtomic } from '../lib.mjs';
 import { api } from '../store.mjs';
 import * as A from '../auth.mjs';
-import { originOf, requireAdmin, accountTarget } from './10-auth.mjs';
+import { originOf, requireAdmin } from './10-auth.mjs';
 import * as L from '../audit.mjs';
 
 const bad = (status, message) => Object.assign(new Error(message), { status });

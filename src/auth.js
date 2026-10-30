@@ -1,7 +1,7 @@
 // Pilot sign-in, browser side. The server says which mode it runs in (GET /api/auth/me).
 // Demo mode (the default, and whenever there is no server): the persona switcher, tours and reset, no sign-in.
 // Pilot mode: each person signs in and sees only their own role's screens, built as a persona.
-import { addStudent, addTeacher, getStudent, getTeacher, isModerator, setLang, setOwnLang } from './api.js';
+import { addStudent, addTeacher, getLang, getStudent, getTeacher, isModerator, setLang, setOwnLang } from './api.js';
 import { savedLang, saveLang } from './i18n.js';
 import { PERSONAS, NAV, setPilotPersona } from './personas.js';
 import { clearCaches } from './pwa.js';
@@ -56,7 +56,7 @@ export async function signOut(everywhere = false) {
   const uid = state.user?.id;
   if (uid) {
     const n = await unsent(uid);
-    if (n && !confirm(signOutWarning(n))) return false;
+    if (n && !confirm(signOutWarning(n, getLang()))) return false;
     await dropUnsent(uid);
   }
   try { await call('POST', everywhere ? '/api/auth/logout-everywhere' : '/api/auth/logout'); } catch { /* already signed out */ }
@@ -166,7 +166,7 @@ export function personaFor(user) {
   // Pilot usage, for leadership and the pilot admin.
   if (kind === 'leadership' || user.admin) p.nav = [...(p.nav || NAV[kind]), ['usage', 'Pilot usage']];
   // Safeguarding reports (src/screens/Reports.jsx): coordinators, counsellors, leadership and admins.
-  if (isModerator(user)) p.nav = [...(p.nav || NAV[kind]), ['reports', 'Reports']];
+  if (isModerator(user) && !(p.nav || NAV[kind]).some(([id]) => id === 'reports')) p.nav = [...(p.nav || NAV[kind]), ['reports', 'Reports']];
   // School overview (src/screens/Overview.jsx): leadership, coordinators and admins.
   if (kind === 'leadership' || kind === 'coordinator' || user.admin) p.nav = [...(p.nav || NAV[kind]), ['overview', 'School overview']];
   // This week (src/screens/ThisWeek.jsx): anyone who teaches or advises, right after their home; their landing on Mondays.
