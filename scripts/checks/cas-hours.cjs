@@ -5,6 +5,7 @@
 // live. Then 1.5 hours with an outside supervisor: the student shows the code, the supervisor (signed out, on a phone)
 // confirms with their email. Then 1 hour with nobody named, which the coordinator confirms on their behalf. Every account has
 // its own browser context; axe over each new screen (serious and critical fail; the shared toast, caught mid-fade, is left out).
+// The coordinator puts a comment-bank phrase into a nudge from the grid's side panel (and the send-back there has the picker).
 //   TP_ROSTER=/path/to/transit-roster.json (default: the project mount). Not committed: the names are real-ish.
 const { chromium } = require('playwright');
 const { spawn } = require('child_process');
@@ -107,6 +108,24 @@ let srv;
     const flags = await cRow().locator('.cas-flags').innerText();
     ok(!flags.includes('No Service yet') && flags.includes('Outcome missing') && !flags.includes('No reflection'), `flags: ${flags.replace(/\n/g, ', ')}`);
     await audit(C.p, 'coordinator CAS grid');
+
+    // ── The comment bank in the grid's side panel: the nudge box and "Not right" both have the Phrases picker ──
+    ok((await act(cTok, 'addPhrase', ['school', coord.id, { text: 'Hi {first name}, could you add a reflection on what you learned?', kind: 'next' }])).ok, 'the coordinator adds a school phrase');
+    await C.p.reload(); await C.p.waitForSelector('.cas-table');
+    await C.p.selectOption('.cas-tools select', student.advisorId);
+    await cRow().locator('.cas-hrs').click(); await C.p.waitForSelector('.cas-side .cas-nudge .ph-open');
+    await C.p.fill('.cas-nudge textarea', '');
+    await C.p.click('.cas-nudge .ph-open'); await C.p.waitForSelector('.cas-nudge [role=combobox]');
+    await audit(C.p, 'coordinator side panel with the phrase picker open');
+    await C.p.keyboard.type('reflection'); await C.p.keyboard.press('Enter');
+    const nudge = await C.p.inputValue('.cas-nudge textarea');
+    ok(nudge === `Hi ${first}, could you add a reflection on what you learned?`, `the phrase goes into the nudge box with ${first}’s name: “${nudge}”`);
+    ok(!(saved().casNudges || []).some((n) => n.studentId === student.id), 'nothing is sent until the coordinator sends it');
+    await C.p.click('.cas-nudge button:has-text("Send nudge")');
+    ok(await until(async () => (saved().casNudges || []).some((n) => n.studentId === student.id && n.text === nudge)), 'Send nudge sends it as written');
+    await C.p.click('.cas-side .cas-decide button:has-text("Not right")');
+    ok(await C.p.locator('.cas-side .cas-decide .ph-open').count() === 1, 'the send-back box there has the picker too');
+    await C.p.click('.cas-side .cas-decide button:has-text("Cancel")');
 
     // ── The teacher confirms from "CAS to confirm", seeing only that entry ──
     const tCopy = await state(tTok);

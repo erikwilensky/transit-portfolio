@@ -146,6 +146,21 @@ test('the conference sheet carries the prep; the family copy only what the famil
   assert.deepEqual(scopedSnapshot(carter).store.confPreps, [], 'their subject teacher does not');
 });
 
+test('the conference sheet after the conference: both lines on both copies, the staff note on the advisor copy only', () => {
+  const adv = api.sheetSteps('S2003'), fam = api.sheetSteps('S2003', true);
+  assert.deepEqual([adv.round, adv.family, adv.student, adv.staff], ['Term 1 conferences', 'Read together after dinner', 'Finish the robot arm by December', 'talk to Mr Carter about robotics club']);
+  assert.equal(adv.note, api.getNotes('S2003').at(-1), 'the advisor note itself (so the sheet does not show it twice)');
+  assert.deepEqual([fam.family, fam.student, fam.staff, fam.note], ['Read together after dinner', 'Finish the robot arm by December', '', null], 'the family copy: never the staff note');
+  api.addNote('S2003', 'Conference (Another round): not this one');
+  assert.equal(api.sheetSteps('S2003').staff, 'talk to Mr Carter about robotics club', 'only the note for that round');
+  // Only a staff note so far: the advisor copy shows it, the family copy shows nothing.
+  api.writeConfNote(Y.id, 'S2001', 'student', 'x', 'T100'); api.getConfNotes().find((n) => n.roundId === Y.id).student = null;
+  api.addNote('S2001', 'Conference (12B conferences): quiet today');
+  assert.equal(api.sheetSteps('S2001').staff, 'quiet today');
+  assert.equal(api.sheetSteps('S2001', true), null);
+  assert.equal(api.sheetSteps('S2002'), null, 'no conference yet, no box');
+});
+
 test('PDPA: the prep and the note are in the student’s copy and go with erasure', () => {
   const d = api.studentData('S2003');
   assert.equal(d.own.confPreps?.length, 1); assert.equal(d.own.confNotes?.length, 1);

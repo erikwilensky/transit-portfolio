@@ -84,7 +84,8 @@
   .cf-sheet:last-child { break-after: auto; }
 }
 /* Student-led conferences: the student's own prep, in their words (src/conference.js sheetPrep). */
-.cf-prep { border-left: 0.8mm solid #002855; padding: 1mm 0 1mm 3mm; }
-.cf-prep h3 small { margin-left: 2mm; text-transform: none; letter-spacing: 0; font-weight: 400; }
-.cf-prep p { margin: 0 0 0.8mm; }
-.cf-prep b { color: #002855; font-weight: 600; }
+.cf-prep, .cf-steps { border-left: 0.8mm solid #002855; padding: 1mm 0 1mm 3mm; }
+.cf-prep h3 small, .cf-steps h3 small { margin-left: 2mm; text-transform: none; letter-spacing: 0; font-weight: 400; }
+.cf-prep p, .cf-steps p { margin: 0 0 0.8mm; }
+.cf-prep b, .cf-steps b { color: #002855; font-weight: 600; }
+.cf-steps .cf-staff { margin: 1mm 0 0; padding: 1mm 2mm; }

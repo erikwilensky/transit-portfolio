@@ -1,6 +1,6 @@
 // Leaver archive on the real class lists: starts a clean pilot (TP_START=empty; needs `npm run build` first), imports the
 // real roster and picks two Year 13 students at runtime. The admin (Accounts › End of year: leaver archive) downloads both
-// archives in one streamed ZIP and checks each: README (English and Thai), my-journey.pdf with every moment (private too),
+// archives in one streamed ZIP and checks each: README (English and Thai), my-journey.pdf with every moment (private too) and Thai,
 // my-journey.html, the photo, the data copy. Schedules erasure in 90 days for one; on the day (the schedule file moved
 // back) the due list shows it, nothing has been erased, and the admin confirms with the name typed. The first student
 // downloads their own archive from Privacy; a teacher gets 403. axe on the new panel and Privacy. Separate browser
@@ -43,6 +43,7 @@ let srv;
 (async () => {
   if (!fs.existsSync(ROSTER)) { console.log('SKIP no roster file at', ROSTER); return; }
   const { unzip } = await import(path.join(ROOT, 'server/zip.mjs'));
+  const { pdfText } = await import(path.join(ROOT, 'server/pdf.mjs'));
   const files = (buf) => Object.fromEntries(unzip(buf).map((e) => [e.name, e.data]));
   const port = await freePort(); const U = `http://localhost:${port}`;
   const dataDir = fs.mkdtempSync(os.tmpdir() + '/tp-archive-data-');
@@ -66,7 +67,7 @@ let srv;
     const aTok = await setupWith(U, links[A.email]), tTok = await setupWith(U, links[teacher.email]);
     await act(aTok, 'completeOnboarding', [A.id, ['science', 'service'], 'classic']);
     const up = await (await fetch(`${U}/api/upload`, { method: 'POST', headers: { cookie: `tp_session=${aTok}`, 'content-type': 'image/png', 'x-filename': 'reef-survey.png' }, body: PNG })).json();
-    await act(aTok, 'addStation', [A.id, { title: 'Reef survey at Koh Tao', lineIds: ['science'], date: '2026-02-14', visibility: 'school', summary: 'Counted parrotfish along two transects.', reflection: 'Waiting for the tide taught me patience.', evidence: [{ kind: 'image', url: up.url, caption: 'Our transect' }] }]);
+    await act(aTok, 'addStation', [A.id, { title: 'Reef survey at Koh Tao', lineIds: ['science'], date: '2026-02-14', visibility: 'school', summary: 'Counted parrotfish along two transects.', reflection: 'Waiting for the tide taught me patience. การรอน้ำขึ้นสอนให้ฉันอดทน', evidence: [{ kind: 'image', url: up.url, caption: 'Our transect' }] }]);
     await act(aTok, 'addStation', [A.id, { title: 'Notes to myself', lineIds: ['service'], date: '2026-04-01', visibility: 'private' }]);
 
     // ── The admin: the panel ──
@@ -89,12 +90,13 @@ let srv;
     const zb = files(outer[inner.find((k) => k.includes(B.id.toLowerCase()))]);
     const need = ['README.txt', 'my-journey.pdf', 'my-journey.html', 'data/events.json', 'data/student.json', 'data/README.txt'];
     ok(need.every((f) => za[f]) && need.filter((f) => f !== 'data/events.json').every((f) => zb[f]), `each archive has ${need.join(', ')} (events.json once there are moments)`);
-    const pdfA = za['my-journey.pdf'].toString('latin1');
+    const pdfA = za['my-journey.pdf'].toString('latin1'), textA = pdfText(za['my-journey.pdf']);
     fs.writeFileSync(SH + 'journey.pdf', za['my-journey.pdf']);
-    ok(pdfA.startsWith('%PDF') && /\/MediaBox \[0 0 595\.28 841\.89\]/.test(pdfA) && ['Reef survey at Koh Tao', 'Notes to myself', 'Waiting for the tide taught me patience.', 'photos/reef-survey.png'].every((t) => pdfA.includes(t)), `${first}'s my-journey.pdf (A4): both moments, private too, the reflection, where the photo is`);
+    ok(pdfA.startsWith('%PDF') && /\/MediaBox \[0 0 595\.28 841\.89\]/.test(pdfA) && ['Reef survey at Koh Tao', 'Notes to myself', 'Waiting for the tide taught me patience.', 'photos/reef-survey.png'].every((t) => textA.includes(t)), `${first}'s my-journey.pdf (A4): both moments, private too, the reflection, where the photo is`);
+    ok(/\+Sarabun-Regular/.test(pdfA) && textA.includes('การรอน้ำขึ้นสอนให้ฉันอดทน'.normalize('NFKC')) && !textA.includes('[?]') && !za['README.txt'].toString().includes('[?]'), 'Thai in the PDF itself (Sarabun embedded), and the README no longer sends them to the HTML for it');
     ok(za['photos/reef-survey.png']?.equals(PNG), 'the photo, under its own name');
     ok(za['README.txt'].toString().includes('ในโฟลเดอร์นี้มีอะไรบ้าง') && za['README.txt'].toString().includes('What is in this folder'), 'README in English and Thai');
-    ok(JSON.parse(zb['data/student.json']).id === B.id && !zb['my-journey.pdf'].toString('latin1').includes('Reef survey'), `${B.name}'s archive is theirs alone`);
+    ok(JSON.parse(zb['data/student.json']).id === B.id && !pdfText(zb['my-journey.pdf']).includes('Reef survey'), `${B.name}'s archive is theirs alone`);
     ok(await until(async () => (await ad.locator('.la-table tr', { hasText: A.name }).locator('.acc-tag', { hasText: 'Downloaded' }).count()) === 1, 10000), 'the panel shows "Downloaded"');
 
     // ── Erasure: scheduled, never automatic, confirmed on the day ──
@@ -131,7 +133,7 @@ let srv;
     await axe(s, 'Privacy with "Download my archive"');
     const [sd] = await Promise.all([s.waitForEvent('download'), s.click('.pv-archive')]);
     const own = files(fs.readFileSync(await sd.path()));
-    ok(sd.suggestedFilename().includes('-archive-') && own['my-journey.pdf'].toString('latin1').includes('Reef survey at Koh Tao') && own['photos/reef-survey.png'], `${first} downloads their own archive (${sd.suggestedFilename()})`);
+    ok(sd.suggestedFilename().includes('-archive-') && pdfText(own['my-journey.pdf']).includes('Reef survey at Koh Tao') && own['photos/reef-survey.png'], `${first} downloads their own archive (${sd.suggestedFilename()})`);
     const sr = await cS.request.get(`${U}/api/me/archive?student=${encodeURIComponent(roster.students.find((x) => x.id !== A.id && x.id !== B.id).id)}`);
     ok(sr.status() === 403, 'but not another student\'s (403)');
 

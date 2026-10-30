@@ -506,3 +506,5 @@ function movingUpScope(full, { user, all, self, parent, tid, inReach, shown }) {
   return { movingUpWindows, movingUp };
 }
 Object.assign(TOUCHES, { openMovingUp: (a) => T([], [a[1]]), closeMovingUp: () => T([]), saveMovingUp: (a) => T([a[1]]), finishMovingUp: (a) => T([a[1]]), setMovingUpFamily: (a) => T([a[0]]) });
+// Editing a sent batch: the students given or losing a photo, as the sending teacher.
+Object.assign(TOUCHES, { editPhotoDrop: (a) => T([...new Set([...[].concat(a[2]?.add || []), ...[].concat(a[2]?.withdraw || [])].map((x) => x?.studentId).filter((x) => typeof x === 'string'))], [a[1] ?? '?']) });

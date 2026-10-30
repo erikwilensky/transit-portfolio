@@ -50,6 +50,10 @@ load();
 // Server code calling an api.js change directly (not through runAction): note its steps.
 api.setActionHook((fn, args, rec) => { if (!rebuilding) direct.push({ fn, args: JSON.parse(JSON.stringify(encode(args))), rec }); });
 
+// Server code whose direct call changed nothing (no changed() follows) forgets its steps, or the next change would start
+// a fresh segment and nothing before it could be undone.
+export const forgetDirect = (fn) => { direct = direct.filter((d) => d.fn !== fn); };
+
 // Every changed() lands here. info.step (from /api/action) or the direct steps make it replayable.
 onChange((info) => {
   const steps = info.undo ? null : info.step ? (direct.length ? null : [info.step]) : direct.length ? direct : null;
@@ -73,6 +77,8 @@ function add(e) {
 const count = () => segs.reduce((n, s) => n + s.entries.length, 0);
 const find = (r) => { for (const s of segs) { const e = s.entries.find((x) => x.rev === r); if (e) return e; } return null; };
 
+// Features may refuse to undo some changes (guard(entry) → null or { status, error }), e.g. a photo batch students kept from.
+export const undoGuards = new Set();
 // May this person undo the change at rev r? Returns null or { status, error } in plain words.
 export function undoProblem(r, user, { mode = 'demo', isAdmin = () => false } = {}) {
   const e = find(r);
@@ -81,6 +87,7 @@ export function undoProblem(r, user, { mode = 'demo', isAdmin = () => false } = 
   if (e.undone) return { status: 409, error: 'That change was already undone.' };
   if (e.dropped) return { status: 409, error: 'That change is no longer in the record.' };
   if (mode === 'pilot' && !isAdmin(user) && (!user || e.userId !== user.id)) return { status: 403, error: 'You can only undo your own changes.' };
+  for (const g of undoGuards) { const p = g(e); if (p) return p; }
   return null;
 }
 

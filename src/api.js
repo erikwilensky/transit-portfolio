@@ -2400,10 +2400,17 @@ const dropShown = (x) => (x.status === 'accepted' ? 'added' : x.status === 'decl
 export const photoDropsBy = (teacherId, classId) => drops().filter((d) => d.teacherId === teacherId && (!classId || d.classId === classId))
   .sort((a, b) => b.at.localeCompare(a.at) || b.id.localeCompare(a.id))
   .map((d) => {
-    const rows = spots().filter((x) => x.dropId === d.id).map((x) => ({ spot: x, student: getStudent(x.studentId) || null, shown: dropShown(x), photos: (x.photos || []).length, kept: (x.kept || []).length }))
-      .sort((a, b) => (a.student?.name || '').localeCompare(b.student?.name || ''));
+    // One row a student (after an edit a student may have a second offer): waiting if any is, else added if any was kept.
+    const offers = spots().filter((x) => x.dropId === d.id), by = new Map();
+    for (const x of offers) by.set(x.studentId, [...(by.get(x.studentId) || []), x]);
+    const rows = [...by].map(([sid, xs]) => {
+      const shown = xs.some((x) => dropShown(x) === 'waiting') ? 'waiting' : xs.some((x) => x.status === 'accepted') ? 'added' : dropShown(xs.at(-1));
+      return { spot: xs.at(-1), student: getStudent(sid) || null, shown, photos: new Set(xs.flatMap((x) => (x.photos || []).map((p) => p.id))).size, kept: xs.reduce((n, x) => n + (x.kept || []).length, 0) };
+    }).sort((a, b) => (a.student?.name || '').localeCompare(b.student?.name || ''));
+    const kept = {};
+    for (const x of offers) for (const pid of x.kept || []) (kept[pid] ||= []).push(x.studentId);
     const n = (k) => rows.filter((r) => r.shown === k).length;
-    return { ...d, line: lineById(d.lineId) || null, rows, counts: { added: n('added'), waiting: n('waiting'), no: n('not for me'), expired: n('not added') } };
+    return { ...d, line: lineById(d.lineId) || null, rows, kept, counts: { added: n('added'), waiting: n('waiting'), no: n('not for me'), expired: n('not added') } };
   });
 // The students a drop's photo is given to, by its file name (null: not a drop photo). For server/files.mjs.
 export function dropPhotoStudents(fileName) {
@@ -2525,6 +2532,66 @@ eraseStudent = function eraseStudent(sid, alsoTo = []) {
   }
   return eraseStudentDrop(sid, alsoTo);
 };
+// ── Class photo drop: editing a batch after it is sent (src/components/PhotoDrop.jsx, EditDrop) ──
+// editPhotoDrop(dropId, teacherId, { title?, note?, add: [{ photoId, studentId }], withdraw: [{ photoId, studentId }] }), only
+// by the teacher who sent it. title and note: the batch and the offers still waiting (a kept moment stays as the student
+// kept it). add: a current member of the class gets that photo, on their offer still waiting or else a new one (told as
+// when sent). withdraw: only from a student who has not kept that photo (409 otherwise: kept photos stay with the student);
+// an offer left with no photos is 'removed'. A photo given to nobody leaves the batch; the server deletes its file once Undo
+// can no longer bring it back (server/routes/71-photo-drop.mjs).
+export function editPhotoDrop(dropId, teacherId, spec = {}) {
+  const d = getPhotoDrop(dropId), t = teacherById[teacherId];
+  if (!d) throw spotErr('No such batch of photos', 404);
+  if (!t || d.teacherId !== teacherId) throw spotErr('Only the teacher who sent these photos can change them', 403);
+  const c = classById(d.classId), kids = new Set(c ? nowIn(d.classId) : []);
+  if (!(c?.teacherIds || []).includes(teacherId)) throw spotErr('This class is not one of yours', 403);
+  const pairs = (l) => [].concat(l || []).filter((x) => x && typeof x === 'object').map((x) => ({ photoId: String(x.photoId), studentId: String(x.studentId) }));
+  const add = pairs(spec.add), out = pairs(spec.withdraw);
+  const photo = (id) => { const p = d.photos.find((x) => x.id === id && x.url); if (!p) throw spotErr('That photo is not in this batch any more', 404); return p; };
+  const mine = (sid) => spots().filter((x) => x.dropId === d.id && x.studentId === sid);
+  for (const a of add) { photo(a.photoId); if (!kids.has(a.studentId)) throw spotErr('Only students in this class can get these photos'); }
+  for (const w of out) {
+    photo(w.photoId);
+    if (mine(w.studentId).some((x) => (x.kept || []).includes(w.photoId))) throw spotErr(`${getStudent(w.studentId)?.name.split(' ')[0] || 'This student'} has kept this photo, so it stays with them`, 409);
+  }
+  const title = spec.title === undefined ? d.title : String(spec.title || '').trim().slice(0, 120) || `Photos from ${c?.subject || c?.name || 'class'}`;
+  const note = spec.note === undefined ? d.note : String(spec.note || '').trim().slice(0, 500);
+  let changed = title !== d.title || note !== d.note;
+  Object.assign(d, { title, note });
+  for (const x of spots()) if (x.dropId === d.id && x.status === 'open') Object.assign(x, { title, note });
+  for (const w of out) {
+    const p = photo(w.photoId);
+    if (!p.studentIds.includes(w.studentId)) continue;
+    p.studentIds = p.studentIds.filter((sid) => sid !== w.studentId);
+    for (const x of mine(w.studentId)) if (x.photos.some((q) => q.id === p.id)) {
+      x.photos = x.photos.filter((q) => q.id !== p.id);
+      if (x.image === p.url) x.image = x.photos[0]?.url || null;
+      if (x.status === 'open' && !x.photos.length) x.status = 'removed';
+    }
+    changed = true;
+  }
+  const got = new Map();
+  for (const a of add) {
+    const p = photo(a.photoId);
+    if (p.studentIds.includes(a.studentId)) continue;
+    p.studentIds.push(a.studentId);
+    got.set(a.studentId, [...(got.get(a.studentId) || []), p.id]);
+    changed = true;
+  }
+  if (!changed) throw spotErr('Nothing to change');
+  const at = nowIso(), expires = new Date(Date.parse(TODAY) + SPOT_DAYS * 864e5).toISOString().slice(0, 10);
+  for (const sid of [...got.keys()].sort()) {
+    const open = mine(sid).find(spotOpen), ids = new Set([...got.get(sid), ...(open?.photos || []).map((p) => p.id)]);
+    const list = d.photos.filter((p) => ids.has(p.id)).map((p) => ({ id: p.id, url: p.url }));
+    if (open) Object.assign(open, { photos: list, image: open.image || list[0].url });
+    else spots().push({ id: uid('sp-'), studentId: sid, teacherId, classId: d.classId, lineId: d.lineId, title, note, image: list[0].url, photos: list, dropId: d.id, on: d.date, date: TODAY, at, expires, status: 'open' });
+    notify(toStudent(sid), `${shortName(t.name)} added photos from “${title}”`, { persona: toStudent(sid), screen: 'map' }, 'spotted');
+  }
+  d.photos = d.photos.filter((p) => p.studentIds.length || !p.url);
+  d.editedAt = at;
+  emit();
+  return d;
+}
 // ── Year handover: a new year's class lists move students to new advisors (docs/pilot-server.md) ──
 // importRoster notes each change of advisor in store.handovers ({ id, studentId, from, to, date, at, fromYear, year,
 // newYear }) and, when the academic year changes, store.yearStart ({ year, fromYear, date, at }). The outgoing
@@ -3598,6 +3665,22 @@ export function sheetPrep(studentId, viewer = 'advisor') {
   if (!picks.length && !p.proud && !p.hard && !goal) return null;
   return { ready: p.status === 'ready', picks, proud: p.proud, hard: p.hard, goal };
 }
+// The conference sheet, after a student-led conference (the latest round with a line or a staff note): the family's line ("What we will try at
+// home") and the student's ("What I will do next") on both copies; the advisor's private staff note (the advisor
+// note "Conference (<round>): …" that Conference mode saves) only on the advisor copy. null when there is nothing to show.
+export function sheetSteps(studentId, family = false) {
+  const notes = getNotes(studentId);
+  const rounds = getConferenceRounds().filter((r) => r.studentIds.includes(studentId))
+    .sort((a, b) => b.days[0].date.localeCompare(a.days[0].date) || b.at.localeCompare(a.at));
+  for (const r of rounds) {
+    const n = confNoteOf(r.id, studentId), tag = `Conference (${r.title}): `;
+    const note = notes.filter((x) => x.text.startsWith(tag)).pop() || null;
+    if (!n?.family && !n?.student && !note) continue;
+    const out = { round: r.title, family: n?.family?.text || '', student: n?.student?.text || '', note: family ? null : note, staff: family || !note ? '' : note.text.slice(tag.length) };
+    return out.family || out.student || out.staff ? out : null;
+  }
+  return null;
+}
 // A student's conference notes (the family's and their own lines), newest round first.
 export const confNotesFor = (studentId) => getConfNotes().filter((n) => n.studentId === studentId && (n.family || n.student) && getConferenceRound(n.roundId))
   .map((n) => ({ ...n, round: getConferenceRound(n.roundId) })).sort((a, b) => b.round.days[0].date.localeCompare(a.round.days[0].date));
@@ -4414,7 +4497,7 @@ addMomentComment = act('addMomentComment', addMomentComment); editMomentComment 
 reportItem = act('reportItem', reportItem); moderateReport = act('moderateReport', moderateReport);
 spotMoment = act('spotMoment', spotMoment); acceptSpotted = act('acceptSpotted', acceptSpotted); declineSpotted = act('declineSpotted', declineSpotted);
 addPhrase = act('addPhrase', addPhrase); editPhrase = act('editPhrase', editPhrase); deletePhrase = act('deletePhrase', deletePhrase); movePhrase = act('movePhrase', movePhrase); usePhrase = act('usePhrase', usePhrase);
-dropPhotos = act('dropPhotos', dropPhotos);
+dropPhotos = act('dropPhotos', dropPhotos); editPhotoDrop = act('editPhotoDrop', editPhotoDrop);
 setHandoverNote = act('setHandoverNote', setHandoverNote); carryOverGoal = act('carryOverGoal', carryOverGoal); closeGoal = act('closeGoal', closeGoal);
 setPeerFeedback = act('setPeerFeedback', setPeerFeedback); givePeerFeedback = act('givePeerFeedback', givePeerFeedback); thankPeerFeedback = act('thankPeerFeedback', thankPeerFeedback); hidePeerFeedback = act('hidePeerFeedback', hidePeerFeedback); setPeerFeedbackYear = act('setPeerFeedbackYear', setPeerFeedbackYear);
 openReflectionWindow = act('openReflectionWindow', openReflectionWindow); closeReflectionWindow = act('closeReflectionWindow', closeReflectionWindow); saveTermReflection = act('saveTermReflection', saveTermReflection); finishTermReflection = act('finishTermReflection', finishTermReflection);

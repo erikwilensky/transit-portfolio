@@ -389,7 +389,7 @@ function NextSteps({ deck, by, t }) {
       {line({ who: 'family', label: 'What we will try at home', value: fam, set: setFam, can: staff })}
       {line({ who: 'student', label: 'What I will do next', value: mine, set: setMine, can: true })}
       {staff && <div className="slc-line slc-staff">
-        <label htmlFor="slc-staff">Private staff note <small>Only staff see it. It goes with your advisor notes.</small></label>
+        <label htmlFor="slc-staff">Private staff note <small>Only staff see it. It goes with your advisor notes and on the advisor copy of the conference sheet, never the family copy.</small></label>
         <textarea id="slc-staff" rows={2} maxLength={1000} value={note} onChange={(e) => setNote(e.target.value)} />
         <button className="ghost" disabled={!note.trim()} onClick={() => run(() => { addNote(sid, `Conference (${r.title}): ${note.trim()}`); setNote(''); }, 'Saved to your advisor notes')}>Save note</button>
       </div>}

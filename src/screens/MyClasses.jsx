@@ -136,7 +136,7 @@ function ClassPage({ classId, teacherId, go, persona, version, toast }) {
         </table>
       )}
       <SpottedList teacherId={teacherId} classId={c.id} version={version} />
-      <PhotoDropList teacherId={teacherId} classId={c.id} version={version} />
+      <PhotoDropList teacherId={teacherId} classId={c.id} version={version} c={c} toast={toast} />
       <PeerClassList classId={c.id} version={version} />
     </div>
   );

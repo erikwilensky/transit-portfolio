@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { CAS_FLAGS, CAS_STATUSES, casCohort, casNudge, getCasNudges, getCasProject, getStudentMap, getTeacher, setCasProject, TODAY, daysBefore } from '../api.js';
 import { fmtDate, inkOn } from '../format.js';
 import { OUTCOMES } from '../components/AddStation.jsx';
 import StationPanel from '../components/StationPanel.jsx';
 import { CasDecide, CasEntryLine, StatusChip } from '../components/Cas.jsx';
+import PhraseTools, { phraseBox } from '../components/Phrases.jsx';
 import '../components/cas.css';
 
 const STRAND = { C: 'Creativity', A: 'Activity', S: 'Service' };
@@ -110,6 +111,7 @@ function Side({ cell, row, list, fresh, persona, by, toast, onOpen }) {
   const [status, setStatus] = useState(proj.status);
   const [title, setTitle] = useState(proj.title);
   const nudges = getCasNudges(student.id);
+  const box = useRef(null);
   return (
     <>
       <h3>{student.name}</h3>
@@ -139,7 +141,8 @@ function Side({ cell, row, list, fresh, persona, by, toast, onOpen }) {
       )}
       <div className="cas-nudge">
         <h4>Nudge {first}</h4>
-        <textarea rows={3} value={text} onChange={(e) => setText(e.target.value)} aria-label={`Message to ${first}`} />
+        <textarea rows={3} value={text} onChange={(e) => setText(e.target.value)} aria-label={`Message to ${first}`} {...phraseBox(box)} />
+        <PhraseTools value={text} onChange={setText} first={first} kind="next" box={box} />
         <button className="ghost small-btn" disabled={text.trim().length < 8} onClick={() => { casNudge(student.id, about, text.trim(), persona.name); toast(`Nudge sent to ${first}`); }}>Send nudge</button>
         {nudges.length > 0 && <ul className="nudge-hist">{nudges.map((n) => <li key={n.id}><small>{fmtDate(n.date)} · about {n.about}</small>{n.text}</li>)}</ul>}
       </div>

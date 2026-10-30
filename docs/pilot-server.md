@@ -1792,8 +1792,14 @@ student (`buildArchive(sid)`):
   `leaver-portfolio.pdf` (from `api.leaverView`, only when they made one), `photos/`, `documents/`, `voice-notes/` (their
   uploads by original name, by type) and `data/` (the PDPA copy, `buildCopy` in `routes/50-pdpa.mjs`, without its `files/`;
   `data/manifest.json` gives each upload's `inArchive` path).
-- **PDF** (`server/pdf.mjs`, no dependency): Helvetica in WinAnsi, so Western letters only. Other letters (Thai) show as
-  `[?]`; the README then says so and points to `my-journey.html`. To put Thai in the PDF, embed a TTF there.
+- **PDF** (`server/pdf.mjs`, `server/ttf.mjs`, no dependency): set in Sarabun Regular and SemiBold (`server/fonts/`, SIL Open
+  Font License 1.1, `server/fonts/OFL.txt`; read from disk once, never fetched), Thai and English alike. Each PDF embeds a
+  subset (`subset()`: only the glyphs drawn, ids kept; `CIDFontType2`, `Identity-H`, a `ToUnicode` map so text can be
+  copied and searched). Thai is shaped by the font's own rules (`shape()`: its `ccmp` substitutions and `mark`/`mkmk`
+  positioning: ำ split, tone marks in their high form over a vowel, narrow marks by ป ฝ ฟ, ญ ฐ without their tail over a
+  vowel below) and broken into lines between words (`Intl.Segmenter('th')`; a word longer than a line breaks between
+  letters, never inside a cluster). Characters Sarabun has no letters for (emoji, Chinese) show as `[?]`; only then does
+  the README point to `my-journey.html`. `pdfText(buf)` reads a PDF's text back (tests and checks).
 - **Streaming** (`zipStream(res)` in `server/zip.mjs`): stored entries written as they come, waiting for the socket, so a
   combined download holds one student's archive in memory at a time. No ZIP64: one download stays under 4 GB and 65,535 entries.
 - **Who is leaving** (`leavers()`): Year 13 (`grade === 12`); students in `store.rosterImport.summary.missingFromFile` (the last
@@ -1817,7 +1823,7 @@ student (`buildArchive(sid)`):
   with `unzip -t` when present, permissions, a combined ZIP, erasure only on the day); `node scripts/checks/leaver-archive.cjs`
   (real roster, separate contexts: the admin downloads two Year 13 archives, schedules, confirms on the day; the student
   downloads their own from Privacy; a teacher gets 403; axe on the panel and Privacy).
-- Not done: Thai letters inside the PDF (see above); photos are listed in the PDF, not drawn.
+- Not done: photos are listed in the PDF, not drawn; Thai in the PDF is not justified (lines are ragged right).
 
 ## Notification settings and quiet hours (`src/notify-kinds.js`, `src/notify-prefs.js`, `src/components/NotificationSettings.jsx`)
 
@@ -1957,7 +1963,9 @@ sent until the teacher sends it as before. Students and families never receive a
   box's kind. Shown only to a signed-in member of staff or admin in a pilot. Placed on: the Endorsements note and its
   "Ask for more", moment comments (staff), "Want to see more?" in the station panel, Review answers (the shared note
   and "Ask for more"), class task hand-ins (shared note and "Ask for more"), I spotted something (the note),
-  encouragement on goal check-ins, and CAS "Not right" send-backs. The report writing helper's draft boxes get it
+  encouragement on goal check-ins, CAS "Not right" send-backs, and on the CAS coordinator's grid (CAS outcomes,
+  `src/screens/CasDashboard.jsx`) the side panel's "Nudge <first name>" box (kind `next`, `{first name}` filled) beside its
+  "Not right" send-backs. The report writing helper's draft boxes get it
   through `reportHooks.phrasePicker` when that feature is present (`import.meta.glob`, so nothing breaks without it).
 - **Screen**: "My phrases" (`#/<persona>/phrases`) for every member of staff and admins: add, edit, delete and reorder
   your own; the school bank by kind, editable by coordinators, leadership and admins, read only for others.
@@ -2157,15 +2165,20 @@ Demo and pilot (the demo record has no rounds, so nothing shows until one is ope
   "Write our line", in Thai or English (`slcWords`), the student's own words marked `lang="en"`.
 - **Conference sheet**: `conferenceSheet` carries `prep` (`sheetPrep`, the latest round's): "In Aaron’s words" with the moments to
   show, proud, hard and the goal, read as the sheet's reader may (the family copy drops moments the family view does not show).
-  The moment list gives way so the sheet stays one A4 page.
+  The moment list gives way so the sheet stays one A4 page. After the conference it also carries `steps` (`sheetSteps(sid,
+  family)`, the latest round with a line or a staff note): "Our next steps" with "What we will try at home" and "What I will do
+  next" on both copies, and the advisor's private staff note for that round (the advisor note `Conference (<round>): …`) only
+  on the advisor copy, never the family copy (where it is not even read); that note is then not repeated under "For the
+  advisor only". The moment list gives way again, so either copy stays one A4 page.
 - Tests: `server/test/student-led.test.mjs` (picks filtered, replay, canAct for every role, notifications and Thai, scope, the sheet,
   PDPA); browser: `node scripts/checks/student-led.cjs` (real roster: Ms Altemen opens a round for 8C; Aaron Torres prepares at Simple
   on a phone; she sees "Prepared: 1 of 23", books him and opens Conference mode from the booking list, goes offline (photo still
   shows, staff note sent when back), switches to ไทย; Aaron writes his line in his own Conference mode; his parent joins from a
   family letter in Thai and writes theirs; another family gets nothing and is refused (403); the sheet carries the prep on one
-  A4 page; axe on each screen; each account in its own browser context). `thai-students.cjs` sweeps the prep, Conference mode and
+  A4 page, and after the conference both lines, with the staff note on the advisor copy only (the family copy checked
+  and printed too, one A4 page each); axe on each screen; each account in its own browser context). `thai-students.cjs` sweeps the prep, Conference mode and
   the note in Thai. Screenshots and a PDF: `tp-slc-*` in `SCRATCH` or the temp folder.
-- Not done: a round's prep cannot be copied into the next round; the conference note is not on the printed sheet.
+- Not done: a round's prep cannot be copied into the next round.
 ## Class photo drop (`src/api.js`, `src/components/PhotoDrop.jsx`, `server/routes/71-photo-drop.mjs`)
 
 A teacher takes photos in a lesson, on a trip or in a practical and gives each one to the students in it. Each student
@@ -2491,3 +2504,22 @@ writes "Where I’ve been, where I’m going" for their next advisor. The window
   activity log; the next year's import shows it to the new advisor in Last year). Thai: `scripts/checks/thai-students.cjs`
   walks a Year 9 (Simple) and a Year 11 (Standard) summary. Screenshots `tp-mu-*`.
 - Not done: the summary is not part of the leaver archive PDF or the conference sheet.
+  the file is deleted. He then edits the batch (new title, photo 1 also to the first classmate, photo 2 taken back from
+  both), undoes it from the toast (no file deleted), and an undo of the send is refused (Aaron kept a photo). Axe on each screen. Thai: `scripts/checks/thai-students.cjs` walks Aaron's card and report dialog.
+- **Editing a sent batch** (class page, "Class photos", "Edit “…”" in an open batch): the title, the note and each photo's
+  students. `editPhotoDrop(dropId, teacherId, { title?, note?, add: [{ photoId, studentId }], withdraw: [{ photoId,
+  studentId }] })`: canAct as for sending (staff or admin with a staff record, as themselves, still in the class's
+  `teacherIds`) and only the teacher who sent it (403); added students must be current members (400). The new title and
+  note go to the batch and to offers still waiting; a kept moment stays as the student kept it. An added student gets the
+  photo on their waiting offer, or else a new offer (also after "Not for me" or expiry), and is told as when it was sent.
+  A photo can be taken back only from a student who has not kept it (409, its chip is locked "· kept"); an offer left with
+  no photos becomes `removed`. A photo given to nobody leaves the batch. `photoDropsBy` now gives one row a student and
+  `kept: { photoId: [studentId] }`. Activity log: the students given or losing a photo, and the teacher.
+- **Undo and files**: a photo an edit leaves given to nobody keeps its file (`heldAt` in its `.json`, so a restart keeps it
+  too) until the undo window (`UNDO_WINDOW_MS`) has passed, then the hourly look deletes it; Undo of the edit brings it
+  back. Undo of a send, or of an edit, is refused (409, "Students have already kept photos from this batch…") once a
+  student has kept photos from it since: replaying without it would drop their moment and delete its files. Features add
+  such checks to `undoGuards` in `server/history.mjs`. Files are only ever deleted when nothing in the record uses them.
+  Also fixed: the class-task reminder look (`68-tasks.mjs`) left a step behind when it changed nothing, so the next change
+  started a fresh undo segment and nothing before it (a sent batch included) could be undone (`forgetDirect`).
+- Not done: faces are not detected; photos cannot be added to a batch after sending.
