@@ -10,6 +10,8 @@ import { OfflineBar } from './components/OfflineBar.jsx';
 import { useLiveDate } from './api.js';
 import './styles.css';
 import './print.css';
+import './a11y.css';
+import './a11y.js'; // display options on <html> before the first paint
 import { keepShell, registerServiceWorker } from './pwa.js';
 import { UpdateBar } from './components/PhoneApp.jsx';
 import { RefusedBar } from './components/Refused.jsx';

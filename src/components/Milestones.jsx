@@ -5,6 +5,7 @@ import { inWeek } from '../week.js';
 import { fmtDate } from '../format.js';
 import { dateIn, lineName } from '../i18n.js';
 import { inPreview } from '../preview.js';
+import { calm } from '../a11y.js';
 import './milestones.css';
 
 // Milestones and celebrations (src/milestones.js, docs/pilot-server.md). A new milestone is celebrated once: as soon as
@@ -36,7 +37,7 @@ function useQueue(studentId) {
   useEffect(() => { const f = () => set((n) => n + 1); subs.add(f); return () => subs.delete(f); }, []);
   return queue.get(studentId) || [];
 }
-const reduced = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const reduced = calm; // src/a11y.js: the person's Reduce motion choice, else the device's
 
 // The student's own: watches for new milestones, celebrates them, and shows "My milestones". On the home at every level.
 export function StudentMilestones({ studentId, version, simple }) {

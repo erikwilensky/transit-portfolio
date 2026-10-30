@@ -258,9 +258,11 @@ function commentOk(user, fn, [target, by]) {
 
 // ── Per-person settings (POST /api/auth/prefs): each account's own language, kept on the account ──
 export const LANGS = ['en', 'th'];
-export function setPrefs(a, { lang }) {
-  if (!LANGS.includes(lang)) return 'Pick English or Thai.';
-  a.lang = lang; saveAccounts();
+export function setPrefs(a, { lang, display }) {
+  if ((lang !== undefined || !display) && !LANGS.includes(lang)) return 'Pick English or Thai.';
+  if (lang !== undefined) a.lang = lang;
+  if (display) a.display = display; // already checked (routes/19-prefs.mjs)
+  saveAccounts();
   return null;
 }
 // The demo's one shared family language (api.setLang) would change it for everybody: in a pilot only an admin may.

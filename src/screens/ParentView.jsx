@@ -63,9 +63,9 @@ export default function ParentView({ studentId, lang: linkLang }) {
           <section className="pv-intro">
             <h1>{say.title(s.name)}</h1>
             <p>{say.intro(first)}</p>
-            <h3>{t('This term')}</h3>
+            <h2>{t('This term')}</h2>
             {term.length ? <ul>{term.map((e) => <li key={e.id}><button className="linkish" lang="en" onClick={() => setSel(e.id)}>{e.title}</button> <small>{dateIn(lang, e.date)}</small></li>)}</ul> : <p className="fineprint">{t('Nothing public this term yet.')}</p>}
-            <h3>{t('Questions you might ask')}</h3>
+            <h2>{t('Questions you might ask')}</h2>
             <ul>{QUESTIONS.map((q) => <li key={q}>{t(q)}</li>)}</ul>
             {lang === 'th' && <p className="fineprint">{say.words(first)}</p>}
           </section>

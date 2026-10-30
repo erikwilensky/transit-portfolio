@@ -80,6 +80,7 @@ export default function TeacherQueue({ teacherId, toast, version, focus, go, per
       )}
       {!waitingAll.length && <div className="empty-state"><b>All caught up.</b> New requests will appear here and in your notifications.</div>}
 
+      <h2 className="sr-only">Waiting for you</h2>
       <div className="queue-list">
         {groups.map((g) => (
           <article key={g.prompt.id} className="q-group" tabIndex={0} aria-label={`Answers to ${g.prompt.question}`} onKeyDown={(ev) => { if (ev.target === ev.currentTarget && ev.key === 'Enter') review(g); }}>

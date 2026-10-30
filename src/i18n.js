@@ -50,6 +50,9 @@ const TH = {
   'Thank you. A teacher will look at it.': 'ขอบคุณ ครูจะตรวจดู', 'What is wrong': 'มีอะไรไม่ถูกต้อง',
   'The school’s safeguarding staff will look at it. The student is not told who reported it.': 'เจ้าหน้าที่ดูแลความปลอดภัยของโรงเรียนจะตรวจดู นักเรียนจะไม่ทราบว่าใครเป็นผู้รายงาน',
   'Anything else? (optional)': 'มีอะไรเพิ่มเติมไหม (ไม่บังคับ)', Cancel: 'ยกเลิก', 'Send report': 'ส่งรายงาน', 'That did not work.': 'ไม่สำเร็จ โปรดลองอีกครั้ง',
+  // readability and accessibility (src/components/DisplaySettings.jsx, src/App.jsx)
+  'Text size': 'ขนาดตัวอักษร', Normal: 'ปกติ', Large: 'ใหญ่', Larger: 'ใหญ่ขึ้น', 'High contrast': 'คอนทราสต์สูง',
+  'Easy-read font': 'ตัวอักษรอ่านง่าย', 'Reduce motion': 'ลดการเคลื่อนไหว', 'Like this device': 'ตามอุปกรณ์นี้', 'Skip to content': 'ข้ามไปยังเนื้อหา',
   'Inappropriate content': 'เนื้อหาไม่เหมาะสม', 'Personal information shown': 'แสดงข้อมูลส่วนตัว', 'Unkind or bullying': 'ไม่สุภาพหรือกลั่นแกล้ง', 'Something else': 'เรื่องอื่น ๆ',
 };
 

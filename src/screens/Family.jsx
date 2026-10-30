@@ -123,10 +123,10 @@ function FamilyMap({ persona, childId, go, lang, version }) {
       ) : (
         <div className="fam-body">
           <section className="pv-intro">
-            <h3>{say.thisTerm}</h3>
+            <h2>{say.thisTerm}</h2>
             {term.length ? <ul>{term.map((e) => <li key={e.id}><button className="linkish" lang="en" onClick={() => setSel(e.id)}>{e.title}</button> <small>{dateIn(lang, e.date)} · {e.lineIds.map((id) => lineName(lang, map.lines.find((l) => l.id === id)?.name || id)).join(', ')}</small></li>)}</ul> : <p className="fineprint">{say.none}</p>}
             <FamilyMilestones childId={childId} lang={lang} version={version} onOpen={setSel} />
-            <h3>{say.ask}</h3>
+            <h2>{say.ask}</h2>
             <ul>{QUESTIONS.map((q) => <li key={q}>{tr(lang, q)}</li>)}</ul>
           </section>
           <div className="pv-map fam-map">
