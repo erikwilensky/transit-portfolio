@@ -4,7 +4,7 @@ import '../auth.css';
 import './overview.css';
 import { YearReflections } from '../components/TermReflection.jsx';
 import { YearMovingUp } from '../components/MovingUp.jsx';
-import { YearBooking } from '../components/ConferenceBooking.jsx';
+import { YearConferences } from '../components/Conferences.jsx';
 import { PeerYears } from '../components/PeerFeedback.jsx';
 import { SignoffProgress } from '../components/YearSignoff.jsx';
 
@@ -74,7 +74,7 @@ export default function Overview({ persona, version, toast }) {
       </section>
       <YearReflections persona={persona} version={version} toast={toast} />
       <YearMovingUp persona={persona} version={version} toast={toast} />
-      <YearBooking persona={persona} version={version} toast={toast} />
+      <YearConferences persona={persona} version={version} toast={toast} />
       <PeerYears persona={persona} version={version} toast={toast} />
       {(persona?.admin || persona?.kind === 'leadership') && <SignoffProgress persona={persona} version={version} toast={toast} />}
     </div>

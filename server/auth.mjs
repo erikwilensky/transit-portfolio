@@ -199,7 +199,6 @@ export function canAct(user, fn, args = []) {
   if (!user || typeof fn !== 'string') return false;
   // Undo sends a whole copy of the record, and in a pilot every browser holds only its own part of it.
   if (fn === 'restore') return false;
-  if (REMOVED_FNS.has(fn) || (fn === 'reportItem' && args[0]?.familyNoteId) || (fn === 'moderateReport' && api.getReport(args[0])?.familyNoteId)) return false;
   if (user.kind === 'parent') { try { return parentOk(user, fn, args); } catch { return false; } }
   if (fn === 'recordFamilyConsent') { try { return consentOk(user, args); } catch { return false; } }
   if (SPOT_FNS.has(fn)) { try { return spotOk(user, fn, args); } catch { return false; } }
@@ -284,8 +283,8 @@ export function setPrefs(a, { lang, display, notify }) {
 ADMIN_ONLY.add('setLang');
 // ── Safeguarding (api.reportItem, api.moderateReport) ──
 // Reporting: as yourself only (from.key: 'student', your teacherId, or admin), on what you can see: a student their own
-// moment or a comment on it; staff a student in reach. Families do not report in the app (removed on 30 October 2026). Moderating: coordinators, counsellors, leadership and
-// admins, as themselves.
+// moment or a comment on it; staff a student in reach. Families do not report in the app. Moderating: coordinators,
+// counsellors, leadership and admins, as themselves.
 const SAFE_FNS = new Set(['reportItem', 'moderateReport']);
 function safeOk(user, fn, args) {
   if (fn === 'moderateReport') return api.MODERATOR_KINDS.includes(user.kind) && (user.teacherId ? args[3] === user.teacherId : !args[3]);
@@ -418,56 +417,34 @@ function taskOk(user, fn, a) {
   if (fn === 'editTask') return a[1] === user.teacherId;
   return a[3] === user.teacherId && t.studentIds.includes(a[1]);
 }
-// ── Conference booking (api.openConferenceRound, editConferenceRound, closeConferenceRound, bookConference,
-// cancelConference, blockConferenceSlot) ──
-// Opening: an advisor for their own advisory, whole-school staff for any advisory or a whole Year, as themselves; admins.
-// Editing and closing: whoever opened it, its advisor, whole-school staff, admins. Booking and cancelling: the advisor (as
-// themselves) for their own advisees, any time; families never (removed on 30 October 2026). Blocking a slot: the advisor of
-// that grid, as themselves. Students never; reminders only the server (sendConferenceReminders).
-const CF_FNS = new Set(['openConferenceRound', 'editConferenceRound', 'closeConferenceRound', 'bookConference', 'cancelConference', 'blockConferenceSlot']);
-ADMIN_ONLY.add('sendConferenceReminders');
+// ── Conferences (api.addConference, editConference, removeConference) ──
+// Adding: an advisor for their own advisory, whole-school staff for any advisory or a whole Year, as themselves; admins.
+// Changing and removing: whoever added it, its advisor, whole-school staff, admins. Students and families never.
+const CF_FNS = new Set(['addConference', 'editConference', 'removeConference']);
 function confOk(user, fn, args) {
   const admin = isAdmin(user), tid = user.teacherId || null, staff = STAFF.includes(user.kind) && !!tid;
   const whole = staff && reachOf(user) === null;
-  if (fn === 'openConferenceRound') {
+  if (fn === 'addConference') {
     const [spec, by] = args;
     if (admin) return !by || by === tid;
     return staff && by === tid && (whole || (!spec?.year && spec?.advisorId === tid));
   }
-  if (fn === 'editConferenceRound' || fn === 'closeConferenceRound') {
-    const r = api.getConferenceRound(args[0]), by = fn === 'editConferenceRound' ? args[2] : args[1];
-    if (!r) return false;
-    if (admin) return true;
-    return staff && by === tid && (whole || r.by === tid || r.advisorId === tid);
-  }
-  if (fn === 'blockConferenceSlot') {
-    const [rid, aid, , , , by] = args, r = api.getConferenceRound(rid);
-    return !!r && r.advisorIds.includes(aid) && !!tid && aid === tid && by === tid && (staff || admin);
-  }
-  if (fn === 'bookConference') {
-    const [rid, sid, , by] = args, r = api.getConferenceRound(rid), s = api.getStudent(sid);
-    if (!r || !s || !r.studentIds.includes(sid)) return false;
-    return (staff || admin) && !!tid && by === tid && s.advisorId === tid;
-  }
-  if (fn === 'cancelConference') {
-    const b = api.getConfBooking(args[0]), by = args[1];
-    if (!b) return false;
-    return (staff || admin) && !!tid && by === tid && api.getStudent(b.studentId)?.advisorId === tid;
-  }
-  return false;
+  const c = api.getConference(args[0]), by = fn === 'editConference' ? args[2] : args[1];
+  if (!c) return false;
+  if (admin) return true;
+  return staff && by === tid && (whole || c.by === tid || c.advisorId === tid);
 }
 // ── Student-led conferences (api.saveConfPrep, writeConfNote) ──
-// Getting ready: only the student, on their own prep, in a round that includes them. The line at the end (who 'student'):
-// the student as 'student', and the student's advisor or whole-school staff as themselves. Admins too, as themselves.
-// The family's line was removed on 30 October 2026: who 'family' is refused for everyone.
+// Getting ready: only the student, on their own prep, in a conference that includes them. The line at the end (who
+// 'student'): the student as 'student', and the student's advisor or whole-school staff as themselves. Admins too, as themselves.
 const SLC_FNS = new Set(['saveConfPrep', 'writeConfNote']);
 function slcOk(user, fn, args) {
-  const r = api.getConferenceRound(args[0]), sid = args[1];
-  if (!r || !r.studentIds.includes(sid)) return false;
+  const c = api.getConference(args[0]), sid = args[1];
+  if (!c || !c.studentIds.includes(sid)) return false;
   if (fn === 'saveConfPrep') return user.kind === 'student' && !!user.studentId && sid === user.studentId;
   const [, , who, , by] = args;
   if (who !== 'student') return false;
-  if (user.kind === 'student') return who === 'student' && by === 'student' && sid === user.studentId;
+  if (user.kind === 'student') return by === 'student' && sid === user.studentId;
   const tid = user.teacherId || null;
   if (!tid || by !== tid || !(STAFF.includes(user.kind) || isAdmin(user))) return false;
   return isAdmin(user) || reachOf(user) === null || api.getStudent(sid)?.advisorId === tid;
@@ -548,10 +525,7 @@ export function liveSessions() {
   return { sessions: live.length, people: new Set(live.map((s) => s.userId)).size };
 }
 
-// ── Removed on 30 October 2026 at Erik's request: no new family–school messaging paths (parents use email) ──
-// Family encouragement, a family's answer to consent and a student's reminder to their family stay registered in api.js
-// only so recorded history replays; nobody may call them. A report on a family note, or moderating one, is refused too.
-const REMOVED_FNS = new Set(['addFamilyNote', 'editFamilyNote', 'deleteFamilyNote', 'thankFamilyNote', 'setFamilyNoteHidden', 'answerConsent', 'remindParent']);
+// ── Families read only (Erik's rule: parents use email, no family–school paths in the app) ──
 // A family account changes nothing in the record: it reads the family view and may tidy its own bell, and a share link it
 // opens counts a view (recordView, as for anyone). Its language, display, notification settings and password are its
 // account's own (POST /api/auth/prefs, /api/auth/password), not mutators. setFamily (the demo's shared family settings) is

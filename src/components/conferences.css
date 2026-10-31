@@ -1,0 +1,10 @@
+/* Conferences: the form (title, dates), the advisor's list on My advisory, the Year panel on the school overview. */
+.cb-form { display: grid; gap: 10px; margin: 10px 0; max-width: 640px; }
+.cb-form label { display: grid; gap: 4px; font-weight: 600; font-size: 14px; }
+.cb-form input, .cb-form select { font: inherit; padding: 7px 9px; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); color: var(--ink); min-width: 0; }
+.cb-row { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: end; }
+.cb-form-foot { display: flex; gap: 8px; justify-content: flex-end; }
+
+.cb-round { border-top: 1px solid var(--rule); padding-top: 12px; margin-top: 12px; }
+.cb-round-head h3 { margin: 0 0 2px; font-size: 17px; }
+.cb-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0; }

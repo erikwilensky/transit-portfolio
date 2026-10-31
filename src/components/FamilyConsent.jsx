@@ -1,5 +1,5 @@
-// Family consent on file (api.recordFamilyConsent): families no longer answer consent in the app (removed on 30 October
-// 2026), so the school records the consent it holds for a student in Years 7 to 9: an admin (Accounts, "A student's
+// Family consent on file (api.recordFamilyConsent): families do not answer in the app, so the school records the consent
+// it holds for a student in Years 7 to 9: an admin (Accounts, "A student's
 // data") or the student's advisor (My advisory). Date, how it was given (email, paper, in person) and a short note.
 import { useMemo, useState } from 'react';
 import { consentOnFile, CONSENT_HOW, familyConsentOf, getStudent, TODAY, youngStudent, recordFamilyConsent } from '../api.js';

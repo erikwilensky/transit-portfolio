@@ -1,6 +1,6 @@
 // Safeguarding (api.reportItem): "Report" on a moment or a moment comment, and the notice on a hidden one.
-// Anyone signed in who can see the item: staff and the student who owns it. Families do not report in the app (removed on
-// 30 October 2026; they speak to the school by email). The person reported never learns who reported; moderators do (src/screens/Reports.jsx).
+// Anyone signed in who can see the item: staff and the student who owns it. Families do not report in the app (they speak
+// to the school by email). The person reported never learns who reported; moderators do (src/screens/Reports.jsx).
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { getReports, getStudent, hasPublicCopy, REPORT_REASONS, reportItem } from '../api.js';

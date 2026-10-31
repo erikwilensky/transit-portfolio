@@ -63,11 +63,8 @@ test('goals, sponsors, check-ins and lines', () => {
 });
 
 test('families, comments, nudges and imports', () => {
-  // Since 30 October 2026 families write nothing in the app: a student's reminder to their family and a family's consent
-  // answer only replay from old history, and tell nobody. The school records consent (recordFamilyConsent), quietly.
-  api.getStore().consentReqs.push({ id: 'cr-pilot', studentId: s.id, kind: 'join', title: 'Join', status: 'pending' });
+  // Families write nothing in the app. The school records consent (recordFamilyConsent), quietly.
   const all = () => api.getStore().notifications.length, n0 = all();
-  api.remindParent(s.id); api.answerConsent('cr-pilot', 'approved', 'Khun Pilot');
   api.recordFamilyConsent(s.id, { on: true, date: api.TODAY, how: 'email' }, t.id);
   assert.equal(all(), n0, 'nobody is notified');
   assert.ok(api.consentOnFile(s.id));

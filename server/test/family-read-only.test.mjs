@@ -1,6 +1,6 @@
-// Families read only (since 30 October 2026): a parent account may call no act()-wrapped mutator but its own bell (and a
-// share link's view count); consent is recorded by the school (api.recordFamilyConsent); old family history still replays;
-// what families wrote before stays only in the PDPA copy and goes with erasure. Run: npm run test:server.
+// Families read only: a parent account may call no act()-wrapped mutator but its own bell (and a share link's view
+// count); consent is recorded by the school (api.recordFamilyConsent); the removed family features are gone from the record.
+// Run: npm run test:server.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -26,24 +26,22 @@ const hana = { kind: 'student', studentId: 'S2003' };
 // The only mutators a parent may call: its own bell, and counting a share link it opens. Language, display, notification
 // settings and password are its account's own routes (/api/auth/prefs, /api/auth/password), not mutators.
 const ALLOW = ['markNotificationsRead', 'clearReadNotifications', 'recordView'];
-let mom, round;
+let mom, conf;
 
-test('setup: class lists, a moment, a conference round', () => {
+test('setup: class lists, a moment, a conference', () => {
   api.importRoster(structuredClone(FX));
   mom = api.addStation('S2003', { title: 'Painted the mural', lineIds: [api.getStudent('S2003').laneOrder[0]], visibility: 'school' });
-  round = api.openConferenceRound({ title: 'Term 1', slot: 15, days: [{ date: api.daysBefore(-5), from: '15:00', to: '16:00' }], location: 'Room 8A', advisorId: 'T104' }, 'T104');
-  assert.ok(mom.id && round.id);
+  conf = api.addConference({ title: 'Term 1', from: api.daysBefore(-5), advisorId: 'T104' }, 'T104');
+  assert.ok(mom.id && conf.id);
 });
 
 test('canAct: a parent is refused every mutator but its own bell', () => {
   assert.deepEqual([...PARENT_FNS].sort(), [...ALLOW].sort(), 'the allowlist is small and explicit');
   assert.ok(api.MUTATORS.length > 150, 'every act()-wrapped mutator');
-  const slot = { date: api.daysBefore(-5), time: '15:00' };
   const shapes = [
     [], ['S2003'], ['S2001'], ['S2003', {}], ['S2003', {}, 'family'], ['S2003', 'x'], [mom.id], [mom.id, 'x'], [[mom.id]], [{ studentId: 'S2003' }],
-    [mom.id, { key: `u:${parent.id}`, name: parent.name }, 'So proud', 'proud'], ['cr-1', 'approved', parent.name],
-    [{ eventId: mom.id }, 'other', '', { key: 'fam:S2003', name: parent.name }], [round.id, 'S2003', slot, 'family'], ['cb-1', 'family'],
-    [round.id, 'S2003', 'family', 'Read together', 'family'], ['S2003', { on: true, date: api.TODAY, how: 'email' }, null],
+    [{ eventId: mom.id }, 'other', '', { key: 'fam:S2003', name: parent.name }], [{ title: 'x', from: api.TODAY, advisorId: 'T104' }, null], [conf.id, null],
+    [conf.id, 'S2003', 'student', 'x', 'student'], [conf.id, 'S2003', {}, true], ['S2003', { on: true, date: api.TODAY, how: 'email' }, null],
     ['th'], [{ lang: 'th' }], [{ email: true }], [['fam:S2003']], ['fam:S2003'],
   ];
   const leaks = [];
@@ -78,52 +76,32 @@ test('recordFamilyConsent: an admin or the student’s advisor, as themselves; c
   const after = api.snapshot();
   api.restore(before); api.runAction(step.fn, step.args, step.rec);
   assert.equal(api.snapshot(), after, 'replays exactly');
-  // An old answer from a family still counts until the school records otherwise.
-  api.getStore().consentReqs.push({ id: 'cr-old', studentId: 'S2003', kind: 'join', title: 'Join', status: 'approved' });
   api.recordFamilyConsent('S2003', { on: false }, 'T104');
-  assert.equal(api.consentOnFile('S2003'), false, 'a record decides');
+  assert.equal(api.consentOnFile('S2003'), false, 'withdrawn');
   api.recordFamilyConsent('S2003', { on: true, date: api.TODAY, how: 'email' }, null);
   assert.equal(api.familyConsentOf('S2003').by, null);
   for (const u of [parent, hana, fong]) assert.deepEqual(scopedSnapshot(u).store.familyConsent?.S2003?.on, true, `${u.kind} sees it`);
 });
 
-test('old history replays: removed changes do nothing and tell nobody', () => {
-  const n0 = api.getStore().notifications.length, notes0 = (api.getStore().familyNotes || []).length;
-  const run = (fn, args) => assert.doesNotThrow(() => api.runAction(fn, args, ['fn-old']), fn);
-  run('addFamilyNote', [mom.id, { key: `u:${parent.id}`, name: parent.name }, 'So proud', 'proud']);
-  run('editFamilyNote', ['fn-x', `u:${parent.id}`, 'x']);
-  run('thankFamilyNote', ['fn-x']); run('setFamilyNoteHidden', ['fn-x', true]); run('deleteFamilyNote', ['fn-x', `u:${parent.id}`]);
-  run('answerConsent', ['cr-old', 'declined', parent.name]); run('remindParent', ['S2003']);
-  run('writeConfNote', [round.id, 'S2003', 'family', 'Read together', 'family']);
-  run('reportItem', [{ familyNoteId: 'fn-x' }, 'other', '', { key: 'student' }]);
-  assert.equal(api.getStore().notifications.length, n0);
-  assert.equal((api.getStore().familyNotes || []).length, notes0);
-  assert.equal(api.confNoteOf(round.id, 'S2003'), null);
-  const b = api.runAction('bookConference', [round.id, 'S2003', { date: api.daysBefore(-5), time: '15:15' }, 'family'], ['cb-old']);
-  assert.equal(b.by, 'family', 'an old family booking stays an ordinary booking');
-  assert.ok(!api.getStore().notifications.some((n) => /^fam:/.test(n.to)), 'the family is not told');
+test('the removed family features are gone: no mutators, no collections, no family reporter', () => {
+  for (const fn of ['addFamilyNote', 'editFamilyNote', 'deleteFamilyNote', 'thankFamilyNote', 'setFamilyNoteHidden', 'answerConsent', 'remindParent', 'bookConference', 'cancelConference', 'openConferenceRound']) {
+    assert.ok(!api.MUTATORS.includes(fn), `${fn} is gone`);
+    assert.throws(() => api.runAction(fn, []), /Not a change/);
+  }
+  assert.ok(!('getConsentReqs' in api) && !('familyWrittenNotice' in api) && !('getFamilyNote' in api));
+  // A saved record from before loses the old collections on load.
+  const snap = JSON.parse(api.snapshot());
+  Object.assign(snap.store, { familyNotes: [{ id: 'fn-1', studentId: 'S2003' }], consentReqs: [{ id: 'cr-1', studentId: 'S2003' }], confRounds: [], confBookings: [], confBlocks: [] });
+  api.restore(JSON.stringify(snap));
+  for (const k of ['familyNotes', 'consentReqs', 'confRounds', 'confBookings', 'confBlocks']) assert.ok(!(k in api.getStore()), `${k} dropped`);
+  assert.throws(() => api.reportItem({ eventId: mom.id }, 'other', '', { key: 'fam:S2003', name: 'Mo Ito' }), /Who is reporting/);
+  assert.equal(scopedSnapshot(parent).store.conferences.length, 0, 'no conferences for a family');
 });
 
-test('what families wrote before: hidden from every screen, in the PDPA copy, gone with erasure', () => {
-  const s = api.getStore();
-  s.familyNotes = [{ id: 'fn-1', eventId: mom.id, studentId: 'S2003', by: `u:${parent.id}`, name: 'Mo Ito', text: 'FAMILY-NOTE-TEXT', reaction: null, at: '2026-10-01T10:00:00.000Z' }];
-  s.notifications.unshift({ id: 'nt-fn', to: 'st:S2003', text: 'Mo Ito sent you encouragement for “Painted the mural”: FAMILY-NOTE-TEXT', kind: 'encourage', go: { persona: 'st:S2003', screen: 'map', param: mom.id }, at: '2026-10-01T10:00:00.000Z' });
-  s.reports = [...(s.reports || []), { id: 'rp-fn', kind: 'familyNote', eventId: mom.id, familyNoteId: 'fn-1', studentId: 'S2003', reason: 'other', note: '', at: '2026-10-01T11:00:00.000Z', from: { key: 'student' }, status: 'open', history: [] }];
-  s.reports.push({ id: 'rp-fam', kind: 'station', eventId: mom.id, studentId: 'S2003', reason: 'other', note: 'FAMILY-REPORT-WORDS', at: '2026-10-01T12:00:00.000Z', from: { key: 'fam:S2003', name: 'Mo Ito', role: 'Family' }, status: 'open', history: [] });
-  assert.equal(scopedSnapshot(fong).store.reports.find((r) => r.id === 'rp-fam')?.note, '', 'a moderator still sees a family’s old report, without its words');
-  assert.ok(!scopedSnapshot(parent).store.reports.length, 'the family gets none');
-  for (const u of [parent, hana, fong, ellis, admin]) {
-    const j = JSON.stringify(scopedSnapshot(u).store);
-    assert.ok(!j.includes('FAMILY-NOTE-TEXT') && !j.includes('rp-fn') && !j.includes('FAMILY-REPORT-WORDS'), `${u.kind}: nothing family-written`);
-  }
-  assert.equal(api.reportItem({ familyNoteId: 'fn-1' }, 'other', '', { key: 'student' }), null, 'no new report on one');
-  assert.ok(!canAct(admin, 'moderateReport', ['rp-fn', 'hide', '', null]) && !canAct(hana, 'reportItem', [{ familyNoteId: 'fn-1' }, 'other', '', { key: 'student' }]));
-  const d = api.studentData('S2003');
-  assert.deepEqual(d.own.familyNotes.map((n) => n.text), ['FAMILY-NOTE-TEXT'], 'in the PDPA copy');
-  assert.equal(d.own.familyConsent.S2003.on, true, 'the consent record too');
-  const removed = api.eraseStudent('S2003');
-  assert.equal(removed.familyNotes, 1); assert.equal(removed.familyConsent, 1);
-  assert.deepEqual(s.familyNotes, []); assert.equal(api.familyConsentOf('S2003'), null);
+test('the consent record is in the student’s PDPA copy and goes with erasure', () => {
+  assert.equal(api.studentData('S2003').own.familyConsent.S2003.on, true);
+  assert.equal(api.eraseStudent('S2003').familyConsent, 1);
+  assert.equal(api.familyConsentOf('S2003'), null);
 });
 
 // Over HTTP: the account routes still work for a family; feedback, uploads and record changes do not.
@@ -159,9 +137,10 @@ test('a family account: own language, display and password yes; feedback, upload
     assert.equal((await req('POST', '/api/feedback', { kind: 'idea', message: 'More photos please' }, c)).status, 403, 'no pilot feedback');
     assert.equal((await req('POST', '/api/feedback', { kind: 'idea', message: 'More photos please' }, ada)).status, 201, 'staff keep theirs');
     assert.equal((await req('POST', '/api/upload', 'x', c, { 'content-type': 'text/plain', 'x-filename': 'a.txt' })).status, 403, 'no uploads');
-    for (const [fn, args] of [['setFamily', [{ email: true }]], ['addStation', ['S2001', { title: 'x' }]], ['answerConsent', ['cr-1', 'approved', 'Mo']], ['writeConfNote', ['r', 'S2001', 'family', 'x', 'family']]]) {
+    for (const [fn, args] of [['setFamily', [{ email: true }]], ['addStation', ['S2001', { title: 'x' }]], ['writeConfNote', ['r', 'S2001', 'student', 'x', 'student']]]) {
       assert.equal((await req('POST', '/api/action', { fn, args, rec: [] }, c)).status, 403, fn);
     }
+    assert.equal((await req('POST', '/api/action', { fn: 'answerConsent', args: ['cr-1', 'approved', 'Mo'], rec: [] }, c)).status, 400, 'a removed change is not a change at all');
     assert.equal((await req('POST', '/api/action', { fn: 'markNotificationsRead', args: [['fam:S2001']], rec: [] }, c)).status, 200, 'its own bell');
   } finally { srv.p.kill(); }
 });

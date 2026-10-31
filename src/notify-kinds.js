@@ -10,7 +10,6 @@ export const ALWAYS = ['safeguarding', 'security'];
 const RULES = [
   ['safeguarding', /^A teacher has (hidden|finished looking|removed)\b/],
   ['report', /^New report:/],
-  ['consent', /^Your parent said|consent request/],
   ['comment', / wrote on “”| commented on your draft| left a comment on | posted an update on “”/],
   ['encourage', /sent you encouragement/],
   ['kindfb', /gave you kind feedback|thank you for your feedback/],
@@ -62,7 +61,7 @@ export const GROUPS = {
     ['encourage', 'Encouragement', ['encourage']],
     ['conference', 'Conferences', ['conference']],
   ],
-  // Families: no consent requests or conference times in the app since 30 October 2026 (the school uses email).
+  // Families: the digest and milestones only (they do nothing in the app; the school uses email).
   family: [
     ['digest', 'Weekly digest', ['digest']],
     ['milestones', 'Your child’s milestones', ['milestone']],

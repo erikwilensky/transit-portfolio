@@ -100,14 +100,9 @@ const LANG_KEY = 'transit-lang';
 export function savedLang() { try { const l = localStorage.getItem(LANG_KEY); return l === 'th' || l === 'en' ? l : null; } catch { return null; } }
 export function saveLang(l) { try { localStorage.setItem(LANG_KEY, l); } catch { /* storage blocked */ } }
 
-// Notifications are stored in English; the ones a family gets are rendered in Thai from their known templates.
+// Notifications are stored in English; known templates are rendered in Thai (below, and by later blocks).
 // Names and quoted titles (people's own words) stay as they are.
-const NOTE_TH = [
-  [/^(.+) asked you to look at a consent request$/, (m) => `${m[1]} ขอให้คุณดูคำขอความยินยอม`],
-  [/^(.+)’s family answered a consent request$/, (m) => `ครอบครัวของ ${m[1]} ตอบคำขอความยินยอมแล้ว`],
-  [/^Your parent said yes: (.+)$/, (m) => `ผู้ปกครองของคุณยินยอมแล้ว: ${m[1]}`],
-  [/^Your parent said no for now: (.+)$/, (m) => `ผู้ปกครองของคุณยังไม่ยินยอม: ${m[1]}`],
-];
+const NOTE_TH = [];
 export function noteText(lang, text) {
   if (lang !== 'th' || typeof text !== 'string') return text;
   for (const [re, f] of NOTE_TH) { const m = text.match(re); if (m) return f(m); }
@@ -149,40 +144,7 @@ const ERR_TH = {
 };
 export const errText = (lang, msg) => (lang === 'th' && ERR_TH[msg]) || msg;
 
-// Consent requests written from the school's templates (the seeds in src/api.js), in Thai. Other wording stays as written.
-const CONSENT = {
-  join: { en: (f) => [`${f}’s record in Transit Portfolio`, `Keep ${f}’s school activities in one record. ${f}, her advisor and you can see it; nothing leaves the school.`], th: (f) => [`บันทึกของ ${f} ใน Transit Portfolio`, `เก็บกิจกรรมที่โรงเรียนของ ${f} ไว้ในบันทึกเดียว ${f} ครูที่ปรึกษา และคุณเห็นได้ ไม่มีข้อมูลใดออกนอกโรงเรียน`] },
-  share: { en: (f) => ['Share links outside the school', `Let ${f} make share links, for example for a summer camp application. Every link expires, and each one appears in your weekly digest.`], th: (f) => ['ลิงก์แบ่งปันนอกโรงเรียน', `อนุญาตให้ ${f} สร้างลิงก์แบ่งปัน เช่น สำหรับสมัครค่ายภาคฤดูร้อน ทุกลิงก์มีวันหมดอายุ และจะแสดงในสรุปประจำสัปดาห์ของคุณ`] },
-  photos: { en: (f) => [`Photos where ${f} can be recognised`, `Allow photos of ${f} to appear as evidence on her stations. Off unless you say yes.`], th: (f) => [`รูปถ่ายที่เห็นหน้า ${f} ได้ชัดเจน`, `อนุญาตให้ใช้รูปถ่ายของ ${f} เป็นหลักฐานในรายการต่าง ๆ บนแผนที่ จะไม่แสดงจนกว่าคุณจะยินยอม`] },
-};
-// → [title, detail, lang of the text]
-export function consentText(lang, r, first) {
-  const c = CONSENT[r.kind];
-  if (lang !== 'th' || !c) return [r.title, r.detail, 'en'];
-  const [t, d] = c.en(first);
-  if (r.title !== t || r.detail !== d) return [r.title, r.detail, 'en'];
-  return [...c.th(first), 'th'];
-}
-
-// ── Conference times (src/components/ConferenceBooking.jsx, src/components/StudentLed.jsx). Bangkok time. Families no longer
-// book in the app (removed on 30 October 2026); the notifications below stay so old ones in a family's bell read in Thai. ──
-// "Tue 3 Nov" / "อ. 3 พ.ย." for a conference day (Bangkok dates).
-export const confDay = (lang, d) => new Date(`${d}T12:00:00+07:00`).toLocaleDateString(lang === 'th' ? 'th-TH' : 'en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Asia/Bangkok' });
-export const confSlotText = (lang, d, t) => (lang === 'th' ? `${confDay(lang, d)} เวลา ${t} น.` : `${confDay(lang, d)}, ${t}`);
 const MON_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const thWhen = (d, mon, y, t) => `${dateIn('th', `${y}-${String(MON_EN.indexOf(mon) + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`)} เวลา ${t} น.`;
-const WHEN = '(\\d{1,2}) (\\w{3}) (\\d{4}) at (\\d{2}:\\d{2})';
-NOTE_TH.push(
-  [/^(.+) opened conference booking: “(.+)”\. Pick a time for (.+)$/, (m) => `${m[1]} เปิดให้จองเวลาประชุมผู้ปกครอง: “${m[2]}” เลือกเวลาสำหรับ ${m[3]}`],
-  [new RegExp(`^(.+) booked (.+)’s conference: ${WHEN}$`), (m) => `${m[1]} จองเวลาประชุมของ ${m[2]} แล้ว: ${thWhen(m[3], m[4], m[5], m[6])}`],
-  [new RegExp(`^(.+) cancelled (.+)’s conference on ${WHEN}$`), (m) => `${m[1]} ยกเลิกการประชุมของ ${m[2]} ${thWhen(m[3], m[4], m[5], m[6])}`],
-  [new RegExp(`^Reminder: (.+)’s conference with (.+) is tomorrow, ${WHEN} · (.+)$`), (m) => `เตือนความจำ: พรุ่งนี้ ${m[1]} มีนัดประชุมกับ ${m[2]} ${thWhen(m[3], m[4], m[5], m[6])} · ${m[7] === 'online' ? 'ออนไลน์' : m[7]}`],
-);
-Object.assign(ERR_TH, {
-  'That time was just taken. Pick another': 'มีผู้จองเวลานี้ไปแล้ว โปรดเลือกเวลาอื่น',
-  'That time has passed': 'เลยเวลานี้ไปแล้ว',
-  'Booking for this conference is closed': 'ปิดการจองแล้ว',
-});
 
 // ── Thai for students (src/thai.js): what a student reads at Simple, Standard and Full, shown in Thai at display time.
 // Plain, friendly Thai for 11–13 year olds. Keys are the English exactly as the screens write it. Students' and
@@ -418,7 +380,7 @@ const STU = {
   'Stations I add': 'สถานีที่ฉันเพิ่ม', 'Items from school systems': 'รายการจากระบบของโรงเรียน', 'Stations on a line I end': 'สถานีบนสายที่ฉันจบ', 'New share links expire after': 'ลิงก์แบ่งปันใหม่หมดอายุหลังจาก', 'By line': 'ตามสาย',
   'Set every station on a line at once. You can still change single stations on the map.': 'ตั้งค่าทุกสถานีบนสายพร้อมกัน ยังเปลี่ยนทีละสถานีบนแผนที่ได้', Mixed: 'หลายแบบ', 'Waiting for a parent': 'รอผู้ปกครอง',
   "Students in Years 7 to 9 need a parent's consent before anything can be made publishable. Until then, everything stays inside the school.": 'นักเรียน Year 7 ถึง 9 ต้องได้รับความยินยอมจากผู้ปกครองก่อนจึงจะเผยแพร่ได้ จนถึงตอนนั้นทุกอย่างจะอยู่ภายในโรงเรียน',
-  'Send a reminder to my parent': 'ส่งข้อความเตือนผู้ปกครอง', 'Parent consent on file': 'มีการยินยอมจากผู้ปกครองแล้ว', "Recorded in the SIS when you joined. Under Thailand's PDPA you can ask the school to correct or delete your data at any time": 'บันทึกไว้ใน SIS ตอนที่คุณเข้าเรียน ตาม PDPA ของประเทศไทย คุณขอให้โรงเรียนแก้ไขหรือลบข้อมูลของคุณได้ทุกเมื่อ',
+  'Parent consent on file': 'มีการยินยอมจากผู้ปกครองแล้ว', "Recorded in the SIS when you joined. Under Thailand's PDPA you can ask the school to correct or delete your data at any time": 'บันทึกไว้ใน SIS ตอนที่คุณเข้าเรียน ตาม PDPA ของประเทศไทย คุณขอให้โรงเรียนแก้ไขหรือลบข้อมูลของคุณได้ทุกเมื่อ',
   ': ask the pilot admin, who can remove your record': ' โดยแจ้งผู้ดูแลระบบของโครงการนำร่อง ซึ่งลบบันทึกของคุณได้', 'School screens': 'จอของโรงเรียน',
   'At open evenings, in the library or on a lobby TV, the school may show moments you made publishable, with your first name and Year.': 'ในงานเปิดบ้าน ห้องสมุด หรือจอทีวีที่ล็อบบี้ โรงเรียนอาจแสดงเรื่องราวที่คุณตั้งให้เผยแพร่ได้ พร้อมชื่อจริงและ Year ของคุณ',
   "Don't show my moments on school screens": 'ไม่ต้องแสดงเรื่องราวของฉันบนจอของโรงเรียน', 'Take your map with you': 'นำแผนที่ติดตัวไปด้วย', 'When you graduate, or whenever you like, download your whole record. It is yours.': 'เมื่อเรียนจบ หรือเมื่อไรก็ได้ ดาวน์โหลดบันทึกทั้งหมดของคุณได้ เพราะเป็นของคุณ',
@@ -618,7 +580,7 @@ const STU_RE = [
   [/^[Cc]hecked in on “(.+)”: (.+)$/, (m, t) => `อัปเดต “${m[1]}”: ${t(m[2])}`], [/^[Mm]arked the goal “(.+)” as done$/, (m) => `ทำเป้าหมาย “${m[1]}” สำเร็จ`], [/^[Cc]losed the goal “(.+)”$/, (m) => `ปิดเป้าหมาย “${m[1]}”`],
   [/^[Aa]nswered “(.+)”$/, (m) => `ตอบ “${m[1]}”`], [/^[Ff]inished “(.+)”$/, (m) => `ทำ “${m[1]}” เสร็จ`], [/^[Hh]anded in “(.+)” again$/, (m) => `ส่ง “${m[1]}” อีกครั้ง`], [/^[Vv]iewed share link (\S+)$/, (m) => `เปิดดูลิงก์แบ่งปัน ${m[1]}`],
   [/^[Aa]ccepted “(.+)” from the inbox$/, (m) => `รับ “${m[1]}” จากกล่องรับเข้า`], [/^[Bb]ranched “(.+)” from (.+)$/, (m) => `แยกสายย่อย “${m[1]}” จาก ${m[2]}`], [/^[Ee]nded the (.+) line( \(its stations are now advisor-only\))?$/, (m) => `จบสาย ${m[1]}${m[2] ? ' (สถานีบนสายนี้เห็นได้เฉพาะครูที่ปรึกษาแล้ว)' : ''}`],
-  [/^[Rr]estarted the (.+) line$/, (m) => `เริ่มสาย ${m[1]} ใหม่`], [/^[Tt]agged “(.+)”: (.+)$/, (m) => `ติดแท็ก “${m[1]}”: ${m[2]}`], [/^[Ss]ent a reminder to a parent about consent$/, () => 'ส่งข้อความเตือนผู้ปกครองเรื่องการยินยอม'],
+  [/^[Rr]estarted the (.+) line$/, (m) => `เริ่มสาย ${m[1]} ใหม่`], [/^[Tt]agged “(.+)”: (.+)$/, (m) => `ติดแท็ก “${m[1]}”: ${m[2]}`],
   [/^[Mm]ade a leaver portfolio link(.*)$/, (m) => `สร้างลิงก์แฟ้มผลงานก่อนจบ${m[1]}`], [/^[Ww]ithdrew a leaver portfolio link(.*)$/, (m) => `ยกเลิกลิงก์แฟ้มผลงานก่อนจบ${m[1]}`],
   [/^[Cc]reated share link (\S+) for “(.+)”$/, (m) => `สร้างลิงก์แบ่งปัน ${m[1]} สำหรับ “${m[2]}”`], [/^[Cc]arried “(.+)” over to this year \((.+)\)$/, (m) => `นำ “${m[1]}” มาทำต่อในปีนี้ (${D(m[2])})`],
   [/^[Pp]aused check-ins on “(.+)” until (.+)$/, (m) => `พักการอัปเดต “${m[1]}” ถึง ${D(fmtDate(m[2]))}`],
@@ -635,8 +597,7 @@ const STU_RE = [
   [/^(.+) added a goal you agreed together: “(.+)”$/, (m) => `${m[1]} เพิ่มเป้าหมายที่คุณตกลงกันไว้: “${m[2]}”`], [/^(.+) checked in on “(.+)”$/, (m) => `${m[1]} ติดตามเรื่อง “${m[2]}”`],
   [/^(.+) approved your new line “(.+)”$/, (m) => `${m[1]} อนุมัติสายใหม่ “${m[2]}” ของคุณแล้ว`], [/^Your line “(.+)” was merged into “(.+)”$/, (m) => `สาย “${m[1]}” ของคุณถูกรวมเข้ากับ “${m[2]}” แล้ว`],
   [/^(.+) from (.+) (?:is|are) in your inbox\. You choose where (?:it goes|they go)\.$/, (m) => `${m[1].replace(/^(\d+) items?$/, '$1 รายการ')} จาก ${m[2]} อยู่ในกล่องรับเข้าของคุณ คุณเลือกเองว่าจะไปอยู่ที่ไหน`],
-  [/^(.+) left a comment on your leaver portfolio$/, (m) => `${m[1]} แสดงความคิดเห็นในแฟ้มผลงานก่อนจบของคุณ`], [/^Your conference with (.+) is on (.+)$/, (m) => `การประชุมของคุณกับ ${m[1]} คือ ${thaiDates(m[2]).replace(/ at (\d\d:\d\d)$/, ' เวลา $1 น.')}`],
-  [/^Your conference on (.+) was cancelled$/, (m) => `การประชุมวันที่ ${thaiDates(m[1]).replace(/ at (\d\d:\d\d)$/, ' เวลา $1 น.')} ถูกยกเลิกแล้ว`],
+  [/^(.+) left a comment on your leaver portfolio$/, (m) => `${m[1]} แสดงความคิดเห็นในแฟ้มผลงานก่อนจบของคุณ`],
   [/^(.+) would like to show your moment “(.+)” to other students as an example\. Your name is not shown\.$/, (m) => `${m[1]} อยากนำเรื่อง “${m[2]}” ของคุณไปให้นักเรียนคนอื่นดูเป็นตัวอย่าง โดยไม่แสดงชื่อของคุณ`],
   [/^A teacher has hidden (.+) while they look at it\.$/, (m, t) => `ครูซ่อน${t(m[1])}ไว้ระหว่างตรวจดู`], [/^A teacher has finished looking at (.+)\. It is shown again\.$/, (m, t) => `ครูตรวจดู${t(m[1])}เสร็จแล้ว แสดงอีกครั้งแล้ว`],
   [/^A teacher has removed the photo from “(.+)”\.$/, (m) => `ครูลบรูปออกจาก “${m[1]}” แล้ว`], [/^A teacher has hidden kind feedback on “(.+)”\.$/, (m) => `ครูซ่อนคำติชมในเรื่อง “${m[1]}” แล้ว`],
@@ -738,7 +699,7 @@ Object.assign(STU, {
   'In Year 11 this is a practice run: everything works, so you are ready next year.': 'ใน Year 11 เป็นการฝึกทำ ทุกอย่างใช้ได้จริง ปีหน้าคุณจะพร้อม', 'It is on your': 'ตอนนี้อยู่บนสาย', 'line now, waiting for': 'ของคุณแล้ว รอ', 'to check it.': 'ตรวจ',
   'One or two sentences is plenty.': 'หนึ่งหรือสองประโยคก็พอแล้ว', You: 'คุณ', 'Started, not finished': 'เริ่มแล้ว ยังไม่เสร็จ',
 });
-// ── Generic words first added with family encouragement (removed on 30 October 2026); other screens still use them. ──
+// ── Generic words several screens use ──
 for (const [k, v] of Object.entries({
   'Open the moment': 'เปิดดูเรื่องนี้', 'Show again': 'แสดงอีกครั้ง', 'Tell a teacher': 'บอกครู',
   'Send report': 'ส่งรายงาน', 'Cancel': 'ยกเลิก', 'What is wrong': 'มีอะไรไม่ถูกต้อง',
@@ -780,10 +741,8 @@ STU_RE.push(
   [/^(.+\?) \(optional\)$/, (m) => `${m[1]} (ไม่บังคับ)`],
 );
 // ── Student-led conferences (src/components/StudentLed.jsx): the student's screens and Conference mode in Thai, and the
-// notifications. Keys are written trimmed (this block comes after the trim above). The family's line was removed on 30
-// October 2026; the patterns for it stay so old notifications still read in Thai.
+// notifications. Keys are written trimmed (this block comes after the trim above).
 NOTE_TH.push(
-  [/^Your family wrote on your conference note$/, () => 'ครอบครัวของคุณเขียนในบันทึกการประชุมของคุณแล้ว'],
   [/^(.+) wrote on your conference note$/, (m) => `${m[1]} เขียนในบันทึกการประชุมของคุณแล้ว`],
   [/^(.+) wrote on (.+)’s conference note$/, (m) => `${m[1]} เขียนในบันทึกการประชุมของ ${m[2]} แล้ว`],
 );
@@ -795,7 +754,7 @@ Object.assign(STU, {
   'Today is your conference': 'วันนี้เป็นวันประชุมของคุณ', 'Get ready for my conference': 'เตรียมตัวสำหรับการประชุมของฉัน',
   'You are ready. You can still change it before the day.': 'คุณพร้อมแล้ว ยังแก้ไขได้ก่อนถึงวันประชุม',
   'Pick a few things to show your family and say what you are proud of. It takes about 5 minutes.': 'เลือกสิ่งที่อยากให้ครอบครัวดูสักสองสามอย่าง และบอกว่าคุณภูมิใจในเรื่องอะไร ใช้เวลาประมาณ 5 นาที',
-  'No time booked yet. Your advisor will set one with your family.': 'ยังไม่ได้จองเวลา ครูที่ปรึกษาจะนัดเวลากับครอบครัวของคุณ', 'Start my conference': 'เริ่มการประชุมของฉัน', 'Change it': 'แก้ไข', 'Get ready': 'เตรียมตัว',
+  'Conferences are on now': 'ช่วงนี้เป็นช่วงการประชุมผู้ปกครอง', 'Start my conference': 'เริ่มการประชุมของฉัน', 'Change it': 'แก้ไข', 'Get ready': 'เตรียมตัว',
   'My conference note': 'บันทึกการประชุมของฉัน', 'What I will do next': 'สิ่งที่ฉันจะทำต่อไป',
   'Not written yet.': 'ยังไม่ได้เขียน', 'What will you do next?': 'คุณจะทำอะไรต่อไป',
   'Change my line': 'แก้ไขบรรทัดของฉัน', 'Write what I will do next': 'เขียนสิ่งที่ฉันจะทำต่อไป', 'Open my conference': 'เปิดการประชุมของฉัน', 'Saved on your conference note': 'บันทึกในบันทึกการประชุมของคุณแล้ว',
@@ -822,7 +781,7 @@ STU_RE.push(
   [/^Pick up to (\d+) moments to show, say what you are proud of, one thing that was hard and one goal\.$/, (m) => `เลือกช่วงเวลาที่อยากนำเสนอได้สูงสุด ${m[1]} อย่าง บอกว่าคุณภูมิใจในเรื่องอะไร เรื่องหนึ่งที่ยาก และเป้าหมายหนึ่งอย่าง`],
   [/^Pick up to (\d+) moments\. Private moments are not here\.$/, (m) => `เลือกได้สูงสุด ${m[1]} ช่วงเวลา ช่วงเวลาส่วนตัวไม่แสดงที่นี่`],
   [/^Tap up to (\d+) things\.$/, (m) => `แตะเลือกได้สูงสุด ${m[1]} อย่าง`],
-  [/^Your conference: (.+)$/, (m) => `การประชุมของคุณ: ${thaiDates(m[1]).replace(/, (\d\d:\d\d)$/, ' เวลา $1 น.')}`],
+  [/^Your conference: (.+)$/, (m, t) => `การประชุมของคุณ: ${t(m[1])}`],
   [/^Written by (.+)$/, (m) => `เขียนโดย ${m[1]}`],
   [/^A goal I have · (.+)$/, (m) => `เป้าหมายที่ฉันมีอยู่ · ${thaiDates(m[1])}`],
   [/^Well done, (.+)!$/, (m) => `เก่งมาก ${m[1]}!`],

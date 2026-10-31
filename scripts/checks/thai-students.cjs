@@ -220,7 +220,7 @@ let srv;
       await sweep(a, AARON, 'Aaron: term reflection, a moment'); await close(a);
     }
     // Student-led conferences: get ready one question a screen, then Conference mode on his own phone.
-    const cr = await act(alT, 'openConferenceRound', [{ title: 'Student-led conferences', slot: 15, days: [{ date: day(3), from: '15:00', to: '17:00' }], breaks: [], location: 'Room 8C', advisorId: ALTEMEN }, ALTEMEN]);
+    const cr = await act(alT, 'addConference', [{ title: 'Student-led conferences', from: day(3), to: day(4), advisorId: ALTEMEN }, ALTEMEN]);
     await a.reload(); await a.waitForSelector('.slc-card'); await sweep(a, AARON, 'Aaron: get ready for my conference');
     if (await openSweep(a, AARON, '.slc-card .primary', 'Aaron: conference prep, what to show')) {
       const next = async (label) => { await a.click('.slc-flow .sh-next .primary'); await sweep(a, AARON, `Aaron: conference prep, ${label}`); };
@@ -280,7 +280,7 @@ let srv;
     await act(mT, 'setPeerFeedback', [mm.id, true]);
     await act(y10Adv, 'addMomentComment', [r2.id, Y10.advisorId, 'Great work out there.']);
     await act(y10Adv, 'openReflectionWindow', [{ title: 'Term 1 reflection', opens: day(0), closes: day(14), advisorId: Y10.advisorId }, Y10.advisorId]);
-    await act(y10Adv, 'openConferenceRound', [{ title: 'Student-led conferences', slot: 15, days: [{ date: day(3), from: '15:00', to: '17:00' }], breaks: [], location: 'Room 10', advisorId: Y10.advisorId }, Y10.advisorId]);
+    await act(y10Adv, 'addConference', [{ title: 'Student-led conferences', from: day(3), advisorId: Y10.advisorId }, Y10.advisorId]);
     await act(y10Adv, 'nudgeStudent', [Y10.id, Y10.advisorId, 'Add something from this week.', 'quiet']);
     const s = await ctx(Y10.id);
     await s.goto(`${U}/#/me/map`); await s.waitForSelector('.home');

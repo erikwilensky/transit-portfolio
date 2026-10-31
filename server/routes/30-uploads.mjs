@@ -45,7 +45,7 @@ const NAME = /^[a-f0-9]{32}\.[a-z0-9]{2,5}$/;
 
 export default (app) => {
   app.post('/api/upload', async (req, res) => {
-    // Families add nothing to the record (since 30 October 2026), so they upload nothing.
+    // Families add nothing to the record, so they upload nothing.
     if (req.user?.kind === 'parent') { req.resume(); throw fail(403, 'Family accounts cannot add files.'); }
     const len = Number(req.headers['content-length'] || 0);
     if (len > LIMIT) { req.resume(); return send(res, 413, { error: 'That file is larger than 25 MB.' }, { connection: 'close' }); }

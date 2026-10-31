@@ -94,7 +94,7 @@ let srv;
     ok((await p.locator('.page.family').innerText()).includes(TITLE), 'the parent (joined by the family letter) sees the moment');
     const pTok = (await p.context().cookies()).find((c) => c.name === 'tp_session').value;
     await p.locator('.page.family .pv-intro li button', { hasText: TITLE }).first().click(); await p.waitForTimeout(400);
-    ok(await p.locator('.sg-report').count() === 0, 'families have no Report button (since 30 October 2026: they speak to the school by email)');
+    ok(await p.locator('.sg-report').count() === 0, 'families have no Report button (they speak to the school by email)');
     ok((await act(pTok, 'reportItem', [{ eventId: ev.id }, 'other', '', { key: `fam:${STUDENT}`, name: 'Maria Torres' }])).status === 403, 'and reporting from a family account is refused (403)');
     await p.keyboard.press('Escape');
 

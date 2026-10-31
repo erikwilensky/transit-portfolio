@@ -1,11 +1,10 @@
 // Student-led conferences on the real class lists: starts a clean pilot (TP_START=empty; needs `npm run build` first) and
-// imports the real roster. Ms Jane Altemen (T25948) opens a conference round for 8C on My advisory. Aaron Torres, at Simple
-// on a phone, gets ready (one question a screen, sentence starters, read aloud): two moments, his words, proud, hard, his
-// goal. The advisor sees "Prepared: 1 of 23", books his time and opens Conference mode from the booking list: one moment a
-// screen with its photo, then the goal; it keeps working offline (the photo and a private staff note, sent when back). Aaron
-// adds "What I will do next" in his own Conference mode. His parent joins from a family letter in Thai and has nothing to
-// write (the family's line was removed on 30 October 2026). The conference sheet carries his prep (one A4 page). axe on every new
-// screen. Each account has its own browser context. TP_ROSTER=/path/to/transit-roster.json (default: the project mount).
+// imports the real roster. Ms Jane Altemen (T25948) adds a conference for 8C on My advisory (a title and tomorrow's date; no
+// times). Aaron Torres, at Simple on a phone, gets ready (one question a screen, sentence starters, read aloud): two moments,
+// his words, proud, hard, his goal. The advisor sees "Prepared: 1 of 23" and opens Conference mode from "Who has prepared":
+// one moment a screen with its photo, then the goal; it keeps working offline (the photo and a private staff note, sent when
+// back). Aaron adds "What I will do next" in his own Conference mode. His parent joins from a family letter in Thai and gets
+// nothing about conferences. The conference sheet carries his prep (one A4 page). axe on every new screen. Each account has its own browser context. TP_ROSTER=/path/to/transit-roster.json (default: the project mount).
 // Screenshots and a PDF: tp-slc-* in SCRATCH or the temp folder.
 const { chromium } = require('playwright');
 const { spawn } = require('child_process');
@@ -38,16 +37,9 @@ async function audit(p, label) {
   const bad = v.filter((x) => x.impact === 'serious' || x.impact === 'critical');
   ok(!bad.length, `axe: ${label}${bad.length ? `\n${bad.map((x) => `    ${x.impact} ${x.id}: ${x.nodes.slice(0, 4).join(', ')}`).join('\n')}` : ''}`);
 }
-// A Bangkok date n days on, and (today) the next quarter hour at least 20 minutes away.
+// A Bangkok date n days on.
 const bkk = (ms) => new Date(ms + 7 * 3600e3).toISOString();
 const day = (n) => bkk(Date.now() + n * 864e5).slice(0, 10);
-function firstDay() {
-  const t = bkk(Date.now() + 20 * 60e3), h = +t.slice(11, 13), m = Math.ceil(+t.slice(14, 16) / 15) * 15;
-  const from = h * 60 + m;
-  if (t.slice(0, 10) !== day(0) || from > 23 * 60) return { date: day(1), from: '15:00', to: '17:00' };
-  const hm = (x) => `${String(Math.floor(x / 60)).padStart(2, '0')}:${String(x % 60).padStart(2, '0')}`;
-  return { date: day(0), from: hm(from), to: hm(Math.min(from + 120, 23 * 60 + 55)) };
-}
 
 let srv;
 (async () => {
@@ -85,22 +77,21 @@ let srv;
     const g = (await act(aTok, 'addGoal', [AARON, { title: 'Run 5k', date: day(30), lineId: lanes[0], summary: '', checkIn: false }])).result;
     ok(m1?.id && m2?.id && g?.id, 'Aaron has two moments (one with a photo), a private one and a goal');
 
-    // ── Ms Altemen opens a round for 8C ──
-    const D1 = firstDay();
+    // ── Ms Altemen adds a conference for 8C: a title and a date ──
     const cT = await ctx(tTok); const t = await cT.newPage(); watch(t, 'advisor');
     await t.goto(`${U}/#/me/advisory`); await t.waitForSelector('.cb-adv');
-    await t.click('.cb-adv button:has-text("Open conference booking")');
+    await t.click('.cb-adv button:has-text("Add a conference")');
     const form = t.locator('.cb-adv .cb-form');
+    ok(await form.locator('input[type=time]').count() === 0, 'no times to set');
     await form.locator('label:has-text("Title") input').fill('Student-led conferences');
-    await form.locator('.cb-row').nth(0).locator('input[type=date]').fill(D1.date);
-    await form.locator('.cb-row').nth(0).locator('label:has-text("From") input').fill(D1.from);
-    await form.locator('.cb-row').nth(0).locator('label:has-text("To") input').fill(D1.to);
-    await form.getByRole('textbox', { name: 'Room' }).fill('Room 8C');
-    await t.click('.cb-form button[type=submit]:has-text("Open for 23 students")');
-    const r = await until(async () => saved().confRounds?.[0]);
-    ok(r && r.studentIds.length === 23 && r.days[0].date === D1.date, `a round for the 23 advisees on ${D1.date} ${D1.from}–${D1.to} (Bangkok)`);
+    await form.locator('label:has-text("Date") input').first().fill(day(1));
+    await audit(t, 'advisor: add a conference');
+    await t.click('.cb-form button[type=submit]:has-text("Add for 23 students")');
+    const r = await until(async () => saved().conferences?.[0]);
+    ok(r && r.studentIds.length === 23 && r.from === day(1) && r.to === day(1), `a conference for the 23 advisees on ${day(1)}`);
+    ok(!saved().confRounds && !saved().confBookings, 'no rounds or bookings in the record');
     await t.waitForSelector('.slc-adv');
-    ok(/Prepared: 0 of 23/.test(await t.locator('.slc-adv').innerText()), 'the round shows "Prepared: 0 of 23"');
+    ok(/Prepared: 0 of 23/.test(await t.locator('.slc-adv').innerText()), 'it shows "Prepared: 0 of 23"');
 
     // ── Aaron gets ready at Simple, on a phone ──
     const cA = await ctx(aTok, { width: 390, height: 820 }, { hasTouch: true, isMobile: true }); const a = await cA.newPage(); watch(a, 'Aaron');
@@ -139,20 +130,14 @@ let srv;
     ok(prep && prep.picks.length === 2 && prep.picks[0] === m1.id && prep.says[m1.id] && prep.goal?.goalId === g.id && prep.proud && prep.hard, 'saved: ready, two moments, his words, proud, hard, his goal');
     await a.click('.slc-flow button:has-text("Close")');
 
-    // ── The advisor: who has prepared, books his time, Conference mode from the booking list ──
+    // ── The advisor: who has prepared, Conference mode from the list ──
     await t.reload(); await t.waitForSelector('.slc-adv');
-    ok(/Prepared: 1 of 23/.test(await t.locator('.slc-adv').innerText()), 'the round shows "Prepared: 1 of 23"');
+    ok(/Prepared: 1 of 23/.test(await t.locator('.slc-adv').innerText()), 'it shows "Prepared: 1 of 23"');
     await t.click('.slc-adv button:has-text("Who has prepared")');
-    ok(/Ready/.test(await t.locator('.slc-who-list li', { hasText: aaron.name }).innerText()), 'and Aaron is ready');
-    await audit(t, 'advisor: the round with who has prepared');
-    const free = t.locator('.cb-grid .cb-slot.free').first();
-    await free.locator('select').selectOption(AARON); await free.locator('button:has-text("Book")').click();
-    const bk = await until(async () => saved().confBookings?.find((x) => x.studentId === AARON));
-    ok(bk && bk.date === D1.date && bk.by === TID, `she books Aaron at ${bk?.time} on ${bk?.date}`);
-    const slot = t.locator('.cb-grid .cb-slot.booked', { hasText: aaron.name });
-    await slot.waitFor();
-    ok(/Prepared/.test(await slot.innerText()), 'his booked time says "Prepared"');
-    await slot.locator('button:has-text("Conference mode")').click(); await t.waitForSelector('.slc-mode');
+    const row = t.locator('.slc-who-list li', { hasText: aaron.name });
+    ok(/Ready/.test(await row.innerText()), 'and Aaron is ready');
+    await audit(t, 'advisor: the conference with who has prepared');
+    await row.locator('button:has-text("Conference mode")').click(); await t.waitForSelector('.slc-mode');
     ok(/Hi, I’m Aaron!/.test(await t.locator('.slc-stage h1').innerText()), 'Conference mode opens warm for Year 8: "Hi, I’m Aaron!"');
     await audit(t, 'advisor: Conference mode, hello');
     await t.click('.slc-foot .primary');
@@ -193,7 +178,7 @@ let srv;
     await a.click('.slc-card button:has-text("Start my conference")'); await a.waitForSelector('.slc-mode');
     ok(await noScroll(a), 'Conference mode: no sideways scroll on a phone');
     for (let i = 0; i < 5; i++) await a.click('.slc-foot .primary');
-    ok(/Our next steps/.test(await a.locator('.slc-stage h1').innerText()) && await a.locator('#slc-l-family').count() === 0 && !/try at home/.test(await a.locator('.slc-stage').innerText()), 'his last screen: his own line to write, no family line');
+    ok(/Our next steps/.test(await a.locator('.slc-stage h1').innerText()) && await a.locator('.slc-line textarea').count() === 1, 'his last screen: his own line to write');
     await a.fill('#slc-l-student', 'Next I will enter the bridge contest.');
     await a.locator('.slc-line', { hasText: 'What I will do next' }).locator('button:has-text("Save")').click();
     const n1 = await until(async () => saved().confNotes?.find((x) => x.studentId === AARON)?.student);
@@ -201,7 +186,7 @@ let srv;
     await audit(a, 'student: Conference mode, next steps');
     await a.click('.slc-foot .primary:has-text("Finish")');
 
-    // ── Aaron's parent joins from a family letter, in Thai: nothing to write, and the note is not in their copy ──
+    // ── Aaron's parent joins from a family letter, in Thai: nothing about conferences ──
     const lt = await (await post('/api/advisor/family/letters', { studentIds: [AARON] }, tTok)).json();
     const cP = await ctx(null, { width: 390, height: 820 }, { hasTouch: true, isMobile: true }); const p = await cP.newPage(); watch(p, 'parent');
     await p.goto(lt.letters[0].url.replace(/^https?:\/\/[^/]+/, U)); await p.waitForSelector('#fj-h');
@@ -210,20 +195,18 @@ let srv;
     await p.fill('input[autocomplete=new-password] >> nth=0', 'family-pass-1'); await p.fill('input[autocomplete=new-password] >> nth=1', 'family-pass-1');
     await p.click('form.auth-card button[type=submit]'); await p.waitForSelector('.fam-head', { timeout: 15000 }); await p.waitForTimeout(600);
     const pTok = (await cP.cookies()).find((k) => k.name === 'tp_session').value;
-    ok(await p.locator('.slc-fam, textarea').count() === 0 && !/สิ่งที่เราจะลองทำที่บ้าน/.test(await p.locator('main').innerText()), 'the family page has no conference line to write');
+    ok(await p.locator('textarea').count() === 0 && !/ประชุม/.test(await p.locator('main').innerText()), 'the family page has nothing about conferences');
     await audit(p, 'family: the family page (Thai, phone)');
     const ps = await state(pTok);
-    ok(!(ps.confNotes || []).length && !(ps.confPreps || []).length && !(ps.notes || {})[AARON], 'the family’s copy: no note, prep or staff note');
-    ok((await act(pTok, 'writeConfNote', [r.id, AARON, 'family', 'x', 'family'])).status === 403, 'a family line is refused (403)');
-    ok((await act(aTok, 'writeConfNote', [r.id, AARON, 'family', 'x', 'student'])).status === 403, 'Aaron cannot write one either (403)');
-    ok((await act(tTok, 'writeConfNote', [r.id, AARON, 'family', 'x', TID])).status === 403, 'nor his advisor (403)');
+    ok(!(ps.conferences || []).length && !(ps.confNotes || []).length && !(ps.confPreps || []).length && !(ps.notes || {})[AARON], 'the family’s copy: no conference, note, prep or staff note');
+    ok((await act(pTok, 'writeConfNote', [r.id, AARON, 'student', 'x', 'student'])).status === 403, 'the family cannot write on the note (403)');
 
     // ── Everyone sees the note; the sheet carries his prep ──
     await a.reload(); await a.waitForSelector('.slc-note');
     const an = await a.locator('.slc-note').innerText();
-    ok(/bridge contest/.test(an) && !/try at home/.test(an), 'Aaron’s home: his line on his conference note, no family line');
+    ok(/bridge contest/.test(an), 'Aaron’s home: his line on his conference note');
     await audit(a, 'student: my conference note');
-    await t.goto(`${U}/#/me/student/${AARON}~sheet`); await t.waitForSelector('.cf-sheet .cf-prep');
+    await t.goto(`${U}/#/me/student/${AARON}`); await t.click('button:has-text("Conference sheet")'); await t.waitForSelector('.cf-sheet .cf-prep');
     const sp = await t.locator('.cf-sheet .cf-prep').textContent();
     ok(/In Aaron’s words/.test(sp) && /bridge/.test(sp) && /kept going/.test(sp) && /glue/.test(sp) && /Run 5k/.test(sp), 'the conference sheet: his prep in his words');
     await t.emulateMedia({ media: 'print' });
@@ -233,11 +216,11 @@ let srv;
     ok(pages === 1, `the sheet with his prep still prints on ${pages} A4 page`);
     await t.emulateMedia({ media: 'screen' });
     const st = await t.locator('.cf-sheet .cf-steps').textContent();
-    ok(/Our next steps/.test(st) && !/try at home/.test(st) && /What I will do next:.*bridge contest/.test(st) && /Private staff note.*robotics club/.test(st), 'after the conference the sheet has his line (no family line) and, on the advisor copy, the private staff note');
+    ok(/Our next steps/.test(st) && /What I will do next:.*bridge contest/.test(st) && /Private staff note.*robotics club/.test(st), 'after the conference the sheet has his line and, on the advisor copy, the private staff note');
     ok((await t.locator('.cf-sheet').textContent()).split('robotics club').length === 2, 'the staff note once (not again under "For the advisor only")');
     await t.locator('.cf-bar input[type=checkbox]').check(); await t.waitForSelector('.cf-sheet.family');
     const fs2 = await t.locator('.cf-sheet.family').textContent();
-    ok(/bridge contest/.test(await t.locator('.cf-sheet.family .cf-steps').textContent()) && !/try at home/.test(fs2) && !/robotics club|Private staff note/.test(fs2), 'the family copy: his line, never the staff note');
+    ok(/bridge contest/.test(await t.locator('.cf-sheet.family .cf-steps').textContent()) && !/robotics club|Private staff note/.test(fs2), 'the family copy: his line, never the staff note');
     await audit(t, 'advisor: the family copy of the sheet with the next steps');
     await t.emulateMedia({ media: 'print' });
     const fpdf = await t.pdf({ format: 'A4', printBackground: true, preferCSSPageSize: true });

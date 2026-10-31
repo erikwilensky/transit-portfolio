@@ -1,18 +1,18 @@
 import { inkOn } from '../format.js';
 import { useMemo, useState } from 'react';
-import { applyLens, consentOnFile, familyConsentOf, familyViewer, getConsentReqs, getDigest, getLang, getStudent, getStudentMap, TERM_START, TODAY, youngStudent } from '../api.js';
+import { applyLens, consentOnFile, familyConsentOf, familyViewer, getDigest, getLang, getStudent, getStudentMap, TERM_START, TODAY, youngStudent } from '../api.js';
 import MetroMap from '../components/MetroMap.jsx';
 import { FamilyMilestones } from '../components/Milestones.jsx';
 import StationPanel from '../components/StationPanel.jsx';
-import { consentText, dateIn, LangContext, lineName, tr } from '../i18n.js';
+import { dateIn, LangContext, lineName, tr } from '../i18n.js';
 import { chooseLang, exportUrl, isPilot } from '../auth.js';
 import { schoolEventName } from '../api.js';
 import { SkillsGrowthCard } from '../components/SkillsGrowth.jsx';
 import { FamilyMovingUp } from '../components/MovingUp.jsx';
 
 // N1: a parent's own screens, in English or Thai. One parent, two children:
-// Ploy (Year 11) decides what her family sees; Pim (Year 7) needs her parent's consent first. Read only: since 30 October
-// 2026 a family writes nothing to the school in the app (no consent answers, bookings, notes or reports); they use email.
+// Ploy (Year 11) decides what her family sees; Pim (Year 7) needs her parent's consent first. Read only: a family writes
+// nothing to the school in the app; they use email.
 const SAY = {
   en: {
     kicker: 'Family',
@@ -24,9 +24,9 @@ const SAY = {
     toConsent: 'See consent',
     thisTerm: 'This term', none: 'Nothing new this term yet.', ask: 'Questions you might ask',
     consentT: 'Consent', consentP: 'Under Thailand’s PDPA, students in Years 7 to 9 need a parent’s consent before their record is kept or shared. The school records it.',
-    asked: (d) => `Asked ${d}`, howTo: (f) => `To give, change or withdraw consent, email ${f}’s advisor. The school records it here.`,
+    howTo: (f) => `To give, change or withdraw consent, email ${f}’s advisor. The school records it here.`,
     recorded: (d, h) => `Recorded by the school on ${d} (${h})`, how: { email: 'by email', paper: 'on paper', person: 'in person', other: 'other' },
-    st: { pending: 'Waiting for consent', approved: 'Consent given', declined: 'Not given', withdrawn: 'Withdrawn' },
+    withdrawn: 'Withdrawn',
     olderT: (f) => `${f} manages sharing`,
     olderP: (f) => `Consent was recorded when ${f} joined in Year 7. From Year 10, ${f} decides what is shared and with whom; you can still ask the school for a copy of the record at any time.`,
     onFile: 'Consent on file', waiting: 'Waiting for consent',
@@ -49,9 +49,9 @@ const SAY = {
     toConsent: 'ดูการให้ความยินยอม',
     thisTerm: 'ภาคเรียนนี้', none: 'ภาคเรียนนี้ยังไม่มีรายการใหม่', ask: 'คำถามที่อาจลองชวนคุย',
     consentT: 'การให้ความยินยอม', consentP: 'ตาม พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล นักเรียน Year 7 ถึง 9 ต้องได้รับความยินยอมจากผู้ปกครองก่อนจัดเก็บหรือแบ่งปันข้อมูล โรงเรียนเป็นผู้บันทึก',
-    asked: (d) => `ขอเมื่อ ${d}`, howTo: (f) => `หากต้องการให้ เปลี่ยน หรือถอนความยินยอม โปรดส่งอีเมลถึงครูที่ปรึกษาของ ${f} โรงเรียนจะบันทึกไว้ที่นี่`,
+    howTo: (f) => `หากต้องการให้ เปลี่ยน หรือถอนความยินยอม โปรดส่งอีเมลถึงครูที่ปรึกษาของ ${f} โรงเรียนจะบันทึกไว้ที่นี่`,
     recorded: (d, h) => `โรงเรียนบันทึกไว้เมื่อ ${d} (${h})`, how: { email: 'ทางอีเมล', paper: 'ทางเอกสาร', person: 'ด้วยตนเอง', other: 'อื่น ๆ' },
-    st: { pending: 'รอความยินยอม', approved: 'ให้ความยินยอมแล้ว', declined: 'ยังไม่ให้ความยินยอม', withdrawn: 'ถอนความยินยอมแล้ว' },
+    withdrawn: 'ถอนความยินยอมแล้ว',
     olderT: (f) => `${f} ดูแลการแบ่งปันเอง`,
     olderP: (f) => `บันทึกความยินยอมไว้แล้วตั้งแต่ ${f} เข้าเรียน Year 7 ตั้งแต่ Year 10 ${f} เป็นผู้ตัดสินใจว่าจะแบ่งปันอะไรกับใคร คุณยังขอสำเนาข้อมูลจากโรงเรียนได้ทุกเมื่อ`,
     onFile: 'มีความยินยอมแล้ว', waiting: 'รอความยินยอม',
@@ -152,7 +152,6 @@ function Consent({ persona, childId, go, lang }) {
   const say = SAY[lang];
   const f = first(s);
   const rec = familyConsentOf(childId);
-  const reqs = getConsentReqs(childId);
   const on = consentOnFile(childId);
   return (
     <>
@@ -162,20 +161,8 @@ function Consent({ persona, childId, go, lang }) {
       ) : (
         <div className="card-sec fam-older">
           <span className={`status ${on ? 's-ok' : 's-warn'}`}><i>{on ? '✓' : '!'}</i>{on ? say.onFile : say.waiting}</span>
-          {rec && <p>{rec.on ? say.recorded(dateIn(lang, rec.date), say.how[rec.how] || rec.how) : say.recorded(dateIn(lang, rec.date), say.st.withdrawn)}</p>}
+          {rec && <p>{rec.on ? say.recorded(dateIn(lang, rec.date), say.how[rec.how] || rec.how) : say.recorded(dateIn(lang, rec.date), say.withdrawn)}</p>}
           <p>{say.howTo(f)}</p>
-          {reqs.length > 0 && <ul className="consent-list">
-            {reqs.map((r) => {
-              const [title, detail, textLang] = consentText(lang, r, f);
-              return (
-                <li key={r.id} className={`consent-req st-${r.status}`}>
-                  <div className="cr-top"><span className={`status ${r.status === 'approved' ? 's-ok' : r.status === 'declined' ? 's-off' : 's-warn'}`}><i>{r.status === 'approved' ? '✓' : r.status === 'declined' ? '–' : '!'}</i>{say.st[r.status] || r.status}</span><small>{say.asked(dateIn(lang, r.asked))}</small></div>
-                  <h3 lang={textLang}>{title}</h3>
-                  {detail && <p lang={textLang}>{detail}</p>}
-                </li>
-              );
-            })}
-          </ul>}
         </div>
       )}
       {isPilot() && <div className="card-sec fam-older"><h3>{say.copyT(f)}</h3><p>{say.copyP}</p><button className="ghost" onClick={() => { location.href = exportUrl(childId); }}>{say.copyBtn}</button></div>}

@@ -17,7 +17,7 @@ const { canAct } = await import('../auth.mjs');
 test('TP_START=empty: the school lines, nobody fictional, every key still there', () => {
   const s = api.getStore();
   assert.deepEqual(s.lines.map((l) => l.id), ['science', 'computing', 'environment', 'sport', 'service', 'music', 'design', 'languages', 'art']);
-  for (const k of ['students', 'teachers', 'events', 'reflections', 'endorsements', 'requests', 'prompts', 'applications', 'inbox', 'pending', 'alumEvents', 'consentReqs', 'classTasks', 'roster', 'classes', 'enrolments']) assert.deepEqual(s[k], [], k);
+  for (const k of ['students', 'teachers', 'events', 'reflections', 'endorsements', 'requests', 'prompts', 'applications', 'inbox', 'pending', 'alumEvents', 'classTasks', 'roster', 'classes', 'enrolments']) assert.deepEqual(s[k], [], k);
   for (const k of ['drafts', 'notes', 'letters', 'github', 'casProjects']) assert.deepEqual(s[k], {}, k);
   assert.ok(s.integrations.length && s.integrations.every((i) => i.itemCount === 0));
   assert.ok(fs.existsSync(path.join(process.env.DATA_DIR, 'state.json')), 'saved at once');

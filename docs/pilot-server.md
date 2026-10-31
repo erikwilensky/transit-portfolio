@@ -347,8 +347,8 @@ server makes an empty folder and begins again from the seed.
 - **Who acted**: texts name the person who acted. `decideBranch(id, ok, mergeInto, by)` and
   `nudgeMilestone(studentId, milestone, by)` take the coordinator's teacher id (left out: the demo's Ms Brandt);
   `CommentDialog` passes the counsellor's. `shortName('Ms Clara Brandt')` is `Ms Brandt`. Demo texts are unchanged.
-- Families send nothing in the app since 30 October 2026, so no notification comes from a family and none goes to one
-  (see "Families read only"); old ones stay in their bells.
+- Families send nothing in the app, so no notification comes from a family; a family's bell has only the weekly digest
+  and their child's milestones (see "Families read only").
 - A pilot parent linked to a seeded child that has a demo family (`st-06`, `st-09`) also reads the demo parent's bell.
 - Tests: `server/test/notifications.test.mjs`, `node scripts/checks/notifications.cjs` (its own pilot server: a new
   student asks a new teacher, the teacher endorses, both bells update live).
@@ -369,7 +369,7 @@ only the students they work with. Demo mode still sends the whole record to ever
   tags, drafts, inbox, requests, prompts, comments, activity, consent, CAS, DP, link views…). For the
   students in reach it keeps what that person may read, by `VISIBLE_TO` (now exported from api.js), as
   `getStudentMap(viewer)` applies it: a student's own record in full; a child as the family view shows it
-  (`familyViewer`), with consent requests and only view and consent activity; staff at most the
+  (`familyViewer`), with only view and consent activity; staff at most the
   advisor level, so **private stations and reflections never reach any staff role, admin included**.
   One exception: a station a student sent to a teacher (an endorsement request or a sponsor invitation)
   reaches that teacher even when private, without its private reflections. Activity lines naming a
@@ -729,7 +729,7 @@ The site installs on a phone's home screen, in demo and pilot alike.
 ## Feedback and advisor nudges (`server/routes/65-feedback.mjs`, `src/components/Feedback.jsx`, `src/components/Nudges.jsx`)
 
 - **Feedback** (pilot only): staff and students have "Feedback" in their account menu (family accounts do not, and
-  `/api/feedback` answers them 403, since 30 October 2026); Simple-level students also get a
+  `/api/feedback` answers them 403); Simple-level students also get a
   big "Something not working? Tell us" button at the foot of their screens. The dialog asks what kind
   (Something's broken / An idea / Something's confusing), a message, and optionally a picture (uploaded through
   `POST /api/upload` as usual); the current `#/...` route goes with it.
@@ -942,10 +942,9 @@ personas included (`NAV` in `src/personas.js`; the pilot adds it once, `src/auth
   made on first use. Reasons (`REPORT_REASONS`): `inappropriate`, `personal`, `unkind`, `other`. A hidden item carries
   `hidden: { at, by }` (the station in `events`, or the comment in `momentComments`).
 - **Mutators** (deterministic, so they replay and undo like any change): `reportItem({ eventId } | { commentId }, reason, note,
-  from)`; `from.key` is `'student'` (the owner), a teacher id or `'admin'` (`from.name` for the last); `'fam:<studentId>'` only in
-  old records (families do not report since 30 October 2026; canAct refuses it).
+  from)`; `from.key` is `'student'` (the owner), a teacher id or `'admin'` (`from.name` for the last); families do not report.
   One open report per person per item (a second returns the first); at most 20 per person per hour (429). Never on a private
-  moment; families never on a comment. `moderateReport(id, action, note, by)` (`by`: the moderator's teacher id, or null for
+  moment. `moderateReport(id, action, note, by)` (`by`: the moderator's teacher id, or null for
   an admin without one); `action`: `hide`, `unhide`, `photo` (takes every image off the station's evidence), `none`. The
   answer goes into the history of every report on the same item. `editStation` ignores `hidden`.
 - **Notifications**: a new report → `role:coordinator`, `role:counsellor`, `role:leadership` ("New report: “…” (Student).
@@ -1602,54 +1601,31 @@ and from the demo's ManageBac "Endorse a whole-class task" (`store.classTasks`, 
   Mr David Coultas sets a task for Y8 Sciences 08.04 (04); the reminder once per student; Aaron Torres hands it in at
   Simple on a phone, offline, with a photo; the server restarted two days later (a Date shift): a classmate at Standard
   sees it overdue and hands it in late; This week, the grid, more time, endorse from the grid; refusals; axe).
-## Conference booking (`src/api.js`, `src/components/ConferenceBooking.jsx`, `server/routes/68-conference.mjs`)
+## Conferences (`src/api.js`, `src/components/Conferences.jsx`)
 
-The advisor places each student in a parent-student-advisor conference time, after arranging it with the family by email
-(families do not book in the app since 30 October 2026; see "Families read only"). Nothing is emailed. Demo and pilot. Times are Bangkok time
-(`CONF_TZ` +07:00, no daylight saving): a slot starts at `confAt(date, time)`.
+The school arranges its parent-student-advisor conferences, and their times, outside the app (with families, by email).
+The app only notes that a conference is coming, so students can get ready for it (see "Student-led conferences"). No
+times, no bookings, no reminders, nothing for families, nothing emailed. Demo and pilot.
 
-- **Record** (made on first use): `store.confRounds = [{ id: 'cr-…', title, days: [{ date, from, to }], slot (10 | 15 | 20),
-  breaks: [{ from, to }] (every day), online, location, link, advisorId | null, year | null, advisorIds, studentIds, by, at,
-  closedOn?, closedBy? }]`, `store.confBookings = [{ id: 'cb-…', roundId, advisorId, studentId, date, time, by (teacher id;
-  `'family'` only in old records), at, reminded? }]` and `store.confBlocks = [{ id: 'ck-…', roundId, advisorId, date, time, by, at }]`.
-- **Mutators**: `openConferenceRound({ title, days, slot, breaks, online, location, link, advisorId | year }, by)` (an advisory,
-  or every student in a British Year with an advisor, each meeting their own advisor; students already in a live round are left
-  out, 409 when none are left; each advisor of a Year round is told); `editConferenceRound(id, patch, by)` (409
-  while a booking would lose its time; blocks that no longer fit go); `closeConferenceRound(id, by)`;
-  `bookConference(roundId, studentId, { date, time }, by)` (one slot per student per round: booking again moves it; refused when
-  the time is booked or blocked (409 "That time was just taken"), clashes with a brother's or sister's booking in any round
-  (409), or has passed; the 24-hour rule `CONF_CHANGE_H` only applies to an old `by: 'family'` call on replay);
-  `cancelConference(id, by)`; `blockConferenceSlot(roundId, advisorId, date, time, on, by)` (never a booked time);
-  `sendConferenceReminders(today)`. The student hears when their conference is; families are told nothing in the app.
-  Reads: `confGrid(roundId, advisorId)`, `confDayTimes(r, day)`, `confBookingOf`, `confClash`, `confTooSoon`, `confProgress`,
-  `advisorConfRounds`, `studentConferences(sid)`.
-- **Siblings**: `setSiblingsOf(fn)`. The server (`68-conference.mjs`) sets it from the family accounts (every parent account
-  listing that child: its other `children`), so an advisor cannot book a brother's and sister's conferences at the same time.
-  The demo uses its one family.
-- **Reminders**: `68-conference.mjs` looks every `CONF_REMIND_MS` (default 10 minutes) and shortly after start; bookings tomorrow
-  (Bangkok) get one reminder per advisor for the day (`reminded` stops a second), then `changed()`.
-  `sendConferenceReminders` is admin-only through `/api/action`.
-- **canAct** (`CF_FNS` in `server/auth.mjs`, before the admin rule): open: an advisor for `advisorId` = their own `teacherId`;
-  whole-school staff for any advisory or a Year, as themselves; admins. Edit and close: whoever opened it, its advisor,
-  whole-school staff, admins. Book and cancel: the student's advisor as themselves, any time. Block: the advisor of that grid.
+- **Record** (made on first use): `store.conferences = [{ id: 'cf-…', title, from, to (the same date for one day; at most a
+  month), advisorId | null, year | null, advisorIds, studentIds, by, at, editedAt?, editedBy? }]`.
+- **Mutators**: `addConference({ title, from, to?, advisorId | year }, by)` (an advisory, or every student in a British Year with
+  an advisor; students already in a conference still to come are left out, 409 when none are left; dates from today on; each
+  other advisor of a Year conference is told, kind `conference`); `editConference(id, { title, from, to }, by)`;
+  `removeConference(id, by)` (409 once a student has started getting ready or has a line: change its dates instead).
+  Reads: `getConferences`, `getConference`, `confLive` (its last date not yet passed), `confDates(c)` ("3 Nov 2026" or
+  "3 Nov 2026 to 5 Nov 2026"; Thai through `studentThai`), `advisorConferences(advisorId)` (coming up, or ended in the past
+  fortnight), `conferenceKids(id, advisorId?)`.
+- **canAct** (`CF_FNS` in `server/auth.mjs`): add: an advisor for `advisorId` = their own `teacherId`; whole-school staff for any
+  advisory or a Year, as themselves; admins. Change and remove: whoever added it, its advisor, whole-school staff, admins.
   Students and families never.
-- **Scope**: rounds go to whole-school roles whole, to anyone else when they cover a student in reach (only those ids).
-  Bookings and blocks: whole-school roles and admins all; an advisor their own grid; a student their own bookings. Families get no
-  rounds, bookings or blocks. PDPA: a booking carries `studentId`, so it is in that student's copy and goes with erasure; a round
-  only lists the id and loses it.
-- **Screens**: My advisory has "Conference booking" (open: title, days and hours, 10/15/20 minutes, breaks, a room or "Online
-  (link)"; then "Booked: n of 23", "Not booked yet", Edit, Close booking, and the day grid: booked / free / blocked per day, Cancel,
-  "Book for…" a family, Block / Unblock, "Print the day’s schedule": one A4 page with each time, the student's name, Year and
-  homeroom, who booked, and the link to their conference sheet, `conferenceSheetLink(personaId, sid)` in `src/conference.js`
-  (`#/<persona>/student/<sid>~sheet` opens the advisor's page with the sheet). Notifications open the grid on that day
-  (`advisory/conf~<roundId>~<date>`). The school overview has "Conference booking" for a whole Year. Toasts remind the advisor
-  to let the family know by email. The family view has no booking card. The student's home shows "Your conference" at every
-  level (Thai through `confDay`, `confSlotText`).
-- Tests: `server/test/conference-booking.test.mjs`; browser: `node scripts/checks/conference-booking.cjs` (real roster from
-  `TP_ROSTER`: Ms Jane Altemen opens a round for 8C and books Aaron Torres; his parent joins from a family letter on a phone in
-  Thai, has no booking card, no rounds in their copy and is refused booking or cancelling (403); Aaron sees his time; the advisor
-  blocks a time, books two more students, prints the day's schedule (1 A4 page) and its link opens Aaron's sheet; axe on every
-  new screen). Screenshots and a PDF: `tp-confbook-*` in `SCRATCH` or the temp folder.
+- **Scope**: whole-school roles get every conference whole; anyone else one that covers a student in reach, with only those
+  ids (a student only their own). Families get none. PDPA: a conference only lists the student's id and loses it on erasure.
+- **Screens**: My advisory, "Conferences": Add a conference (title, date, last date if more than one day), then each one with its
+  dates, Change and Remove, "Prepared: n of 23", "Who has prepared" and Conference mode for each student. The school overview,
+  "Conferences": add one for a whole Year, and Remove.
+- Tests: `server/test/student-led.test.mjs` (canAct for each role, dates, the Year notice, scope); browser:
+  `node scripts/checks/student-led.cjs`.
 ## Subject prompts: what to write on each line (`src/api.js`, `src/components/SubjectPrompts.jsx`)
 
 When a student adds a moment on a line they get help on what to write: a short "what makes a good moment here" note, 3 to
@@ -1752,7 +1728,7 @@ Admins get **System health** in the nav: is the pilot server well, in plain word
 | Uploaded files | count and total size of `DATA_DIR/uploads` | never |
 | Backups | newest `<folder>-YYYYMMDD-HHMMSS.tar.gz` in `BACKUP_DIR`: its time and size; `backup.log` | older than 26 hours (Problem after 3 days); the log ends with an error; under 1 KB / no folder or no backups |
 | Class list sync | `server/sis.mjs` status: last check, last good check, last error | not checked for 26 hours with a nightly time / the last check failed |
-| Reminders | class task and conference reminders: last run, last error (heartbeats) | not run since start (after 15 min), or late / failed last time |
+| Reminders | class task reminders: last run, last error (heartbeats) | not run since start (after 15 min), or late / failed last time |
 | Server errors | the last 50 errors (time, route pattern, short message) | any in 24 hours / 10 or more in the last hour |
 | Sign-in | from the activity log, last 24 hours: sign-ins, wrong passwords, blocks | 30+ wrong or any block / 200+ wrong or 10+ accounts blocked |
 | Signed in | live sessions and people | never |
@@ -1768,7 +1744,7 @@ Admins get **System health** in the nav: is the pilot server well, in plain word
   (`POST /api/admin/sis/reports/:id/apply`, never the real path); messages are cut to 200 characters with email addresses
   and token-like strings replaced. In memory only, so a restart clears them.
 - **Heartbeats**: `beat(name, { every, error? })` from any background job; `heartbeats()` lists them. Class tasks
-  (`68-tasks.mjs`) and conference reminders (`68-conference.mjs`) beat on each run. A new job beats and adds itself to
+  (`68-tasks.mjs`) beat on each run. A new job beats and adds itself to
   `JOBS` in `69-health.mjs`.
 - **Backups folder**: `BACKUP_DIR`, read as `scripts/backup.sh` does (relative to the repo, default
   `../transit-portfolio-backups`). In Docker, `docker-compose.yml` mounts `${BACKUP_DIR:-../transit-portfolio-backups}`
@@ -1836,14 +1812,14 @@ number on the bell.
   decides it, then the link's screen). Named in `src/api.js`: an endorsement request from a class question's answer
   (`answers`) or a class task hand-in (`handin`), and teacher nudges (`teacher`). Older notifications without `kind` are
   inferred the same way when read (`noteKind`). Kinds: `endorse`, `answers`, `handin`, `comment`, `report`, `spotted`,
-  `stuck`, `checkin`, `conference`, `class`, `teacher`, `kindfb`, `encourage`, `milestone`, `digest`, `consent`,
+  `stuck`, `checkin`, `conference`, `class`, `teacher`, `kindfb`, `encourage`, `milestone`, `digest`,
   `system`, and the two that can't be turned off: `safeguarding` (a teacher hid, showed again or removed a photo) and
   `security` (named by its notify() call; none are sent yet).
 - **Groups** (`GROUPS`, by `audienceOf(kind)`): staff: Endorsement requests, Class answers, Task hand-ins, Comments,
   Reports (moderators only; On or Only in This week, never Off), Spotted replies, Stuck goals and check-ins,
   Conferences, System (anything else); each On / Off / Only in This week. Students: Teacher replies and endorsements,
-  Comments, Class questions and tasks, Kind feedback, Milestones, Encouragement, Conferences. Families: Weekly digest,
-  Consent requests, Conferences, Your child’s milestones. Students and families have On / Off; a kind outside their
+  Comments, Class questions and tasks, Kind feedback, Milestones, Encouragement, Conferences. Families: Weekly digest and
+  Your child’s milestones. Students and families have On / Off; a kind outside their
   groups always arrives. Milestones and the weekly digest are not sent as notifications today, so those two only take
   effect once they are.
 - **Settings**: `{ kinds: { [group]: 'off' | 'week' }, quiet: { on, from: 'HH:MM', to: 'HH:MM' } }` (`on` is left out;
@@ -2027,11 +2003,6 @@ the school's report system. This tool sends nothing anywhere, and writes nothing
   writes Aaron's advisor comment for 8C. Another teacher, Aaron, a coordinator and the admin get neither draft and cannot
   write them; the coordinator's progress shows counts only; the admin sets 15 words and Mr Coultas sees 2 over; the export
   is in the activity log; axe; phone width).
-## Family encouragement (removed on 30 October 2026)
-
-Families left short notes on their child's moments. Removed with the other family-facing writes: see "Families read only".
-`store.familyNotes` from before stays in the record for the student's PDPA copy and erasure only and goes to nobody.
-
 ## School events (`src/api.js`, `src/components/SchoolEvents.jsx`)
 
 Sports day, a trip, a concert, a service day, Week Without Walls: the school adds it once, and afterwards every student it
@@ -2078,69 +2049,67 @@ was for is asked to add something from it.
   names; a coordinator sends the one reminder; a Year 10 student never gets it; Aaron's family sees the name; refusals; the
   activity log; axe). `thai-students.cjs` sweeps the card, its flow and Coming up in Thai.
 - Not done: a notification when an event ends (the card is the prompt), a reminder per advisor, and events from the SIS calendar.
-## Student-led conferences (`src/api.js`, `src/components/StudentLed.jsx`, builds on "Conference booking" and "Conference sheets")
+## Student-led conferences (`src/api.js`, `src/components/StudentLed.jsx`, builds on "Conferences" and "Conference sheets")
 
 The student leads their own parent-student-advisor conference: they get ready in the app, present from a laptop or
-tablet, and at the end the student adds one line (the family's line was removed on 30 October 2026; see "Families read only"). No new route: everything goes through `/api/action`.
-Demo and pilot (the demo record has no rounds, so nothing shows until one is opened).
+tablet, and at the end add one line. No new route: everything goes through `/api/action`. Demo and pilot (the demo record
+has no conferences, so nothing shows until one is added).
 
-- **Record** (made on first use): `store.confPreps = [{ id: 'cp-…', roundId, studentId, picks: [eventId] (≤ SLC_PICKS = 3),
+- **Record** (made on first use): `store.confPreps = [{ id: 'cp-…', conferenceId, studentId, picks: [eventId] (≤ SLC_PICKS = 3),
   says: { [eventId]: text }, proud, hard, goal: { goalId } | { title } | null, step, status: 'draft' | 'ready', startedAt, savedAt,
-  readyAt? }]` and `store.confNotes = [{ id: 'cn-…', roundId, studentId, family: null (an old family line in a pilot: kept for
-  PDPA, shown to nobody), student: { text, by, at } | null }]`, `by` being `'student'` or a teacher id. Limits `SLC_MAX` (a line is 200 characters).
-- **Mutators**: `saveConfPrep(roundId, studentId, draft, ready)`: while the round has a day to come (`prepOpen`; closing booking
-  does not stop it). Picks are only the student's own moments, never private, goals or safeguarding-hidden ones (`prepMoments`),
-  so the advisor can always see what is shown; a goal is one of their own goals or a few words. `ready: true` needs a pick or
-  "proud" (400 otherwise); it can still be changed until the day. `writeConfNote(roundId, studentId, who, text, by)`: `who` is
-  `'student'` ("What I will do next"); writing again replaces it; an old `'family'` call does nothing on replay. The advisor is
-  told "Aaron Torres wrote on the conference note", or the student "Ms Altemen wrote on your conference note" (kind `conference`,
-  Thai through `NOTE_TH`).
-  The advisor's **private staff note** is the existing `addNote` (`Conference (<round>): …`), so it stays with the advisor notes
+  readyAt? }]` and `store.confNotes = [{ id: 'cn-…', conferenceId, studentId, student: { text, by, at } }]`, `by` being
+  `'student'` or a teacher id. Limits `SLC_MAX` (a line is 200 characters).
+- **Mutators**: `saveConfPrep(conferenceId, studentId, draft, ready)`: until the conference's last date has passed
+  (`prepOpen`). Picks are only the student's own moments, never private, goals or safeguarding-hidden ones (`prepMoments`), so
+  the advisor can always see what is shown; a goal is one of their own goals or a few words. `ready: true` needs a pick or
+  "proud" (400 otherwise); it can still be changed until then. `writeConfNote(conferenceId, studentId, 'student', text, by)`:
+  "What I will do next"; writing again replaces it. The advisor is told "Aaron Torres wrote on the conference note", or the
+  student "Ms Altemen wrote on your conference note" (kind `conference`, Thai through `NOTE_TH`).
+  The advisor's **private staff note** is the existing `addNote` (`Conference (<title>): …`), so it stays with the advisor notes
   and on the advisor copy of the sheet, never with students or families.
-- **Reads**: `myConfPrep(sid)` (the earliest round with a day to come), `prepMoments`, `conferenceDeck(roundId, sid, viewer)` (what
-  Conference mode shows: moments with first photo, the student's words or the summary, proud, hard, goal, note, `young` for
-  Years 7–9), `prepProgress(roundId, advisorId)`, `confPrepOf`, `confNoteOf`, `studentConfNote` (what screens show: `family` always null),
-  `confNotesFor`, `sheetPrep(sid, viewer)`.
-- **canAct** (`SLC_FNS` in `server/auth.mjs`): preparing, only the student on their own prep in a round that includes them. The line: the
-  student as `'student'`; the student's advisor or whole-school staff for them, as themselves (for a conference on one device);
-  admins with a teacher id. `who: 'family'` is refused for everyone. Subject teachers, other advisors and families never.
-- **Scope**: a prep and a note go to the student, their advisor and whole-school roles (a note with `family: null`). Families and
-  other staff get neither. PDPA: both carry `studentId`, so they are in that student's copy and go with erasure (generic rule).
-- **Student** (home, every level, under the term reflection card): "Get ready for my conference" (Years 7–9: "Pick a few things to
-  show your family…", short and warm). Simple: one question a screen (`SimpleFlow`): what to show (up to 3), one screen per moment
+- **Reads**: `myConfPrep(sid)` (the earliest conference still to come: `{ conference, prep }`), `prepMoments`,
+  `conferenceDeck(conferenceId, sid, viewer)` (what Conference mode shows: moments with first photo, the student's words or the
+  summary, proud, hard, goal, note, `young` for Years 7–9), `prepProgress(conferenceId, advisorId)`, `confPrepOf`, `confNoteOf`,
+  `sheetPrep(sid, viewer)`, `sheetSteps(sid, family)`.
+- **canAct** (`SLC_FNS` in `server/auth.mjs`): preparing, only the student on their own prep in a conference that includes them.
+  The line: the student as `'student'`; the student's advisor or whole-school staff for them, as themselves (for a conference on
+  one device); admins with a teacher id. Subject teachers, other advisors and families never.
+- **Scope**: a prep and a note go to the student, their advisor and whole-school roles. Families and other staff get neither.
+  PDPA: both carry `studentId`, so they are in that student's copy and go with erasure (generic rule).
+- **Student** (home, every level, under the term reflection card): "Get ready for my conference" with "Your conference: 3 Nov
+  2026" (Years 7–9: "Pick a few things to show your family…", short and warm); on the day "Today is your conference" (for a range
+  of dates, "Conferences are on now"). Simple: one question a screen (`SimpleFlow`): what to show (up to 3), one screen per moment
   ("What do you want to say about it?", optional), proud, hard, goal (their goals as buttons, or a few words), review, "I am ready";
   sentence starters, read aloud and speak to type (`Said`, `SayIt`, src/voice.js). Standard and Full: one page. Once ready: "Start
-  my conference". After the conference (its day, or once their line is written; for 30 days): "My conference note" with their line and
-  "Write what I will do next".
+  my conference". After the conference (its last date, or once their line is written; for 30 days): "My conference note" with
+  their line and "Write what I will do next".
 - **Conference mode** (`ConferenceMode`, a full-screen portal): "Hi, I’m Aaron!" (Years 7–9) or "Aaron’s conference" with what will be
   shown; one moment a screen (photo, title, their words; photo beside the words on a laptop, above on an upright tablet); proud and
   hard; the goal; "Our next steps" (the student's line; on the advisor's device also the private staff note).
   Large text (`clamp`), big Back / Next, arrow keys and Page Up / Down, Full screen, screen kept awake where allowed, and an
   English / ไทย switch (labels through `studentThai`; a Thai student's own device is Thai already). **Offline**: once open it needs
   no connection: it reads this browser's copy of the record, photos are fetched once into memory as blobs (never kept on the
-  device), and the lines and staff note go through the outbox (see "Offline capture"), sent when back; "Offline: this still works…"
+  device), and the line and staff note go through the outbox (see "Offline capture"), sent when back; "Offline: this still works…"
   shows meanwhile.
-- **Advisor**: each round on My advisory shows "Prepared: n of 23" (started too) and "Who has prepared" (Ready / Started / Not
-  started, note written, a Conference mode button each); each booked time in the day grid says Prepared / Preparing / Not prepared
-  yet and has "Conference mode".
-- **Conference sheet**: `conferenceSheet` carries `prep` (`sheetPrep`, the latest round's): "In Aaron’s words" with the moments to
-  show, proud, hard and the goal, read as the sheet's reader may (the family copy drops moments the family view does not show).
+- **Advisor**: each conference on My advisory shows "Prepared: n of 23" (started too) and "Who has prepared" (Ready / Started / Not
+  started, note written, a Conference mode button each). A student's line notifies to `advisory/conf~<conferenceId>`, which opens
+  that list.
+- **Conference sheet**: `conferenceSheet` carries `prep` (`sheetPrep`, the latest conference's): "In Aaron’s words" with the moments
+  to show, proud, hard and the goal, read as the sheet's reader may (the family copy drops moments the family view does not show).
   The moment list gives way so the sheet stays one A4 page. After the conference it also carries `steps` (`sheetSteps(sid,
-  family)`, the latest round with a line or a staff note): "Our next steps" with the student's "What I will do next" on both
-  copies (an old family line is never shown; see "Families read only"), and the advisor's private staff note for that round (the advisor note `Conference (<round>): …`) only
-  on the advisor copy, never the family copy (where it is not even read); that note is then not repeated under "For the
-  advisor only". The moment list gives way again, so either copy stays one A4 page.
-- Tests: `server/test/student-led.test.mjs` (picks filtered, replay, canAct for every role, notifications and Thai, scope, the sheet,
-  PDPA); browser: `node scripts/checks/student-led.cjs` (real roster: Ms Altemen opens a round for 8C; Aaron Torres prepares at Simple
-  on a phone; she sees "Prepared: 1 of 23", books him and opens Conference mode from the booking list, goes offline (photo still
-  shows, staff note sent when back), switches to ไทย; Aaron writes his line in his own Conference mode; his parent joins from a
-  family letter in Thai and writes theirs; another family gets nothing and is refused (403); the sheet carries the prep on one
-  A4 page, and after the conference both lines, with the staff note on the advisor copy only (the family copy checked
-  and printed too, one A4 page each); axe on each screen; each account in its own browser context). `thai-students.cjs` sweeps the prep, Conference mode and
-  family letter in Thai, has nothing to write and gets no note, and a family line is refused for the parent, Aaron and the advisor (403); the sheet carries the prep on one
-  A4 page; axe on each screen; each account in its own browser context). `thai-students.cjs` sweeps the prep, Conference mode and
-  the note in Thai. Screenshots and a PDF: `tp-slc-*` in `SCRATCH` or the temp folder.
-- Not done: a round's prep cannot be copied into the next round.
+  family)`, the latest conference with a line or a staff note): "Our next steps" with the student's "What I will do next" on both
+  copies, and the advisor's private staff note for that conference only on the advisor copy, never the family copy (where it is
+  not even read); that note is then not repeated under "For the advisor only". Either copy stays one A4 page.
+- Tests: `server/test/student-led.test.mjs` (conferences, picks filtered, replay, canAct for every role, prep open until the last
+  date, notifications and Thai, scope, the sheet, PDPA); browser: `node scripts/checks/student-led.cjs` (real roster: Ms Altemen adds
+  a conference for 8C with today's date, no times; Aaron Torres prepares at Simple on a phone; she sees "Prepared: 1 of 23" and opens
+  Conference mode from "Who has prepared", goes offline (photo still shows, staff note sent when back), switches to ไทย; Aaron
+  writes his line in his own Conference mode; his parent joins from a family letter in Thai and gets nothing about conferences
+  (403 on the note); the sheet carries the prep on one A4 page, and after the conference his line, with the staff note on the
+  advisor copy only (the family copy checked and printed too, one A4 page each); axe on each screen; each account in its own
+  browser context). `thai-students.cjs` sweeps the prep (a conference over two dates), Conference mode and the note in Thai.
+  Screenshots and a PDF: `tp-slc-*` in `SCRATCH` or the temp folder.
+- Not done: a conference's prep cannot be copied into the next one.
 ## Class photo drop (`src/api.js`, `src/components/PhotoDrop.jsx`, `server/routes/71-photo-drop.mjs`)
 
 A teacher takes photos in a lesson, on a trip or in a practical and gives each one to the students in it. Each student
@@ -2485,43 +2454,33 @@ writes "Where I’ve been, where I’m going" for their next advisor. The window
   started a fresh undo segment and nothing before it (a sent batch included) could be undone (`forgetDirect`).
 - Not done: faces are not detected; photos cannot be added to a batch after sending.
 
-## Families read only (since 30 October 2026)
+## Families read only
 
 Erik's rule: families do not interact with the school through the app at all; parents use email. A family account reads
 the family view (map, this term, milestones, digest, consent status, the PDPA copy) and changes only its own language,
 password, display and notification settings (`/api/auth/prefs`, `/api/auth/password`, not mutators). Demo and pilot.
 
-- **Removed**: (1) family encouragement notes on moments (`FamilyNotes`); (2) the family's conference-note line ("What we will
-  try at home"); (3) family conference booking, cancelling and the family's reminders and notices; (4) families reporting a
-  moment; (5) families answering consent and a student's "Send a reminder to my parent"; (6) pilot feedback from family
-  accounts (staff and students keep theirs). Uploads from a family account answer 403. The family notification settings keep
-  only "Weekly digest" and "Your child’s milestones" (`GROUPS.family` in `src/notify-kinds.js`).
+- **What families do not have**: nothing to write on moments or conference notes, no conferences or times, no reporting, no
+  consent buttons, no pilot feedback (`/api/feedback` 403; staff and students keep theirs), no uploads (403). Their
+  notification settings are "Weekly digest" and "Your child’s milestones" (`GROUPS.family` in `src/notify-kinds.js`).
 - **canAct**: a parent may call only `PARENT_FNS` (`markNotificationsRead` and `clearReadNotifications` on its own keys,
-  `recordView`); everything else is refused, `setFamily` (the demo's shared family settings) is admin only, and the removed
-  mutators (`addFamilyNote`, `editFamilyNote`, `deleteFamilyNote`, `thankFamilyNote`, `setFamilyNoteHidden`, `answerConsent`,
-  `remindParent`, `REMOVED_FNS`), a report on a family note and `writeConfNote` with `who: 'family'` are refused for everyone.
-- **Replay**: the removed mutators stay registered in `src/api.js`, so recorded history and Undo still replay: `answerConsent`
-  sets the old request (no notification), `deleteFamilyNote` removes the note, the others and a family `writeConfNote` do
-  nothing; an old `bookConference`/`cancelConference` with `by: 'family'` runs as before without notices.
+  `recordView`); everything else is refused, and `setFamily` (the demo's shared family settings) is admin only.
 - **Consent, recorded by the school**: `recordFamilyConsent(studentId, { on, date, how, note }, by)` writes
   `store.familyConsent[studentId] = { on, date (not in the future), how ('email' | 'paper' | 'person' | 'other', `CONSENT_HOW`),
   note (≤200), by, at }` and an activity line; nobody is notified. canAct: an admin (as themselves, or `by` null) or the
   student's advisor as themselves; no one else, whole-school roles included. `consentOnFile(sid)` is true from Year 10; for
-  Years 7–9 the record decides when there is one (`on: false` = withdrawn), otherwise an old approved `join` request still counts.
+  Years 7–9 only when the school's record says so (`on: false` = withdrawn).
   Screens (`src/components/FamilyConsent.jsx`): My advisory "Family consent" (each advisee in Years 7–9: "Family consent on
   file", date, how, note; Change; Withdrawn) and Accounts → a student's data (admin). The family Consent page shows the status,
   "Recorded by the school on … (on paper)" and "email the advisor" (Thai too), with no buttons; the student's Privacy card says
   their advisor records it.
-- **Conference times**: the advisor arranges each time with the family by email and books, moves or cancels it on the My
-  advisory day grid (or blocks times); the student is told; the printable day schedule is unchanged. Families get no rounds,
-  bookings or blocks in their copy.
-- **What families wrote before** (`store.familyNotes`, `confNotes[].family`, reports with a `familyNoteId`, notifications quoting
-  a note or a family's line): stays in the record, goes to nobody (`familyWrittenScope` in `server/scope.mjs`, `studentConfNote`
-  and `confNotesFor` in api.js), and is in the student's PDPA copy and removed by erasure (the generic `studentId` rule). A
-  family's old report on a moment still reaches moderators (its outcome matters) without the family's words; the family gets no
-  reports.
+- **Removed in October 2026, never used in the pilot**: family encouragement notes, the family's conference-note line, conference
+  booking, families reporting and answering consent, a student's reminder to their parent, family pilot feedback. Their code
+  is gone; `apply` in `src/api.js` drops the old collections (`familyNotes`, `consentReqs`, `confRounds`, `confBookings`,
+  `confBlocks`) when a saved record loads, and Undo skips a recorded change the app no longer has (`server/history.mjs`, with a
+  warning) instead of failing.
 - Tests: `server/test/family-read-only.test.mjs` (every `api.MUTATORS` name refused for a parent but the allowlist; consent
-  permissions, replay and `consentOnFile`; old history replays; hidden but in the PDPA copy and erased; over HTTP: prefs, display,
-  notification settings and password work, feedback, uploads and changes 403); browser: `node scripts/checks/family-read-only.cjs`
-  (real roster: Aaron Torres's parent in Thai sees consent waiting with no buttons and no Feedback; Ms Altemen records consent on
+  permissions, replay and `consentOnFile`; the removed mutators and collections gone; over HTTP: prefs, display, notification
+  settings and password work, feedback, uploads and changes 403); browser: `node scripts/checks/family-read-only.cjs` (real
+  roster: Aaron Torres's parent in Thai sees consent waiting with no buttons and no Feedback; Ms Altemen records consent on
   paper; the parent and Aaron see it on file; every family write 403; axe).

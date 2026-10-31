@@ -44,7 +44,7 @@ import { NudgeBanner } from './components/Nudges.jsx';
 import { ClassNudgeBanner } from './components/NotSeen.jsx';
 import { TermReflectionCard } from './components/TermReflection.jsx';
 import { MovingUpCard } from './components/MovingUp.jsx';
-import { StudentConference } from './components/ConferenceBooking.jsx';
+import { StudentLedCard } from './components/StudentLed.jsx';
 import { YearSignoffCard } from './components/YearSignoff.jsx';
 import { StudentMilestones } from './components/Milestones.jsx';
 import Applications from './screens/Applications.jsx';
@@ -469,7 +469,7 @@ function StudentScreens({ screen, param, studentId, drafts, setDrafts, audience,
   const nudge = <><StudentMilestones studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} /><NudgeBanner studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} onAdd={() => addOn()} /><ClassNudgeBanner studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} onAdd={addOn} /><CarryOverGoals studentId={studentId} version={version} toast={toast} simple={getIntensity(studentId) === 'simple'} />
     <TermReflectionCard studentId={studentId} version={version} toast={toast} simple={getIntensity(studentId) === 'simple'} auto={screen === 'map' && param === 'reflect'} />
     <MovingUpCard studentId={studentId} version={version} toast={toast} simple={getIntensity(studentId) === 'simple'} auto={screen === 'map' && param === 'movingup'} />
-    <StudentConference studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} toast={toast} />
+    <StudentLedCard studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} toast={toast} />
     <YearSignoffCard studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} /></>;
   // N11: stations a presentation would show but a link cannot, because they are not publishable.
   const [gapFor, setGapFor] = useState(null);

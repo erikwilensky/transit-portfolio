@@ -1,5 +1,5 @@
 // Families read only, on the real class lists: starts a clean pilot (TP_START=empty; needs `npm run build` first) and
-// imports the real roster. Families do not act in the app (since 30 October 2026; parents use email). Aaron Torres (Year 8)
+// imports the real roster. Families do not act in the app (parents use email). Aaron Torres (Year 8)
 // needs family consent: his parent joins from the family letter in Thai and the Consent page only says it is waiting and to
 // email the advisor (no buttons). Ms Jane Altemen records "Family consent on file" on My advisory (date, how). The parent's
 // page then says it is on file and how; Aaron's Privacy page says so too. The parent's account menu has no Feedback (staff
@@ -76,8 +76,8 @@ let srv;
     await p.keyboard.press('Escape');
     ok((await post('/api/feedback', { kind: 'idea', message: 'More photos please' }, pTok)).status === 403, 'and /api/feedback refuses a family (403)');
     const refused = [];
-    for (const [fn, args] of [['answerConsent', ['x', 'approved', 'Maria Torres']], ['remindParent', [AARON]], ['recordFamilyConsent', [AARON, { on: true, date: '2026-10-01', how: 'email' }, null]],
-      ['addFamilyNote', ['ev', { key: 'u:x', name: 'Maria Torres' }, 'hi', 'proud']], ['setFamily', [{ email: true }]], ['addStation', [AARON, { title: 'x' }]]]) {
+    for (const [fn, args] of [['recordFamilyConsent', [AARON, { on: true, date: '2026-10-01', how: 'email' }, null]], ['reportItem', [{ eventId: 'ev' }, 'other', '', { key: `fam:${AARON}` }]],
+      ['setFamily', [{ email: true }]], ['addStation', [AARON, { title: 'x' }]]]) {
       if ((await act(pTok, fn, args)).status !== 403) refused.push(fn);
     }
     ok(!refused.length, `every family write is refused (403)${refused.length ? `: not ${refused.join(', ')}` : ''}`);

@@ -32,7 +32,7 @@ const view = (f) => { const a = A.accountById(f.by); return { ...f, name: a?.nam
 export default (app) => {
   app.post('/api/feedback', async (req, res) => {
     const u = req.user; if (!u) throw fail(401, 'Sign in first.');
-    if (u.kind === 'parent') throw fail(403, 'Families give feedback to the school by email.'); // since 30 October 2026
+    if (u.kind === 'parent') throw fail(403, 'Families give feedback to the school by email.');
     const b = await readJson(req);
     if (!Object.hasOwn(F.KINDS, b.kind)) throw fail(400, 'Pick what kind of feedback it is.');
     const message = clip(b.message, 4000);

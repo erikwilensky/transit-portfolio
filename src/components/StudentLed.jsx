@@ -1,13 +1,13 @@
 // Student-led conferences (api.saveConfPrep, writeConfNote): "Get ready for my conference" on the student's home (one
 // question a screen at Simple, one page at Standard and Full), Conference mode (full screen, one moment a screen, large
-// text, keeps working offline once open), the advisor's "Prepared: n of 23" on the round, and the student's line at the
-// end. The family's line ("What we will try at home") was removed on 30 October 2026: no new family–school paths.
+// text, keeps working offline once open), the advisor's "Prepared: n of 23" on each conference, and the student's line at
+// the end.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { addNote, confBookingOf, conferenceDeck, daysBefore, getConferenceRounds, getLang, getStudentMap, getTeacher, myConfPrep,
-  prepMoments, prepProgress, saveConfPrep, shortName, SLC_MAX, SLC_PICKS, studentConfNote, TODAY, writeConfNote, youngConf } from '../api.js';
+import { addNote, confDates, conferenceDeck, confNoteOf, daysBefore, getConferences, getLang, getStudentMap, getTeacher, myConfPrep,
+  prepMoments, prepProgress, saveConfPrep, shortName, SLC_MAX, SLC_PICKS, TODAY, writeConfNote, youngConf } from '../api.js';
 import { fmtDate } from '../format.js';
-import { confSlotText, studentThai } from '../i18n.js';
+import { studentThai } from '../i18n.js';
 import { Steps } from '../screens/SimpleHome.jsx';
 import { shown } from '../thai.js';
 import { Said, SayIt, SpeakButton } from './Voice.jsx';
@@ -30,20 +30,19 @@ const hasPrep = (p) => !!p && (p.picks.length > 0 || !!p.proud);
 export function StudentLedCard({ studentId, version, toast, simple }) {
   const cur = useMemo(() => myConfPrep(studentId), [studentId, version]); // eslint-disable-line react-hooks/exhaustive-deps
   const after = useMemo(() => afterConference(studentId), [studentId, version]); // eslint-disable-line react-hooks/exhaustive-deps
-  const [flow, setFlow] = useState(null); // the round being prepared
-  const [mode, setMode] = useState(null); // the round being presented
-  const lang = getLang();
-  const r = cur?.round, p = cur?.prep, b = cur?.booking;
-  const today = b?.date === TODAY;
+  const [flow, setFlow] = useState(null); // the conference being prepared
+  const [mode, setMode] = useState(null); // the conference being presented
+  const r = cur?.conference, p = cur?.prep;
+  const today = !!r && r.from <= TODAY;
   return <>
-    {cur && !(after && after.round.id === r.id && !today) && (
+    {cur && !(after && after.conference.id === r.id && !today) && (
       <section className={`slc-card${simple ? ' simple' : ''}`} aria-labelledby="slc-card-h">
         <div className="slc-card-text">
-          <h2 id="slc-card-h">{today ? 'Today is your conference' : 'Get ready for my conference'}</h2>
+          <h2 id="slc-card-h">{today ? (r.from === r.to ? 'Today is your conference' : 'Conferences are on now') : 'Get ready for my conference'}</h2>
           <p>{p?.status === 'ready' ? 'You are ready. You can still change it before the day.' : p ? 'You started this. Carry on where you left off.'
             : youngConf(studentId) ? 'Pick a few things to show your family and say what you are proud of. It takes about 5 minutes.'
             : `Pick up to ${SLC_PICKS} moments to show, say what you are proud of, one thing that was hard and one goal.`}</p>
-          <small>{b ? `Your conference: ${confSlotText(lang, b.date, b.time)}` : 'No time booked yet. Your advisor will set one with your family.'}</small>
+          <small>{`Your conference: ${confDates(r)}`}</small>
         </div>
         <div className="slc-card-btns">
           {p?.status === 'ready'
@@ -52,23 +51,22 @@ export function StudentLedCard({ studentId, version, toast, simple }) {
         </div>
       </section>
     )}
-    {after && <StudentNote studentId={studentId} round={after.round} version={version} toast={toast} simple={simple} onShow={after.deck?.prep ? () => setMode(after.round) : null} />}
+    {after && <StudentNote studentId={studentId} conference={after.conference} version={version} toast={toast} simple={simple} onShow={after.deck?.prep ? () => setMode(after.conference) : null} />}
     {flow && (simple
-      ? <SimpleFlow r={flow} studentId={studentId} prep={cur?.round.id === flow.id ? p : null} toast={toast} onClose={() => setFlow(null)} onPresent={() => { setFlow(null); setMode(flow); }} />
-      : <PageFlow r={flow} studentId={studentId} prep={cur?.round.id === flow.id ? p : null} toast={toast} onClose={() => setFlow(null)} onPresent={() => { setFlow(null); setMode(flow); }} />)}
-    {mode && <ConferenceMode roundId={mode.id} studentId={studentId} by="student" version={version} onClose={() => setMode(null)} />}
+      ? <SimpleFlow r={flow} studentId={studentId} prep={cur?.conference.id === flow.id ? p : null} toast={toast} onClose={() => setFlow(null)} onPresent={() => { setFlow(null); setMode(flow); }} />
+      : <PageFlow r={flow} studentId={studentId} prep={cur?.conference.id === flow.id ? p : null} toast={toast} onClose={() => setFlow(null)} onPresent={() => { setFlow(null); setMode(flow); }} />)}
+    {mode && <ConferenceMode conferenceId={mode.id} studentId={studentId} by="student" version={version} onClose={() => setMode(null)} />}
   </>;
 }
-// After the conference (its day has come, or someone wrote on the note), for 30 days after the round's last day.
+// After the conference (its last date has come, or someone wrote on the note), for 30 days after its last date.
 function afterConference(studentId) {
-  const r = getConferenceRounds().filter((x) => x.studentIds.includes(studentId) && x.days.at(-1).date >= daysBefore(30))
-    .filter((x) => { const b = confBookingOf(x.id, studentId); return !!studentConfNote(x.id, studentId) || (b && b.date <= TODAY); })
-    .sort((a, b) => b.days[0].date.localeCompare(a.days[0].date))[0];
-  return r ? { round: r, deck: conferenceDeck(r.id, studentId, 'student') } : null;
+  const c = getConferences().filter((x) => x.studentIds.includes(studentId) && x.to >= daysBefore(30) && (x.to <= TODAY || !!confNoteOf(x.id, studentId)))
+    .sort((a, b) => b.from.localeCompare(a.from))[0];
+  return c ? { conference: c, deck: conferenceDeck(c.id, studentId, 'student') } : null;
 }
 
-function StudentNote({ studentId, round: r, version, toast, simple, onShow }) {
-  const n = useMemo(() => studentConfNote(r.id, studentId), [r, studentId, version]); // eslint-disable-line react-hooks/exhaustive-deps
+function StudentNote({ studentId, conference: r, version, toast, simple, onShow }) {
+  const n = useMemo(() => confNoteOf(r.id, studentId), [r, studentId, version]); // eslint-disable-line react-hooks/exhaustive-deps
   const [edit, setEdit] = useState(false);
   const [text, setText] = useState('');
   const mine = n?.student;
@@ -283,9 +281,9 @@ function useOnline() {
   return on;
 }
 
-export function ConferenceMode({ roundId, studentId, by, version, onClose }) {
+export function ConferenceMode({ conferenceId, studentId, by, version, onClose }) {
   const staff = by !== 'student';
-  const deck = useMemo(() => conferenceDeck(roundId, studentId, staff ? 'advisor' : 'student'), [roundId, studentId, staff, version]); // eslint-disable-line react-hooks/exhaustive-deps
+  const deck = useMemo(() => conferenceDeck(conferenceId, studentId, staff ? 'advisor' : 'student'), [conferenceId, studentId, staff, version]); // eslint-disable-line react-hooks/exhaustive-deps
   const [i, setI] = useState(0);
   const [th, setTh] = useState(() => getLang() === 'th');
   const online = useOnline();
@@ -314,7 +312,7 @@ export function ConferenceMode({ roundId, studentId, by, version, onClose }) {
   if (!deck) return null;
   const m = deck.moments.find((x) => x.id === cur);
   const n = deck.moments.indexOf(m) + 1;
-  const name = `${deck.student.name} · ${deck.round.title}`;
+  const name = `${deck.student.name} · ${deck.conference.title}`;
   return createPortal(
     <div className={`slc-mode${th ? ' th' : ''}`} role="dialog" aria-modal="true" aria-label={t('Conference mode')} lang={th ? 'th' : 'en'}>
       <header className="slc-bar">
@@ -366,7 +364,7 @@ export function ConferenceMode({ roundId, studentId, by, version, onClose }) {
 // The last screen: the student's line, and (staff only) a private note.
 function NextSteps({ deck, by, t }) {
   const staff = by !== 'student';
-  const n = deck.note, sid = deck.student.id, r = deck.round;
+  const n = deck.note, sid = deck.student.id, r = deck.conference;
   const [mine, setMine] = useState(n?.student?.text || '');
   const [note, setNote] = useState('');
   const [said, setSaid] = useState('');
@@ -395,10 +393,10 @@ function NextSteps({ deck, by, t }) {
   );
 }
 
-// ── Advisor: who has prepared, on the round; each student's Conference mode ──
-export function RoundPrep({ r, advisorId, version, onMode }) {
-  const p = useMemo(() => prepProgress(r.id, advisorId), [r, advisorId, version]); // eslint-disable-line react-hooks/exhaustive-deps
-  const [list, setList] = useState(false);
+// ── Advisor: who has prepared for a conference; each student's Conference mode ──
+export function ConferencePrep({ c, advisorId, version, onMode, open = false }) {
+  const p = useMemo(() => prepProgress(c.id, advisorId), [c, advisorId, version]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [list, setList] = useState(open);
   if (!p.total) return null;
   return (
     <div className="slc-adv">
@@ -415,7 +413,3 @@ export function RoundPrep({ r, advisorId, version, onMode }) {
     </div>
   );
 }
-export const prepMark = (roundId, studentId) => {
-  const p = prepProgress(roundId).rows.find((x) => x.student.id === studentId);
-  return p?.status === 'ready' ? 'Prepared' : p?.status === 'started' ? 'Preparing' : 'Not prepared yet';
-};

@@ -23,13 +23,13 @@ const daysBetween = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000)
 export default function AdvisorStudent({ studentId, version, toast, go, persona, focus }) {
   const map = useMemo(() => getStudentMap(studentId, 'advisor'), [studentId, version]); // eslint-disable-line react-hooks/exhaustive-deps
   const lens = useMemo(() => applyLens(map, null), [map]);
-  const [selected, setSelected] = useState(focus && focus !== 'sheet' ? focus : null); // a comment notification opens its station
+  const [selected, setSelected] = useState(focus || null); // a comment notification opens its station
   const [note, setNote] = useState('');
   const [promptText, setPromptText] = useState('');
   const notes = getNotes(studentId);
   const [meeting, setMeeting] = useState(false);
   const [parent, setParent] = useState(false);
-  const [sheet, setSheet] = useState(focus === 'sheet'); // the day schedule's conference sheet link
+  const [sheet, setSheet] = useState(false);
   const [spotting, setSpotting] = useState(false);
   const one = useMemo(() => [studentId], [studentId]);
   const g = growth(studentId);

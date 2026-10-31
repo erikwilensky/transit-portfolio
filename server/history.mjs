@@ -107,7 +107,13 @@ export function rebuild(revs) {
         if (!e.steps || e.undone || e.dropped) continue;
         if (set.has(e.rev)) { e.undone = true; continue; }
         const before = api.snapshot();
-        try { for (const st of e.steps) api.runAction(st.fn, decode(st.args), st.rec); } catch (err) {
+        try {
+          for (const st of e.steps) {
+            // A change the app no longer has (a removed feature) is skipped, not a reason to drop the rest.
+            if (!api.MUTATORS.includes(st.fn)) { console.warn(`Undo: skipped ${st.fn}, no longer a change in the app`); continue; }
+            api.runAction(st.fn, decode(st.args), st.rec);
+          }
+        } catch (err) {
           api.load(JSON.parse(before)); e.dropped = true;
           dropped.push({ rev: e.rev, fn: e.steps[0].fn, error: err.message });
         }

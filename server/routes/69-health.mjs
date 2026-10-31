@@ -21,7 +21,7 @@ export const BACKUP_DIR = path.resolve(ROOT, process.env.BACKUP_DIR || '../trans
 export const BACKUP_MAX_H = 26;
 const BACKUP_RE = /^(.+)-(\d{8})-(\d{6})\.tar\.gz$/;
 const GB = 1024 ** 3, HOUR = 3600_000;
-const JOBS = [['class-tasks', 'Class task reminders'], ['conference-reminders', 'Conference reminders']];
+const JOBS = [['class-tasks', 'Class task reminders']];
 const RANK = { ok: 0, check: 1, problem: 2 };
 
 const n_ = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
@@ -124,7 +124,7 @@ function jobsSection(now) {
     if (j.lastError && (!j.lastOk || j.lastError.at >= j.lastOk)) worst.push(['problem', `${label} failed the last time they ran: ${j.lastError.message}`]);
     else if (j.every && now - Date.parse(j.lastRun) > 3 * j.every + 60_000) worst.push(['check', `${label} last ran ${ago(now - Date.parse(j.lastRun))} ago, later than expected.`]);
   }
-  if (!worst.length) return sec('jobs', 'Reminders', 'ok', 'Class task and conference reminders are running.', null, facts);
+  if (!worst.length) return sec('jobs', 'Reminders', 'ok', 'Class task reminders are running.', null, facts);
   worst.sort((a, b) => RANK[b[0]] - RANK[a[0]]);
   return sec('jobs', 'Reminders', worst[0][0], worst.map((w) => w[1]).join(' '), 'Restart the server (scripts/deploy-mac.sh). If it happens again, download the diagnostics and send them to support.', facts);
 }
