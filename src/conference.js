@@ -1,6 +1,5 @@
-import { familyViewer, getMomentComments, getNotes, getStudentMap, sheetPrep, TERM_START, TODAY } from './api.js';
+import { familyViewer, getMomentComments, getNotes, getStudentMap, sheetPrep, sheetSteps, TERM_START, TODAY } from './api.js';
 import { talkingPoints } from './conference-points.js';
-import { appUrl } from './format.js';
 
 // What one conference sheet shows (src/components/ConferenceSheets.jsx). The advisor's copy reads the record as the
 // advisor may (never private moments or reflections); the family copy reads it as the family view does
@@ -33,9 +32,10 @@ export function conferenceSheet(studentId, { family = false } = {}) {
     .map((e) => ({ id: e.id, question: e.reflections.find((r) => r.prompt)?.prompt || e.title, date: e.date }));
   const termRefl = reflections.filter((r) => inTerm(r.date)).length;
   const termEndorse = endorsements.filter((n) => inTerm(n.date)).length;
+  const steps = sheetSteps(studentId, family);
   const staff = family ? null : {
     comments: map.events.reduce((n, e) => n + getMomentComments(e.id).length, 0),
-    notes: getNotes(studentId).slice(-2).reverse(),
+    notes: getNotes(studentId).filter((n) => n !== steps?.note).slice(-2).reverse(),
     signals: map.signals.filter((g) => g.open).length,
   };
   const points = talkingPoints({
@@ -43,9 +43,7 @@ export function conferenceSheet(studentId, { family = false } = {}) {
     lines: lines.filter((l) => l.status !== 'ended').map((l) => ({ name: l.name, count: l.count, ever: l.ever })),
     goals: goals.filter((g) => !g.done),
   });
-  return { student: s, first, year: s.grade + 1, homeroom: s.homeroom || '', family, lines, moments, reflections, termRefl, goals, endorsements, termEndorse, answers, staff, points, prep: sheetPrep(studentId, family ? familyViewer(studentId) : 'advisor') };
+  return { student: s, first, year: s.grade + 1, homeroom: s.homeroom || '', family, lines, moments, reflections, termRefl, goals, endorsements, termEndorse, answers, staff, points, prep: sheetPrep(studentId, family ? familyViewer(studentId) : 'advisor'), steps };
 }
 
-// The address that opens one student's conference sheet on the advisor's page (the printed day schedule lists it).
-export const conferenceSheetLink = (personaId, studentId) => appUrl(`${personaId}/student/${studentId}~sheet`);
 

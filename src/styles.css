@@ -1754,12 +1754,6 @@ p b, p strong, td b { font-weight: 600; }
 .fam-body { display: grid; grid-template-columns: 300px 1fr; gap: 16px; }
 .fam-map { position: relative; height: 620px; border: 1px solid var(--rule); border-radius: 14px; overflow: hidden; background: var(--surface); }
 .fam-empty, .fam-older { max-width: 640px; display: grid; gap: 10px; justify-items: start; }
-.consent-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; max-width: 760px; }
-.consent-req { background: var(--surface); border: 1px solid var(--rule); border-radius: 14px; padding: 16px 18px; display: grid; gap: 8px; justify-items: start; }
-.consent-req.st-pending { border-color: var(--b-gold); }
-.consent-req p { margin: 0; color: var(--muted); } .consent-req h3 { margin: 0; }
-.cr-top { display: flex; gap: 12px; align-items: center; } .cr-top small { color: var(--muted); }
-.cr-btns { display: flex; gap: 8px; }
 .status.s-off i { background: var(--muted); }
 .digest-wrap { display: grid; grid-template-columns: minmax(0, 640px) 260px; gap: 16px; align-items: start; }
 .digest { background: var(--surface); border: 1px solid var(--rule); border-radius: 14px; overflow: hidden; }

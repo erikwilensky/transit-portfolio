@@ -17,7 +17,7 @@ const { api, changed } = await import('../store.mjs');
 const { canAct } = await import('../auth.mjs');
 const { scopedSnapshot, touchedBy } = await import('../scope.mjs');
 const { canSeeFile } = await import('../files.mjs');
-const { afterChange, sweep } = await import('../routes/71-photo-drop.mjs');
+const { afterChange, sweep, keptSince } = await import('../routes/71-photo-drop.mjs');
 
 const fern = { id: 'u-fern', kind: 'student', studentId: 'S2001' };
 const gus = { id: 'u-gus', kind: 'student', studentId: 'S2002' };
@@ -200,6 +200,80 @@ test('the 7-day sweep deletes unsent photos only', () => {
   assert.ok(exists(F('9')), 'not a drop photo');
   assert.ok(exists(F('a')), 'a sent one stays');
   assert.deepEqual(sweep(Date.now() + 8 * 864e5).sort(), [F('e')], 'the other draft goes after 7 days; sent ones never');
+});
+
+test('editing a sent batch: the title and note, a student added, a photo taken back unless kept; only its teacher', () => {
+  // A batch of its own: photo 7 for Fern (she keeps it), photo 8 for Fern and Gus (Gus says "Not for me").
+  for (const c of '78') put(F(c), { by: 'u-ada', purpose: 'photo-drop', draft: 'edit-draft-1' });
+  const spec2 = { title: 'Electricity practical', lineId: 'science', note: 'Great wiring.', draft: 'edit-draft-1', photos: [{ url: url(F('7')), name: '7.jpg', studentIds: ['S2001'] }, { url: url(F('8')), name: '8.jpg', studentIds: ['S2001', 'S2002'] }] };
+  let d2 = api.dropPhotos('C-BIO12', 'T100', spec2);
+  const my = (sid) => api.getStore().spotted.filter((x) => x.dropId === d2.id && x.studentId === sid);
+  const [pa, pb] = d2.photos;
+  api.acceptSpotted(my('S2001')[0].id, 'S2001', { photos: [pa.id] });
+  api.declineSpotted(my('S2002')[0].id, 'S2002');
+  my('S2001')[0].decidedAt = new Date(Date.now() - 120e3).toISOString(); // she kept it two minutes ago
+  changed({ fn: 'dropPhotos' });
+  const sp = { title: 'Circuits practical', note: 'Brilliant wiring.', add: [{ photoId: pa.id, studentId: 'S2002' }], withdraw: [{ photoId: pb.id, studentId: 'S2001' }] };
+  assert.ok(canAct(brook, 'editPhotoDrop', [d2.id, 'T100', sp]));
+  assert.ok(!canAct(brook, 'editPhotoDrop', [d2.id, 'T101', sp]), 'only as herself');
+  for (const [u, tid] of [[carter, 'T101'], [coord, 'T104'], [admin, 'T100'], [fern, 'T100'], [parent, 'T100']]) assert.ok(!canAct(u, 'editPhotoDrop', [d2.id, tid, sp]), `${u.kind}: never`);
+  assert.deepEqual(touchedBy('editPhotoDrop', [d2.id, 'T100', sp]), { students: ['S2002', 'S2001'], as: ['T100'] });
+  assert.throws(() => api.editPhotoDrop(d2.id, 'T101', sp), /Only the teacher who sent/);
+  assert.throws(() => api.editPhotoDrop(d2.id, 'T100', { add: [{ photoId: pa.id, studentId: 'S2003' }] }), /Only students in this class/);
+  assert.throws(() => api.editPhotoDrop(d2.id, 'T100', { withdraw: [{ photoId: pa.id, studentId: 'S2001' }] }), (e) => e.status === 409 && /Fern has kept this photo, so it stays with them/.test(e.message));
+  assert.throws(() => api.editPhotoDrop(d2.id, 'T100', {}), /Nothing to change/);
+  const kept = api.getStore().events.find((e) => e.spotted?.dropId === d2.id);
+  const before = api.snapshot(), n0 = api.getStore().notifications.length;
+  let step = null; api.setActionHook((fn, args, rec) => { step = { fn, args, rec }; });
+  api.editPhotoDrop(d2.id, 'T100', sp);
+  api.setActionHook(null);
+  const after = api.snapshot();
+  api.restore(before); api.runAction(step.fn, step.args, step.rec);
+  assert.equal(api.snapshot(), after, 'deterministic on replay');
+  d2 = api.getPhotoDrop(d2.id);
+  assert.equal(d2.title, 'Circuits practical'); assert.equal(d2.note, 'Brilliant wiring.');
+  // Gus had said "Not for me": a new offer with only the new photo, and he is told as when it was sent.
+  const gusOffers = my('S2002');
+  assert.deepEqual(gusOffers.map((x) => [x.status, x.photos.map((p) => p.id), x.title]), [['declined', [pb.id], 'Electricity practical'], ['open', [pa.id], 'Circuits practical']]);
+  assert.deepEqual(api.getStore().notifications.slice(0, api.getStore().notifications.length - n0).map((n) => [n.to, n.text, n.kind]), [['st:S2002', 'Ms Brook added photos from “Circuits practical”', 'spotted']]);
+  assert.ok(canSeeFile(gus, F('7'), {}), 'Gus now opens photo 7');
+  // Fern kept photo 7: it stays with her; photo 8 (not kept) is taken back from her.
+  assert.deepEqual(d2.photos.find((p) => p.id === pb.id).studentIds, ['S2002']);
+  assert.ok(!my('S2001')[0].photos.some((p) => p.id === pb.id) && my('S2001')[0].kept.includes(pa.id));
+  const still = api.getStore().events.find((e) => e.id === kept.id);
+  assert.deepEqual([still.title, still.evidence.map((v) => v.url)], ['Electricity practical', [url(F('7'))]], 'her kept moment is as she kept it');
+  const rows = api.photoDropsBy('T100', 'C-BIO12').find((x) => x.id === d2.id);
+  assert.deepEqual(rows.rows.map((r) => [r.student.id, r.shown]), [['S2001', 'added'], ['S2002', 'waiting']], 'one row a student');
+  assert.deepEqual(rows.kept, { [pa.id]: ['S2001'] });
+  changed({ fn: 'editPhotoDrop' }); afterChange({ fn: 'editPhotoDrop' });
+
+  // Taking 8 back from its last student: it leaves the batch; the file is kept while Undo could bring it back.
+  api.editPhotoDrop(d2.id, 'T100', { withdraw: [{ photoId: pb.id, studentId: 'S2002' }] });
+  assert.ok(!api.getPhotoDrop(d2.id).photos.some((p) => p.id === pb.id));
+  changed({ fn: 'editPhotoDrop' });
+  assert.deepEqual(afterChange({ fn: 'editPhotoDrop' }), []);
+  assert.ok(exists(F('8')), 'kept for Undo');
+  assert.ok(JSON.parse(fs.readFileSync(path.join(UP, `${F('8')}.json`), 'utf8')).heldAt > 0, 'held in its .json, so a restart keeps it too');
+  assert.deepEqual(afterChange({ fn: 'markRead' }), [], 'a later change does not delete it either');
+  assert.deepEqual(sweep(), [], 'not yet');
+  assert.deepEqual(sweep(Date.now() + 3 * 3600e3), [F('8')], 'deleted once the undo window has passed');
+
+  // Undo is refused once a student has kept photos from the batch (since the change).
+  const sent = { at: Date.now() - 60e3, steps: [{ fn: 'dropPhotos', args: ['C-BIO12', 'T100', spec2], rec: [['i', d2.id]] }] };
+  assert.equal(keptSince(sent).status, 409);
+  assert.equal(keptSince({ ...sent, steps: [{ fn: 'dropPhotos', args: ['C-BIO12', 'T100', spec2], rec: [] }] }).status, 409, 'found by its draft too');
+  const edit = { at: Date.now() - 60e3, steps: [{ fn: 'editPhotoDrop', args: [d2.id, 'T100', sp], rec: [] }] };
+  assert.equal(keptSince(edit), null, 'nobody kept anything since the edit');
+  api.acceptSpotted(gusOffers[1].id, 'S2002', { photos: [pa.id] });
+  assert.equal(keptSince(edit).status, 409, 'Gus kept the photo the edit gave him');
+  assert.equal(keptSince({ ...edit, at: Date.now() + 60e3 }), null, 'an edit after his keep');
+
+  // Same permissions as sending: once she no longer teaches the class, she cannot edit it either.
+  const bio = api.getStore().classes.find((c) => c.id === 'C-BIO12'), was = bio.teacherIds;
+  bio.teacherIds = was.filter((x) => x !== 'T100');
+  assert.ok(!canAct(brook, 'editPhotoDrop', [d2.id, 'T100', { title: 'x' }]), 'not her class any more: refused');
+  assert.throws(() => api.editPhotoDrop(d2.id, 'T100', { title: 'x' }), (e) => e.status === 403);
+  bio.teacherIds = was;
 });
 
 test('PDPA: offers are part of a student’s copy; erasure takes them out of every photo', () => {

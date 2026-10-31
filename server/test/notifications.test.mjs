@@ -63,12 +63,11 @@ test('goals, sponsors, check-ins and lines', () => {
 });
 
 test('families, comments, nudges and imports', () => {
-  api.getStore().consentReqs.push({ id: 'cr-pilot', studentId: s.id, kind: 'join', title: 'Join', status: 'pending' });
-  assert.deepEqual(sent(F, () => api.remindParent(s.id)).go, { persona: F, screen: 'consent', param: s.id });
-  const before = api.getNotifications('whitfield').length;
-  sent(S, () => api.answerConsent('cr-pilot', 'approved', 'Khun Pilot'));
-  assert.equal(last(T).text, 'Ada’s family answered a consent request');
-  assert.equal(api.getNotifications('whitfield').length, before, 'the demo advisor does not hear about a pilot student');
+  // Families write nothing in the app. The school records consent (recordFamilyConsent), quietly.
+  const all = () => api.getStore().notifications.length, n0 = all();
+  api.recordFamilyConsent(s.id, { on: true, date: api.TODAY, how: 'email' }, t.id);
+  assert.equal(all(), n0, 'nobody is notified');
+  assert.ok(api.consentOnFile(s.id));
   assert.match(sent(S, () => api.addComment('pr-x', s.id, 'Lead with the kite', null, t.id)).text, /^Mr Ben Okoro commented/);
   assert.match(sent(S, () => api.nudgeMilestone(s.id, { id: 'm1', part: 'EE', name: 'Draft', due: '2026-10-01' }, t.id)).text, /^Mr Okoro: your EE draft/);
   assert.equal(api.getActivity(s.id).find((a) => a.kind === 'prompt' && /Reminded/.test(a.text)).actor, 'Mr Ben Okoro');
@@ -82,8 +81,6 @@ test('the demo personas keep their texts', () => {
   const n = sent('maya', () => api.nudgeMilestone('st-01', { id: 'm2', part: 'EE', name: 'Draft', due: '2026-10-01' }));
   assert.match(n.text, /^Ms Brandt: your EE draft/);
   assert.equal(api.getActivity('st-01').find((a) => /Reminded Maya/.test(a.text)).actor, 'Ms Clara Brandt');
-  sent('whitfield', () => api.answerConsent('cr-1', 'approved', 'Khun Nok Chaiyaporn'));
-  sent('parent', () => api.remindParent('st-09'));
 });
 
 test('reading and marking a bell by keys', () => {

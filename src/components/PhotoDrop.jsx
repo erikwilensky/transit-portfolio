@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { acceptSpotted, declineSpotted, DROP_KEEP_DAYS, DROP_MAX, dropPhotos, getReports, getSchoolLines, photoDropsBy, REPORT_REASONS, reportItem, shortName, snapshot, spotLineFor, TODAY } from '../api.js';
+import { acceptSpotted, declineSpotted, DROP_KEEP_DAYS, DROP_MAX, dropPhotos, editPhotoDrop, getReports, getStudent, getSchoolLines, photoDropsBy, REPORT_REASONS, reportItem, shortName, snapshot, spotLineFor, TODAY } from '../api.js';
 import { fmtDate } from '../format.js';
 import { uploadFile } from '../upload.js';
 import './photo-drop.css';
@@ -143,8 +143,10 @@ export function PhotoDropDialog({ c, teacherId, toast, onClose }) {
 }
 
 const SHOWN = { added: 'Added', waiting: 'Waiting', 'not for me': 'Not for me', 'not added': 'Not added' };
-export function PhotoDropList({ teacherId, classId, version }) {
+export function PhotoDropList({ teacherId, classId, version, c = null, toast }) {
   const list = useMemo(() => photoDropsBy(teacherId, classId), [teacherId, classId, version]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [editing, setEditing] = useState(null);
+  const now = editing && list.find((d) => d.id === editing);
   if (!list.length) return null;
   return (
     <section className="pd-list" aria-label="Class photos">
@@ -157,6 +159,7 @@ export function PhotoDropList({ teacherId, classId, version }) {
               <span className="pd-counts">{`${d.counts.added} added · ${d.counts.waiting} waiting · ${d.counts.no} said no${d.counts.expired ? ` · ${d.counts.expired} not added` : ''}`}</span>
             </summary>
             <div className="pd-strip">{d.photos.map((p, i) => (p.url ? <img key={p.id} src={p.url} alt={`Photo ${i + 1}`} /> : <span key={p.id} className="pd-gone">{p.removed ? 'Removed after a report' : 'Removed'}</span>))}</div>
+            {c && d.photos.some((p) => p.url) && <button type="button" className="ghost small-btn pd-edit" onClick={() => setEditing(d.id)}>{`Edit “${d.title}”`}</button>}
             <ul className="pd-rows">{d.rows.map((r) => (
               <li key={r.spot.id}>
                 <span>{r.student?.name || 'A student'}</span>
@@ -167,7 +170,72 @@ export function PhotoDropList({ teacherId, classId, version }) {
           </details>
         </li>
       ))}</ul>
+      {now && <EditDrop d={now} c={c} teacherId={teacherId} toast={toast} onClose={() => setEditing(null)} />}
     </section>
+  );
+}
+
+// Editing a sent batch (api.editPhotoDrop): the title and note, a student added to a photo, or a photo taken back from a
+// student who has not kept it. A kept photo stays with the student (its chip is locked).
+function EditDrop({ d, c, teacherId, toast, onClose }) {
+  const photos = d.photos.filter((p) => p.url);
+  const [title, setTitle] = useState(d.title);
+  const [note, setNote] = useState(d.note || '');
+  const [who, setWho] = useState(() => Object.fromEntries(photos.map((p) => [p.id, p.studentIds])));
+  const [err, setErr] = useState(null);
+  const kids = c.students.map((x) => x.student);
+  const left = [...new Set(photos.flatMap((p) => p.studentIds))].filter((sid) => !kids.some((k) => k.id === sid)).map(getStudent).filter(Boolean);
+  const kept = (pid, sid) => (d.kept[pid] || []).includes(sid);
+  const toggle = (pid, sid) => setWho((w) => ({ ...w, [pid]: w[pid].includes(sid) ? w[pid].filter((x) => x !== sid) : [...w[pid], sid] }));
+  const add = photos.flatMap((p) => who[p.id].filter((sid) => !p.studentIds.includes(sid)).map((sid) => ({ photoId: p.id, studentId: sid })));
+  const withdraw = photos.flatMap((p) => p.studentIds.filter((sid) => !who[p.id].includes(sid)).map((sid) => ({ photoId: p.id, studentId: sid })));
+  const changed = add.length + withdraw.length + (title.trim() !== d.title ? 1 : 0) + (note.trim() !== (d.note || '') ? 1 : 0);
+  const nobody = photos.filter((p) => !who[p.id].length).length;
+  const save = () => {
+    setErr(null);
+    try {
+      const snap = snapshot();
+      editPhotoDrop(d.id, teacherId, { title, note, add, withdraw });
+      const said = [add.length ? `${plural(new Set(add.map((x) => x.studentId)).size, 'student')} sent new photos` : '', withdraw.length ? `${plural(withdraw.length, 'photo')} taken back` : ''].filter(Boolean).join(', ');
+      toast?.(`Saved “${title.trim() || d.title}”${said ? `: ${said}` : ''}.`, snap);
+      onClose();
+    } catch (e) { setErr(e.message); }
+  };
+  useEffect(() => { const k = (e) => e.key === 'Escape' && onClose(); addEventListener('keydown', k); return () => removeEventListener('keydown', k); }, [onClose]);
+  return createPortal(
+    <div className="modal-back" onClick={onClose}>
+      <div className="modal pd-dialog" role="dialog" aria-modal="true" aria-label={`Edit the photos from ${d.title}`} onClick={(e) => e.stopPropagation()}>
+        <button className="panel-close" onClick={onClose} aria-label="Close">×</button>
+        <div className="modal-kicker">Class photos · sent {fmtDate(d.date)}</div>
+        <h2>{`Edit “${d.title}”`}</h2>
+        <p className="pd-safe" role="note">{'Adding a student sends them that photo to keep or not. Taking a photo back works only for students who have not kept it: photos already kept stay with the student.'}</p>
+        <div className="pd-form">
+          <label>Title<input value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} /></label>
+          <label className="pd-note">A short note <small>students still deciding see the new words</small><input value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} /></label>
+        </div>
+        <ol className="pd-grid" aria-label="Photos">
+          {photos.map((p, i) => (
+            <li key={p.id} className={`pd-photo${who[p.id].length ? ' given' : ''}`}>
+              <div className="pd-thumb"><img src={p.url} alt={`Photo ${i + 1}: ${p.name}`} /></div>
+              <div className="pd-who" role="group" aria-label={`Students in photo ${i + 1}`}>
+                {[...kids, ...left].map((s) => {
+                  const on = who[p.id].includes(s.id), lock = kept(p.id, s.id), gone = !kids.includes(s);
+                  return <button key={s.id} type="button" className={`pd-chip${on ? ' on' : ''}${lock ? ' kept' : ''}`} aria-pressed={on} disabled={lock || (gone && !on)} title={lock ? `${s.name} kept this photo: it stays with them` : s.name} onClick={() => toggle(p.id, s.id)}>{lock ? `${short(s.name)} · kept` : short(s.name)}</button>;
+                })}
+              </div>
+              <div className="pd-row"><small>{who[p.id].length ? `Given to ${plural(who[p.id].length, 'student')}${(d.kept[p.id] || []).length ? `, kept by ${(d.kept[p.id] || []).length}` : ''}` : 'Given to nobody: it leaves the batch and is deleted'}</small></div>
+            </li>
+          ))}
+        </ol>
+        {err && <p className="up-error" role="alert">{err}</p>}
+        <div className="cp-foot pd-foot">
+          <span>{changed ? `${plural(add.length, 'student')} added to photos, ${plural(withdraw.length, 'photo')} taken back.${nobody ? ` ${plural(nobody, 'photo')} given to nobody ${nobody === 1 ? 'is' : 'are'} deleted.` : ''}` : 'Nothing changed yet.'}</span>
+          <button className="ghost" onClick={onClose}>Cancel</button>
+          <button className="primary" disabled={!changed} onClick={save}>Save changes</button>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 

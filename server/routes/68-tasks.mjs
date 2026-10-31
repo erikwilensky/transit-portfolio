@@ -4,11 +4,12 @@
 import { api, changed } from '../store.mjs';
 import { MODE } from '../auth.mjs';
 import { beat } from '../health.mjs';
+import { forgetDirect } from '../history.mjs';
 
 const MS = Math.max(1000, Number(process.env.TASK_TICK_MS) || 10 * 60_000);
 
 export function tick() {
-  try { const n = api.remindDueTasks(); if (n) changed({ fn: 'remindDueTasks', by: 'server' }); beat('class-tasks', { every: MS }); return n; } catch (e) { console.error('Task reminders:', e); beat('class-tasks', { every: MS, error: e }); return 0; }
+  try { const n = api.remindDueTasks(); if (n) changed({ fn: 'remindDueTasks', by: 'server' }); else forgetDirect('remindDueTasks'); beat('class-tasks', { every: MS }); return n; } catch (e) { console.error('Task reminders:', e); beat('class-tasks', { every: MS, error: e }); return 0; }
 }
 
 export default () => {

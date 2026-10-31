@@ -6,6 +6,8 @@ import { UploadStatus, useUpload } from './FileAttach.jsx';
 import './class-prompts.css';
 import { shown } from '../thai.js';
 import { Said, SayIt, SpeakButton } from './Voice.jsx';
+import { GuideFields, GuideSelect, GuideStep } from './MomentTemplates.jsx';
+import { getIntensity, liveTemplate, templateText } from '../api.js';
 
 // Class prompts (api.askClass, answerPrompt): a teacher asks a whole class one question; each student answers it
 // from the top of their home. Teacher side: AskClassDialog and ClassQuestions (My classes). Student side: OpenPrompts.
@@ -14,14 +16,14 @@ const STARTERS = ['I learned that…', 'I was proud when…', 'It was hard when�
 
 // ── Teacher ──
 export function AskClassDialog({ c, teacherId, onClose, toast }) {
-  const [f, setF] = useState({ question: '', context: '', asMoment: !!c.line, due: '' });
+  const [f, setF] = useState({ question: '', context: '', asMoment: !!c.line, due: '', templateId: null });
   const [err, setErr] = useState(null);
   const set = (p) => setF((x) => ({ ...x, ...p }));
   const n = c.studentIds?.length ?? c.students?.length ?? 0;
   const send = () => {
     try {
       const snap = snapshot();
-      askClass(c.id, teacherId, { question: f.question, context: f.context, asMoment: f.asMoment, due: f.due || null });
+      askClass(c.id, teacherId, { question: f.question, context: f.context, asMoment: f.asMoment, due: f.due || null, ...(f.templateId ? { templateId: f.templateId } : {}) });
       toast?.(`Asked ${c.name}. ${n} student${n === 1 ? '' : 's'} will see it at the top of their home.`, snap);
       onClose();
     } catch (e) { setErr(e.message); }
@@ -37,6 +39,7 @@ export function AskClassDialog({ c, teacherId, onClose, toast }) {
         <label className="cp-check"><input type="checkbox" checked={f.asMoment} disabled={!c.line} onChange={(e) => set({ asMoment: e.target.checked })} />
           <span>{c.line ? <><span>Add it as a moment on <b>{c.line.name}</b></span><small>Each answer becomes a station on that line and comes to your Endorsements, ready to endorse.</small></>
             : <><span>Add it as a moment</span><small>This class is not on a line yet, so answers are kept as reflections.</small></>}</span></label>
+        <GuideSelect value={f.templateId} lineId={c.lineId} onChange={(templateId) => set({ templateId })} />
         <label>Answer by <small>optional</small><input type="date" value={f.due} min={TODAY} onChange={(e) => set({ due: e.target.value })} /></label>
         {err && <p className="up-error" role="alert">{err}</p>}
         <div className="cp-foot"><span>{n} student{n === 1 ? '' : 's'} will be asked</span><button className="ghost" onClick={onClose}>Cancel</button><button className="primary" disabled={f.question.trim().length < 5 || !n} onClick={send}>Ask the class</button></div>
@@ -103,25 +106,44 @@ export function OpenPrompts({ studentId, simple, toast, version }) {
 function AnswerFlow({ p, who, studentId, onClose, onDone }) {
   const [step, setStep] = useState(0);
   const [text, setText] = useState('');
+  // A guide on the question (MomentTemplates.jsx): Simple, one part per screen (gi); Standard and Full, its labelled fields.
+  const tpl = useMemo(() => liveTemplate(p.templateId), [p.templateId]);
+  const simple = getIntensity(studentId) === 'simple';
+  const [ans, setAns] = useState([]);
+  const [gi, setGi] = useState(0);
+  const gn = tpl && simple ? tpl.fields.length : 1;
+  const words = tpl ? templateText(tpl, ans) : text.trim();
   const [image, setImage] = useState(null);
   const [err, setErr] = useState(null);
   const photo = useUpload();
   const phone = useMemo(() => typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches, []);
   const pickPhoto = (e) => { const file = e.target.files?.[0]; e.target.value = ''; photo.run(file, (r) => setImage(evidenceFor(r, file.name).url)); };
-  const send = () => { try { answerPrompt(p.id, studentId, { text: text.trim(), image }); setStep(3); } catch (e) { setErr(e.message); } };
+  const send = () => { try { answerPrompt(p.id, studentId, { text: words, image, ...(tpl && words ? { templateId: tpl.id } : {}) }); setStep(3); } catch (e) { setErr(e.message); } };
   const skip = () => { try { skipPrompt(p.id, studentId); onDone(true); } catch (e) { setErr(e.message); } };
   return (
     <div className="modal-back" onClick={step === 3 ? () => onDone(false) : onClose}>
       <div className="modal sh-flow cp-flow" role="dialog" aria-label="Answer your teacher's question" onClick={(e) => e.stopPropagation()}>
         <button className="panel-close" onClick={step === 3 ? () => onDone(false) : onClose} aria-label="Close">×</button>
-        <div className="sh-steps" aria-label={`Step ${step + 1} of 4`}>{[0, 1, 2, 3].map((i) => <i key={i} className={i <= step ? 'on' : ''} />)}</div>
+        <div className="sh-steps" aria-label={`Step ${step + 1 + (step > 1 ? gn - 1 : step === 1 ? gi : 0)} of ${3 + gn}`}>{Array.from({ length: 3 + gn }, (_, i) => <i key={i} className={i <= step + (step > 1 ? gn - 1 : step === 1 ? gi : 0) ? 'on' : ''} />)}</div>
         {step === 0 && <>
           <p className="sh-sub">{who} asked {p.className || 'your class'}{p.context ? ` · ${p.context}` : ''}</p>
           <div className="cp-big"><Said text={p.question} /></div>
           {p.due && <p className="sh-sub">Answer by {fmtDate(p.due)}</p>}
+          {tpl && <p className="mt-guide-note"><span>{`${who} gave you a guide:`}</span> <b>{tpl.name}</b></p>}
           <div className="sh-next"><button className="ghost" onClick={skip}>Not for me</button><button className="primary" onClick={() => setStep(1)}>Answer it</button></div>
         </>}
-        {step === 1 && <>
+        {step === 1 && tpl && simple && <>
+          <GuideStep key={gi} t={tpl} i={gi} value={ans[gi] || ''} onChange={(v) => setAns((xs) => { const n = [...xs]; n[gi] = v; return n; })} />
+          <div className="sh-next"><button className="ghost" onClick={() => (gi ? setGi(gi - 1) : setStep(0))}>Back</button>
+            {gi < gn - 1 ? <button className="primary" onClick={() => setGi(gi + 1)}>{(ans[gi] || '').trim() ? 'Next' : 'Skip this one'}</button>
+              : <button className="primary" disabled={words.length < 3} onClick={() => setStep(2)}>Next</button>}</div>
+        </>}
+        {step === 1 && tpl && !simple && <>
+          <Said text={p.question} />
+          <GuideFields t={tpl} answers={ans} onChange={setAns} />
+          <div className="sh-next"><button className="ghost" onClick={() => setStep(0)}>Back</button><button className="primary" disabled={words.length < 3} onClick={() => setStep(2)}>Next</button></div>
+        </>}
+        {step === 1 && !tpl && <>
           <Said text={p.question} />
           <p className="sh-sub">One or two sentences is plenty.</p>
           <div className="sh-starters">{STARTERS.map((s) => <button key={s} onClick={() => setText(`${text ? `${text} ` : ''}${shown(s).replace('…', ' ')}`)}>{s}</button>)}</div>

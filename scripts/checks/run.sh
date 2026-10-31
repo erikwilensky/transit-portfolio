@@ -40,7 +40,6 @@ echo "== exhibition (starts its own clean pilot server on the real roster)"; nod
 echo "== goal-checkins (starts its own clean pilot server on the real roster)"; node goal-checkins.cjs || fail=1
 echo "== accessibility (starts its own demo server and a clean pilot server on the real roster)"; node accessibility.cjs || fail=1
 echo "== class-tasks (starts its own clean pilot server on the real roster, twice: today and two days later)"; node class-tasks.cjs || fail=1
-echo "== conference-booking (starts its own clean pilot server on the real roster)"; node conference-booking.cjs || fail=1
 echo "== subject-prompts (starts its own clean pilot server on the real roster)"; node subject-prompts.cjs || fail=1
 echo "== leaver-portfolio (starts its own clean pilot server on the real roster)"; node leaver-portfolio.cjs || fail=1
 echo "== cas-hours (starts its own clean pilot server on the real roster)"; node cas-hours.cjs || fail=1
@@ -51,8 +50,13 @@ echo "== search (starts its own clean pilot server on the real roster)"; node se
 echo "== thai-students (starts its own clean pilot server on the real roster)"; node thai-students.cjs || fail=1
 echo "== comment-bank (starts its own clean pilot server on the real roster)"; node comment-bank.cjs || fail=1
 echo "== report-comments (starts its own clean pilot server on the real roster)"; node report-comments.cjs || fail=1
-echo "== family-notes (starts its own clean pilot server on the real roster)"; node family-notes.cjs || fail=1
 echo "== school-events (starts its own clean pilot server on the real roster)"; node school-events.cjs || fail=1
 echo "== student-led (starts its own clean pilot server on the real roster)"; node student-led.cjs || fail=1
 echo "== photo-drop (starts its own clean pilot server on the real roster)"; node photo-drop.cjs || fail=1
+echo "== year-signoff (starts its own clean pilot server on the real roster)"; node year-signoff.cjs || fail=1
+echo "== moment-templates (starts its own clean pilot server on the real roster)"; node moment-templates.cjs || fail=1
+echo "== skills-growth (starts its own clean pilot server on the real roster)"; node skills-growth.cjs || fail=1
+echo "== not-seen-lately (starts its own clean pilot server on the real roster)"; node not-seen-lately.cjs || fail=1
+echo "== moving-up (starts its own clean pilot server on the real roster)"; node moving-up.cjs || fail=1
+echo "== family-read-only (starts its own clean pilot server on the real roster)"; node family-read-only.cjs || fail=1
 echo "== tours";node tours.cjs | grep -E "end url|ERRS|soon|boom|empty|hs" ; exit $fail

@@ -29,15 +29,12 @@ test('older notifications get a kind from their words and link', () => {
     ['Reminder: “Soil test” is due tomorrow', 'class'],
     ['“Soil test” is now due Monday', 'class'],
     ['Mr Coultas gave you until Monday for “Soil test”', 'class'],
-    ['Aaron’s family booked a conference: 3 Nov 2026 at 15:20', 'conference'],
-    ['Reminder: 2 conferences tomorrow, the first 3 Nov 2026 at 15:20', 'conference'],
-    ['Your conference with Ms Altemen is on 3 Nov 2026 at 15:20', 'conference'],
+    ['Ms Altemen added a conference for Year 8: “Parent conferences”, 3 Nov 2026', 'conference'],
+    ['Aaron Torres wrote on the conference note', 'conference'],
+    ['Ms Altemen wrote on your conference note', 'conference'],
     ['Ms Altemen sent you encouragement for “Run 5k”: Keep going!', 'encourage'],
     ['Pim gave you kind feedback on “Lab”.', 'kindfb'],
     ['Aaron said thank you for your feedback on “Lab”.', 'kindfb'],
-    ['Aaron asked you to look at a consent request', 'consent'],
-    ['Your parent said yes: Share links outside the school', 'consent'],
-    ['Aaron’s family answered a consent request', 'consent'],
     ['Mr Coultas endorsed “Lab”', 'teacher'],
     ['Ms Nair asked for more evidence on “Lab”', 'teacher'],
     ['Ms Nair: Add one thing from this week.', 'teacher'],
@@ -58,10 +55,10 @@ test('older notifications get a kind from their words and link', () => {
 test('groups per audience: staff fall back to System, others always get what is not listed', () => {
   assert.equal(audienceOf('student'), 'student'); assert.equal(audienceOf('parent'), 'family'); assert.equal(audienceOf('advisor'), 'staff'); assert.equal(audienceOf('admin'), 'staff');
   assert.equal(groupOf('answers', 'staff')[0], 'answers');
-  assert.equal(groupOf('consent', 'staff')[0], 'system');
   assert.equal(groupOf('spotted', 'student')[0], 'teacher');
   assert.equal(groupOf('system', 'student'), null);
-  assert.equal(groupOf('conference', 'family')[0], 'conference');
+  assert.equal(groupOf('conference', 'family'), null, 'families get no conference notices');
+  assert.equal(groupOf('milestone', 'family')[0], 'milestones');
 });
 
 test('settings filter the bell and the count, never the record', () => {
@@ -85,7 +82,8 @@ test('settings filter the bell and the count, never the record', () => {
   assert.equal(notes.length, 6, 'nothing removed');
   // Students and families have On and Off only: a 'week' there means off.
   assert.equal(settingOf({ text: 'Ms Nair: hi' }, { kinds: { teacher: 'week' } }, 'student'), 'off');
-  assert.equal(settingOf({ text: 'Aaron asked you to look at a consent request' }, cleanNotify({ kinds: { consent: 'off' } }), 'family'), 'off');
+  assert.equal(settingOf({ text: 'Aaron reached a milestone' }, cleanNotify({ kinds: { milestones: 'off' } }), 'family'), 'off');
+  assert.ok(notifyProblem({ kinds: { consent: 'off' } }, 'family'), 'no consent group for families');
   assert.equal(settingOf({ text: 'A teacher has hidden “x” while they look at it.' }, { kinds: { teacher: 'off', comments: 'off' } }, 'student'), 'on');
 });
 

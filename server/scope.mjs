@@ -117,7 +117,6 @@ export function scopedSnapshot(user) {
   store.evidenceRequests = full.evidenceRequests.filter((r) => shown.has(r.eventId) && mine(r.studentId, r.teacherId, r.from));
   store.prompts = full.prompts.filter((p) => near(p.studentId));
   store.comments = full.comments.filter((c) => mine(c.studentId, c.by, c.to, c.teacherId, ...(Array.isArray(c.asked) ? c.asked : [])));
-  store.consentReqs = (full.consentReqs || []).filter((r) => inReach(r.studentId));
   store.casNudges = (full.casNudges || []).filter((n) => near(n.studentId));
   const keptPrompts = new Set(store.prompts.map((p) => p.id));
   store.answered = pickBy(full.answered, (k) => (k.startsWith('prompt:') ? keptPrompts.has(k.slice(7)) : near(k.split(':')[0])));
@@ -155,9 +154,9 @@ export function scopedSnapshot(user) {
   store.commentReads = parent || !meKey ? [] : (full.commentReads || []).filter((r) => shown.has(r.eventId) && r.by === meKey);
   // Reports (safeguarding): moderators get them whole; anyone else only the ones they made, without who else or the history.
   const moderator = isAdmin(user) || api.MODERATOR_KINDS.includes(user?.kind);
-  const myKeys = new Set([self && 'student', tid, ...(parent ? (user.children || []).map((c) => `fam:${c}`) : [])].filter(Boolean));
+  const myKeys = new Set([self && 'student', tid].filter(Boolean));
   store.reports = moderator ? (full.reports || []) : (full.reports || []).filter((r) => inReach(r.studentId) && myKeys.has(r.from?.key) && (r.from.key !== 'student' || r.studentId === self))
-    .map(({ id, kind, eventId, commentId, studentId, reason, at, status }) => ({ id, kind, eventId, ...(commentId ? { commentId } : {}), studentId, reason, at, status, from: { key: tid || (self ? 'student' : `fam:${studentId}`) }, history: [] }));
+    .map(({ id, kind, eventId, commentId, studentId, reason, at, status }) => ({ id, kind, eventId, ...(commentId ? { commentId } : {}), studentId, reason, at, status, from: { key: tid || 'student' }, history: [] }));
   // Spotted moments: the student gets their own; the teacher who made them gets theirs, a declined one only as closed.
   const closed = ({ decidedAt, ...x }) => ({ ...x, status: 'closed' });
   store.spotted = (full.spotted || []).flatMap((x) => (self && x.studentId === self ? [x] : tid && x.teacherId === tid ? [x.status === 'declined' ? closed(x) : x] : []));
@@ -214,12 +213,12 @@ export function scopedSnapshot(user) {
   store.teacherTasks = parent ? [] : (full.teacherTasks || []).flatMap((t) => (taskMine(t) ? [t] : self && t.studentIds.includes(self) ? [{ ...t, studentIds: [self] }] : []));
   const keptTasks = new Set(store.teacherTasks.filter(taskMine).map((t) => t.id));
   store.handIns = parent ? [] : (full.handIns || []).filter((r) => (self ? r.studentId === self : keptTasks.has(r.taskId) && inReach(r.studentId)));
-  Object.assign(store, confScope(full, { user, all, self, parent, tid, inReach }));
-  // Student-led conferences (api.saveConfPrep, writeConfNote): the prep goes to the student, their advisor and whole-school
-  // roles; the conference note (the family's and the student's lines) to those and the family. No other staff.
-  const confMine = (sid) => inReach(sid) && (all || sid === self || (!!tid && api.getStudent(sid)?.advisorId === tid));
+  Object.assign(store, confScope(full, { all, self, parent, inReach }));
+  // Student-led conferences (api.saveConfPrep, writeConfNote): the prep and the conference note (the student's line) go to
+  // the student, their advisor and whole-school roles. No other staff, and no family.
+  const confMine = (sid) => !parent && inReach(sid) && (all || sid === self || (!!tid && api.getStudent(sid)?.advisorId === tid));
   store.confPreps = (full.confPreps || []).filter((p) => confMine(p.studentId));
-  store.confNotes = (full.confNotes || []).filter((n) => confMine(n.studentId) || (parent && inReach(n.studentId)));
+  store.confNotes = (full.confNotes || []).filter((n) => confMine(n.studentId));
   // Subject prompts (api.setSubjectPrompts): school guidance every student and member of staff receives, families never. An
   // example from a student's moment goes whole (ids, status) to that student and to staff who reach them; anyone else gets
   // it only once the student said yes and while it is still publishable, as its title, a line of it and the Year.
@@ -233,8 +232,10 @@ export function scopedSnapshot(user) {
   const casCoord = isAdmin(user) || (staff && api.isCasCoordinator({ kind: user?.kind, teacherId: tid }));
   const casOut = ({ code, ...x }) => ({ ...x, ...(code ? { code: { expires: code.expires } } : {}), ...(self ? {} : { about: api.casAbout(x) }) });
   store.casHours = parent ? [] : (full.casHours || []).filter((x) => (self ? x.studentId === self : casCoord || (!!tid && x.supervisor?.kind === 'staff' && x.supervisor.teacherId === tid))).map(casOut);
-  Object.assign(store, familyNotesScope(full, store, { user, all, self, parent, tid, shown, moderator }));
   Object.assign(store, schoolEventScope(full, { all, self, parent, staff, tid, inReach, shown }));
+  // Moment templates (api.saveMomentTemplate): school guidance every student and member of staff receives, families never.
+  store.momentTemplates = parent ? [] : full.momentTemplates || [];
+  Object.assign(store, movingUpScope(full, { user, all, self, parent, tid, inReach, shown }));
   // Class photo drop (api.dropPhotos): the batch goes only to the teacher who sent it. In their spotted copy a "Not for me"
   // stays declined (they see who said no). A student's answered offer keeps only the photos they kept (none after "Not for
   // me" or expiry), so a photo they turned down no longer opens for them. Their own photo reports keep the photo id.
@@ -248,6 +249,7 @@ export function scopedSnapshot(user) {
     return { ...x, photos, image: photos[0]?.url || null };
   });
   if (!moderator) { const ph = new Map((full.reports || []).filter((r) => r.photoId).map((r) => [r.id, r.photoId])); store.reports = store.reports.map((r) => (ph.has(r.id) ? { ...r, photoId: ph.get(r.id) } : r)); }
+  Object.assign(store, signoffScope(full, { user, self, parent, staff, tid }));
   // Everything else (school lines' settings, integrations, rollout, family language, classes, keys other features add).
   for (const [k, v] of Object.entries(full)) if (!(k in store)) store[k] = generic(v, inReach);
   // Counts the whole-school screens show for what they may not open.
@@ -265,7 +267,7 @@ const own0 = (a) => T([a[0]]);
 export const TOUCHES = {
   setStudentDrafts: own0, setGithub: own0, disconnectGithub: own0, simulateWeek: own0, addStation: own0, addBranch: own0,
   endLine: own0, restartLine: own0, completeOnboarding: own0, capturePhone: own0, setPrivacy: own0, logLink: own0,
-  setIntensity: own0, remindParent: own0, addNote: own0, nudgeMilestone: own0, markMilestone: own0, saveActivityList: own0,
+  setIntensity: own0, addNote: own0, nudgeMilestone: own0, markMilestone: own0, saveActivityList: own0,
   saveLetter: own0, setLetterStatus: own0, setCasProject: own0, casNudge: own0, addLog: own0,
   addGoal: (a) => T([a[0]], [a[2]]),
   sync: (a) => T([a[1]]),
@@ -286,7 +288,6 @@ export const TOUCHES = {
   sendPrompt: (a) => T([a[0], ev(a[1])], [a[3] ?? 't-07']),
   addComment: (a) => T([a[1], ...(a[3] ? [ev(a[3])] : [])], [a[4] ?? 't-09']),
   resolveComment: (a) => T([st().comments.find((c) => c.id === a[0])?.studentId]),
-  answerConsent: (a) => T([(st().consentReqs || []).find((r) => r.id === a[0])?.studentId]),
   endorseClassTask: (a) => T(Array.isArray(a[1]) ? a[1] : [], [(st().classTasks || []).find((t) => t.id === a[0])?.teacherId ?? '?']),
   matchRoster: (a) => T([a[1]]),
   addAlumStation: () => T([api.ALUM.studentId]),
@@ -348,28 +349,15 @@ Object.assign(TOUCHES, {
   handInTask: (a) => T([api.getTask(a[0])?.studentIds.includes(a[1]) ? a[1] : '?']), remindDueTasks: () => T([]),
 });
 
-// ── Conference booking (api.openConferenceRound, bookConference): rounds go to whole-school roles whole, to anyone else
-// when they cover a student in reach (only those ids). Bookings and blocks: whole-school roles and admins all; an advisor
-// their own grid; a student their own bookings; a family their children's bookings in full, and every other booking or block
-// in their children's advisors' grids only as a taken time (no student, no id, nobody's name). ──
-function confScope(full, { user, all, self, parent, tid, inReach }) {
-  const rounds = (full.confRounds || []).flatMap((r) => { const ids = r.studentIds.filter((x) => (self ? x === self : inReach(x))); return all ? [r] : ids.length ? [{ ...r, studentIds: ids }] : []; });
-  const kids = new Set(parent ? user.children || [] : []);
-  const grids = new Set([...kids].flatMap((sid) => { const a = api.getStudent(sid)?.advisorId; return rounds.filter((r) => r.studentIds.includes(sid)).map((r) => `${r.id}|${a}`); }));
-  const taken = ({ roundId, advisorId, date, time }) => ({ roundId, advisorId, date, time, taken: true });
-  const bookings = (full.confBookings || []).flatMap((b) => {
-    if (all || (!!tid && b.advisorId === tid) || (!!self && b.studentId === self) || kids.has(b.studentId)) return [b];
-    return grids.has(`${b.roundId}|${b.advisorId}`) ? [taken(b)] : [];
-  });
-  const blocks = (full.confBlocks || []).flatMap((k) => (all || (!!tid && k.advisorId === tid) ? [k] : grids.has(`${k.roundId}|${k.advisorId}`) ? [taken(k)] : []));
-  return { confRounds: rounds, confBookings: bookings, confBlocks: blocks };
+// ── Conferences (api.addConference): whole-school roles get each one whole; anyone else (a student, an advisor, a
+// teacher) one that covers a student in reach, with only those ids. Families get none. ──
+function confScope(full, { all, self, parent, inReach }) {
+  if (parent) return { conferences: [] };
+  return { conferences: (full.conferences || []).flatMap((c) => { const ids = c.studentIds.filter((x) => (self ? x === self : inReach(x))); return all ? [c] : ids.length ? [{ ...c, studentIds: ids }] : []; }) };
 }
-Object.assign(TOUCHES, {
-  openConferenceRound: (a) => T([], [a[1]]), editConferenceRound: (a) => T([], [a[2]]), closeConferenceRound: (a) => T([], [a[1]]),
-  bookConference: (a) => T([a[1]], [a[3] !== 'family' ? a[3] ?? '?' : null]), cancelConference: (a) => T([api.getConfBooking(a[0])?.studentId ?? '?'], [a[1] !== 'family' ? a[1] ?? '?' : null]),
-  blockConferenceSlot: (a) => T([], [a[5]]), sendConferenceReminders: () => T([]),
-});
-Object.assign(TOUCHES, { saveConfPrep: (a) => T([a[1]]), writeConfNote: (a) => T([a[1]], [a[4] !== 'family' && a[4] !== 'student' ? a[4] ?? '?' : null]) });
+Object.assign(TOUCHES, { addConference: (a) => T([], [a[1]]), editConference: (a) => T([], [a[2]]), removeConference: (a) => T([], [a[1]]) });
+Object.assign(TOUCHES, { saveConfPrep: (a) => T([a[1]]), writeConfNote: (a) => T([a[1]], [a[4] !== 'student' ? a[4] ?? '?' : null]) });
+Object.assign(TOUCHES, { recordFamilyConsent: (a) => T([a[0]], [a[2]]) });
 Object.assign(TOUCHES, {
   setSubjectPrompts: (a) => T([].concat(a[1]?.examples || []).filter((x) => x?.eventId).map((x) => ev(x.eventId) ?? '?'), [a[2]]),
   clearSubjectPrompts: (a) => T([], [a[1]]), answerExampleAsk: (a) => T([a[2]]),
@@ -383,28 +371,6 @@ Object.assign(TOUCHES, {
 Object.assign(TOUCHES, { clearReadNotifications: () => T([]) });
 // Comment bank (canAct's own rules are phraseOk in auth.mjs): no student, acting as the writer.
 Object.assign(TOUCHES, Object.fromEntries(['addPhrase', 'editPhrase', 'deletePhrase', 'movePhrase', 'usePhrase'].map((f) => [f, (a) => T([], [a[1]])])));
-
-// ── Family encouragement (api.addFamilyNote): notes go only with the moments the person receives. A family: notes on their
-// children's moments (a note a moderator hid only to its writer, with the notice), never whether the student hid one from
-// their own view; and which children turned notes off. The student: notes on their own moments that are not hidden, without
-// the writer's account id. Staff: the advisor, a current class's teachers and whole-school roles; other staff nothing. ──
-function familyNotesScope(full, store, { user, all, self, parent, tid, shown, moderator }) {
-  const kids = new Set(parent ? user.children || [] : []), me = parent ? `u:${user.id}` : null;
-  const notes = (full.familyNotes || []).filter((n) => shown.has(n.eventId));
-  const out = {
-    familyNotes: parent ? notes.filter((n) => kids.has(n.studentId) && (!n.hidden || n.by === me)).map(({ studentHidden, ...n }) => n)
-      : self ? notes.filter((n) => n.studentId === self && !n.hidden).map(({ by, ...n }) => n)
-        : notes.filter((n) => all || (!!tid && api.familyNoteReader(tid, n.studentId))),
-  };
-  if (parent) out.privacy = Object.fromEntries([...kids].filter((sid) => full.privacy?.[sid]?.familyNotes === false).map((sid) => [sid, { familyNotes: false }]));
-  if (!moderator) { const fn = new Map((full.reports || []).filter((r) => r.familyNoteId).map((r) => [r.id, r.familyNoteId])); out.reports = store.reports.map((r) => (fn.has(r.id) ? { ...r, familyNoteId: fn.get(r.id) } : r)); }
-  return out;
-}
-const famNote = (id) => api.getFamilyNote(id)?.studentId ?? '?';
-Object.assign(TOUCHES, {
-  addFamilyNote: (a) => T([ev(a[0])]), editFamilyNote: (a) => T([famNote(a[0])]), deleteFamilyNote: (a) => T([famNote(a[0])]),
-  thankFamilyNote: (a) => T([famNote(a[0])]), setFamilyNoteHidden: (a) => T([famNote(a[0])]),
-});
 
 // ── School events (api.addSchoolEvent, dismissSchoolEvent): whole-school roles get every event and row whole. A student
 // gets the events for them (studentIds: just themselves) and their own rows; a family their children's events (only
@@ -426,3 +392,81 @@ Object.assign(TOUCHES, {
 });
 // Class photo drop: the students given a photo, as the sending teacher (canAct's own rules are dropOk in auth.mjs).
 Object.assign(TOUCHES, { dropPhotos: (a) => T([...new Set([].concat(a[2]?.photos || []).flatMap((p) => [].concat(p?.studentIds || [])))], [a[1] ?? '?']) });
+
+// ── Advisor year sign-off (api.signOffYear): the student's current advisor gets their advisees' records whole (ticks and
+// the private "Not this year" reason) and, for Years 12 and 13, each advisee's confirmed CAS hours (store.signoffCas) for
+// the checklist. Leadership and admins get every record as a status only (no ticks, no reason): counts. A student gets
+// their own only once signed off, with what was celebrated. Families and other staff get nothing. Settings: staff. ──
+function signoffScope(full, { user, self, parent, staff, tid }) {
+  const lead = isAdmin(user) || user?.kind === 'leadership';
+  const mine = (sid) => !!tid && api.getStudent(sid)?.advisorId === tid;
+  const yearSignoffs = parent ? [] : (full.yearSignoffs || []).flatMap((r) => {
+    if (self) return r.studentId === self && r.status === 'signed' ? [{ id: r.id, studentId: r.studentId, year: r.year, advisorId: r.advisorId, status: r.status, at: r.at, celebrated: r.celebrated }] : [];
+    if (mine(r.studentId)) return [r];
+    return lead ? [{ id: r.id, studentId: r.studentId, year: r.year, status: r.status, at: r.at }] : [];
+  });
+  const signoffCas = {};
+  if (tid) for (const s of full.students) if (s.advisorId === tid && s.grade >= 11) signoffCas[s.id] = api.casSum(api.casHoursOf(s.id), 'confirmed');
+  return { yearSignoffs, signoffCas, signoffSettings: staff ? full.signoffSettings : undefined };
+}
+Object.assign(TOUCHES, {
+  tickSignoff: (a) => T([a[0]], [a[3] ?? '?']), signOffYear: (a) => T([a[0]], [a[1] ?? '?']), markNotThisYear: (a) => T([a[0]], [a[1] ?? '?']),
+  undoSignoff: (a) => T([a[0]], [a[1] ?? '?']), setSignoffYear: (a) => T([], [a[2]]), setSignoffClose: (a) => T([], [a[1]]),
+});
+// Moment templates: no student, acting as the writer (canAct's own rules are momentTemplateOk in auth.mjs).
+Object.assign(TOUCHES, { saveMomentTemplate: (a) => T([], [a[1]]), setMomentTemplateOff: (a) => T([], [a[2]]) });
+// ── Not seen lately (api.nudgeClass, notSeenLately) ──
+// classNudges: the student gets their own; a teacher of that class gets it whole; the student's advisor and whole-school roles
+// only that one was sent ({ id, studentId, date }: a count); families and other staff nothing. lineSeen: for each class this
+// person teaches, the last day each student did something for it, worked out on the whole record (a private moment counts,
+// only its date goes) and its students whose accounts are paused. classJoins: staff, for students in reach.
+let pausedOf = () => new Set();
+export const setPausedStudents = (fn) => { pausedOf = fn; };
+const scopedSnapshotNsl = scopedSnapshot;
+scopedSnapshot = function scopedSnapshot(user) {
+  const out = scopedSnapshotNsl(user), store = out.store, full = st();
+  const reach = reachOf(user), all = reach === null;
+  const self = user?.kind === 'student' ? user.studentId : null, parent = user?.kind === 'parent';
+  const tid = !self && !parent ? user?.teacherId : null;
+  const inReach = (sid) => !!sid && (all || reach.has(sid));
+  const teaches = (full.classes || []).filter((c) => !!tid && (c.teacherIds || []).includes(tid)).map((c) => c.id);
+  const mineT = new Set(teaches);
+  store.classNudges = parent ? [] : (full.classNudges || []).flatMap((n) => {
+    if (self) return n.studentId === self ? [n] : [];
+    if (!tid && !all) return [];
+    if (!inReach(n.studentId)) return [];
+    if (mineT.has(n.classId)) return [n];
+    return all || api.getStudent(n.studentId)?.advisorId === tid ? [{ id: n.id, studentId: n.studentId, date: n.date }] : [];
+  });
+  store.classJoins = self || parent ? {} : Object.fromEntries(Object.entries(full.classJoins || {}).filter(([k]) => inReach(k.split('|')[0])));
+  store.lineSeen = {};
+  if (teaches.length) {
+    const seen = api.classSeen(teaches), paused = pausedOf();
+    const places = new Map(teaches.map((id) => [id, []]));
+    for (const n of full.enrolments || []) if (places.has(n.classId) && !(n.to && n.to < api.TODAY)) places.get(n.classId).push(n.studentId);
+    for (const id of teaches) store.lineSeen[id] = { last: Object.fromEntries(seen.get(id) || []), paused: places.get(id).filter((sid) => paused.has(sid)) };
+  }
+  return out;
+};
+Object.assign(TOUCHES, { nudgeClass: (a) => T([].concat(a[1] ?? []), [a[2] ?? '?']) });
+// ── Moving-up summaries (api.openMovingUp, finishMovingUp): a window goes to whole-school roles whole, to staff when it
+// covers a student in reach (only those ids) and to a student it covers (only their own id); never to families. A student
+// gets their own summaries whole. Whole-school roles and the student's current advisor get a finished summary (its picked
+// moments only as far as they receive them) and only whether a draft is started; other staff nothing. A family gets a
+// finished summary only when the student said yes (family: true), with only the moments the family view shows. ──
+function movingUpScope(full, { user, all, self, parent, tid, inReach, shown }) {
+  const movingUpWindows = parent ? [] : (full.movingUpWindows || []).flatMap((w) => { const ids = w.studentIds.filter((x) => (self ? x === self : inReach(x))); return all ? [w] : ids.length ? [{ ...w, studentIds: ids }] : []; });
+  const kids = new Set(parent ? user.children || [] : []);
+  const advises = (sid) => all || (!!tid && inReach(sid) && api.getStudent(sid)?.advisorId === tid);
+  const done = ({ step, ...r }) => ({ ...r, picks: (r.picks || []).filter((id) => shown.has(id)), moments: (r.moments || []).filter((m) => shown.has(m.eventId)) });
+  const movingUp = (full.movingUp || []).flatMap((r) => {
+    if (self) return r.studentId === self ? [r] : [];
+    if (parent) return kids.has(r.studentId) && r.status === 'done' && r.family === true ? [(({ goalIds, savedAt, startedAt, ...x }) => x)(done(r))] : [];
+    if (!advises(r.studentId)) return [];
+    return [r.status === 'done' ? done(r) : { id: r.id, windowId: r.windowId, studentId: r.studentId, stage: r.stage, status: r.status, startedAt: r.startedAt, doneAt: null }];
+  });
+  return { movingUpWindows, movingUp };
+}
+Object.assign(TOUCHES, { openMovingUp: (a) => T([], [a[1]]), closeMovingUp: () => T([]), saveMovingUp: (a) => T([a[1]]), finishMovingUp: (a) => T([a[1]]), setMovingUpFamily: (a) => T([a[0]]) });
+// Editing a sent batch: the students given or losing a photo, as the sending teacher.
+Object.assign(TOUCHES, { editPhotoDrop: (a) => T([...new Set([...[].concat(a[2]?.add || []), ...[].concat(a[2]?.withdraw || [])].map((x) => x?.studentId).filter((x) => typeof x === 'string'))], [a[1] ?? '?']) });

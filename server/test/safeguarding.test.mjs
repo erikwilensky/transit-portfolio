@@ -42,7 +42,7 @@ test('setup: Fern has a publishable moment with an uploaded photo, shared on a l
   assert.ok(publicSnapshot('tok-sg').store.events.some((e) => e.id === robot.id));
 });
 
-test('canAct reportItem: the student their own; staff in reach; a parent only what the family view shows', () => {
+test('canAct reportItem: the student their own; staff in reach; a parent never', () => {
   const R = (t, from) => ['reportItem', [t, 'inappropriate', '', from]];
   assert.ok(canAct(fern, ...R({ eventId: robot.id }, { key: 'student' })), 'the student, own moment');
   assert.ok(canAct(fern, ...R({ commentId: cm.id }, { key: 'student' })), 'the student, a comment on it');
@@ -53,8 +53,7 @@ test('canAct reportItem: the student their own; staff in reach; a parent only wh
   assert.ok(!canAct(brook, ...R({ eventId: robot.id }, { key: 'T101' })), 'staff only as themselves');
   assert.ok(!canAct(gray, ...R({ eventId: robot.id }, { key: 'T105' })), 'staff out of reach');
   assert.ok(canAct(coord, ...R({ eventId: gusMoment.id }, { key: 'T104' })), 'whole-school staff');
-  assert.ok(canAct(parent, ...R({ eventId: robot.id }, { key: 'fam:S2001', name: 'Rose Gale' })), 'a parent, a moment the family sees');
-  assert.ok(!canAct(parent, ...R({ eventId: robot.id }, { key: 'fam:S2001', name: 'Someone' })), 'a parent only as themselves');
+  assert.ok(!canAct(parent, ...R({ eventId: robot.id }, { key: 'fam:S2001', name: 'Rose Gale' })), 'a parent never reports in the app');
   assert.ok(!canAct(parent, ...R({ commentId: cm.id }, { key: 'fam:S2001', name: 'Rose Gale' })), 'never a comment');
   assert.ok(!canAct(otherParent, ...R({ eventId: robot.id }, { key: 'fam:S2001', name: 'Ann Hale' })), 'not another family’s child');
   const adv = api.addStation('S2001', { title: 'Advisor only', lineIds: ['computing'], visibility: 'advisor' });
@@ -77,7 +76,7 @@ test('reportItem: stored with the reporter, moderators hear (without the reporte
   assert.equal(api.snapshot(), after);
   assert.equal(api.reportItem({ eventId: robot.id }, 'other', '', { key: 'T100' }).id, rep1.id, 'one open report per person per item');
   assert.throws(() => api.reportItem({ eventId: robot.id }, 'nope', '', { key: 'T100' }), /Pick a reason/);
-  assert.throws(() => api.reportItem({ commentId: cm.id }, 'other', '', { key: 'fam:S2001' }), /Families do not see comments/);
+  assert.throws(() => api.reportItem({ eventId: robot.id }, 'other', '', { key: 'fam:S2001' }), /Who is reporting/, 'families do not report');
 });
 
 test('rate limit: 20 reports an hour per person', () => {

@@ -1,0 +1,9 @@
+/* Family consent on file (src/components/FamilyConsent.jsx) */
+.fc-row { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; padding: 8px 0; border-top: 1px solid var(--rule); }
+.fc-who { display: grid; gap: 2px; min-width: 0; }
+.fc-who small { color: var(--muted); }
+.fc-btns { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.fc-form { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: end; width: 100%; }
+.fc-form label { display: grid; gap: 2px; font-size: 13px; }
+.fc-note { flex: 1 1 220px; }
+.fc-note input { width: 100%; }

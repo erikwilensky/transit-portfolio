@@ -20,7 +20,7 @@ test('the notifications a student gets are read in Thai, keeping names and quote
     ['Term 1 reflection is open: look back on your term and pick what you are proud of', /^Term 1 reflection เปิดแล้ว/],
     ['Jin gave you kind feedback on “Reflection”.', /^Jin .*“Reflection”/],
     ['Mr Gardner wrote on “Beach clean-up”: Great work out there.', /^Mr Gardner .*“Beach clean-up”: Great work out there\.$/],
-    ['Your conference with Ms Altemen is on 3 Nov 2026 at 15:20', /3 พ\.ย\. 2026 เวลา 15:20 น\./],
+    ['Your conference: 3 Nov 2026 to 4 Nov 2026', /^การประชุมของคุณ: 3 พ\.ย\. 2026 ถึง 4 พ\.ย\. 2026$/],
   ];
   for (const [en, re] of cases) assert.match(studentThai(en) || '', re, en);
 });

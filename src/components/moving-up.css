@@ -1,0 +1,72 @@
+/* Moving-up summaries: the student's card and flow (on top of term-reflection.css), the summary, the A4 sheet. */
+.mu-card { border-left-color: var(--b-sky); }
+.mu-mine { border-style: solid; border-width: 1px 1px 1px 8px; }
+.mu-fam { display: flex; gap: 8px; align-items: center; font-size: 15px; margin-top: 4px; }
+.mu-fam input { width: 20px; height: 20px; margin: 0; }
+.mu-q { display: grid; gap: 4px; font-size: 14px; font-weight: 600; margin: 8px 0 0; }
+.mu-q textarea { font: inherit; font-weight: 400; min-height: 54px; }
+.mu-hope { display: grid; gap: 8px; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 12px; margin: 8px 0 0; min-width: 0; }
+.mu-hope > label:first-child { font-weight: 600; }
+.mu-hope-l { font-size: 18px; }
+.mu-hope input:not([type]) { font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--rule); background: var(--surface); color: var(--ink); min-width: 0; }
+.mu-goal { display: flex; gap: 8px; align-items: center; font-size: 15px; }
+.mu-goal input { width: 20px; height: 20px; margin: 0; flex: none; }
+.mu-hope select { font: inherit; padding: 7px 9px; border-radius: 8px; border: 1px solid var(--rule); background: var(--surface); color: var(--ink); max-width: 100%; }
+.mu-more { justify-self: start; margin-top: 8px; }
+.mu-fams { display: grid; gap: 10px; }
+.mu-fams .sh-ask { text-align: left; }
+.mu-missing { color: var(--muted); text-align: right; margin: 8px 0 0; }
+.mu-count { color: var(--ink); }
+.mu-hcount { margin: 6px 0 0; }
+
+.mu-sum { display: grid; gap: 10px; min-width: 0; }
+.mu-part { min-width: 0; }
+.mu-part h4 { margin: 0 0 3px; font-size: 13px; font-weight: 600; letter-spacing: .02em; color: var(--muted); }
+.mu-part p { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
+.mu-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; }
+.mu-cols:empty { display: none; }
+.mu-ms ul, .mu-hopes { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.mu-ms li { display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; }
+.mu-ms small { color: var(--muted); font-size: 12.5px; }
+.mu-hopes li { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; overflow-wrap: anywhere; }
+.mu-tag { font-size: 11.5px; font-weight: 600; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--rule); color: var(--ink); }
+.mu-flow .mu-sum { padding: 12px; border-radius: 12px; border: 1px solid var(--rule); background: var(--bg); }
+
+.mu-staff-head { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.mu-staff-head h4, .mu-staff-head h2 { margin: 0; flex: 1 1 160px; min-width: 0; }
+.mu-staff .mu-sum, .mu-fam-card .mu-sum { margin-top: 8px; }
+.mu-in-ly { border-top: 1px solid var(--rule); margin-top: 10px; padding-top: 10px; }
+.mu-in-ly .mu-cols, .mu-staff .mu-cols { grid-template-columns: 1fr; }
+.mu-fam-card { margin: 0 0 16px; }
+
+/* The A4 sheet: full screen on screen, one page each on paper. */
+.mu-overlay { position: fixed; inset: 0; z-index: 60; overflow: auto; background: var(--surface-2); padding: 0 16px 24px; }
+.mu-bar { position: sticky; top: 0; z-index: 1; display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 10px 0; background: var(--surface-2); }
+.mu-bar > div:first-child { display: grid; } .mu-bar small { color: var(--muted); }
+.mu-actions { display: flex; gap: 8px; }
+.mu-sheet { width: 210mm; max-width: 100%; min-height: 297mm; margin: 0 auto 16px; padding: 14mm 16mm; background: #fff; color: #0b2240; border: 1px solid #cfd6e2; display: flex; flex-direction: column; gap: 5mm; box-sizing: border-box;
+  --muted: #4a566c; --rule: #cfd6e2; --ink: #0b2240; --bg: #fff; --surface: #fff; }
+.mu-sheet-head { display: flex; gap: 6mm; align-items: flex-end; justify-content: space-between; border-bottom: 0.6mm solid #002855; padding-bottom: 3mm; }
+.mu-sheet-head h1 { margin: 0; font-size: 18pt; font-weight: 600; color: #002855; }
+.mu-sheet-head p { margin: 1mm 0 0; font-size: 11pt; }
+.mu-sheet-head small { font-size: 9pt; color: #4a566c; text-align: right; }
+.mu-sum.paper { font-size: 10.5pt; line-height: 1.4; gap: 4mm; flex: 1 1 auto; overflow: hidden; align-content: start; }
+.mu-sum.paper h4 { font-size: 9pt; text-transform: uppercase; letter-spacing: .06em; color: #002855; }
+.mu-sum.paper .mu-part { border-left: 0.6mm solid #002855; padding-left: 3mm; break-inside: avoid; }
+.mu-sheet-foot { border-top: 0.25mm solid #cfd6e2; padding-top: 1.5mm; font-size: 8pt; color: #4a566c; }
+
+@media (max-width: 640px) {
+  .mu-cols { grid-template-columns: 1fr; }
+  .mu-sheet { min-height: 0; padding: 6mm; }
+  .mu-sheet-head { flex-direction: column; align-items: flex-start; }
+  .mu-sheet-head small { text-align: left; }
+}
+@page movingup { size: A4 portrait; margin: 0; }
+@media print {
+  body:has(.mu-overlay) > :not(.mu-overlay) { display: none !important; }
+  .mu-overlay { position: static; overflow: visible; padding: 0; background: #fff; }
+  .mu-bar { display: none !important; }
+  .mu-sheet { page: movingup; width: 210mm; height: 297mm; min-height: 0; overflow: hidden; margin: 0; border: 0; break-after: page; break-inside: avoid; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .mu-sheet:last-child { break-after: auto; }
+}
+.mu-who { display: flex; flex-wrap: wrap; gap: 0 3mm; }

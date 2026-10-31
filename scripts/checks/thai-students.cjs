@@ -1,6 +1,7 @@
 // Thai for students on the real class lists: starts a clean pilot (TP_START=empty; needs `npm run build` first), imports
 // the real roster and gives three students something on every screen: Aaron Torres (Year 8, Simple, on a phone), a Year 10
-// student (Standard) and a Year 12 student (Full, with a leaver portfolio), each in their own browser context. Teachers set
+// student (Standard) and a Year 12 student (Full, with a leaver portfolio), each in their own browser context; then a Year 9
+// (Simple, phone) and a Year 11 student (Standard) write their moving-up summaries. Teachers set
 // a class task, ask the class a question, spot a moment, open a term reflection, comment and send encouragement; a
 // classmate gives kind feedback. Each student switches to ไทย in the display menu, then every screen and flow they can
 // reach is walked and fails if visible English interface text remains (people's names, line names and codes, the
@@ -164,9 +165,10 @@ let srv;
     const m1 = await act(aT, 'addStation', [AARON, { title: 'Built a bridge out of straws', lineIds: [aLines[0]], date: day(-20), type: 'project', summary: 'It held two kilos.', visibility: 'advisor' }]);
     await act(aT, 'addStation', [AARON, { title: 'Painted the class mural', lineIds: [aLines[1]], date: day(-9), type: 'project', visibility: 'advisor' }]);
     const g1 = await act(aT, 'addGoal', [AARON, { title: 'Run 5k', date: day(30), lineId: aLines[0], summary: '', checkIn: true }]);
-    await act(cT, 'setTask', [CLASS, COULTAS, { title: 'Cell diagram', due: day(1), brief: 'Draw and label a plant cell.', checklist: ['Label the nucleus'], needs: 'photo' }]);
+    await act(cT, 'setTask', [CLASS, COULTAS, { title: 'Cell diagram', due: day(1), brief: 'Draw and label a plant cell.', checklist: ['Label the nucleus'], needs: 'photo', templateId: 'mt-lab' }]); // with a guide (MomentTemplates.jsx)
     await act(cT, 'askClass', [CLASS, COULTAS, { question: 'What surprised you in the lab this week?' }]);
     await act(cT, 'spotMoment', [[AARON], COULTAS, { title: 'Helped tidy the lab', note: 'Thank you for staying behind.', lineId: 'science', classId: CLASS }]);
+    await act(cT, 'nudgeClass', [CLASS, [AARON], COULTAS, 'A photo from the lab would be great.']); // Not seen lately: the banner and the bell
     // Class photos (PhotoDrop.jsx): two photos from a practical, after the spotted moment.
     await act(cT, 'dropPhotos', [CLASS, COULTAS, { title: 'Electricity practical', lineId: 'science', note: 'Great wiring.', photos: [{ url: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', studentIds: [AARON] }, { url: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', studentIds: [AARON] }] }]);
     await act(alT, 'openReflectionWindow', [{ title: 'Term 1 reflection', opens: day(0), closes: day(14), advisorId: ALTEMEN }, ALTEMEN]);
@@ -191,7 +193,9 @@ let srv;
     await sweep(a, AARON, 'Aaron: add, what did you learn');
     await a.locator('.sh-flow .sh-starters button').first().click();
     ok(THAI.test(await a.locator('.sh-flow textarea').inputValue()), `a Thai sentence starter writes Thai: “${await a.locator('.sh-flow textarea').inputValue()}”`);
+    await a.click('.sh-flow .sk-open'); await a.locator('.sh-flow .sk-chip').first().click(); await sweep(a, AARON, 'Aaron: add, which skills');
     const help = a.locator('.sh-flow .sp-help'); if (await help.count()) { await help.click(); await sweep(a, AARON, 'Aaron: add, built-in questions'); }
+    if (await openSweep(a, AARON, '.sh-flow .mt-offer-list button', 'Aaron: add, a guide (moment template)')) { await a.locator('.mt-step .sh-starters button').first().click(); ok(THAI.test(await a.locator('.mt-step textarea').inputValue()), 'a guide’s Thai starter writes Thai'); }
     await close(a);
     // Something I want to do.
     await a.click('.sh-card.goal'); await sweep(a, AARON, 'Aaron: goal, what');
@@ -209,20 +213,14 @@ let srv;
       await sweep(a, AARON, 'Aaron: check-in, next step'); await a.click('.gc-flow .sh-next .primary'); await a.waitForTimeout(400);
     }
     await act(alT, 'sendEncouragement', [g1.id, ALTEMEN, 'I’m proud of you for keeping at it.', '']);
-    // Family encouragement: a family member (joined by the family letter) leaves a note on his moment.
-    const famL = await (await fetch(`${U}/api/advisor/family/letters`, { method: 'POST', headers: { ...H, cookie: `tp_session=${alT}` }, body: JSON.stringify({ studentIds: [AARON] }) })).json();
-    const fj = await fetch(`${U}/api/family/join`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: famL.letters[0].url.split('/family/')[1], name: 'Maria Torres', email: 'maria.torres@family.example', password: 'family-pass-1' }) });
-    const fT = fj.headers.get('set-cookie').match(/tp_session=([^;]+)/)[1];
-    const fMe = (await (await fetch(`${U}/api/auth/me`, { headers: { cookie: `tp_session=${fT}` } })).json()).user;
-    await act(fT, 'addFamilyNote', [m1.id, { key: `u:${fMe.id}`, name: fMe.name }, 'So proud of you!', 'proud']);
-    if (await openSweep(a, AARON, '.tk-card', 'Aaron: hand in a task')) await close(a);
+    if (await openSweep(a, AARON, '.tk-card', 'Aaron: hand in a task')) { await a.click('.tk-flow .sh-next .primary'); await a.click('.tk-flow .sh-next .primary'); await a.waitForSelector('.tk-flow .mt-step'); await sweep(a, AARON, 'Aaron: hand in a task, its guide'); await close(a); }
     if (await openSweep(a, AARON, '.cp-card', 'Aaron: a class question')) await close(a);
     if (await openSweep(a, AARON, '.tr-card .primary', 'Aaron: term reflection, look back')) {
       await a.locator('.tr-pick').first().click(); await a.click('.tr-flow .sh-next .primary');
       await sweep(a, AARON, 'Aaron: term reflection, a moment'); await close(a);
     }
     // Student-led conferences: get ready one question a screen, then Conference mode on his own phone.
-    const cr = await act(alT, 'openConferenceRound', [{ title: 'Student-led conferences', slot: 15, days: [{ date: day(3), from: '15:00', to: '17:00' }], breaks: [], location: 'Room 8C', advisorId: ALTEMEN }, ALTEMEN]);
+    const cr = await act(alT, 'addConference', [{ title: 'Student-led conferences', from: day(3), to: day(4), advisorId: ALTEMEN }, ALTEMEN]);
     await a.reload(); await a.waitForSelector('.slc-card'); await sweep(a, AARON, 'Aaron: get ready for my conference');
     if (await openSweep(a, AARON, '.slc-card .primary', 'Aaron: conference prep, what to show')) {
       const next = async (label) => { await a.click('.slc-flow .sh-next .primary'); await sweep(a, AARON, `Aaron: conference prep, ${label}`); };
@@ -235,18 +233,13 @@ let srv;
       await audit(a, 'Aaron, Conference mode in Thai', ['.slc-mode']);
       for (const label of ['a moment', 'looking back', 'next steps']) { await a.click('.slc-foot .primary'); await sweep(a, AARON, `Aaron: Conference mode, ${label}`); }
       await close(a);
-      await act(alT, 'writeConfNote', [cr.id, AARON, 'family', 'Read together after dinner', ALTEMEN]);
+      await act(alT, 'writeConfNote', [cr.id, AARON, 'student', 'Enter the bridge contest', ALTEMEN]);
       await a.reload(); await a.waitForSelector('.slc-note'); await sweep(a, AARON, 'Aaron: my conference note');
-      if (await openSweep(a, AARON, '.slc-note .slc-card-btns .primary', 'Aaron: my conference note, what I will do next')) await a.click('.slc-note .sh-next .ghost');
+      if (await openSweep(a, AARON, '.slc-note .slc-card-btns button', 'Aaron: my conference note, change what I will do next')) await a.click('.slc-note .sh-next .ghost');
     }
     await a.reload(); await a.waitForSelector('.simple .sh-actions');
     await a.locator('.sh-goal').first().waitFor({ timeout: 4000 }).catch(() => {});
     await sweep(a, AARON, 'Aaron: Simple home with a goal, an encouragement and a check-in');
-    if (await a.locator('.fn-home .fn-acts .ghost').count()) {
-      await a.locator('.fn-home .fn-acts .ghost').first().click(); await a.waitForSelector('.sh-moment .fn-on');
-      await sweep(a, AARON, 'Aaron: a moment with a note from family');
-      await a.click('.sh-moment .fn-on .sg-report'); await a.waitForSelector('.sg-dialog'); await sweep(a, AARON, 'Aaron: report a note from family'); await close(a); await close(a);
-    } else ok(false, 'Aaron: the Simple home shows the note from family');
     await a.locator('.sh-spot .primary, .spot-me .spot-acts .primary').first().click().catch(() => {}); await sweep(a, AARON, 'Aaron: added a spotted moment');
     if (await a.locator('.pd-offer').count()) {
       await a.locator('.pd-offer .pd-pick').first().click(); await sweep(a, AARON, 'Aaron: class photos, one not kept');
@@ -261,10 +254,15 @@ let srv;
       ok(THAI.test(await a.locator('.sh-flow textarea').inputValue()), 'a Simple starter writes Thai in “How did it go?”');
       await a.click('.sh-flow .sh-next .primary'); await a.waitForTimeout(400); await sweep(a, AARON, 'Aaron: after I did it');
     }
+    // Year sign-off (YearSignoff.jsx): Ms Altemen signs off his year; the card, and its notification in the bell below.
+    await act(alT, 'signOffYear', [AARON, ALTEMEN, {}]);
+    await a.reload(); await a.waitForSelector('.ys-card'); await sweep(a, AARON, 'Aaron: his advisor signed off his year');
     await a.click('.bell'); await sweep(a, AARON, 'Aaron: notifications'); await a.click('.bell');
     await a.click('.view-btn'); await sweep(a, AARON, 'Aaron: display menu'); await a.click('.view-btn');
     await a.click('.fb-simple button'); await a.waitForTimeout(300); await sweep(a, AARON, 'Aaron: tell us something'); await close(a);
     await a.goto(`${U}/#/me/family`); await a.waitForSelector('.sh-fam'); await sweep(a, AARON, 'Aaron: show my family');
+    await a.goto(`${U}/#/me/skills`); await a.waitForSelector('.sk-page'); await sweep(a, AARON, 'Aaron: my skills');
+    if (await openSweep(a, AARON, '.sk-totag button', 'Aaron: my skills, picking for a moment')) { await a.click('.sk-totag .sk-chip >> nth=0'); await a.click('.sk-totag .primary'); await a.waitForSelector('.sk-collect'); await sweep(a, AARON, 'Aaron: my skills, one used'); await a.click('.sk-big >> nth=0'); await sweep(a, AARON, 'Aaron: my skills, when I used it'); }
     await a.goto(`${U}/#/me/add`); await a.waitForSelector('.sh-flow'); await sweep(a, AARON, 'Aaron: the phone app’s add'); await close(a);
     await a.screenshot({ path: path.join(SH, 'aaron-family.png') });
 
@@ -282,7 +280,7 @@ let srv;
     await act(mT, 'setPeerFeedback', [mm.id, true]);
     await act(y10Adv, 'addMomentComment', [r2.id, Y10.advisorId, 'Great work out there.']);
     await act(y10Adv, 'openReflectionWindow', [{ title: 'Term 1 reflection', opens: day(0), closes: day(14), advisorId: Y10.advisorId }, Y10.advisorId]);
-    await act(y10Adv, 'openConferenceRound', [{ title: 'Student-led conferences', slot: 15, days: [{ date: day(3), from: '15:00', to: '17:00' }], breaks: [], location: 'Room 10', advisorId: Y10.advisorId }, Y10.advisorId]);
+    await act(y10Adv, 'addConference', [{ title: 'Student-led conferences', from: day(3), advisorId: Y10.advisorId }, Y10.advisorId]);
     await act(y10Adv, 'nudgeStudent', [Y10.id, Y10.advisorId, 'Add something from this week.', 'quiet']);
     const s = await ctx(Y10.id);
     await s.goto(`${U}/#/me/map`); await s.waitForSelector('.home');
@@ -308,7 +306,8 @@ let srv;
     const vb = s.locator('.station-panel.open .as-btn').first(); if (await vb.count()) { await vb.click(); await sweep(s, Y10.id, 'Year 10: verification record'); await close(s); }
     await s.goto(`${U}/#/me/map/${yg.id}`); await s.waitForSelector('.station-panel.open'); await sweep(s, Y10.id, 'Year 10: a goal');
     await s.goto(`${U}/#/me/map`); await s.waitForSelector('.home');
-    await s.click('.home-actions > .primary'); await s.waitForSelector('.modal'); await sweep(s, Y10.id, 'Year 10: add a station'); await close(s);
+    await s.click('.home-actions > .primary'); await s.waitForSelector('.modal'); await sweep(s, Y10.id, 'Year 10: add a station');
+    await s.locator('.add-station .line-chip').first().click(); await s.locator('.add-station .mt-offer-list button').first().click(); await s.waitForSelector('.add-station .mt-fields'); await sweep(s, Y10.id, 'Year 10: add a station with a guide'); await close(s);
     const menuItems = async () => { await s.click('.home-actions .menu-wrap > button'); await s.waitForSelector('.home-actions .menu'); return s.locator('.home-actions .menu [role=menuitem]').count(); };
     const nItems = await menuItems(); await sweep(s, Y10.id, 'Year 10: Plan & review menu');
     for (let i = 0; i < nItems; i++) {
@@ -321,7 +320,7 @@ let srv;
     await s.goto(`${U}/#/me/map`); await s.waitForSelector('.home');
     const fl = s.locator('.map-bar button[aria-expanded]'); if (await fl.count()) { await fl.first().click(); await sweep(s, Y10.id, 'Year 10: filters'); }
     if (await openSweep(s, Y10.id, '.tr-card .primary', 'Year 10: term reflection')) await close(s);
-    for (const k of ['studio', 'inbox', 'links', 'privacy']) {
+    for (const k of ['skills', 'studio', 'inbox', 'links', 'privacy']) {
       await s.goto(`${U}/#/me/${k}`); await s.waitForTimeout(900); await sweep(s, Y10.id, `Year 10: ${k}`);
       if (k === 'studio') for (const i of [1, 2, 3, 4]) { const au = s.locator('.studio [role=radiogroup] button, .studio .seg button').nth(i); if (await au.count()) { await au.click(); await sweep(s, Y10.id, `Year 10: studio, choice ${i}`); } }
       if (k === 'inbox') { await s.click('.integrations button.ghost:has-text("จำลองสัปดาห์หน้า"), button:has-text("จำลองสัปดาห์หน้า")').catch(() => {}); await s.waitForTimeout(1500); await sweep(s, Y10.id, 'Year 10: inbox after a week'); }
@@ -373,12 +372,48 @@ let srv;
     await audit(f, 'Year 12, leaver portfolio builder in Thai');
     await f.screenshot({ path: path.join(SH, 'y12-leaver.png'), fullPage: true });
 
+    // ═══ Moving-up summaries: a Year 9 student at Simple on a phone, a Year 11 student at Standard ═══
+    const muPages = [];
+    for (const [year, level, phone] of [[9, 'simple', true], [11, 'standard', false]]) {
+      const st = roster.students.find((x) => x.year === year && links[x.email] && roster.teachers.find((t) => t.id === x.advisorId && links[t.email]));
+      const L = `Year ${year} (moving up)`, sTk = await tokOf(st.id), advTk = await tokOf(st.advisorId);
+      await act(sTk, 'completeOnboarding', [st.id, ['science', 'art'], 'classic']); await act(sTk, 'setIntensity', [st.id, level]);
+      await act(sTk, 'addStation', [st.id, { title: 'Science fair poster', lineIds: ['science'], date: day(-30), type: 'project', visibility: 'advisor' }]);
+      await act(advTk, 'openMovingUp', [{ title: '', opens: day(0), closes: day(14), advisorId: st.advisorId }, st.advisorId]);
+      const p = await ctx(st.id, phone); muPages.push([L, p]);
+      await p.goto(`${U}/#/me/map`); await p.waitForSelector('.mu-card'); await toThai(p); await p.waitForTimeout(500);
+      await sweep(p, st.id, `${L}: the card`);
+      await p.click('.mu-card .primary'); await p.waitForSelector('.mu-flow');
+      if (phone) {
+        await p.locator('.mu-flow .tr-pick').first().click(); await sweep(p, st.id, `${L}: look back`);
+        const next = async (label) => { await p.click('.mu-flow .sh-next .primary'); await p.waitForTimeout(200); await sweep(p, st.id, `${L}: ${label}`); };
+        await next('about you'); await p.fill('#mu-who', 'I like science.');
+        await next('for your next advisor'); await p.fill('#mu-learn', 'By doing.');
+        await next('hopes'); await p.fill('#mu-hope-0', 'Join a club'); await p.check('.mu-hope .mu-goal input'); await sweep(p, st.id, `${L}: a hope becomes a goal`);
+        await p.locator('.mu-hope .sh-lines button').first().click();
+        await next('can your family see it'); await next('review');
+        await audit(p, `${L}, review in Thai`, ['.mu-flow']);
+        await p.click('.mu-flow .tr-finish'); await p.waitForTimeout(400); await sweep(p, st.id, `${L}: well done`);
+      } else {
+        await sweep(p, st.id, `${L}: the page`);
+        await p.locator('.mu-flow .mu-q textarea').nth(0).fill('I like science.'); await p.locator('.mu-flow .mu-q textarea').nth(2).fill('By doing.');
+        await p.fill('#mu-hope-0', 'Try HL Physics'); await p.check('.mu-hope .mu-goal input'); await p.locator('.mu-flow .mu-fams button').first().click();
+        await sweep(p, st.id, `${L}: the page, filled in`);
+        await audit(p, `${L}, the page in Thai`, ['.mu-flow']);
+        await p.click('.mu-flow .tr-foot .primary'); await p.waitForSelector('.mu-flow .mu-sum'); await sweep(p, st.id, `${L}: review`);
+        await p.click('.mu-flow .tr-finish'); await p.waitForTimeout(400); await sweep(p, st.id, `${L}: saved`);
+      }
+      await close(p); await p.reload(); await p.waitForSelector('.mu-mine'); await sweep(p, st.id, `${L}: my summary`);
+      await p.click('.mu-mine .ghost'); await p.waitForSelector('.mu-sheet'); await sweep(p, st.id, `${L}: the summary sheet`);
+      await p.keyboard.press('Escape');
+    }
+
     // ── Back to English: nothing Thai is left behind ──
     await s.goto(`${U}/#/me/map`); await s.waitForSelector('.home');
     await s.click('.view-btn'); await s.click('.view-menu button[lang="en"]'); await s.waitForFunction(() => document.documentElement.lang === 'en');
     const en = (await s.locator('#main').innerText());
     ok(!THAI.test(en), 'back in English: the map has no Thai left');
-    for (const [n, p] of [['Aaron', a], ['Year 10', s], ['Year 12', f]]) ok(!p.errs.length, `${n}: no page errors${p.errs.length ? `: ${p.errs.join(' | ')}` : ''}`);
+    for (const [n, p] of [['Aaron', a], ['Year 10', s], ['Year 12', f], ...muPages]) ok(!p.errs.length, `${n}: no page errors${p.errs.length ? `: ${p.errs.join(' | ')}` : ''}`);
   } finally {
     fs.writeFileSync(path.join(SH, 'leftovers.json'), JSON.stringify(leftovers, null, 1));
     console.log('INFO leftovers and screenshots in', SH);

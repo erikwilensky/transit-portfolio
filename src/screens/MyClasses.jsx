@@ -10,7 +10,9 @@ import { PeerClassList } from '../components/PeerFeedback.jsx';
 import { ClassTaskList, SetTaskDialog, TaskGrid } from '../components/ClassTasks.jsx';
 import { ClassPromptsCard } from '../components/SubjectPrompts.jsx';
 import { PhotoDropDialog, PhotoDropList } from '../components/PhotoDrop.jsx';
+import { QuietClass, QuietClassRow } from '../components/NotSeen.jsx';
 import './classes.css';
+import { SkillsGrowthCard } from '../components/SkillsGrowth.jsx';
 
 // Pilot: a teacher's classes from the class lists. #/<persona>/classes, /classes/<classId>,
 // /classes/<classId>~<studentId> (that student's map, read only), /classes/<classId>~answers~<promptId> (Review answers).
@@ -66,6 +68,7 @@ function ClassList({ teacherId, go, persona, version, toast }) {
               </a>
               <button className="ghost cp-askbtn" disabled={!c.studentIds.length} onClick={() => setAsking(c)}>Ask the class</button>
               <button className="ghost tk-setbtn" disabled={!c.studentIds.length} onClick={() => setTasking(c)}>Set a task</button>
+              {c.studentIds.length > 0 && <QuietClassRow classId={c.id} teacherId={teacherId} toast={toast} version={version} />}
             </li>
           ))}
         </ul>
@@ -105,6 +108,7 @@ function ClassPage({ classId, teacherId, go, persona, version, toast }) {
       {dropping && <PhotoDropDialog c={c} teacherId={teacherId} toast={toast} onClose={() => setDropping(false)} />}
       <ClassQuestions c={c} teacherId={teacherId} go={go} persona={persona} version={version} toast={toast} />
       {tasking && <SetTaskDialog c={c} teacherId={teacherId} toast={toast} onClose={() => setTasking(false)} />}
+      {c.students.length > 0 && <QuietClass classId={c.id} teacherId={teacherId} toast={toast} version={version} />}
       <ClassTaskList c={c} teacherId={teacherId} go={go} persona={persona} version={version} toast={toast} />
       <ClassPromptsCard c={c} teacherId={teacherId} version={version} toast={toast} />
       {spotting && <SpotDialog students={spotting} teacherId={teacherId} classId={c.id} toast={toast} onClose={() => { setSpotting(null); setTicked([]); }} />}
@@ -132,7 +136,7 @@ function ClassPage({ classId, teacherId, go, persona, version, toast }) {
         </table>
       )}
       <SpottedList teacherId={teacherId} classId={c.id} version={version} />
-      <PhotoDropList teacherId={teacherId} classId={c.id} version={version} />
+      <PhotoDropList teacherId={teacherId} classId={c.id} version={version} c={c} toast={toast} />
       <PeerClassList classId={c.id} version={version} />
     </div>
   );
@@ -168,6 +172,7 @@ function StudentRead({ classId, studentId, teacherId, go, persona, version, toas
             <MetroMap recent map={map} lens={lens} selectedId={sel} onSelect={setSel} fitKey={`mc-${studentId}`} />
             <StationPanel event={map.events.find((e) => e.id === sel)} map={map} onClose={() => setSel(null)} readOnly toast={toast} />
           </div>
+          <div className="mc-skills"><SkillsGrowthCard events={map.events} first={s.name.split(' ')[0]} onOpen={setSel} /></div>
         </div>
       ) : <div className="page"><div className="empty-state"><b>Nothing on {s.name.split(' ')[0]}’s map that you can see yet.</b></div></div>}
     </div>

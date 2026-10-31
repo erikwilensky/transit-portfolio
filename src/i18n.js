@@ -100,14 +100,9 @@ const LANG_KEY = 'transit-lang';
 export function savedLang() { try { const l = localStorage.getItem(LANG_KEY); return l === 'th' || l === 'en' ? l : null; } catch { return null; } }
 export function saveLang(l) { try { localStorage.setItem(LANG_KEY, l); } catch { /* storage blocked */ } }
 
-// Notifications are stored in English; the ones a family gets are rendered in Thai from their known templates.
+// Notifications are stored in English; known templates are rendered in Thai (below, and by later blocks).
 // Names and quoted titles (people's own words) stay as they are.
-const NOTE_TH = [
-  [/^(.+) asked you to look at a consent request$/, (m) => `${m[1]} ขอให้คุณดูคำขอความยินยอม`],
-  [/^(.+)’s family answered a consent request$/, (m) => `ครอบครัวของ ${m[1]} ตอบคำขอความยินยอมแล้ว`],
-  [/^Your parent said yes: (.+)$/, (m) => `ผู้ปกครองของคุณยินยอมแล้ว: ${m[1]}`],
-  [/^Your parent said no for now: (.+)$/, (m) => `ผู้ปกครองของคุณยังไม่ยินยอม: ${m[1]}`],
-];
+const NOTE_TH = [];
 export function noteText(lang, text) {
   if (lang !== 'th' || typeof text !== 'string') return text;
   for (const [re, f] of NOTE_TH) { const m = text.match(re); if (m) return f(m); }
@@ -149,62 +144,7 @@ const ERR_TH = {
 };
 export const errText = (lang, msg) => (lang === 'th' && ERR_TH[msg]) || msg;
 
-// Consent requests written from the school's templates (the seeds in src/api.js), in Thai. Other wording stays as written.
-const CONSENT = {
-  join: { en: (f) => [`${f}’s record in Transit Portfolio`, `Keep ${f}’s school activities in one record. ${f}, her advisor and you can see it; nothing leaves the school.`], th: (f) => [`บันทึกของ ${f} ใน Transit Portfolio`, `เก็บกิจกรรมที่โรงเรียนของ ${f} ไว้ในบันทึกเดียว ${f} ครูที่ปรึกษา และคุณเห็นได้ ไม่มีข้อมูลใดออกนอกโรงเรียน`] },
-  share: { en: (f) => ['Share links outside the school', `Let ${f} make share links, for example for a summer camp application. Every link expires, and each one appears in your weekly digest.`], th: (f) => ['ลิงก์แบ่งปันนอกโรงเรียน', `อนุญาตให้ ${f} สร้างลิงก์แบ่งปัน เช่น สำหรับสมัครค่ายภาคฤดูร้อน ทุกลิงก์มีวันหมดอายุ และจะแสดงในสรุปประจำสัปดาห์ของคุณ`] },
-  photos: { en: (f) => [`Photos where ${f} can be recognised`, `Allow photos of ${f} to appear as evidence on her stations. Off unless you say yes.`], th: (f) => [`รูปถ่ายที่เห็นหน้า ${f} ได้ชัดเจน`, `อนุญาตให้ใช้รูปถ่ายของ ${f} เป็นหลักฐานในรายการต่าง ๆ บนแผนที่ จะไม่แสดงจนกว่าคุณจะยินยอม`] },
-};
-// → [title, detail, lang of the text]
-export function consentText(lang, r, first) {
-  const c = CONSENT[r.kind];
-  if (lang !== 'th' || !c) return [r.title, r.detail, 'en'];
-  const [t, d] = c.en(first);
-  if (r.title !== t || r.detail !== d) return [r.title, r.detail, 'en'];
-  return [...c.th(first), 'th'];
-}
-
-// ── Conference booking, as a family reads it (src/components/ConferenceBooking.jsx). Times are Bangkok time. ──
-const CONF = {
-  en: {
-    head: 'Book a conference', intro: 'Pick one time for each child with their advisor. You can change or cancel until 24 hours before.',
-    tz: 'All times are Bangkok time.', with: (a) => `with ${a}`, online: 'Online', join: 'Join link', mins: (n) => `${n} minutes`,
-    pick: (f) => `Pick a time for ${f}`, booked: 'Booked', change: 'Change time', cancel: 'Cancel booking', keep: 'Keep this time',
-    sure: 'Cancel this booking?', yes: 'Yes, cancel', locked: 'Less than 24 hours to go. To change it, contact the advisor.',
-    taken: 'Taken', clash: (f) => `${f}’s time`, soon: 'Too soon', book: (t) => `Book ${t}`, none: 'No times are free. Contact the advisor.',
-    saved: (f, w) => `Booked ${f}’s conference: ${w}`, gone: (f) => `${f}’s booking is cancelled`, by: (a) => `Booked by ${a}`,
-    at: (d, t) => `${d}, ${t}`, times: (f, d) => `Times for ${f} on ${d}`,
-  },
-  th: {
-    head: 'จองเวลาประชุมผู้ปกครอง', intro: 'เลือกเวลาหนึ่งช่วงสำหรับบุตรหลานแต่ละคนกับครูที่ปรึกษา เปลี่ยนหรือยกเลิกได้จนถึง 24 ชั่วโมงก่อนเวลานัด',
-    tz: 'เวลาทั้งหมดเป็นเวลาประเทศไทย', with: (a) => `กับ ${a}`, online: 'ออนไลน์', join: 'ลิงก์เข้าร่วม', mins: (n) => `${n} นาที`,
-    pick: (f) => `เลือกเวลาสำหรับ ${f}`, booked: 'จองแล้ว', change: 'เปลี่ยนเวลา', cancel: 'ยกเลิกการจอง', keep: 'ใช้เวลาเดิม',
-    sure: 'ต้องการยกเลิกการจองนี้หรือไม่', yes: 'ยืนยันการยกเลิก', locked: 'เหลือเวลาน้อยกว่า 24 ชั่วโมง หากต้องการเปลี่ยน โปรดติดต่อครูที่ปรึกษา',
-    taken: 'ไม่ว่าง', clash: (f) => `ตรงกับเวลาของ ${f}`, soon: 'กระชั้นเกินไป', book: (t) => `จอง ${t} น.`, none: 'ไม่มีเวลาว่าง โปรดติดต่อครูที่ปรึกษา',
-    saved: (f, w) => `จองเวลาประชุมของ ${f} แล้ว: ${w}`, gone: (f) => `ยกเลิกการจองของ ${f} แล้ว`, by: (a) => `จองโดย ${a}`,
-    at: (d, t) => `${d} เวลา ${t} น.`, times: (f, d) => `เวลาสำหรับ ${f} วัน${d}`,
-  },
-};
-export const confWords = (lang) => CONF[lang === 'th' ? 'th' : 'en'];
-// "Tue 3 Nov" / "อ. 3 พ.ย." for a conference day (Bangkok dates).
-export const confDay = (lang, d) => new Date(`${d}T12:00:00+07:00`).toLocaleDateString(lang === 'th' ? 'th-TH' : 'en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Asia/Bangkok' });
-export const confSlotText = (lang, d, t) => confWords(lang).at(confDay(lang, d), t);
 const MON_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const thWhen = (d, mon, y, t) => `${dateIn('th', `${y}-${String(MON_EN.indexOf(mon) + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`)} เวลา ${t} น.`;
-const WHEN = '(\\d{1,2}) (\\w{3}) (\\d{4}) at (\\d{2}:\\d{2})';
-NOTE_TH.push(
-  [/^(.+) opened conference booking: “(.+)”\. Pick a time for (.+)$/, (m) => `${m[1]} เปิดให้จองเวลาประชุมผู้ปกครอง: “${m[2]}” เลือกเวลาสำหรับ ${m[3]}`],
-  [new RegExp(`^(.+) booked (.+)’s conference: ${WHEN}$`), (m) => `${m[1]} จองเวลาประชุมของ ${m[2]} แล้ว: ${thWhen(m[3], m[4], m[5], m[6])}`],
-  [new RegExp(`^(.+) cancelled (.+)’s conference on ${WHEN}$`), (m) => `${m[1]} ยกเลิกการประชุมของ ${m[2]} ${thWhen(m[3], m[4], m[5], m[6])}`],
-  [new RegExp(`^Reminder: (.+)’s conference with (.+) is tomorrow, ${WHEN} · (.+)$`), (m) => `เตือนความจำ: พรุ่งนี้ ${m[1]} มีนัดประชุมกับ ${m[2]} ${thWhen(m[3], m[4], m[5], m[6])} · ${m[7] === 'online' ? 'ออนไลน์' : m[7]}`],
-);
-Object.assign(ERR_TH, {
-  'That time was just taken. Pick another': 'มีผู้จองเวลานี้ไปแล้ว โปรดเลือกเวลาอื่น',
-  'Pick a time at least 24 hours ahead': 'โปรดเลือกเวลาที่ห่างจากตอนนี้อย่างน้อย 24 ชั่วโมง',
-  'Less than 24 hours to go: ask the advisor to change it': 'เหลือเวลาน้อยกว่า 24 ชั่วโมง โปรดติดต่อครูที่ปรึกษาเพื่อเปลี่ยนเวลา',
-  'That time has passed': 'เลยเวลานี้ไปแล้ว',
-  'Booking for this conference is closed': 'ปิดการจองแล้ว',
-});
 
 // ── Thai for students (src/thai.js): what a student reads at Simple, Standard and Full, shown in Thai at display time.
 // Plain, friendly Thai for 11–13 year olds. Keys are the English exactly as the screens write it. Students' and
@@ -381,7 +321,7 @@ const STU = {
   'Your family does not see comments.': 'ครอบครัวของคุณไม่เห็นความคิดเห็น', 'Change your comment': 'แก้ไขความคิดเห็นของคุณ', ' · edited': ' · แก้ไขแล้ว',
   'spotted something you did': 'สังเกตเห็นสิ่งที่คุณทำ', 'Add to my journey': 'เพิ่มลงเส้นทางของฉัน', 'Okay, it is not added.': 'ได้เลย ไม่เพิ่มแล้ว', 'Photo from your teacher': 'รูปจากครู',
   'Your browser turns what you say into words. This app does not record or keep your voice.': 'เบราว์เซอร์จะแปลงเสียงพูดของคุณเป็นตัวหนังสือ แอปนี้ไม่ได้อัดหรือเก็บเสียงของคุณ', OK: 'ตกลง',
-  Record: 'อัดเสียง', Stop: 'หยุด', 'Play again': 'เล่นอีกครั้ง', 'Record again': 'อัดใหม่', 'No voice note': 'ไม่ใช้ข้อความเสียง', 'Say it instead of typing': 'พูดแทนการพิมพ์',
+  Record: 'อัดเสียง', Stop: 'หยุด', 'Play again': 'เล่นอีกครั้ง', 'Record again': 'อัดใหม่', 'No voice note': 'ไม่ใช้ข้อความเสียง', 'Say it instead of typing': 'พูดเลย แทนการพิมพ์',
   'Speaking to type does not work in this browser. You can type instead.': 'เบราว์เซอร์นี้พูดแทนการพิมพ์ไม่ได้ พิมพ์แทนได้นะ', 'The microphone is not allowed here. You can type instead.': 'หน้านี้ยังไม่ได้รับอนุญาตให้ใช้ไมโครโฟน พิมพ์แทนได้นะ',
   'I did not hear anything. Try again, a bit closer.': 'ไม่ได้ยินเสียงเลย ลองอีกครั้ง พูดใกล้ ๆ หน่อย', 'The microphone could not start. You can type instead.': 'เปิดไมโครโฟนไม่ได้ พิมพ์แทนได้นะ',
   'Stop listening': 'หยุดฟัง', 'Listening… tap to stop': 'กำลังฟัง… แตะเพื่อหยุด', 'Say it': 'พูดเลย', 'Read this out loud': 'อ่านออกเสียง', 'Stop reading': 'หยุดอ่าน',
@@ -440,7 +380,7 @@ const STU = {
   'Stations I add': 'สถานีที่ฉันเพิ่ม', 'Items from school systems': 'รายการจากระบบของโรงเรียน', 'Stations on a line I end': 'สถานีบนสายที่ฉันจบ', 'New share links expire after': 'ลิงก์แบ่งปันใหม่หมดอายุหลังจาก', 'By line': 'ตามสาย',
   'Set every station on a line at once. You can still change single stations on the map.': 'ตั้งค่าทุกสถานีบนสายพร้อมกัน ยังเปลี่ยนทีละสถานีบนแผนที่ได้', Mixed: 'หลายแบบ', 'Waiting for a parent': 'รอผู้ปกครอง',
   "Students in Years 7 to 9 need a parent's consent before anything can be made publishable. Until then, everything stays inside the school.": 'นักเรียน Year 7 ถึง 9 ต้องได้รับความยินยอมจากผู้ปกครองก่อนจึงจะเผยแพร่ได้ จนถึงตอนนั้นทุกอย่างจะอยู่ภายในโรงเรียน',
-  'Send a reminder to my parent': 'ส่งข้อความเตือนผู้ปกครอง', 'Parent consent on file': 'มีการยินยอมจากผู้ปกครองแล้ว', "Recorded in the SIS when you joined. Under Thailand's PDPA you can ask the school to correct or delete your data at any time": 'บันทึกไว้ใน SIS ตอนที่คุณเข้าเรียน ตาม PDPA ของประเทศไทย คุณขอให้โรงเรียนแก้ไขหรือลบข้อมูลของคุณได้ทุกเมื่อ',
+  'Parent consent on file': 'มีการยินยอมจากผู้ปกครองแล้ว', "Recorded in the SIS when you joined. Under Thailand's PDPA you can ask the school to correct or delete your data at any time": 'บันทึกไว้ใน SIS ตอนที่คุณเข้าเรียน ตาม PDPA ของประเทศไทย คุณขอให้โรงเรียนแก้ไขหรือลบข้อมูลของคุณได้ทุกเมื่อ',
   ': ask the pilot admin, who can remove your record': ' โดยแจ้งผู้ดูแลระบบของโครงการนำร่อง ซึ่งลบบันทึกของคุณได้', 'School screens': 'จอของโรงเรียน',
   'At open evenings, in the library or on a lobby TV, the school may show moments you made publishable, with your first name and Year.': 'ในงานเปิดบ้าน ห้องสมุด หรือจอทีวีที่ล็อบบี้ โรงเรียนอาจแสดงเรื่องราวที่คุณตั้งให้เผยแพร่ได้ พร้อมชื่อจริงและ Year ของคุณ',
   "Don't show my moments on school screens": 'ไม่ต้องแสดงเรื่องราวของฉันบนจอของโรงเรียน', 'Take your map with you': 'นำแผนที่ติดตัวไปด้วย', 'When you graduate, or whenever you like, download your whole record. It is yours.': 'เมื่อเรียนจบ หรือเมื่อไรก็ได้ ดาวน์โหลดบันทึกทั้งหมดของคุณได้ เพราะเป็นของคุณ',
@@ -640,7 +580,7 @@ const STU_RE = [
   [/^[Cc]hecked in on “(.+)”: (.+)$/, (m, t) => `อัปเดต “${m[1]}”: ${t(m[2])}`], [/^[Mm]arked the goal “(.+)” as done$/, (m) => `ทำเป้าหมาย “${m[1]}” สำเร็จ`], [/^[Cc]losed the goal “(.+)”$/, (m) => `ปิดเป้าหมาย “${m[1]}”`],
   [/^[Aa]nswered “(.+)”$/, (m) => `ตอบ “${m[1]}”`], [/^[Ff]inished “(.+)”$/, (m) => `ทำ “${m[1]}” เสร็จ`], [/^[Hh]anded in “(.+)” again$/, (m) => `ส่ง “${m[1]}” อีกครั้ง`], [/^[Vv]iewed share link (\S+)$/, (m) => `เปิดดูลิงก์แบ่งปัน ${m[1]}`],
   [/^[Aa]ccepted “(.+)” from the inbox$/, (m) => `รับ “${m[1]}” จากกล่องรับเข้า`], [/^[Bb]ranched “(.+)” from (.+)$/, (m) => `แยกสายย่อย “${m[1]}” จาก ${m[2]}`], [/^[Ee]nded the (.+) line( \(its stations are now advisor-only\))?$/, (m) => `จบสาย ${m[1]}${m[2] ? ' (สถานีบนสายนี้เห็นได้เฉพาะครูที่ปรึกษาแล้ว)' : ''}`],
-  [/^[Rr]estarted the (.+) line$/, (m) => `เริ่มสาย ${m[1]} ใหม่`], [/^[Tt]agged “(.+)”: (.+)$/, (m) => `ติดแท็ก “${m[1]}”: ${m[2]}`], [/^[Ss]ent a reminder to a parent about consent$/, () => 'ส่งข้อความเตือนผู้ปกครองเรื่องการยินยอม'],
+  [/^[Rr]estarted the (.+) line$/, (m) => `เริ่มสาย ${m[1]} ใหม่`], [/^[Tt]agged “(.+)”: (.+)$/, (m) => `ติดแท็ก “${m[1]}”: ${m[2]}`],
   [/^[Mm]ade a leaver portfolio link(.*)$/, (m) => `สร้างลิงก์แฟ้มผลงานก่อนจบ${m[1]}`], [/^[Ww]ithdrew a leaver portfolio link(.*)$/, (m) => `ยกเลิกลิงก์แฟ้มผลงานก่อนจบ${m[1]}`],
   [/^[Cc]reated share link (\S+) for “(.+)”$/, (m) => `สร้างลิงก์แบ่งปัน ${m[1]} สำหรับ “${m[2]}”`], [/^[Cc]arried “(.+)” over to this year \((.+)\)$/, (m) => `นำ “${m[1]}” มาทำต่อในปีนี้ (${D(m[2])})`],
   [/^[Pp]aused check-ins on “(.+)” until (.+)$/, (m) => `พักการอัปเดต “${m[1]}” ถึง ${D(fmtDate(m[2]))}`],
@@ -657,8 +597,7 @@ const STU_RE = [
   [/^(.+) added a goal you agreed together: “(.+)”$/, (m) => `${m[1]} เพิ่มเป้าหมายที่คุณตกลงกันไว้: “${m[2]}”`], [/^(.+) checked in on “(.+)”$/, (m) => `${m[1]} ติดตามเรื่อง “${m[2]}”`],
   [/^(.+) approved your new line “(.+)”$/, (m) => `${m[1]} อนุมัติสายใหม่ “${m[2]}” ของคุณแล้ว`], [/^Your line “(.+)” was merged into “(.+)”$/, (m) => `สาย “${m[1]}” ของคุณถูกรวมเข้ากับ “${m[2]}” แล้ว`],
   [/^(.+) from (.+) (?:is|are) in your inbox\. You choose where (?:it goes|they go)\.$/, (m) => `${m[1].replace(/^(\d+) items?$/, '$1 รายการ')} จาก ${m[2]} อยู่ในกล่องรับเข้าของคุณ คุณเลือกเองว่าจะไปอยู่ที่ไหน`],
-  [/^(.+) left a comment on your leaver portfolio$/, (m) => `${m[1]} แสดงความคิดเห็นในแฟ้มผลงานก่อนจบของคุณ`], [/^Your conference with (.+) is on (.+)$/, (m) => `การประชุมของคุณกับ ${m[1]} คือ ${thaiDates(m[2]).replace(/ at (\d\d:\d\d)$/, ' เวลา $1 น.')}`],
-  [/^Your conference on (.+) was cancelled$/, (m) => `การประชุมวันที่ ${thaiDates(m[1]).replace(/ at (\d\d:\d\d)$/, ' เวลา $1 น.')} ถูกยกเลิกแล้ว`],
+  [/^(.+) left a comment on your leaver portfolio$/, (m) => `${m[1]} แสดงความคิดเห็นในแฟ้มผลงานก่อนจบของคุณ`],
   [/^(.+) would like to show your moment “(.+)” to other students as an example\. Your name is not shown\.$/, (m) => `${m[1]} อยากนำเรื่อง “${m[2]}” ของคุณไปให้นักเรียนคนอื่นดูเป็นตัวอย่าง โดยไม่แสดงชื่อของคุณ`],
   [/^A teacher has hidden (.+) while they look at it\.$/, (m, t) => `ครูซ่อน${t(m[1])}ไว้ระหว่างตรวจดู`], [/^A teacher has finished looking at (.+)\. It is shown again\.$/, (m, t) => `ครูตรวจดู${t(m[1])}เสร็จแล้ว แสดงอีกครั้งแล้ว`],
   [/^A teacher has removed the photo from “(.+)”\.$/, (m) => `ครูลบรูปออกจาก “${m[1]}” แล้ว`], [/^A teacher has hidden kind feedback on “(.+)”\.$/, (m) => `ครูซ่อนคำติชมในเรื่อง “${m[1]}” แล้ว`],
@@ -760,32 +699,17 @@ Object.assign(STU, {
   'In Year 11 this is a practice run: everything works, so you are ready next year.': 'ใน Year 11 เป็นการฝึกทำ ทุกอย่างใช้ได้จริง ปีหน้าคุณจะพร้อม', 'It is on your': 'ตอนนี้อยู่บนสาย', 'line now, waiting for': 'ของคุณแล้ว รอ', 'to check it.': 'ตรวจ',
   'One or two sentences is plenty.': 'หนึ่งหรือสองประโยคก็พอแล้ว', You: 'คุณ', 'Started, not finished': 'เริ่มแล้ว ยังไม่เสร็จ',
 });
-// ── Family encouragement (src/components/FamilyNotes.jsx): the student's side, and the family's thank-you notice. Only keys
-// not already known are added. The family's own screens carry their Thai in the component. ──
+// ── Generic words several screens use ──
 for (const [k, v] of Object.entries({
-  'Notes from your family': 'ข้อความจากครอบครัว', 'From your family': 'จากครอบครัวของคุณ', 'Notes from family': 'ข้อความจากครอบครัว',
-  'Proud of you': 'ภูมิใจในตัวลูกนะ', 'Well done': 'เก่งมาก', 'Tell me more at dinner': 'มื้อเย็นนี้เล่าให้ฟังหน่อยนะ', 'Keep going': 'สู้ต่อไปนะ',
-  'Open the moment': 'เปิดดูเรื่องนี้', 'Show again': 'แสดงอีกครั้ง', 'Show 1 hidden note': 'แสดงข้อความที่ซ่อนไว้ 1 ข้อความ',
-  'Hidden. You will not see it here.': 'ซ่อนแล้ว คุณจะไม่เห็นข้อความนี้ที่นี่', 'Report this note': 'รายงานข้อความนี้', 'Tell a teacher': 'บอกครู',
+  'Open the moment': 'เปิดดูเรื่องนี้', 'Show again': 'แสดงอีกครั้ง', 'Tell a teacher': 'บอกครู',
   'Send report': 'ส่งรายงาน', 'Cancel': 'ยกเลิก', 'What is wrong': 'มีอะไรไม่ถูกต้อง',
-  'Let my family leave kind notes on moments they can see': 'ให้ครอบครัวเขียนข้อความให้กำลังใจในเรื่องที่ครอบครัวเห็นได้',
-  'Your family can leave a short kind note on moments they can see. Your advisor and teachers can read them too.': 'ครอบครัวเขียนข้อความสั้น ๆ ให้กำลังใจในเรื่องที่เห็นได้ ครูที่ปรึกษาและครูผู้สอนอ่านได้ด้วย',
-  'Your family can leave notes again.': 'ครอบครัวเขียนข้อความถึงคุณได้อีกครั้งแล้ว',
-  'Notes from family are off. You can turn them on again here.': 'ปิดข้อความจากครอบครัวแล้ว เปิดอีกครั้งได้ที่นี่',
 })) STU[k] ??= v;
-STU_RE.push(
-  [/^From (.+)$/, (m) => `จาก ${m[1]}`], [/^on “(.+)”$/, (m) => `ในเรื่อง “${m[1]}”`],
-  [/^Show (\d+) hidden notes$/, (m) => `แสดงข้อความที่ซ่อนไว้ ${m[1]} ข้อความ`],
-  [/^A teacher has hidden a note from your family on “(.+)”\.$/, (m) => `ครูซ่อนข้อความจากครอบครัวในเรื่อง “${m[1]}” ไว้ชั่วคราว`],
-  [/^A teacher has finished looking at a note from your family on “(.+)”\. It is shown again\.$/, (m) => `ครูตรวจดูข้อความจากครอบครัวในเรื่อง “${m[1]}” เสร็จแล้ว ข้อความแสดงอีกครั้ง`],
-);
-NOTE_TH.push([/^(.+) said thank you for your note on “(.+)”\.$/, (m) => `${m[1]} ขอบคุณสำหรับข้อความของคุณในเรื่อง “${m[2]}”`]);
-for (const [k, v] of Object.entries({
-  'This moment is not shared with the family.': 'เรื่องนี้ไม่ได้แบ่งปันให้ครอบครัวเห็น', 'Notes from family are turned off for now.': 'ปิดรับข้อความจากครอบครัวไว้ชั่วคราว',
-  'You already left a note on this moment. You can change it.': 'คุณเขียนข้อความในเรื่องนี้แล้ว แก้ไขได้', 'Keep it to 280 characters.': 'เขียนได้ไม่เกิน 280 ตัวอักษร',
-  'Write a few words or pick a reaction.': 'เขียนสักสองสามคำ หรือเลือกคำให้กำลังใจ', 'Only the person who wrote a note can change it.': 'เฉพาะผู้เขียนข้อความเท่านั้นที่แก้ไขได้',
-  'That note is gone.': 'ไม่มีข้อความนี้แล้ว', 'Pick one of the reactions.': 'เลือกคำให้กำลังใจหนึ่งคำ',
-})) ERR_TH[k] ??= v;
+STU_RE.push([/^From (.+)$/, (m) => `จาก ${m[1]}`], [/^on “(.+)”$/, (m) => `ในเรื่อง “${m[1]}”`]);
+// Privacy (a student's consent card): the school records a family's consent (api.recordFamilyConsent).
+Object.assign(STU, {
+  "Students in Years 7 to 9 need a parent's consent before anything can be made publishable. Until then, everything stays inside the school. Your advisor records it when your family gives it to the school.": 'นักเรียน Year 7 ถึง 9 ต้องได้รับความยินยอมจากผู้ปกครองก่อนจึงจะเผยแพร่ได้ จนถึงตอนนั้นทุกอย่างจะอยู่ภายในโรงเรียน ครูที่ปรึกษาจะบันทึกไว้เมื่อครอบครัวของคุณให้ความยินยอมกับโรงเรียน',
+  "Recorded by the school. Under Thailand's PDPA you can ask the school to correct or delete your data at any time": 'โรงเรียนบันทึกไว้แล้ว ตาม PDPA ของประเทศไทย คุณขอให้โรงเรียนแก้ไขหรือลบข้อมูลของคุณได้ทุกเมื่อ',
+});
 // Keys written with the spaces JSX leaves around them: the page is matched without them (src/thai.js keeps the spaces).
 for (const k of Object.keys(STU)) if (k !== k.trim()) { STU[k.trim()] ??= STU[k].trim(); delete STU[k]; }
 const plainTh = (s) => STU[s] ?? (Object.hasOwn(TH, s) && !['Year', 'T'].includes(s) ? TH[s] : null) ?? (ERR_TH[s] || null);
@@ -816,25 +740,9 @@ STU_RE.push(
   [/^(\d{1,2} \w{3} \d{4}) to (\d{1,2} \w{3} \d{4})$/, (m) => `${D(m[1])} ถึง ${D(m[2])}`],
   [/^(.+\?) \(optional\)$/, (m) => `${m[1]} (ไม่บังคับ)`],
 );
-// ── Student-led conferences (src/components/StudentLed.jsx): the family's line in Thai or English, the student's screens and
-// Conference mode in Thai, and the notifications. Keys are written trimmed (this block comes after the trim above).
-const SLC = {
-  en: {
-    head: (f) => `After ${f}’s conference`, intro: (f) => `One line each, kept on ${f}’s conference note. ${f} and the advisor see it too.`,
-    home: 'What we will try at home', next: (f) => `What ${f} will do next`, none: 'Not written yet.', notYet: (f) => `${f} has not written theirs yet.`,
-    by: (a) => `Written by ${a}`, ph: 'e.g. Read together for 20 minutes after dinner', write: 'Write our line', change: 'Change our line',
-    save: 'Save', cancel: 'Cancel', saved: 'Saved on the conference note',
-  },
-  th: {
-    head: (f) => `หลังการประชุมของ ${f}`, intro: (f) => `เขียนคนละหนึ่งบรรทัด เก็บไว้ในบันทึกการประชุมของ ${f} ซึ่ง ${f} และครูที่ปรึกษาจะเห็นด้วย`,
-    home: 'สิ่งที่เราจะลองทำที่บ้าน', next: (f) => `สิ่งที่ ${f} จะทำต่อไป`, none: 'ยังไม่ได้เขียน', notYet: (f) => `${f} ยังไม่ได้เขียน`,
-    by: (a) => `เขียนโดย ${a}`, ph: 'เช่น อ่านหนังสือด้วยกัน 20 นาทีหลังอาหารเย็น', write: 'เขียนบรรทัดของเรา', change: 'แก้ไขบรรทัดของเรา',
-    save: 'บันทึก', cancel: 'ยกเลิก', saved: 'บันทึกในบันทึกการประชุมแล้ว',
-  },
-};
-export const slcWords = (lang) => SLC[lang === 'th' ? 'th' : 'en'];
+// ── Student-led conferences (src/components/StudentLed.jsx): the student's screens and Conference mode in Thai, and the
+// notifications. Keys are written trimmed (this block comes after the trim above).
 NOTE_TH.push(
-  [/^Your family wrote on your conference note$/, () => 'ครอบครัวของคุณเขียนในบันทึกการประชุมของคุณแล้ว'],
   [/^(.+) wrote on your conference note$/, (m) => `${m[1]} เขียนในบันทึกการประชุมของคุณแล้ว`],
   [/^(.+) wrote on (.+)’s conference note$/, (m) => `${m[1]} เขียนในบันทึกการประชุมของ ${m[2]} แล้ว`],
 );
@@ -846,9 +754,9 @@ Object.assign(STU, {
   'Today is your conference': 'วันนี้เป็นวันประชุมของคุณ', 'Get ready for my conference': 'เตรียมตัวสำหรับการประชุมของฉัน',
   'You are ready. You can still change it before the day.': 'คุณพร้อมแล้ว ยังแก้ไขได้ก่อนถึงวันประชุม',
   'Pick a few things to show your family and say what you are proud of. It takes about 5 minutes.': 'เลือกสิ่งที่อยากให้ครอบครัวดูสักสองสามอย่าง และบอกว่าคุณภูมิใจในเรื่องอะไร ใช้เวลาประมาณ 5 นาที',
-  'No time booked yet. Your family picks one.': 'ยังไม่ได้จองเวลา ครอบครัวของคุณจะเป็นคนเลือก', 'Start my conference': 'เริ่มการประชุมของฉัน', 'Change it': 'แก้ไข', 'Get ready': 'เตรียมตัว',
-  'My conference note': 'บันทึกการประชุมของฉัน', 'What we will try at home': 'สิ่งที่เราจะลองทำที่บ้าน', 'What I will do next': 'สิ่งที่ฉันจะทำต่อไป',
-  'Your family adds this on their Family page.': 'ครอบครัวของคุณเขียนส่วนนี้ในหน้าครอบครัวของพวกเขา', 'Not written yet.': 'ยังไม่ได้เขียน', 'What will you do next?': 'คุณจะทำอะไรต่อไป',
+  'Conferences are on now': 'ช่วงนี้เป็นช่วงการประชุมผู้ปกครอง', 'Start my conference': 'เริ่มการประชุมของฉัน', 'Change it': 'แก้ไข', 'Get ready': 'เตรียมตัว',
+  'My conference note': 'บันทึกการประชุมของฉัน', 'What I will do next': 'สิ่งที่ฉันจะทำต่อไป',
+  'Not written yet.': 'ยังไม่ได้เขียน', 'What will you do next?': 'คุณจะทำอะไรต่อไป',
   'Change my line': 'แก้ไขบรรทัดของฉัน', 'Write what I will do next': 'เขียนสิ่งที่ฉันจะทำต่อไป', 'Open my conference': 'เปิดการประชุมของฉัน', 'Saved on your conference note': 'บันทึกในบันทึกการประชุมของคุณแล้ว',
   'This shows…': 'สิ่งนี้แสดงว่า…', 'I am proud of it because…': 'ฉันภูมิใจเพราะ…', 'I learned…': 'ฉันได้เรียนรู้ว่า…', 'I am proud that…': 'ฉันภูมิใจที่…', 'I am proud of how I…': 'ฉันภูมิใจที่ฉัน…',
   'I found it tricky to…': 'ฉันรู้สึกว่ายากที่จะ…', 'I kept going by…': 'ฉันไม่ยอมแพ้โดย…', 'I will try to…': 'ฉันจะพยายาม…', 'Next I will…': 'ต่อไปฉันจะ…',
@@ -867,13 +775,13 @@ Object.assign(STU, {
   'Conference mode': 'โหมดการประชุม', 'Offline: this still works. What you write is kept here and sent when you are back online.': 'ออฟไลน์: ยังใช้งานได้ สิ่งที่เขียนจะเก็บไว้ในเครื่องนี้และส่งเมื่อกลับมาออนไลน์',
   'Full screen': 'เต็มจอ', 'I picked a few things to show you.': 'ฉันเลือกบางอย่างมาให้ดู', 'What I will show you': 'สิ่งที่ฉันจะนำเสนอ', 'Let’s talk about my journey together.': 'มาคุยเรื่องเส้นทางของฉันด้วยกัน',
   'Nothing prepared yet. You can still talk through the journey together.': 'ยังไม่ได้เตรียมอะไร ยังคุยเรื่องเส้นทางด้วยกันได้', 'Our next steps': 'ก้าวต่อไปของเรา',
-  'One line each, to keep on the conference note.': 'คนละหนึ่งบรรทัด เก็บไว้ในบันทึกการประชุม', 'Saved on the conference note': 'บันทึกในบันทึกการประชุมแล้ว',
+  'One line, to keep on the conference note.': 'หนึ่งบรรทัด เก็บไว้ในบันทึกการประชุม', 'Saved on the conference note': 'บันทึกในบันทึกการประชุมแล้ว',
 });
 STU_RE.push(
   [/^Pick up to (\d+) moments to show, say what you are proud of, one thing that was hard and one goal\.$/, (m) => `เลือกช่วงเวลาที่อยากนำเสนอได้สูงสุด ${m[1]} อย่าง บอกว่าคุณภูมิใจในเรื่องอะไร เรื่องหนึ่งที่ยาก และเป้าหมายหนึ่งอย่าง`],
   [/^Pick up to (\d+) moments\. Private moments are not here\.$/, (m) => `เลือกได้สูงสุด ${m[1]} ช่วงเวลา ช่วงเวลาส่วนตัวไม่แสดงที่นี่`],
   [/^Tap up to (\d+) things\.$/, (m) => `แตะเลือกได้สูงสุด ${m[1]} อย่าง`],
-  [/^Your conference: (.+)$/, (m) => `การประชุมของคุณ: ${thaiDates(m[1]).replace(/, (\d\d:\d\d)$/, ' เวลา $1 น.')}`],
+  [/^Your conference: (.+)$/, (m, t) => `การประชุมของคุณ: ${t(m[1])}`],
   [/^Written by (.+)$/, (m) => `เขียนโดย ${m[1]}`],
   [/^A goal I have · (.+)$/, (m) => `เป้าหมายที่ฉันมีอยู่ · ${thaiDates(m[1])}`],
   [/^Well done, (.+)!$/, (m) => `เก่งมาก ${m[1]}!`],
@@ -901,3 +809,150 @@ STU_RE.push(
   [/^· (\d+) to look at$/, (m) => `· ดูอีก ${m[1]} รายการ`],
   [/^[A-Z0-9][A-Za-z0-9 ]+(, [A-Z0-9][A-Za-z0-9 ]+)+$/, (m) => { const p = m[0].split(', ').map((x) => studentThai(x)); return p.every((x) => x != null) ? p.join(', ') : null; }],
 );
+// ── Advisor year sign-off (src/components/YearSignoff.jsx): the student's card and its notification ──
+for (const [k, v] of Object.entries({
+  'Your advisor has signed off your year': 'ครูที่ปรึกษารับรองปีการศึกษานี้ของคุณแล้ว', 'Well done on your year.': 'ปีนี้คุณทำได้ดีมาก',
+  'Your term reflection': 'การทบทวนภาคเรียนของคุณ', 'A goal to work towards': 'เป้าหมายที่กำลังมุ่งไป', 'Your moving-up summary': 'สรุปก่อนเลื่อนชั้นของคุณ',
+  'Moments on 1 line': 'เรื่องราวบน 1 สาย', '1 endorsed moment': 'เรื่องราวที่ครูรับรอง 1 เรื่อง', '1 goal met': 'ทำเป้าหมายสำเร็จ 1 อย่าง',
+  '1 hour of CAS confirmed': 'ชั่วโมง CAS ที่ยืนยันแล้ว 1 ชั่วโมง', Hide: 'ซ่อน',
+})) STU[k] ??= v;
+STU_RE.push(
+  [/^(.+) looked back at your year\. What stood out:$/, (m) => `${m[1]} มองย้อนดูปีนี้ของคุณแล้ว สิ่งที่โดดเด่นคือ:`],
+  [/^Moments on (\d+) lines$/, (m) => `เรื่องราวบน ${m[1]} สาย`],
+  [/^(\d+) endorsed moments$/, (m) => `เรื่องราวที่ครูรับรอง ${m[1]} เรื่อง`],
+  [/^(\d+) goals met$/, (m) => `ทำเป้าหมายสำเร็จ ${m[1]} อย่าง`],
+  [/^(\d+) hours of CAS confirmed$/, (m) => `ชั่วโมง CAS ที่ยืนยันแล้ว ${m[1]} ชั่วโมง`],
+);
+NOTE_TH.push([/^(.+) signed off your year\. Well done!$/, (m) => `${m[1]} รับรองปีการศึกษานี้ของคุณแล้ว เก่งมาก!`]);
+// ── Moment templates (src/components/MomentTemplates.jsx, api.MT_BUILTIN): "Use a guide", every built-in template's name,
+// what it is for, its headings, questions and sentence starters, and the guide a teacher put on a task or question. ──
+for (const [k, v] of Object.entries({
+  'Use a guide': 'ใช้ตัวช่วยเขียน', 'Stop using the guide': 'เลิกใช้ตัวช่วยเขียน', 'Sentence starters': 'ประโยคเริ่มต้น', // the last: Ideas for this line, beside a guide
+  'Lab write-up': 'บันทึกการทดลอง', 'For an experiment or investigation.': 'สำหรับการทดลองหรือการสืบค้น',
+  'The question': 'คำถาม', 'What I did': 'สิ่งที่ฉันทำ', 'What I found': 'สิ่งที่ฉันพบ', 'What I’d change': 'สิ่งที่ฉันจะเปลี่ยน', 'Then I…': 'จากนั้นฉัน…',
+  'Reading log': 'บันทึกการอ่าน', 'For a book you read, in any language.': 'สำหรับหนังสือที่คุณอ่าน ภาษาอะไรก็ได้',
+  Book: 'หนังสือ', Author: 'ผู้เขียน', 'What stayed with me': 'สิ่งที่ฉันยังจำได้', 'What book did you read?': 'คุณอ่านหนังสืออะไร', 'Who wrote it?': 'ใครเป็นคนเขียน',
+  'What stayed with you after reading it?': 'อ่านจบแล้ว อะไรยังติดอยู่ในใจคุณ', 'It was written by…': 'หนังสือเล่มนี้เขียนโดย…', 'The part I remember most is…': 'ตอนที่ฉันจำได้มากที่สุดคือ…', 'It made me think about…': 'มันทำให้ฉันคิดถึง…',
+  'Match or competition': 'การแข่งขัน', 'For a game, race, contest or competition.': 'สำหรับเกม การวิ่งแข่ง การประกวด หรือการแข่งขัน',
+  Event: 'รายการแข่งขัน', Result: 'ผลการแข่งขัน', 'What went well': 'สิ่งที่ทำได้ดี', 'Next time': 'ครั้งหน้า',
+  'What was the match or competition?': 'เป็นการแข่งขันอะไร', 'What was the result?': 'ผลออกมาเป็นอย่างไร', 'What went well?': 'อะไรที่ทำได้ดี', 'What will you work on next time?': 'ครั้งหน้าคุณจะฝึกเรื่องอะไร',
+  'We played against…': 'เราแข่งกับ…', 'I took part in…': 'ฉันเข้าร่วม…', 'We won…': 'เราชนะ…', 'We lost…': 'เราแพ้…', 'I came…': 'ฉันได้อันดับ…', 'I was proud of…': 'ฉันภูมิใจที่…', 'We played well when…': 'เราเล่นได้ดีตอนที่…',
+  'Performance or exhibition': 'การแสดงหรือนิทรรศการ', 'For a concert, a show, a display or an exhibition.': 'สำหรับคอนเสิร์ต การแสดง การจัดแสดง หรือนิทรรศการ',
+  'What I showed': 'สิ่งที่ฉันแสดง', 'Getting ready': 'การเตรียมตัว', 'On the day': 'ในวันจริง', 'What people said': 'คนอื่นพูดว่าอย่างไร',
+  'What did you perform or show?': 'คุณแสดงหรือนำเสนออะไร', 'How did you get ready?': 'คุณเตรียมตัวอย่างไร', 'How did it go on the day?': 'ในวันจริงเป็นอย่างไรบ้าง', 'What did people say about it?': 'คนอื่นพูดถึงมันว่าอย่างไร',
+  'What would you do differently next time?': 'ครั้งหน้าคุณจะทำอะไรต่างไป', 'I performed…': 'ฉันแสดง…', 'I showed…': 'ฉันนำเสนอ…', 'On the day…': 'ในวันจริง…', 'I felt…': 'ฉันรู้สึก…', 'People said…': 'คนอื่นบอกว่า…',
+  'Trip or service day': 'ทัศนศึกษาหรือวันจิตอาสา', 'For a school trip, a visit or a day helping others.': 'สำหรับทัศนศึกษา การไปเยี่ยมชม หรือวันที่ไปช่วยเหลือผู้อื่น',
+  'Where we went': 'ที่ที่เราไป', 'What I learnt': 'สิ่งที่ฉันได้เรียนรู้', 'Why it mattered': 'ทำไมจึงสำคัญ',
+  'Where did you go, and why?': 'คุณไปที่ไหน และไปทำไม', 'What did you do there?': 'คุณทำอะไรที่นั่น', 'What did you learn or notice?': 'คุณได้เรียนรู้หรือสังเกตเห็นอะไร', 'Why did it matter, to others or to you?': 'ทำไมเรื่องนี้จึงสำคัญ ต่อคนอื่นหรือต่อตัวคุณ',
+  'We went to…': 'เราไปที่…', 'I helped…': 'ฉันช่วย…', 'I learnt that…': 'ฉันได้เรียนรู้ว่า…', 'It mattered because…': 'เรื่องนี้สำคัญเพราะ…',
+  'Project milestone': 'ความคืบหน้าของโครงงาน', 'For a step along the way in a longer project.': 'สำหรับก้าวหนึ่งระหว่างทางของโครงงานที่ใช้เวลานาน',
+  'The project': 'โครงงาน', 'Where I am now': 'ตอนนี้ฉันอยู่ตรงไหน', 'What was hard': 'สิ่งที่ยาก', 'Next step': 'ขั้นต่อไป',
+  'What is the project?': 'โครงงานนี้คืออะไร', 'What have you finished so far?': 'ตอนนี้คุณทำอะไรเสร็จไปแล้วบ้าง', 'What was hard, and how did you deal with it?': 'อะไรยาก และคุณจัดการอย่างไร', 'What is your next step?': 'ขั้นต่อไปของคุณคืออะไร',
+  'My project is…': 'โครงงานของฉันคือ…', 'So far I have…': 'ตอนนี้ฉัน…ไปแล้ว',
+})) STU[k] ??= v;
+STU_RE.push(
+  [/^Ways to start: (.+)$/, (m, t) => `ลองเริ่มแบบนี้: ${t(m[1])}`],
+  [/^(.+) gave you a guide:$/, (m) => `${m[1]} ให้ตัวช่วยเขียนกับคุณ:`],
+);
+// Skills growth (src/components/SkillsGrowth.jsx): My skills and picking skills for a moment; the family card uses SKILL_WORDS_TH.
+export const SKILL_WORDS_TH = { Inquirer: 'ตั้งคำถาม', Knowledgeable: 'เรียนรู้สิ่งใหม่', Thinker: 'แก้ปัญหา', Communicator: 'แบ่งปันความคิดของฉัน',
+  Principled: 'ทำในสิ่งที่ถูกต้อง', 'Open-minded': 'มองจากมุมของคนอื่น', Caring: 'ช่วยเหลือผู้อื่น', 'Risk-taker': 'ลองสิ่งใหม่', Balanced: 'ดูแลตัวเอง',
+  Reflective: 'มองย้อนกลับและเรียนรู้', Thinking: 'คิดไอเดียใหม่', Communication: 'พูดและเขียน', Social: 'ทำงานร่วมกับผู้อื่น', 'Self-management': 'จัดการตัวเอง',
+  Research: 'ค้นหาคำตอบ' };
+for (const [k, v] of Object.entries({ Inquirer: 'Asking questions', Knowledgeable: 'Learning new things', Thinker: 'Solving problems', Communicator: 'Sharing my ideas',
+  Principled: 'Doing the right thing', 'Open-minded': 'Seeing other points of view', Caring: 'Helping others', 'Risk-taker': 'Trying something new',
+  Balanced: 'Looking after myself', Reflective: 'Looking back and learning', Thinking: 'Coming up with ideas', Communication: 'Speaking and writing',
+  Social: 'Working with others', 'Self-management': 'Organising myself', Research: 'Finding things out' })) STU[v] ??= SKILL_WORDS_TH[k];
+for (const [k, v] of Object.entries({
+  'My skills': 'ทักษะของฉัน', 'Skills I’ve used': 'ทักษะที่ฉันใช้', 'When you add a moment, pick the skills you used. They collect here.': 'เมื่อเพิ่มเรื่องราว ให้เลือกทักษะที่คุณใช้ ทักษะจะมารวมกันที่นี่',
+  'No skills here yet. Pick some for a moment below.': 'ยังไม่มีทักษะ ลองเลือกให้เรื่องราวด้านล่าง', 'When I used it': 'ตอนที่ฉันใช้ทักษะนี้',
+  'Add skills to a moment': 'เพิ่มทักษะให้เรื่องราว', 'Skills to look out for': 'ทักษะที่น่าลองสังเกต', 'Moments with no skills yet': 'เรื่องราวที่ยังไม่มีทักษะ',
+  'Every moment this school year has skills. Well done.': 'ทุกเรื่องราวในปีการศึกษานี้มีทักษะแล้ว เก่งมาก', 'Add a moment and pick the skills you used.': 'เพิ่มเรื่องราวแล้วเลือกทักษะที่คุณใช้',
+  'How my skills are growing': 'ทักษะของฉันเติบโตอย่างไร', 'Skills by term': 'ทักษะแยกตามภาคเรียน',
+  'No skills picked yet. Add skills to a moment and they show up here.': 'ยังไม่ได้เลือกทักษะ เพิ่มทักษะให้เรื่องราวแล้วจะแสดงที่นี่',
+  'Moments behind it': 'เรื่องราวที่เกี่ยวข้อง', 'Learner profile': 'คุณลักษณะผู้เรียน IB', 'Approaches to learning': 'ทักษะการเรียนรู้ (ATL)',
+  'What kind of learner I was': 'ฉันเป็นผู้เรียนแบบไหน', 'What I did': 'สิ่งที่ฉันทำ', 'Show as a table': 'แสดงเป็นตาราง', 'Show as a chart': 'แสดงเป็นแผนภูมิ',
+  'Skill': 'ทักษะ', 'This school year': 'ปีการศึกษานี้', 'Terms': 'ภาคเรียน', 'Not yet': 'ยังไม่มี', 'Moments showing each skill, by term': 'เรื่องราวที่แสดงแต่ละทักษะ แยกตามภาคเรียน',
+  'Which skills did I use? (optional)': 'ฉันใช้ทักษะอะไรบ้าง (ไม่บังคับ)', 'Which skills did I use?': 'ฉันใช้ทักษะอะไรบ้าง', 'Add skills (optional)': 'เพิ่มทักษะ (ไม่บังคับ)',
+  'Skills this moment shows': 'ทักษะที่เรื่องราวนี้แสดง', 'Pick up to 3. You can skip this.': 'เลือกได้สูงสุด 3 อย่าง ข้ามได้', 'That is 3. Tap one again to change it.': 'ครบ 3 อย่างแล้ว แตะอีกครั้งเพื่อเปลี่ยน',
+  'Change skills': 'เปลี่ยนทักษะ', 'Add skills': 'เพิ่มทักษะ', 'Save skills': 'บันทึกทักษะ', 'Skills saved.': 'บันทึกทักษะแล้ว', 'Skills taken off.': 'เอาทักษะออกแล้ว',
+  'Skills I used': 'ทักษะที่ฉันใช้',
+})) STU[k] ??= v;
+STU_RE.push(
+  [/^Term (\d)$/, (m) => `ภาคเรียนที่ ${m[1]}`], [/^Term (\d) · now$/, (m) => `ภาคเรียนที่ ${m[1]} · ตอนนี้`],
+  [/^Term (\d): (\d+) moments?$/, (m) => `ภาคเรียนที่ ${m[1]}: ${m[2]} เรื่องราว`],
+  [/^\((\d+) in Term 1, (\d+) in Term 2, (\d+) in Term 3\)$/, (m) => `(ภาคเรียนที่ 1: ${m[1]}, ภาคเรียนที่ 2: ${m[2]}, ภาคเรียนที่ 3: ${m[3]})`],
+  [/^(.+) · (When I used it|Moments behind it)$/, (m) => { const a = studentThai(m[1]); return a ? `${a} · ${STU[m[2]]}` : null; }],
+  [/^This school year \((\d{4})–(\d\d)\), from the skills you picked for your moments\. It is your own picture: no scores, and nobody is compared\.$/,
+    (m) => `ปีการศึกษานี้ (${m[1]}–${m[2]}) จากทักษะที่คุณเลือกให้กับเรื่องราวของคุณ เป็นภาพของคุณเอง ไม่มีคะแนน และไม่มีการเปรียบเทียบกับใคร`],
+  [/^(\d+) moments? this school year (?:has|have) no skills picked\. Suggestions the app made are not counted until you pick them\.$/,
+    (m) => `เรื่องราว ${m[1]} รายการในปีการศึกษานี้ยังไม่ได้เลือกทักษะ ทักษะที่แอปแนะนำจะยังไม่นับจนกว่าคุณจะเลือก`],
+);
+// Not seen lately (src/components/NotSeen.jsx): a subject teacher's nudge, on the student's banner and in their bell.
+Object.assign(STU, { 'Add one thing you did for this subject.': 'เพิ่มสิ่งหนึ่งที่คุณทำในวิชานี้' });
+STU_RE.push(
+  [/^(.+) would love to see something from (.+): “(.+)”$/, (m) => `${m[1]} อยากเห็นผลงานของคุณในวิชา ${m[2]}: “${m[3]}”`],
+  [/^(.+) would love to see something from (.+)$/, (m) => `${m[1]} อยากเห็นผลงานของคุณในวิชา ${m[2]}`],
+);
+// ── Moving-up summaries (src/components/MovingUp.jsx): the summary's labels and the sheet, in the reader's language
+// (families get Thai from here; students' screens are English, matched below), then the student's flow. ──
+const MU = {
+  en: {
+    head: 'Where I’ve been, where I’m going', moments: 'Moments I picked', who: 'Who I am', proud: 'What I’m proud of', learn: 'How I learn best',
+    helps: 'What helps me', hopes: 'My hopes for Year 10', hopesDp: 'My hopes for the IB Diploma', goal: 'Now a goal on my journey',
+    dp: 'IB Diploma subjects I’m thinking about', cas: 'CAS ideas: creative, active, helping others', onePage: 'One A4 page. Print it or save it as a PDF.',
+    print: 'Print', close: 'Close', stage9: 'Year 9, moving up to Year 10 (IB MYP)', stage11: 'Year 11, moving up to the IB Diploma (Years 12 and 13)',
+    forNext: 'For my next advisor', written: (d) => `Written on ${d}`, famYes: 'My family can see it', famNo: 'Not shown to my family',
+    famHead: (f) => `${f}’s moving-up summary`, famIntro: (f, y) => `${f} wrote this at the end of Year ${y} for their next advisor, and chose to share it with you.`,
+  },
+  th: {
+    head: 'เส้นทางที่ผ่านมา และก้าวต่อไปของฉัน', moments: 'ช่วงเวลาที่ฉันเลือก', who: 'ฉันเป็นคนแบบไหน', proud: 'สิ่งที่ฉันภูมิใจ', learn: 'วิธีที่ฉันเรียนรู้ได้ดีที่สุด',
+    helps: 'สิ่งที่ช่วยฉันได้', hopes: 'ความหวังของฉันใน Year 10', hopesDp: 'ความหวังของฉันใน IB Diploma', goal: 'เป็นเป้าหมายบนเส้นทางแล้ว',
+    dp: 'วิชา IB Diploma ที่ฉันกำลังคิดจะเลือก', cas: 'ไอเดีย CAS: สร้างสรรค์ ออกกำลัง และช่วยเหลือผู้อื่น', onePage: 'หนึ่งหน้า A4 พิมพ์ออกมาหรือบันทึกเป็น PDF ได้',
+    print: 'พิมพ์', close: 'ปิด', stage9: 'Year 9 กำลังขึ้น Year 10 (IB MYP)', stage11: 'Year 11 กำลังขึ้น IB Diploma (Year 12 และ 13)',
+    forNext: 'ถึงครูที่ปรึกษาคนต่อไปของฉัน', written: (d) => `เขียนเมื่อ ${d}`, famYes: 'ครอบครัวของฉันเห็นได้', famNo: 'ไม่ได้แสดงให้ครอบครัวเห็น',
+    famHead: (f) => `สรุปก่อนขึ้นชั้นของ ${f}`, famIntro: (f, y) => `${f} เขียนสรุปนี้ตอนจบ Year ${y} ถึงครูที่ปรึกษาคนต่อไป และเลือกแบ่งปันให้คุณได้อ่าน`,
+  },
+};
+export const muWords = (lang) => MU[lang === 'th' ? 'th' : 'en'];
+for (const k of Object.keys(MU.en)) if (typeof MU.en[k] === 'string') STU[MU.en[k]] ??= MU.th[k];
+for (const [k, v] of Object.entries({
+  'You are moving up to the IB Diploma. Tell your next advisor about you: a few moments, how you learn best and your hopes.': 'คุณกำลังขึ้น IB Diploma เล่าเรื่องของคุณให้ครูที่ปรึกษาคนต่อไปฟัง: ช่วงเวลาสองสามอย่าง วิธีที่คุณเรียนรู้ได้ดีที่สุด และความหวังของคุณ',
+  'You are moving up to Year 10. Tell your next advisor about you: a few moments, how you learn best and your hopes.': 'คุณกำลังขึ้น Year 10 เล่าเรื่องของคุณให้ครูที่ปรึกษาคนต่อไปฟัง: ช่วงเวลาสองสามอย่าง วิธีที่คุณเรียนรู้ได้ดีที่สุด และความหวังของคุณ',
+  'My moving-up summary': 'สรุปก่อนขึ้นชั้นของฉัน', 'Let my family see it': 'ให้ครอบครัวของฉันเห็น',
+  'Your advisor, next year’s advisor and your family can see it.': 'ครูที่ปรึกษา ครูที่ปรึกษาปีหน้า และครอบครัวของคุณเห็นได้',
+  'Your advisor and next year’s advisor can see it.': 'ครูที่ปรึกษาและครูที่ปรึกษาปีหน้าเห็นได้',
+  'Your family can see it now.': 'ตอนนี้ครอบครัวของคุณเห็นได้แล้ว', 'Your family cannot see it now.': 'ตอนนี้ครอบครัวของคุณเห็นไม่ได้แล้ว',
+  'Nothing on your journey to pick yet. That is fine: you can still write your summary.': 'ยังไม่มีอะไรบนเส้นทางให้เลือก ไม่เป็นไร คุณยังเขียนสรุปได้',
+  'Who are you? What are you like?': 'คุณเป็นใคร เป็นคนแบบไหน', 'What are you proud of?': 'คุณภูมิใจในเรื่องอะไร', 'How do you learn best?': 'คุณเรียนรู้ได้ดีที่สุดแบบไหน',
+  'What helps you when things are hard?': 'อะไรช่วยคุณได้เวลาเจอเรื่องยาก', 'What could you do for CAS?': 'คุณจะทำอะไรสำหรับ CAS ได้บ้าง',
+  'I am…': 'ฉันเป็นคน…', 'People say I am…': 'คนอื่นบอกว่าฉัน…', 'I really like…': 'ฉันชอบ…มาก', 'I kept going with…': 'ฉันไม่ยอมแพ้กับ…',
+  'I learn best when…': 'ฉันเรียนรู้ได้ดีที่สุดเมื่อ…', 'I like to…': 'ฉันชอบ…', 'It helps me to see…': 'มันช่วยฉันได้ถ้าได้เห็น…', 'It helps when…': 'มันช่วยได้เมื่อ…',
+  'Please…': 'ช่วย…ด้วย', 'I work well with…': 'ฉันทำงานได้ดีกับ…', 'I could start…': 'ฉันอาจเริ่ม…', 'I would like to help…': 'ฉันอยากช่วย…', 'I want to try…': 'ฉันอยากลอง…',
+  'A hope for next year': 'ความหวังสำหรับปีหน้า', 'Another hope': 'ความหวังอีกข้อ', 'e.g. Join the debate club': 'เช่น เข้าชมรมโต้วาที',
+  'Make it a goal on my journey': 'ตั้งเป็นเป้าหมายบนเส้นทางของฉัน', 'Add a second hope': 'เพิ่มความหวังข้อที่สอง', Line: 'สาย',
+  'Yes, my family can see it': 'ได้ ครอบครัวของฉันเห็นได้', 'No, only my advisors': 'ไม่ ให้เห็นแค่ครูที่ปรึกษา',
+  'Your family sees it on their family page. You can change this later.': 'ครอบครัวของคุณจะเห็นในหน้าครอบครัว เปลี่ยนใจภายหลังได้',
+  'You choose. Your family sees it on their family page. You can change this later.': 'คุณเป็นคนเลือก ครอบครัวของคุณจะเห็นในหน้าครอบครัว เปลี่ยนใจภายหลังได้',
+  'Can your family see it?': 'ครอบครัวของคุณเห็นได้ไหม', 'Look back at Years 7 to 9': 'มองย้อน Year 7 ถึง 9', 'Look back at Years 10 and 11': 'มองย้อน Year 10 และ 11',
+  'Tap up to 5 moments that show who you are.': 'แตะเลือกได้สูงสุด 5 ช่วงเวลาที่บอกว่าคุณเป็นใคร', 'About you': 'เกี่ยวกับคุณ', 'For your next advisor': 'ถึงครูที่ปรึกษาคนต่อไป',
+  'How you learn': 'วิธีที่คุณเรียนรู้', 'Your hopes for the IB Diploma': 'ความหวังของคุณใน IB Diploma', 'Your hopes for Year 10': 'ความหวังของคุณใน Year 10',
+  'One or two. A hope can become a goal on your journey.': 'หนึ่งหรือสองข้อ ความหวังเป็นเป้าหมายบนเส้นทางได้', 'The IB Diploma': 'IB Diploma',
+  'In Years 12 and 13 you choose six subjects. You also do CAS: something creative, something active, and helping others.': 'ใน Year 12 และ 13 คุณจะเลือกเรียนหกวิชา และทำ CAS ด้วย: งานสร้างสรรค์ การออกกำลัง และการช่วยเหลือผู้อื่น',
+  'Which subjects are you thinking about?': 'คุณกำลังคิดจะเลือกวิชาอะไร', 'e.g. Biology, English, Visual Arts': 'เช่น ชีววิทยา ภาษาอังกฤษ ทัศนศิลป์',
+  'Pick up to 5 moments that show who you are. Private moments are not here.': 'เลือกได้สูงสุด 5 ช่วงเวลาที่บอกว่าคุณเป็นใคร ช่วงเวลาส่วนตัวไม่แสดงที่นี่',
+})) STU[k] ??= v;
+STU_RE.push(
+  [/^Your summary is saved for your next advisor\. (.+)$/, (m, t) => `บันทึกสรุปของคุณไว้ให้ครูที่ปรึกษาคนต่อไปแล้ว ${t(m[1])}`],
+  [/^Saved for your next advisor\. (.+)$/, (m, t) => `บันทึกไว้ให้ครูที่ปรึกษาคนต่อไปแล้ว ${t(m[1])}`],
+  [/^Check it over, then finish\. (.+)$/, (m, t) => `ตรวจดูอีกครั้งแล้วกดเสร็จ ${t(m[1])}`],
+  [/^For your next advisor\. Open until (.+)\. Your progress is kept: save and come back any time\.$/, (m) => `ถึงครูที่ปรึกษาคนต่อไป เปิดถึง ${thaiDates(m[1])} ระบบเก็บสิ่งที่ทำไว้ บันทึกแล้วกลับมาทำต่อได้ทุกเมื่อ`],
+  [/^(\d)\. (Look back at Years .+|About you|How you learn|Your hopes for .+|The IB Diploma|Can your family see it\?)$/, (m, t) => `${m[1]}. ${t(m[2])}`],
+  [/^Written on (.+) · (My family can see it|Not shown to my family)$/, (m) => `เขียนเมื่อ ${thaiDates(m[1])} · ${MU.th[m[2] === 'My family can see it' ? 'famYes' : 'famNo']}`],
+);
+NOTE_TH.push([/^(.+) is open: write a short summary for your next advisor$/, (m) => `${m[1]} เปิดแล้ว เขียนสรุปสั้น ๆ ถึงครูที่ปรึกษาคนต่อไปของคุณ`]);
+for (const [k, v] of Object.entries({
+  'Say a little about who you are or what you are proud of': 'เล่าสักนิดว่าคุณเป็นใคร หรือภูมิใจในเรื่องอะไร', 'Say how you learn best or what helps you': 'บอกว่าคุณเรียนรู้ได้ดีที่สุดแบบไหน หรืออะไรช่วยคุณได้',
+  'Write one hope for next year': 'เขียนความหวังสำหรับปีหน้าหนึ่งข้อ', 'Pick a line for the hope that becomes a goal': 'เลือกสายให้ความหวังที่จะเป็นเป้าหมาย',
+  'Choose whether your family can see it': 'เลือกว่าครอบครัวของคุณเห็นได้หรือไม่', 'This summary is not for you': 'สรุปนี้ไม่ใช่ของคุณ', 'This summary is closed': 'สรุปนี้ปิดแล้ว', 'No such summary': 'ไม่พบสรุปนี้',
+})) ERR_TH[k] ??= v;

@@ -24,6 +24,7 @@ import AdvisorGrid from './components/AdvisorGrid.jsx';
 import StudentMap from './screens/StudentMap.jsx';
 import { CarryOverGoals } from './components/YearHandover.jsx';
 import AdvisorStudent from './screens/AdvisorStudent.jsx';
+import MySkills from './components/SkillsGrowth.jsx';
 import TeacherQueue from './screens/TeacherQueue.jsx';
 import MyClasses from './screens/MyClasses.jsx';
 import CasDashboard from './screens/CasDashboard.jsx';
@@ -40,8 +41,11 @@ import Onboarding from './screens/Onboarding.jsx';
 import Pdpa from './screens/Pdpa.jsx';
 import { FeedbackDialog } from './components/Feedback.jsx';
 import { NudgeBanner } from './components/Nudges.jsx';
+import { ClassNudgeBanner } from './components/NotSeen.jsx';
 import { TermReflectionCard } from './components/TermReflection.jsx';
-import { StudentConference } from './components/ConferenceBooking.jsx';
+import { MovingUpCard } from './components/MovingUp.jsx';
+import { StudentLedCard } from './components/StudentLed.jsx';
+import { YearSignoffCard } from './components/YearSignoff.jsx';
 import { StudentMilestones } from './components/Milestones.jsx';
 import Applications from './screens/Applications.jsx';
 import SignalBoard from './screens/SignalBoard.jsx';
@@ -282,7 +286,7 @@ export default function App() {
                 <span className="pb-text"><small>{T(inPreview() ? 'Seeing as' : pilot ? 'Signed in' : 'Viewing as')}</small><b>{persona.name}</b></span><span aria-hidden="true">▾</span>
               </button>
               {menu === 'persona' && pilot && !inPreview() && (
-                <AccountMenu persona={persona} onPassword={() => { setMenu(null); setPwOpen(true); }} onFeedback={() => { setMenu(null); setFbOpen(true); }} onNotifications={() => { setMenu(null); setNsOpen(true); }} />
+                <AccountMenu persona={persona} onPassword={() => { setMenu(null); setPwOpen(true); }} onFeedback={persona.kind === 'parent' ? null : () => { setMenu(null); setFbOpen(true); }} onNotifications={() => { setMenu(null); setNsOpen(true); }} />
               )}
               {menu === 'persona' && !pilot && (
                 <div className="menu persona-menu" role="menu">
@@ -409,11 +413,11 @@ export default function App() {
           {pilot && route.screen === 'overview' && (persona.admin || persona.kind === 'leadership' || persona.kind === 'coordinator') && <Overview {...ctx} />}
           {pilot && route.screen === 'activitylog' && (persona.admin || persona.kind === 'leadership') && <ActivityLog {...ctx} />}
           {pilot && route.screen === 'screens' && (persona.admin || ['advisor', 'teacher', 'counsellor', 'coordinator', 'leadership'].includes(persona.kind)) && <Exhibitions {...ctx} />}
-          {pilot && route.screen === 'prompts' && (persona.admin || persona.kind === 'coordinator' || persona.kind === 'leadership') && <SubjectPromptsScreen {...ctx} />}
+          {pilot && route.screen === 'prompts' && (persona.admin || persona.kind === 'coordinator' || persona.kind === 'leadership') && <SubjectPromptsScreen {...ctx} param={route.param} />}
           {pilot && route.screen === 'phrases' && phraseWriter() && <PhrasesScreen {...ctx} />}
           {pilot && route.screen === 'reportcomments' && (persona.teacherId || persona.admin || persona.kind === 'coordinator' || persona.kind === 'leadership') && <ReportComments {...ctx} param={route.param} />}
           {pilot && route.screen === 'events' && persona.kind !== 'student' && persona.kind !== 'parent' && <SchoolEventsScreen {...ctx} />}
-          {route.screen !== 'phrases' && route.screen !== 'events' && route.screen !== 'reportcomments' && route.screen !== 'prompts' && route.screen !== 'health' && route.screen !== 'screens' && route.screen !== 'accounts' && route.screen !== 'usage' && route.screen !== 'reports' && route.screen !== 'overview' && route.screen !== 'week' && route.screen !== 'activitylog' && route.screen !== 'leaver' && route.screen !== 'cas' && route.screen !== 'casconfirm' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} persona={persona} />}
+          {route.screen !== 'skills' && route.screen !== 'phrases' && route.screen !== 'events' && route.screen !== 'reportcomments' && route.screen !== 'prompts' && route.screen !== 'health' && route.screen !== 'screens' && route.screen !== 'accounts' && route.screen !== 'usage' && route.screen !== 'reports' && route.screen !== 'overview' && route.screen !== 'week' && route.screen !== 'activitylog' && route.screen !== 'leaver' && route.screen !== 'cas' && route.screen !== 'casconfirm' && <ComingSoon {...ctx} screen={route.screen} kind={persona.kind} persona={persona} />}
           {pilot && route.screen === 'health' && persona.admin && <SystemHealth {...ctx} />}
           </ErrorBoundary>
           {pilot && level === 'simple' && <div className="fb-simple"><button onClick={() => setFbOpen(true)}>Something not working? Tell us</button></div>}
@@ -459,10 +463,14 @@ function StudentScreens({ screen, param, studentId, drafts, setDrafts, audience,
   const [newLink, setNewLink] = useState(null);
   // A nudge (banner or notification, #/<persona>/map/add) opens the add flow.
   const [addReq, setAddReq] = useState(0);
-  useEffect(() => { if (param === 'add' && screen === 'map') setAddReq((n) => n + 1); }, [param, screen]);
-  const nudge = <><StudentMilestones studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} /><NudgeBanner studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} onAdd={() => setAddReq((n) => n + 1)} /><CarryOverGoals studentId={studentId} version={version} toast={toast} simple={getIntensity(studentId) === 'simple'} />
+  // A subject nudge (Not seen lately, #/<persona>/map/add~<lineId>) opens it on that line: addReq is then { n, lineIds }.
+  const addOn = (lineId) => setAddReq((n) => (lineId ? { n: (n?.n ?? n) + 1, lineIds: [lineId] } : (n?.n ?? n) + 1));
+  useEffect(() => { if (screen === 'map' && (param === 'add' || String(param || '').startsWith('add~'))) addOn(String(param).split('~')[1]); }, [param, screen]); // eslint-disable-line react-hooks/exhaustive-deps
+  const nudge = <><StudentMilestones studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} /><NudgeBanner studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} onAdd={() => addOn()} /><ClassNudgeBanner studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} onAdd={addOn} /><CarryOverGoals studentId={studentId} version={version} toast={toast} simple={getIntensity(studentId) === 'simple'} />
     <TermReflectionCard studentId={studentId} version={version} toast={toast} simple={getIntensity(studentId) === 'simple'} auto={screen === 'map' && param === 'reflect'} />
-    <StudentConference studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} toast={toast} /></>;
+    <MovingUpCard studentId={studentId} version={version} toast={toast} simple={getIntensity(studentId) === 'simple'} auto={screen === 'map' && param === 'movingup'} />
+    <StudentLedCard studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} toast={toast} />
+    <YearSignoffCard studentId={studentId} version={version} simple={getIntensity(studentId) === 'simple'} /></>;
   // N11: stations a presentation would show but a link cannot, because they are not publishable.
   const [gapFor, setGapFor] = useState(null);
   const gapsOf = (pres) => { const l = applyLens(map, pres, { hiddenLines: pres.filters.hiddenLines }); return map.events.filter((e) => l.visible.has(e.id) && e.type !== 'goal' && e.visibility !== 'publishable'); };
@@ -492,6 +500,7 @@ function StudentScreens({ screen, param, studentId, drafts, setDrafts, audience,
   if (screen === 'leaver' && !leaverAllowed(studentId)) screen = 'map'; // under Year 11: no leaver portfolio
   if (screen === 'cas' && !casAllowed(studentId)) screen = 'map'; // CAS: Years 12 and 13
   if (level === 'simple' && screen === 'map') return <>{nudge}<SimpleFind big persona={persona} go={go} version={version} /><SimpleHome map={map} studentId={studentId} toast={toast} version={version} addRequest={addReq} focusId={param} /></>;
+  if (screen === 'skills') return <MySkills studentId={studentId} version={version} go={go} persona={persona} toast={toast} />;
   if (screen === 'leaver' && leaverAllowed(studentId)) return <LeaverBuilder studentId={studentId} version={version} toast={toast} />;
   if (screen === 'poster') return <Poster map={map} publicMap={publicMap} drafts={myDrafts} toast={toast} />;
   if (screen === 'family') return <ShowFamily map={map} toast={toast} version={version} />;

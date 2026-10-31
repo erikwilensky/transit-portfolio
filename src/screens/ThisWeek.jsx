@@ -8,6 +8,7 @@ import { QuietGroup } from '../components/Nudges.jsx';
 import { WeekMilestones } from '../components/Milestones.jsx';
 import { StuckFlags } from '../components/GoalCheckins.jsx';
 import { WeekNotes } from '../components/WeekNotes.jsx';
+import { NotSeenWeek } from '../components/NotSeen.jsx';
 import './classes.css';
 import './this-week.css';
 
@@ -84,6 +85,8 @@ export default function ThisWeek({ persona, go, version, toast, param }) {
           )}
         </section>
       )}
+
+      {s.teaches && !back && persona.teacherId && <NotSeenWeek teacherId={persona.teacherId} toast={toast} version={version} go={go} persona={persona} />}
 
       {s.advisory && (
         <section className="tw-sec" aria-labelledby="tw-adv">

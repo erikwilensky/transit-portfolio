@@ -127,6 +127,7 @@ let srv, demo;
     await t.click('.icon-btn.bell'); await t.waitForSelector('.bell-menu');
     await audit(t, 'the bell (teacher)');
     await t.click('.icon-btn.bell');
+    await until(async () => rec().notifications.filter((n) => n.to === `t:${TEACHER}`).every((n) => n.read)); // opening the bell marks them read 1.5 s later
     await act(sTok, 'addMomentComment', [plain.result.id, 'student', 'I watered one twice a day.']);
     await t.waitForSelector('.icon-btn.bell .badge');
     await t.click('.icon-btn.bell'); await t.waitForSelector('.bell-menu');

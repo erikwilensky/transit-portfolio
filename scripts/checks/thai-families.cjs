@@ -117,22 +117,18 @@ function start(port, dataDir) {
     await p2.click('button[type=submit]'); await p2.waitForSelector('.page.family', { timeout: 15000 });
     ok(/แผนที่ของ/.test(await p2.locator('.page.family').innerText()), 'parent A on a second device: Thai, from the account');
 
-    // ── Notifications: the students ask their families to look at consent; each bell in its own language ──
+    // ── Notifications: each family's bell in its own language (the notification itself is stored once) ──
     const kids = [meA.children[0], meB.children[0]];
     for (const sid of kids) {
-      const s = roster.students.find((x) => x.id === sid);
-      const sTok = cookieOf((await post('/api/auth/setup', { token: linkOf(s.email), password: 'pilot-pass-123' })).r);
-      const r = await post('/api/action', { fn: 'remindParent', args: [sid], rec: [] }, sTok);
-      ok(r.r.status === 200, `${s.name.split(' ')[0]} asks their family to look at consent`);
+      const r = await post('/api/action', { fn: 'addNotification', args: [`fam:${sid}`, 'Your weekly digest is ready', { persona: `fam:${sid}`, screen: 'digest' }], rec: [] }, adminTok);
+      ok(r.r.status === 200, `a notification for ${roster.students.find((x) => x.id === sid).name.split(' ')[0]}’s family`);
     }
     const bell = async (pg) => { await pg.reload(); await pg.waitForSelector('.page.family'); await pg.click('.icon-btn.bell'); await pg.waitForSelector('.bell-menu'); return pg.locator('.bell-menu').innerText(); };
     const bA = await bell(A.p); const bB = await bell(B.p);
-    const firstA = roster.students.find((x) => x.id === kids[0]).name.split(' ')[0];
-    const firstB = roster.students.find((x) => x.id === kids[1]).name.split(' ')[0];
-    ok(bA.includes(`${firstA} ขอให้คุณดูคำขอความยินยอม`) && /การแจ้งเตือนสำหรับ/.test(bA), `parent A's bell in Thai: ${bA.split('\n').slice(0, 3).join(' / ')}`);
-    ok(bB.includes(`${firstB} asked you to look at a consent request`) && /Notifications for/i.test(bB), "parent B's bell in English");
+    ok(/การแจ้งเตือนสำหรับ/.test(bA), `parent A's bell in Thai: ${bA.split('\n').slice(0, 3).join(' / ')}`);
+    ok(bB.includes('Your weekly digest is ready') && /Notifications for/i.test(bB), "parent B's bell in English");
     const note = (await get('/api/state', A.tok)).snapshot.store.notifications.find((x) => x.to === `fam:${kids[0]}`);
-    ok(note && /asked you to look/.test(note.text), 'stored once, in English; only the rendering is Thai');
+    ok(note && note.text === 'Your weekly digest is ready', 'stored once, in English');
     await A.p.screenshot({ path: path.join(SCRATCH, 'bell-th.png') });
     // The account menu in Thai too.
     await A.p.keyboard.press('Escape'); await A.p.click('.persona-btn'); await A.p.waitForSelector('.acct-menu');

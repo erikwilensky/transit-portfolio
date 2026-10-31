@@ -1,6 +1,6 @@
 // Safeguarding (api.reportItem): "Report" on a moment or a moment comment, and the notice on a hidden one.
-// Anyone signed in who can see the item: staff, the student who owns it, a family member on what the family view
-// shows (moments only). The person reported never learns who reported; moderators do (src/screens/Reports.jsx).
+// Anyone signed in who can see the item: staff and the student who owns it. Families do not report in the app (they speak
+// to the school by email). The person reported never learns who reported; moderators do (src/screens/Reports.jsx).
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { getReports, getStudent, hasPublicCopy, REPORT_REASONS, reportItem } from '../api.js';
@@ -17,7 +17,6 @@ export function reporterFor(event, comment) {
   if (p.kind === 'student') return p.studentId === event.studentId ? { key: 'student' } : null;
   if (STAFF.includes(p.kind) && p.teacherId) return { key: p.teacherId };
   if (p.kind === 'admin' || p.admin) return { key: p.teacherId || 'admin', name: p.name };
-  if (p.kind === 'parent' && !comment && !event.hidden && (p.children || []).includes(event.studentId)) return { key: `fam:${event.studentId}`, name: p.name };
   return null;
 }
 const isStaff = (p) => STAFF.includes(p.kind) || p.kind === 'admin' || !!p.admin;
@@ -39,7 +38,7 @@ export function ReportButton({ event, comment, simple = false, toast }) {
   );
 }
 
-// target/what/quote: another kind of item (a family note: { familyNoteId }, 'this note', its words).
+// target/what/quote: another kind of item (its reportItem target, how to name it, its words).
 export function ReportDialog({ event, comment, from, simple, onClose, onSent, target, what: whatOf, quote }) {
   const [reason, setReason] = useState(null);
   const [note, setNote] = useState('');

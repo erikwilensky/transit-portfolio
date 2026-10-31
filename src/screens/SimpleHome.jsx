@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { addGoal, addReflection, addStation, completeGoal, deleteStation, editStation, endorserChoices, getEvent, getLine, getPromptsFor, getStudent, getTeacher, getTeachers, requestFor, setPrivacy, setVisibility, snapshot, teachersOf, TODAY } from '../api.js';
+import { addGoal, addReflection, addStation, completeGoal, deleteStation, editStation, endorserChoices, getEvent, getLine, getPromptsFor, getStudent, getTeacher, getTeachers, requestFor, setVisibility, snapshot, teachersOf, TODAY } from '../api.js';
 import { fmtDate } from '../format.js';
 import { isPilot } from '../auth.js';
 import { evidenceFor } from '../upload.js';
@@ -10,9 +10,10 @@ import { MyTasks } from '../components/ClassTasks.jsx';
 import { EventCards } from '../components/SchoolEvents.jsx';
 import { schoolEventName } from '../api.js';
 import { ExampleAsks, Examples, promptsFrom } from '../components/SubjectPrompts.jsx';
+import { GuideOffer, GuideStep } from '../components/MomentTemplates.jsx';
+import { templateText } from '../api.js';
 import { SpottedForMe } from '../components/Spotted.jsx';
 import { PeerFromClasses, PeerOnMoment } from '../components/PeerFeedback.jsx';
-import { FamilyNotesHome, FamilyNotesOn, FamilyNotesSwitch } from '../components/FamilyNotes.jsx';
 import MomentComments, { NewBadge, useUnread } from '../components/MomentComments.jsx';
 import './simple-goals.css';
 import { HiddenNotice, ReportButton } from '../components/Report.jsx';
@@ -20,6 +21,7 @@ import { Said, SayIt, VoiceNotes, VoiceRecorder } from '../components/Voice.jsx'
 import { CheckinTimeline, GoalCheckins } from '../components/GoalCheckins.jsx';
 import { canRecord } from '../voice.js';
 import { photoAlt } from '../a11y.js';
+import { MomentSkills, SkillsStep, saveSkills } from '../components/SkillsGrowth.jsx';
 import { shown } from '../thai.js';
 
 // Simple: the student interface for Years 7 and 8 (and anyone who picks it). Not the full app with parts hidden,
@@ -56,7 +58,7 @@ function checkers(studentId, lineId) {
 
 export default function SimpleHome({ map, studentId, toast, version, addRequest, focusId }) {
   const [adding, setAdding] = useState(false);
-  useEffect(() => { if (addRequest) setAdding(true); }, [addRequest]); // a nudge's "Add something"
+  useEffect(() => { if (addRequest) setAdding(addRequest.lineIds ? { lineIds: addRequest.lineIds } : true); }, [addRequest]); // a nudge's "Add something"
   const [asking, setAsking] = useState(null); // { event, prompt, signal }
   const [open, setOpen] = useState(focusId?.startsWith('ev-') ? focusId : null); // a notification's moment
   useEffect(() => { if (focusId?.startsWith('ev-')) setOpen(focusId); }, [focusId]); // search opens one
@@ -80,7 +82,6 @@ export default function SimpleHome({ map, studentId, toast, version, addRequest,
         <p>{moments.length ? `Your journey has ${moments.length} moment${moments.length > 1 ? 's' : ''} so far.` : 'Your journey starts here.'} What have you been up to?</p>
       </section>
 
-      <FamilyNotesHome studentId={studentId} toast={toast} version={version} onOpen={setOpen} />
       <MyTasks studentId={studentId} simple toast={toast} version={version} />
       <EventCards studentId={studentId} simple toast={toast} version={version} focusId={focusId} onAdd={(p) => setAdding(p)} />
       <OpenPrompts studentId={studentId} simple toast={toast} version={version} />
@@ -181,7 +182,7 @@ export function QuickAdd({ map, studentId, toast, onClose, camera = false, prefi
 // prefill (a school event's card, SchoolEvents.jsx): { title, date, lineIds, schoolEvent, question }; its line is picked for them.
 function AddFlow({ map, studentId, onClose, onDone, camera, prefill }) {
   const [step, setStep] = useState(camera ? -1 : 0);
-  const [f, setF] = useState({ title: prefill?.title || '', image: null, imageCaption: 'Photo', line: null, reflection: '', voice: null });
+  const [f, setF] = useState({ title: prefill?.title || '', image: null, imageCaption: 'Photo', line: null, reflection: '', voice: null, skills: [] });
   const preLine = prefill?.lineIds?.[0] || null;
   const [recording, setRecording] = useState(false);
   const [more, setMore] = useState(false);
@@ -198,18 +199,27 @@ function AddFlow({ map, studentId, onClose, onDone, camera, prefill }) {
   const [answers, setAnswers] = useState([]);
   const [usedStarter, setUsedStarter] = useState(false);
   const qn = guided && prompts ? prompts.questions.length : 0;
-  const reflection = () => (qn ? prompts.questions.map((q, i) => (answers[i]?.trim() ? `${q}\n${answers[i].trim()}` : null)).filter(Boolean).join('\n\n') : f.reflection.trim());
-  const pickLine = (id) => { const p = getPromptsFor(studentId, id); set({ line: id }); setGuided(!!p && p.source !== 'default'); setQi(0); setAnswers([]); setUsedStarter(false); setMore(false); setStep(2); };
+  // Moment templates (MomentTemplates.jsx): "Use a guide" after the line; its parts one per screen, before the teacher's questions.
+  const [tpl, setTpl] = useState(null);
+  const [ti, setTi] = useState(0);
+  const [tAns, setTAns] = useState([]);
+  const startGuide = (t) => { setTpl(t); setTi(0); setTAns(!qn && f.reflection.trim() ? [f.reflection.trim()] : []); };
+  const tn = tpl ? tpl.fields.length : 0;
+  const reflection = () => (tpl ? templateText(tpl, tAns) : qn ? prompts.questions.map((q, i) => (answers[i]?.trim() ? `${q}\n${answers[i].trim()}` : null)).filter(Boolean).join('\n\n') : f.reflection.trim());
+  const pickLine = (id) => { const p = getPromptsFor(studentId, id); set({ line: id }); setGuided(!!p && p.source !== 'default'); setQi(0); setAnswers([]); setTpl(null); setTAns([]); setUsedStarter(false); setMore(false); setStep(2); };
   const save = (teacher) => {
     const snap = snapshot();
-    const e = addStation(studentId, { title: f.title.trim(), lineIds: [f.line], ...(prefill?.schoolEvent ? { date: prefill.date, schoolEvent: prefill.schoolEvent } : {}), type: 'project', image: f.image, imageCaption: f.imageCaption, files: f.voice ? [f.voice] : [], reflection: reflection() || null, visibility: 'advisor', via: 'Simple add', requestFrom: teacher?.id || null, promptId: prompts && (qn || usedStarter) ? prompts.id : null });
+    const e = addStation(studentId, { title: f.title.trim(), lineIds: [f.line], ...(prefill?.schoolEvent ? { date: prefill.date, schoolEvent: prefill.schoolEvent } : {}), type: 'project', image: f.image, imageCaption: f.imageCaption, files: f.voice ? [f.voice] : [], reflection: reflection() || null, visibility: 'advisor', via: 'Simple add', requestFrom: teacher?.id || null, promptId: prompts && !tpl && (qn || usedStarter) ? prompts.id : null, templateId: tpl && tAns.some((a) => a?.trim()) ? tpl.id : null });
+    saveSkills(e, f.skills);
     onDone(e, teacher, snap);
   };
-  const steps = (who.length ? 4 : 3) + (qn ? qn - 1 : 0) + (camera ? 1 : 0);
-  const at = (step === 2 ? 2 + qi : step === 3 ? 3 + (qn ? qn - 1 : 0) : step) + (camera ? 1 : 0);
+  const extra = tn ? tn - 1 : qn ? qn - 1 : 0;
+  const steps = (who.length ? 4 : 3) + extra + (camera ? 1 : 0);
+  const at = (step === 2 ? 2 + (tn ? ti : qi) : step === 3 ? 3 + extra : step) + (camera ? 1 : 0);
   const voice = f.voice ? <div className="sh-voice"><VoiceNotes evidence={[f.voice]} /><button type="button" className="ghost" onClick={() => set({ voice: null })}>Remove voice note</button></div>
     : recording ? <VoiceRecorder onAdded={(v) => { set({ voice: v }); setRecording(false); }} onCancel={() => setRecording(false)} />
     : <VoiceStart onClick={() => setRecording(true)} />;
+  const skillsStep = <SkillsStep value={f.skills} onChange={(skills) => set({ skills })} simple />;
   const finish = (has) => (who.length ? <button className="primary" onClick={() => setStep(3)}>{has ? 'Next' : 'Skip'}</button> : <button className="primary" onClick={() => save(null)}>{has ? 'Add it' : 'Skip and add it'}</button>);
   return (
     <div className="modal-back" onClick={onClose}>
@@ -238,18 +248,20 @@ function AddFlow({ map, studentId, onClose, onDone, camera, prefill }) {
           <div className="sh-lines">{lines.map((l) => <button key={l.id} style={{ '--c': l.colour }} className={f.line === l.id ? 'on' : ''} onClick={() => pickLine(l.id)}><i />{l.name}</button>)}</div>
           <div className="sh-next"><button className="ghost" onClick={() => setStep(0)}>Back</button></div>
         </>}
-        {step === 2 && !qn && <>
+        {step === 2 && !tn && !qn && <>
           <Said text={prefill?.question || 'What did you learn?'} />
           {prompts?.note ? <p className="sp-note">{prompts.note}</p> : <p className="sh-sub">One or two sentences is plenty. You can skip this.</p>}
           <div className="sh-starters">{(prompts?.starters?.length ? prompts.starters : STARTERS).map((s) => <button key={s} onClick={() => { setUsedStarter(!!prompts); set({ reflection: `${f.reflection ? `${f.reflection} ` : ''}${shown(s).replace('…', ' ')}` }); }}>{s}</button>)}</div>
           <textarea className="sh-input" rows={3} value={f.reflection} onChange={(e) => set({ reflection: e.target.value })} aria-label="What did you learn?" />
           <SayIt value={f.reflection} onChange={(reflection) => set({ reflection })} />
           {prompts?.questions.length > 0 && <button type="button" className="ghost sp-help" onClick={() => { setGuided(true); setQi(0); setAnswers(f.reflection.trim() ? [f.reflection] : []); }}>Help me with questions</button>}
+          <GuideOffer simple lineId={f.line} onPick={startGuide} />
           {voice}
-          <div className="sh-next"><button className="ghost" onClick={() => setStep(1)}>Back</button>{finish(!!f.reflection.trim())}</div>
+          {skillsStep}
+          <div className="sh-next"><button className="ghost" onClick={() => setStep(1)}>Back</button>{finish(!!f.reflection.trim() || f.skills.length > 0)}</div>
           {!who.length && <p className="sh-note">Only you and your advisor can see it at first.</p>}
         </>}
-        {step === 2 && qn > 0 && (() => {
+        {step === 2 && !tn && qn > 0 && (() => {
           const q = prompts.questions[qi], last = qi === qn - 1, val = answers[qi] || '';
           const put = (v) => setAnswers((xs) => { const n = [...xs]; n[qi] = v; return n; });
           return <div className="sp-guided" key={qi}>
@@ -261,9 +273,23 @@ function AddFlow({ map, studentId, onClose, onDone, camera, prefill }) {
             <SayIt value={val} onChange={put} />
             {qi === 0 && <Examples examples={prompts.examples} simple />}
             {last && voice}
+            {last && skillsStep}
             <div className="sh-next"><button className="ghost" onClick={() => (qi ? setQi(qi - 1) : setStep(1))}>Back</button>
-              {last ? finish(answers.some((a) => a?.trim())) : <button className="primary" onClick={() => setQi(qi + 1)}>{val.trim() ? 'Next question' : 'Skip this one'}</button>}</div>
+              {last ? finish(answers.some((a) => a?.trim()) || f.skills.length > 0) : <button className="primary" onClick={() => setQi(qi + 1)}>{val.trim() ? 'Next question' : 'Skip this one'}</button>}</div>
             {!last && <button type="button" className="linkish sp-skip" onClick={() => (who.length ? setStep(3) : save(null))}>{answers.some((a) => a?.trim()) ? 'That is enough, carry on' : 'Skip the questions'}</button>}
+            {last && !who.length && <p className="sh-note">Only you and your advisor can see it at first.</p>}
+            {qi === 0 && <GuideOffer simple lineId={f.line} onPick={startGuide} />}
+          </div>;
+        })()}
+        {step === 2 && tn > 0 && (() => {
+          const last = ti === tn - 1, val = tAns[ti] || '', any = tAns.some((a) => a?.trim());
+          const put = (v) => setTAns((xs) => { const n = [...xs]; n[ti] = v; return n; });
+          return <div className="mt-guided" key={`t-${ti}`}>
+            <GuideStep t={tpl} i={ti} value={val} onChange={put} />
+            {last && voice}
+            <div className="sh-next"><button className="ghost" onClick={() => (ti ? setTi(ti - 1) : setTpl(null))}>Back</button>
+              {last ? finish(any) : <button className="primary" onClick={() => setTi(ti + 1)}>{val.trim() ? 'Next question' : 'Skip this one'}</button>}</div>
+            {!last && <button type="button" className="linkish sp-skip" onClick={() => (who.length ? setStep(3) : save(null))}>{any ? 'That is enough, carry on' : 'Skip the questions'}</button>}
             {last && !who.length && <p className="sh-note">Only you and your advisor can see it at first.</p>}
           </div>;
         })()}
@@ -479,6 +505,7 @@ function Moment({ e, map, onClose, onReflect, toast }) {
         <p className="sh-sub">{fmtDate(e.date)} · <Badge e={e} /></p>
         {e.summary && <p>{e.summary}</p>}
         {e.reflections?.map((r) => <blockquote key={r.id}>{r.text}</blockquote>)}
+        <MomentSkills key={`sk-${e.id}`} e={e} simple toast={toast} />
         <VoiceNotes evidence={e.evidence} />
         {e.verification === 'student-added' && (recording
           ? <VoiceRecorder onAdded={(ev) => { editStation(e.id, { evidence: [...(getEvent(e.id)?.evidence || []), ev] }); setRecording(false); toast('Your voice note is on this moment.'); }} onCancel={() => setRecording(false)} />
@@ -486,7 +513,6 @@ function Moment({ e, map, onClose, onReflect, toast }) {
         <div className="sh-next"><button className="primary" onClick={onReflect}>{e.reflections?.length ? 'Add another thought' : 'What did I learn?'}</button></div>
         <MomentComments key={`c-${e.id}`} event={e} simple toast={toast} />
         <PeerOnMoment key={`pf-${e.id}`} event={e} simple toast={toast} />
-        <FamilyNotesOn key={`fn-${e.id}`} event={e} simple toast={toast} />
         <ReportButton event={e} simple toast={toast} />
       </div>
     </div>
@@ -513,7 +539,6 @@ export function ShowFamily({ map, toast }) {
         </li>
       ); })}</ul>
       {!moments.length && <p className="sh-empty">When you add moments, you can choose here who sees them.</p>}
-      <div className="sh-fam-notes"><FamilyNotesSwitch studentId={map.student.id} onChange={(on) => { setPrivacy(map.student.id, { familyNotes: on }); toast(on ? 'Your family can leave notes again.' : 'Notes from family are off. You can turn them on again here.'); }} /></div>
     </div>
   );
 }

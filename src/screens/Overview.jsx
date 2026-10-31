@@ -3,8 +3,10 @@ import { overview } from '../auth.js';
 import '../auth.css';
 import './overview.css';
 import { YearReflections } from '../components/TermReflection.jsx';
-import { YearBooking } from '../components/ConferenceBooking.jsx';
+import { YearMovingUp } from '../components/MovingUp.jsx';
+import { YearConferences } from '../components/Conferences.jsx';
 import { PeerYears } from '../components/PeerFeedback.jsx';
+import { SignoffProgress } from '../components/YearSignoff.jsx';
 
 // School overview (server/routes/63-overview.mjs): counts by Year and by line, a weekly chart and quiet homerooms.
 // The server sends counts only; a group of 1 to 4 students arrives as "fewer than 5".
@@ -40,7 +42,7 @@ export default function Overview({ persona, version, toast }) {
         <div className="tile"><b><Val v={t.moments} /></b><span>moments, {r.label.toLowerCase()}</span></div>
         <div className="tile"><b><Val v={t.endorsements} /></b><span>endorsements given</span></div>
       </div>
-      <section className="card-sec us-scroll" aria-labelledby="ov-y">
+      <section className="card-sec us-scroll" aria-labelledby="ov-y" tabIndex={0}>
         <h2 id="ov-y">By Year</h2>
         <table className="us-table ov-years">
           <thead><tr><th>Year</th>{COLS.map(([k, l]) => <th key={k}>{l}</th>)}</tr></thead>
@@ -50,7 +52,7 @@ export default function Overview({ persona, version, toast }) {
         </table>
       </section>
       <div className="us-two">
-        <section className="card-sec us-scroll" aria-labelledby="ov-l">
+        <section className="card-sec us-scroll" aria-labelledby="ov-l" tabIndex={0}>
           <h2 id="ov-l">By line</h2>
           <table className="us-table ov-lines">
             <thead><tr><th>Line</th><th>Moments</th><th>Endorsed</th></tr></thead>
@@ -71,8 +73,10 @@ export default function Overview({ persona, version, toast }) {
         <WeekBars weeks={r.weeks} />
       </section>
       <YearReflections persona={persona} version={version} toast={toast} />
-      <YearBooking persona={persona} version={version} toast={toast} />
+      <YearMovingUp persona={persona} version={version} toast={toast} />
+      <YearConferences persona={persona} version={version} toast={toast} />
       <PeerYears persona={persona} version={version} toast={toast} />
+      {(persona?.admin || persona?.kind === 'leadership') && <SignoffProgress persona={persona} version={version} toast={toast} />}
     </div>
   );
 }
