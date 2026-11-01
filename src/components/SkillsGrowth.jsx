@@ -2,13 +2,12 @@ import { useMemo, useState } from 'react';
 import { ATL, chooseSkills, chosenSkills, getIntensity, getStudentMap, LEARNER_PROFILE, SKILL_MAX, SKILL_WORDS, skillsGrowth } from '../api.js';
 import { fmtDate } from '../format.js';
 import { dateIn, SKILL_WORDS_TH, tr } from '../i18n.js';
+import SkillIcon from './SkillIcon.jsx';
 import './skills-growth.css';
 
 // Skills growth: which IB learner profile attributes and ATL skills a student's moments show this school year, from the
 // skills the student picked (never the app's guesses). A picture, never a score or a comparison. Student text is English
 // here and shown in Thai at display time (src/thai.js); the family words are in SAY below.
-export const SKILL_ICON = { Inquirer: '❓', Knowledgeable: '📚', Thinker: '🧩', Communicator: '💬', Principled: '⚖️', 'Open-minded': '🌏', Caring: '💛',
-  'Risk-taker': '🚀', Balanced: '🧘', Reflective: '🪞', Thinking: '💡', Communication: '✍️', Social: '👥', 'Self-management': '🗓️', Research: '🔎' };
 const GROUPS = [['lp', LEARNER_PROFILE], ['atl', ATL]];
 const GROUP_NAME = { simple: { lp: 'What kind of learner I was', atl: 'What I did' }, std: { lp: 'Learner profile', atl: 'Approaches to learning' } };
 
@@ -23,7 +22,7 @@ export function SkillPick({ value, onChange, simple = false }) {
           <small>{GROUP_NAME[simple ? 'simple' : 'std'][g]}</small>
           <div className="sk-chips">{list.map((k) => { const on = value.includes(k); return (
             <button key={k} type="button" className={`sk-chip${on ? ' on' : ''}`} aria-pressed={on} disabled={!on && full} onClick={() => onChange(on ? value.filter((x) => x !== k) : [...value, k])}>
-              <span className="sk-ico" aria-hidden="true">{SKILL_ICON[k]}</span>
+              <SkillIcon k={k} />
               {simple ? <b>{SKILL_WORDS[k]}</b> : <span><b>{k}</b><small>{SKILL_WORDS[k]}</small></span>}
             </button>); })}</div>
         </div>
@@ -57,7 +56,7 @@ export function MomentSkills({ e, simple = false, readOnly = false, toast, start
   if (readOnly && !mine.length) return null;
   return (
     <div className="sk-moment">
-      {mine.length > 0 && <ul className="sk-have" aria-label="Skills I used">{mine.map((k) => <li key={k}><span className="sk-ico" aria-hidden="true">{SKILL_ICON[k]}</span>{simple ? SKILL_WORDS[k] : k}</li>)}</ul>}
+      {mine.length > 0 && <ul className="sk-have" aria-label="Skills I used">{mine.map((k) => <li key={k}><SkillIcon k={k} />{simple ? SKILL_WORDS[k] : k}</li>)}</ul>}
       {!readOnly && <button type="button" className="linkish sk-edit" onClick={() => { setPicks(mine); setEdit(true); }}>{mine.length ? 'Change skills' : simple ? 'Which skills did I use?' : 'Add skills'}</button>}
     </div>
   );
@@ -174,12 +173,12 @@ export default function MySkills({ studentId, version, go, persona, toast }) {
       <header className="sk-head"><h1>Skills I’ve used</h1><p>When you add a moment, pick the skills you used. They collect here.</p></header>
       {used.length ? <ul className="sk-collect">{used.map((r) => (
         <li key={r.k}><button type="button" className={`sk-big${sel === r.k ? ' on' : ''}`} aria-pressed={sel === r.k} onClick={() => setSel(sel === r.k ? null : r.k)}>
-          <span className="sk-ico" aria-hidden="true">{SKILL_ICON[r.k]}</span><b>{SKILL_WORDS[r.k]}</b></button></li>))}</ul>
+          <SkillIcon k={r.k} /><b>{SKILL_WORDS[r.k]}</b></button></li>))}</ul>
         : <p className="sk-empty">No skills here yet. Pick some for a moment below.</p>}
       {sel && <Behind k={sel} g={g} events={map.events} say={say} onOpen={open} />}
       {tagBox}
       {unused.length > 0 && <section className="sk-later"><h2>Skills to look out for</h2>
-        <ul>{unused.map((r) => <li key={r.k}><span className="sk-ico" aria-hidden="true">{SKILL_ICON[r.k]}</span>{SKILL_WORDS[r.k]}</li>)}</ul></section>}
+        <ul>{unused.map((r) => <li key={r.k}><SkillIcon k={r.k} />{SKILL_WORDS[r.k]}</li>)}</ul></section>}
     </div>
   );
   return (

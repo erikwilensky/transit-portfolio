@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Icon from './Icon.jsx';
 import { VerifyBadge } from './Badge.jsx';
 import RecordInspector from './RecordInspector.jsx';
 import MomentComments, { commentViewer } from './MomentComments.jsx';
@@ -16,7 +17,7 @@ import { fmtTerm, TYPE_LABEL, VIS_LABEL, VERIFY_HELP } from '../format.js';
 import { dateIn, daysIn, lineName, termText, tr, useLang } from '../i18n.js';
 import PhraseTools from './Phrases.jsx';
 
-const KIND_ICON = { link: '↗', file: '▤', image: '▣', grade: '✓', certificate: '★' };
+const KIND_ICON = { link: <Icon name="link" />, file: <Icon name="file" />, image: <Icon name="image" />, grade: <Icon name="grade" />, certificate: <Icon name="certificate" /> };
 
 export default function StationPanel({ event, map, onClose, readOnly = false, onAsk, toast }) {
   const open = !!event;

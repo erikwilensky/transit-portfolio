@@ -64,3 +64,12 @@
 .sf .sf-box input { width: auto; flex: 1; font-size: 17px; border: 0 !important; padding: 0 !important; background: transparent !important; }
 .sf .ts-list { padding: 4px 0; max-height: 50vh; }
 .sf .ts-txt b { font-size: 16px; }
+/* Below 1440px the top bar is crowded (screens, people, bell, intensity, tour), so the box folds to its glass and opens
+   when focused or clicked; the screens in the bar keep their room instead of sliding under it. */
+@media (min-width: 601px) and (max-width: 1439px) {
+  .ts-box { width: 34px; padding: 0; justify-content: center; cursor: pointer; }
+  .ts-box input { width: 1px; opacity: 0; }
+  .ts-box .ts-kbd { display: none; }
+  .ts-box:focus-within, .tsearch.open .ts-box { width: auto; padding: 0 10px; justify-content: flex-start; cursor: text; }
+  .ts-box:focus-within input, .tsearch.open .ts-box input { width: 200px; opacity: 1; }
+}

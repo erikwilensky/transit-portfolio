@@ -51,3 +51,14 @@
 /* The map's station badge (MetroMap badgeIds) */
 .ms-badge circle { fill: var(--b-gold); stroke: var(--halo); stroke-width: 2; }
 .ms-badge path { fill: var(--navy); }
+/* On the map page the strip is one row (title, chips that scroll sideways, Show all), so the map keeps its height. */
+@media (min-width: 700px) {
+  .ms-home:not(.simple) .ms-strip:not(.big) { grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: 14px; margin-bottom: 10px; }
+  .ms-home:not(.simple) .ms-strip:not(.big) ul { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; padding: 2px; }
+  .ms-home:not(.simple) .ms-strip:not(.big) li { flex: none; }
+  .ms-home:not(.simple) .ms-strip:not(.big) .ms-more { white-space: nowrap; }
+}
+@media (max-width: 699px) {
+  .ms-home:not(.simple) .ms-strip:not(.big) ul { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 2px; margin: 0 -16px; padding-inline: 16px; }
+  .ms-home:not(.simple) .ms-strip:not(.big) li { flex: none; }
+}

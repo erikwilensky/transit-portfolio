@@ -1,0 +1,6 @@
+Switzer, designed by Jérémie Schaeffer, published by Indian Type Foundry (ITF) through Fontshare.
+Licensed under the ITF Free Font License (FFL): free for personal and commercial use, including
+self-hosting on websites. https://www.fontshare.com/fonts/switzer and https://www.fontshare.com/licenses/itf-ffl
+
+Switzer is the typeface named by the NIST International School Brandbook 2024. The latin subset files here
+(weights 400, 500, 600 and 400 italic) come from the fontsource packaging (@carrot-kpi/switzer-font 0.1.0).

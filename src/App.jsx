@@ -279,7 +279,7 @@ export default function App() {
           <div className="nav-right">
             <SyncStatus />
             <TopSearch key={persona.id} persona={persona} go={go} toast={toast} version={version} lang={lang} simple={level === 'simple'} />
-            <button className="icon-btn nav-search" onClick={() => setLaunch(true)} aria-label="Jump to anything (Ctrl+K)" title="Jump to anything (Ctrl+K)"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" strokeWidth="1.8" /><path d="M11 11l3.5 3.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg></button>
+            <button className="icon-btn nav-search" onClick={() => setLaunch(true)} aria-label="Jump to anything (Ctrl+K)" title="Jump to anything (Ctrl+K)"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="4" cy="12" r="2.4" fill="none" stroke="currentColor" strokeWidth="1.7" /><path d="M6 10l7-7M8 3h5v5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg></button>
             <div className="menu-wrap">
               <button className="persona-btn" onClick={() => setMenu(menu === 'persona' ? null : 'persona')} aria-expanded={menu === 'persona'} aria-haspopup="menu">
                 <span className="av" style={{ background: persona.colour, color: inkOn(persona.colour) }}>{persona.initials}</span>
