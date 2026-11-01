@@ -18,13 +18,13 @@ export default function Reports({ persona, toast, version, focus }) {
   return (
     <div className="page sg-page" data-v={version}>
       <div className="sg-head">
-        <div><h1>Reports</h1><p className="fineprint">Moments and comments someone reported. The student never sees who reported them. Families, share links and other students stop seeing a hidden item at once.</p></div>
+        <div><div className="kicker">Safeguarding</div><h1>Reports</h1><p className="fineprint">Moments and comments someone reported. The student never sees who reported them. Families, share links and other students stop seeing a hidden item at once.</p></div>
         <div className="sg-tabs" role="tablist">
           <button role="tab" aria-selected={!done} className={!done ? 'on' : ''} onClick={() => setDone(false)}>Open ({open.length})</button>
           <button role="tab" aria-selected={done} className={done ? 'on' : ''} onClick={() => setDone(true)}>Done ({all.length - open.length})</button>
         </div>
       </div>
-      {!shown.length && <p className="card-sec fineprint">{done ? 'Nothing answered yet.' : 'No open reports.'}</p>}
+      {!shown.length && <div className="empty-state"><b>{done ? 'Nothing answered yet.' : 'No open reports.'}</b>{done ? 'Reports you answer move here.' : 'Anything someone reports appears here first.'}</div>}
       <ul className="sg-list">{shown.map((r) => <ReportCard key={r.id} r={r} persona={persona} toast={toast} focus={focus === r.id} />)}</ul>
     </div>
   );

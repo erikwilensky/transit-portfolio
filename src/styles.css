@@ -2262,3 +2262,32 @@ label.file-btn { display: inline-flex; align-items: center; cursor: pointer; }
 
 /* Thai for families: Thai text anywhere (a family's own language, the bilingual letters) in Sarabun, loaded in index.html. */
 [lang="th"] { font-family: "Switzer", Sarabun, "Noto Sans Thai", "TH SarabunPSK", sans-serif; }
+
+/* ── Polish, second pass ─────────────────────────────────── */
+/* Phones: logo and the top-bar buttons share one row instead of the buttons dropping under the logo. */
+@media (max-width: 480px) {
+  .topnav { column-gap: 8px; }
+  .brand-logo { height: 28px; }
+  .nav-right { gap: 6px; }
+  .nav-right .icon-btn { height: 32px; min-width: 32px; padding: 0 8px; }
+  .nav-right .tour-btn { padding: 0 10px; font-size: 12.5px; }
+  .nav-right .persona-btn { padding-right: 6px; }
+}
+/* Family view side column: milestones read as a quiet list under the same small heading as "This term", not a stack
+   of pills; Skills growth sits flush in the column. */
+.pv-intro .ms-strip { margin: 16px 0 0; gap: 4px; }
+.pv-intro .ms-strip h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.pv-intro .ms-strip ul { flex-direction: column; flex-wrap: nowrap; gap: 0; padding: 0; }
+.pv-intro .ms-strip li > div, .pv-intro .ms-strip li > button { border: 0; border-radius: 8px; padding: 5px 6px; background: none; width: 100%; }
+.pv-intro .ms-strip li > button:hover { background: var(--surface-2); }
+
+/* Staff page titles share one size: the advisory page matched the other staff pages' layout but not its title. */
+.adv-head h1 { font-size: 28px; line-height: 1.15; }
+.adv-head p { margin-top: 6px; font-size: 14.5px; }
+
+/* Reports: the same page width, title and empty state as the other staff pages. */
+.sg-page { max-width: 1240px; padding: 24px 24px 48px; }
+.sg-page .sg-head h1 { font-size: 28px; line-height: 1.15; margin-top: 2px; color: var(--ink); }
+
+/* CAS outcomes: flags stay one line each, so a rounded pill never wraps into a lozenge. */
+.cas-flag { white-space: nowrap; }
