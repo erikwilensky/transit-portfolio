@@ -38,18 +38,49 @@ export default function PresentationView({ map, lens, pres, selectedId, onSelect
     <blockquote className="endorse-quote">“{e.endorsements[0].note}” <cite>{e.endorsements[0].teacher?.name}, {e.endorsements[0].teacher?.role}</cite></blockquote>
   );
   const firstImage = (e) => e.evidence.find((x) => x.kind === 'image');
-  const Item = ({ e, detail = true }) => (
-    <div className={`p-item${selectedId === e.id ? ' sel' : ''}`} onClick={() => open(e.id)} style={{ '--c': lineById[e.lineIds[0]]?.colour }}>
+  // The student's own words on a moment: its first reflection (all of it, or the opening paragraph on a small card).
+  const voice = (e, whole) => {
+    const r = e.reflections?.[0];
+    if (!r?.text) return null;
+    const paras = r.text.split('\n\n').filter(Boolean);
+    return (
+      <blockquote className={`refl-quote p-voice${whole ? ' whole' : ''}`}>
+        <span className="refl-prompt">In my words{r.prompt ? ` · ${r.prompt}` : ''}</span>
+        {(whole ? paras : paras.slice(0, 1)).map((para, i) => <p key={i}>{para}</p>)}
+      </blockquote>
+    );
+  };
+  const Item = ({ e, detail = true, reflect = false }) => (
+    <div className={`p-item${selectedId === e.id ? ' sel' : ''}${firstImage(e) && detail ? ' has-img' : ''}`} onClick={() => open(e.id)} style={{ '--c': lineById[e.lineIds[0]]?.colour }}>
       {detail && firstImage(e) && <img className="p-img" src={firstImage(e).url} alt={firstImage(e).caption} loading="lazy" />}
+      {reflect && <span className="p-kicker">{TYPE_LABEL[e.type]}</span>}
       <div className="p-item-head"><b>{e.title}</b><span className="p-date">{fmtDate(e.date)}</span></div>
       {detail && <p>{e.summary}</p>}
+      {reflect && voice(e, false)}
       {detail && quote(e)}
       <div className="p-item-foot">{chips(e)}<VerifyBadge level={e.verification} event={e} /></div>
     </div>
   );
+  // The lead highlight: a large picture beside the whole story, the student's full reflection and the teacher's word.
+  const Feature = ({ e }) => {
+    const img = firstImage(e);
+    return (
+      <article className={`p-feature${img ? ' has-img' : ''}${selectedId === e.id ? ' sel' : ''}`} onClick={() => open(e.id)} style={{ '--c': lineById[e.lineIds[0]]?.colour }}>
+        {img && <img className="p-img pf-img" src={img.url} alt={img.caption} loading="lazy" />}
+        <div className="pf-body">
+          <span className="p-kicker">{TYPE_LABEL[e.type]} · {fmtDate(e.date)}</span>
+          <h3>{e.title}</h3>
+          <p className="pf-about">{e.about || e.summary}</p>
+          {voice(e, true)}
+          {quote(e)}
+          <div className="p-item-foot">{chips(e)}<VerifyBadge level={e.verification} event={e} /></div>
+        </div>
+      </article>
+    );
+  };
   const highlights = [...past].filter((e) => SHOWCASE.includes(e.type))
     .sort((a, b) => (b.endorsements.length - a.endorsements.length) || (VERIFY_RANK[b.verification] - VERIFY_RANK[a.verification]) || b.date.localeCompare(a.date))
-    .slice(0, 3);
+    .slice(0, 4);
   const reflections = visibleEvents.flatMap((e) => e.reflections.map((r) => ({ ...r, event: e })));
 
   return (
@@ -82,7 +113,8 @@ export default function PresentationView({ map, lens, pres, selectedId, onSelect
         {layout === 'profile' && (
           <>
             <h2 className="p-h2">Highlights</h2>
-            <div className="case-grid">{highlights.map((e) => <Item key={e.id} e={e} />)}</div>
+            {highlights[0] && <Feature e={highlights[0]} />}
+            {highlights.length > 1 && <div className="case-grid hl-grid">{highlights.slice(1).map((e) => <Item key={e.id} e={e} reflect />)}</div>}
             <h2 className="p-h2">What I do</h2>
             <div className="chapter-grid">
               {fullLines.map((l) => {
@@ -158,7 +190,7 @@ export default function PresentationView({ map, lens, pres, selectedId, onSelect
               return (
                 <section key={l.id} className="evidence-line" style={{ '--c': l.colour }}>
                   <h3><i />{l.name}</h3>
-                  <div className="case-grid">{[...evs].reverse().map((e) => <Item key={e.id} e={e} />)}</div>
+                  <div className="case-grid">{[...evs].reverse().map((e) => <Item key={e.id} e={e} reflect />)}</div>
                 </section>
               );
             })}
@@ -201,7 +233,7 @@ export default function PresentationView({ map, lens, pres, selectedId, onSelect
                 <li key={e.id} style={{ '--c': lineById[e.lineIds.find((id) => lens.lineState[id] !== 'hidden')]?.colour }} onClick={() => open(e.id)}>
                   <span className="tl-date">{i === 0 || year(past[i - 1].date) !== year(e.date) ? <b>{year(e.date)}</b> : null}{month(e.date).split(' ')[0]}</span>
                   <span className="tl-dot" />
-                  <span className="tl-body"><b>{e.title}</b><span>{e.summary}</span>{firstImage(e) && <img className="tl-img" src={firstImage(e).url} alt={firstImage(e).caption} loading="lazy" />}{quote(e)}<span className="tl-meta">{chips(e)}<VerifyBadge level={e.verification} event={e} /></span></span>
+                  <span className="tl-body"><b>{e.title}</b><span>{e.summary}</span>{firstImage(e) && <img className="tl-img" src={firstImage(e).url} alt={firstImage(e).caption} loading="lazy" />}{voice(e, false)}{quote(e)}<span className="tl-meta">{chips(e)}<VerifyBadge level={e.verification} event={e} /></span></span>
                 </li>
               ))}
             </ol>

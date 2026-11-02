@@ -96,6 +96,17 @@
   .case-card:hover { transform: none; }
   .case-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 4mm; }
   .case-grid > * { min-width: 0; }
+  .p-feature { break-inside: auto; grid-template-columns: 38% 1fr !important; border-width: 1px; border-top-width: 3pt; }
+  .p-feature .pf-img { min-height: 0; height: auto; max-height: none; align-self: start; aspect-ratio: 640 / 420; }
+  .pf-body { padding: 3mm 4mm; gap: 1.5mm; }
+  .pf-body h3 { font-size: 13pt; }
+  .pf-about { font-size: 9pt; line-height: 1.35; }
+  .p-voice.whole { font-size: 8.5pt; line-height: 1.35; padding: 1.5mm 3mm; }
+  .p-voice.whole p { margin-bottom: 1.5mm; }
+  .case-grid .p-voice p { -webkit-line-clamp: 3; }
+  .timeline .p-voice { margin: 1mm 0; padding: 1mm 3mm; font-size: 8.5pt; line-height: 1.35; }
+  .timeline .p-voice .refl-prompt { display: none; }
+  .timeline .p-voice p { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .layout-profile .case-grid, .layout-letter .case-grid, .layout-cards .case-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
   .layout-letter .p-img, .layout-cards .p-img { max-height: 30mm; }
   .evidence-line { break-before: auto; }

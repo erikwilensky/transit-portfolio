@@ -2291,3 +2291,35 @@ label.file-btn { display: inline-flex; align-items: center; cursor: pointer; }
 
 /* CAS outcomes: flags stay one line each, so a rounded pill never wraps into a lozenge. */
 .cas-flag { white-space: nowrap; }
+
+/* ── Presentation studio polish ──────────────────────────── */
+/* The preview sits at the top of its column and is as tall as its content, not stretched to the controls. */
+.studio-body > .studio-preview { align-self: start; }
+.pres { container: pres / inline-size; }
+.p-kicker { font-size: 11.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+
+/* Lead highlight: picture beside the story; the student's whole reflection and the teacher's word underneath. */
+.p-feature { display: grid; grid-template-columns: 1fr; background: var(--surface); border: 1px solid var(--rule); border-top: 5px solid var(--c); border-radius: 14px; overflow: hidden; cursor: pointer; transition: border-color .2s, transform .2s; }
+.p-feature:hover { transform: translateY(-2px); border-color: var(--c); }
+.p-feature.sel { outline: 2px solid var(--ink); outline-offset: 2px; }
+.p-feature .pf-img { width: 100%; height: 100%; min-height: 240px; aspect-ratio: auto; object-fit: cover; border-radius: 0; margin: 0; }
+.pf-body { display: flex; flex-direction: column; gap: 8px; padding: 18px 20px 16px; min-width: 0; }
+.pf-body h3 { font-size: 22px; line-height: 1.2; font-family: var(--head-font, var(--font)); }
+.pf-about { margin: 0; font-size: 15px; line-height: 1.55; }
+@container pres (min-width: 720px) {
+  .p-feature.has-img { grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); }
+  .p-feature .pf-img { max-height: none; }
+}
+.hl-grid { margin-top: 12px; }
+
+/* Highlight cards: the picture runs to the card's edges under a colour bar in the line's colour, then the words. */
+.case-grid .p-item { border-left-width: 1px; border-top: 5px solid var(--c); border-radius: 12px; padding: 12px 14px 12px; overflow: hidden; transition: transform .2s, border-color .2s; }
+.case-grid .p-item:hover, .case-card:hover { transform: translateY(-2px); border-color: var(--c); }
+.case-grid .p-item.has-img > .p-img, .case-card > .p-img { width: calc(100% + 28px); max-width: none; margin: -12px -14px 6px; border-radius: 0; }
+.p-voice { font-size: 13.5px; line-height: 1.5; }
+.case-grid .p-voice p { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.p-voice.whole { font-size: 14.5px; }
+.case-grid .p-item-foot { margin-top: auto; padding-top: 4px; }
+@media (prefers-reduced-motion: reduce) { .p-feature:hover, .case-grid .p-item:hover, .case-card:hover { transform: none; } }
+.timeline .p-voice { max-width: 560px; margin: 6px 0 4px; }
+.tl-img { width: min(100%, 360px); border-radius: 10px; }
