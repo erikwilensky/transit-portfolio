@@ -1,6 +1,6 @@
 {
   "aq-sensor": {
-    "title": "Linux Day Ivrea 2021 - talk FabLab Arduino sensore qualità aria",
+    "title": "Linux Day Ivrea 2021 - talk FabLab Arduino sensore qualit\u00e0 aria",
     "creator": "Valerio Bozzolan",
     "creatorUrl": "https://commons.wikimedia.org/wiki/User:Valerio_Bozzolan",
     "licence": "CC0",
@@ -70,15 +70,6 @@
     "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
     "source": "https://commons.wikimedia.org/w/index.php?curid=27942728",
     "provider": "wikimedia"
-  },
-  "ev-008": {
-    "title": "Borneo 16: From Rainforest to Mountains",
-    "creator": "Disgwylfa",
-    "creatorUrl": "https://www.flickr.com/photos/24413864@N05",
-    "licence": "CC BY 2.0",
-    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
-    "source": "https://www.flickr.com/photos/24413864@N05/29949832746",
-    "provider": "flickr"
   },
   "ev-012": {
     "title": "Writing in Notebook at Desk",
@@ -260,15 +251,6 @@
     "source": "https://www.flickr.com/photos/28024094@N08/5643033953",
     "provider": "flickr"
   },
-  "ev-213": {
-    "title": "Samantha practicing Japanese calligraphy",
-    "creator": "Justin Ruckman",
-    "creatorUrl": "https://www.flickr.com/photos/52816253@N00",
-    "licence": "CC BY 2.0",
-    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
-    "source": "https://www.flickr.com/photos/52816253@N00/1483693887",
-    "provider": "flickr"
-  },
   "ev-300": {
     "title": "Picture Books",
     "creator": "Enokson",
@@ -286,15 +268,6 @@
     "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
     "source": "https://www.flickr.com/photos/135396164@N05/29546505111",
     "provider": "flickr"
-  },
-  "ev-303": {
-    "title": "Na2CO3 HCl titration",
-    "creator": "Xhmikos",
-    "creatorUrl": "https://commons.wikimedia.org/wiki/User:Xhmikos",
-    "licence": "CC0",
-    "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en/",
-    "source": "https://commons.wikimedia.org/w/index.php?curid=15847456",
-    "provider": "wikimedia"
   },
   "ev-304": {
     "title": "Service intern Gwen Casebeer helps students with their net",
@@ -342,8 +315,8 @@
     "provider": "flickr"
   },
   "ev-319": {
-    "title": "workshop - espaço e suas reverberações",
-    "creator": "cássio abreu",
+    "title": "workshop - espa\u00e7o e suas reverbera\u00e7\u00f5es",
+    "creator": "c\u00e1ssio abreu",
     "creatorUrl": "https://www.flickr.com/photos/67711421@N00",
     "licence": "CC BY 2.0",
     "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
@@ -451,7 +424,7 @@
   },
   "piano-stage": {
     "title": "Playing the grand piano",
-    "creator": "René Voorburg",
+    "creator": "Ren\u00e9 Voorburg",
     "creatorUrl": "https://www.flickr.com/photos/49980274@N02",
     "licence": "CC BY 2.0",
     "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
@@ -465,15 +438,6 @@
     "licence": "CC BY 2.0",
     "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
     "source": "https://www.flickr.com/photos/99717632@N00/14221055685",
-    "provider": "flickr"
-  },
-  "stem-club": {
-    "title": "Tech week students' visit",
-    "creator": "gdsteam",
-    "creatorUrl": "https://www.flickr.com/photos/93332172@N03",
-    "licence": "CC BY 2.0",
-    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
-    "source": "https://www.flickr.com/photos/93332172@N03/28135904996",
     "provider": "flickr"
   }
 }
