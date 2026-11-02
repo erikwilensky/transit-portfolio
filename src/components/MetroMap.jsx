@@ -120,17 +120,19 @@ export default function MetroMap({ map, lens, selectedId, onSelect, onSignal, mi
       const x0 = (cols.find((c) => c.grade === now?.grade) || { x: 0 }).x;
       const s = cw < 640 ? 0.72 : 1;
       const tx = Math.max(cw - target.width * s, Math.min(0, 12 - x0 * s));
-      const ty = target.height * s < ch ? (ch - target.height * s) / 2 : 0;
+      const ty = target.height * s < ch ? Math.min(16, (ch - target.height * s) / 2) : 0;
       const sel = select(svg);
       (animate ? sel.transition().duration(400) : sel).call(zoomRef.current.transform, zoomIdentity.translate(tx, ty).scale(s));
       return;
     }
     let s = Math.min(cw / target.width, ch / target.height);
     if (cw >= 900) s = Math.max(s, Math.min(cw / target.width, 1));
-    s = Math.max(cw < 700 ? 0.6 : 0.5, Math.min(1.15, s));
+    // Never open so small that station names drop below about 9-10px: a long journey opens on the recent stretch instead.
+    s = Math.max(cw < 700 ? 0.7 : 0.72, Math.min(1.15, s));
     // Too wide to fit: start with the most recent stretch (around Today) in view.
     const tx = target.width * s < cw ? (cw - target.width * s) / 2 : Math.max(cw - target.width * s, Math.min(0, cw * 0.7 - target.todayX * s));
-    const ty = target.height * s < ch ? (ch - target.height * s) / 2 : 0;
+    // Sit the map just under the toolbar rather than floating in the middle of the frame.
+    const ty = target.height * s < ch ? Math.min(16, (ch - target.height * s) / 2) : 0;
     const t = zoomIdentity.translate(tx, ty).scale(s);
     const sel = select(svg);
     (animate ? sel.transition().duration(400) : sel).call(zoomRef.current.transform, t);
@@ -325,6 +327,7 @@ export default function MetroMap({ map, lens, selectedId, onSelect, onSignal, mi
         {/* Line names stay pinned to the left edge while the map pans. */}
         <g className="gutter" transform={`translate(0 ${tr.y}) scale(${tr.k})`}>
           <rect x={0} y={0} width={186} height={L.height} className="gutter-bg" style={{ opacity: tr.x < -4 ? 1 : 0 }} />
+          <line x1={186} x2={186} y1={0} y2={L.height} className="gutter-edge" style={{ opacity: tr.x < -4 ? 1 : 0 }} />
           {lineNames}
         </g>
       </svg>

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import Icon from './Icon.jsx';
 import { ACCEPT, evidenceFor, fileKind, fmtSize, uploadFile, viewUrl } from '../upload.js';
 
 // One upload at a time, with progress and a plain error.
@@ -51,7 +52,7 @@ export const fileLabel = (ev) => {
   const ext = /\.([a-z0-9]{2,5})$/i.exec(ev.name || '')?.[1]?.toUpperCase();
   return [KIND_NAME[k] || 'File', k === 'image' || k === 'pdf' ? null : ext, fmtSize(ev.size)].filter(Boolean).join(' · ');
 };
-export const FILE_ICON = { image: '▣', pdf: '▤', audio: '♪', video: '▶', doc: '▤' };
+export const FILE_ICON = { image: <Icon name="image" />, pdf: <Icon name="pdf" />, audio: <Icon name="audio" />, video: <Icon name="video" />, doc: <Icon name="doc" /> };
 
 // Shows an uploaded file the way it should be seen: a photo, a PDF in a frame, a player for
 // audio and video, or a clear open link for documents a browser cannot show.

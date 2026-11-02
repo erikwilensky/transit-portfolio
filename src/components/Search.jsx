@@ -164,7 +164,7 @@ export function TopSearch({ persona, go, toast, version, lang, simple }) {
     <>
       <div ref={wrap} className={`tsearch${sheet ? ' sheet' : ''}${expanded ? ' open' : ''}`} role="search" aria-label={say(lang, 'Search')}>
         <button className="icon-btn ts-phone" onClick={() => { setSheet(true); setFocus(true); }} aria-label={say(lang, 'Search')}><Glass /></button>
-        <div className="ts-box">
+        <div className="ts-box" onClick={(e) => { if (e.target === e.currentTarget || e.target.closest?.('.ts-glass')) input.current?.focus(); }}>
           <Glass />
           <input id="tsearch-q" ref={input} value={q} onChange={(e) => { setQ(e.target.value); setFocus(true); }} onFocus={() => setFocus(true)} onKeyDown={key}
             placeholder={say(lang, placeholderOf(persona))} aria-label={say(lang, placeholderOf(persona))} role="combobox" aria-expanded={expanded} aria-controls="tsearch" aria-autocomplete="list"

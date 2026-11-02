@@ -12,12 +12,14 @@
 .sk-chip { display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid var(--rule); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 5px 12px 5px 8px; font: inherit; font-size: 13.5px; cursor: pointer; text-align: left; }
 .sk-chip span b { font-weight: 600; } .sk-chip span small { display: block; font-size: 11.5px; color: var(--muted); }
 .sk-chip.on { border-color: var(--ink); background: var(--surface-2); }
-.sk-chip.on::after { content: '✓'; font-weight: 600; }
+.sk-chip.on::after { content: "✓"; font-weight: 600; margin-left: auto; padding-left: 6px; }
+/* Inside wider lists the chip can be stretched: keep icon, words and tick in a row from the left. */
+.sk-chips .sk-chip { justify-content: flex-start; align-items: center; text-align: left; }
 .sk-chip:disabled { opacity: .45; cursor: default; }
 .sk-pick.simple .sk-chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 .sk-pick.simple .sk-chip { border-radius: 14px; padding: 12px; font-size: 16px; min-height: 56px; border-width: 2px; }
 .sk-pick.simple .sk-chip b { font-weight: 600; }
-.sk-ico { font-size: 1.25em; line-height: 1; }
+.sk-ico { flex: none; font-size: 1.25em; width: 1em; height: 1em; color: var(--b-purple); vertical-align: -0.2em; }
 .sk-pick.simple .sk-ico { font-size: 26px; }
 .sk-acts { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
 .sk-moment { margin: 10px 0; }
