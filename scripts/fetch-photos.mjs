@@ -14,6 +14,8 @@
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 // name (matches the old illustration's file name) → search words
 export const PHOTOS = {
@@ -87,20 +89,41 @@ mkdirSync(dir, { recursive: true });
 const creditsFile = new URL('credits.json', dir);
 const credits = existsSync(creditsFile) ? JSON.parse(readFileSync(creditsFile, 'utf8')) : {};
 const UA = { 'user-agent': 'transit-portfolio-demo/1.0 (school portfolio demo; example photos)', accept: 'application/json' };
+const pause = () => new Promise((res) => setTimeout(res, 3500)); // anonymous Openverse allows about 20 searches a minute
 const LICENCE = { cc0: 'CC0', pdm: 'Public domain', by: 'CC BY' };
+
+// Openverse can be slow and throttles anonymous use, so searches get a long timeout, a few
+// tries, and are remembered between runs (re-picking a photo costs no new search).
+const cacheDir = join(tmpdir(), 'openverse-search-cache');
+mkdirSync(cacheDir, { recursive: true });
+async function search(query) {
+  const cached = join(cacheDir, `${encodeURIComponent(query)}.json`);
+  if (existsSync(cached)) return JSON.parse(readFileSync(cached, 'utf8'));
+  const q = new URLSearchParams({ q: query, license: 'cc0,pdm,by', aspect_ratio: 'wide', mature: 'false', page_size: '20' });
+  let why = '';
+  for (let tryNo = 0; tryNo < 3; tryNo += 1) {
+    const r = await fetch(`https://api.openverse.org/v1/images/?${q}`, { headers: UA, signal: AbortSignal.timeout(90000) }).catch((e) => ({ ok: false, status: e.name }));
+    await pause();
+    if (r.status === 403 || r.status === 429) return `${r.status}`;
+    if (!r.ok) { why = `${r.status}`; continue; }
+    const { results } = await r.json();
+    if (results.length) { writeFileSync(cached, JSON.stringify(results)); return results; }
+    why = 'empty';
+  }
+  return why;
+}
 
 for (const [name, query] of Object.entries(PHOTOS)) {
   if (only && !only.has(name)) continue;
-  const q = new URLSearchParams({ q: query, license: 'cc0,pdm,by', category: 'photograph', aspect_ratio: 'wide', size: 'large', mature: 'false', page_size: '20' });
-  const r = await fetch(`https://api.openverse.org/v1/images/?${q}`, { headers: UA });
-  if (!r.ok) { console.log(`FAIL ${name}: search ${r.status}`); continue; }
-  const found = (await r.json()).results.filter((p) => p.url && (!p.width || p.width >= 1000));
+  const results = await search(query);
+  if (typeof results === 'string') { console.log(`FAIL ${name}: search ${results}`); continue; }
+  const found = results.filter((p) => p.url && (p.width || 0) >= 1000);
   const p = found[picks[name] || 0];
   if (!p) { console.log(`FAIL ${name}: no result for "${query}"`); continue; }
-  const img = await fetch(p.url, { headers: { 'user-agent': UA['user-agent'] } });
-  if (!img.ok) { console.log(`FAIL ${name}: download ${img.status} (try --pick=${name}:${(picks[name] || 0) + 1})`); continue; }
+  const body = await fetch(p.url, { headers: { 'user-agent': UA['user-agent'] }, signal: AbortSignal.timeout(45000) }).then(async (img) => (img.ok ? Buffer.from(await img.arrayBuffer()) : `${img.status}`)).catch((e) => e.name);
+  if (typeof body === 'string') { console.log(`FAIL ${name}: download ${body} (try --pick=${name}:${(picks[name] || 0) + 1})`); continue; }
   const file = fileURLToPath(new URL(`${name}.jpg`, dir));
-  writeFileSync(file, Buffer.from(await img.arrayBuffer()));
+  writeFileSync(file, body);
   try { execFileSync('sips', ['-s', 'format', 'jpeg', '-s', 'formatOptions', '72', '-Z', '1400', file, '--out', file], { stdio: 'ignore' }); } catch { /* not a Mac: keep the original */ }
   credits[name] = {
     title: p.title || '', creator: p.creator || 'Unknown', creatorUrl: p.creator_url || null,
@@ -108,6 +131,5 @@ for (const [name, query] of Object.entries(PHOTOS)) {
     source: p.foreign_landing_url || p.url, provider: p.source || p.provider,
   };
   console.log(`OK   ${name.padEnd(16)} ${credits[name].licence.padEnd(10)} ${credits[name].creator} · ${credits[name].title}`);
-  await new Promise((res) => setTimeout(res, 1200));
 }
 writeFileSync(creditsFile, `${JSON.stringify(credits, null, 2)}\n`);
