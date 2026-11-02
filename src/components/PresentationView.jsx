@@ -6,6 +6,7 @@ import { LENSES } from '../api.js';
 import { fmtDate, TYPE_LABEL, inkOn } from '../format.js';
 import CustomView from '../custom/CustomView.jsx';
 import { defaultDesign } from '../custom/design.js';
+import { photoCredit } from '../photos.js';
 
 // Each audience reads a different format. The metro map is the student's
 // own tool; here it is optional (a small overview) or one format among many.
@@ -38,6 +39,19 @@ export default function PresentationView({ map, lens, pres, selectedId, onSelect
     <blockquote className="endorse-quote">“{e.endorsements[0].note}” <cite>{e.endorsements[0].teacher?.name}, {e.endorsements[0].teacher?.role}</cite></blockquote>
   );
   const firstImage = (e) => e.evidence.find((x) => x.kind === 'image');
+  // A picture at a fixed 3:2 crop with its caption underneath, so every image in a document lines up.
+  const Fig = ({ e, className = '', caption = true }) => {
+    const img = firstImage(e);
+    if (!img) return null;
+    return (
+      <figure className={`p-fig ${className}`}>
+        <img className="p-img" src={img.url} alt={img.caption} loading="lazy" />
+        {caption && img.caption && img.caption !== e.title && <figcaption>{img.caption}</figcaption>}
+      </figure>
+    );
+  };
+  // Section headings are numbered by a CSS counter (01, 02…), like the chapters of a printed report.
+  const Sec = ({ children }) => <h2 className="p-h2">{children}</h2>;
   // The student's own words on a moment: its first reflection (all of it, or the opening paragraph on a small card).
   const voice = (e, whole) => {
     const r = e.reflections?.[0];
@@ -52,8 +66,8 @@ export default function PresentationView({ map, lens, pres, selectedId, onSelect
   };
   const Item = ({ e, detail = true, reflect = false }) => (
     <div className={`p-item${selectedId === e.id ? ' sel' : ''}${firstImage(e) && detail ? ' has-img' : ''}`} onClick={() => open(e.id)} style={{ '--c': lineById[e.lineIds[0]]?.colour }}>
-      {detail && firstImage(e) && <img className="p-img" src={firstImage(e).url} alt={firstImage(e).caption} loading="lazy" />}
-      {reflect && <span className="p-kicker">{TYPE_LABEL[e.type]}</span>}
+      {detail && <Fig e={e} caption={false} />}
+      {reflect && <span className="p-kicker"><i className="p-dot" />{TYPE_LABEL[e.type]}</span>}
       <div className="p-item-head"><b>{e.title}</b><span className="p-date">{fmtDate(e.date)}</span></div>
       {detail && <p>{e.summary}</p>}
       {reflect && voice(e, false)}
@@ -66,9 +80,9 @@ export default function PresentationView({ map, lens, pres, selectedId, onSelect
     const img = firstImage(e);
     return (
       <article className={`p-feature${img ? ' has-img' : ''}${selectedId === e.id ? ' sel' : ''}`} onClick={() => open(e.id)} style={{ '--c': lineById[e.lineIds[0]]?.colour }}>
-        {img && <img className="p-img pf-img" src={img.url} alt={img.caption} loading="lazy" />}
+        {img && <Fig e={e} className="pf-img" />}
         <div className="pf-body">
-          <span className="p-kicker">{TYPE_LABEL[e.type]} · {fmtDate(e.date)}</span>
+          <span className="p-kicker"><i className="p-dot" />{TYPE_LABEL[e.type]} · {fmtDate(e.date)}</span>
           <h3>{e.title}</h3>
           <p className="pf-about">{e.about || e.summary}</p>
           {voice(e, true)}
@@ -82,16 +96,31 @@ export default function PresentationView({ map, lens, pres, selectedId, onSelect
     .sort((a, b) => (b.endorsements.length - a.endorsements.length) || (VERIFY_RANK[b.verification] - VERIFY_RANK[a.verification]) || b.date.localeCompare(a.date))
     .slice(0, 4);
   const reflections = visibleEvents.flatMap((e) => e.reflections.map((r) => ({ ...r, event: e })));
+  const endorsed = past.filter((e) => e.endorsements.length).length;
+  const verified = past.filter((e) => e.verification === 'school-verified').length;
+  const years = past.length ? new Set(past.map((e) => year(e.date))).size : 0;
+  // The example students' pictures are licensed stock photos: each one shown is credited in the footer.
+  const credits = [...new Map(visibleEvents.map(firstImage).filter(Boolean).map((i) => [i.url, photoCredit(i.url)]).filter(([, c]) => c)).values()];
+  // "Maya Chen: my journey" reads as a name and a title.
+  const name = map.student.name;
+  const subtitle = pres.title?.startsWith(`${name}: `) ? pres.title.slice(name.length + 2) : pres.title;
 
   return (
     <div className={`pres layout-${layout}`}>
-      <header className="pres-head">
-        <div className="pres-avatar" style={{ background: map.student.avatar.colour, color: inkOn(map.student.avatar.colour) }}>{map.student.avatar.initials}</div>
-        <div>
+      <header className="pres-head pres-cover">
+        <div className="pc-main">
           <div className="pres-kicker">{LENSES[pres.audience].label}{pres.targetName ? ` · ${pres.targetName}` : ''}</div>
-          <h1>{pres.title}</h1>
+          <h1><span className="pc-name">{name}</span><span className="pc-title">{subtitle}</span></h1>
           <div className="pres-sub">{map.student.programme} · Year {map.student.grade + 1}{pres.institution ? ` · for ${pres.institution}` : ''}</div>
         </div>
+        {layout !== 'impact' && past.length > 0 && (
+          <dl className="pc-facts">
+            <div><dt>Moments</dt><dd>{past.length}</dd></div>
+            <div><dt>Teacher endorsed</dt><dd>{endorsed}</dd></div>
+            <div><dt>School verified</dt><dd>{verified}</dd></div>
+            <div><dt>Years</dt><dd>{years}</dd></div>
+          </dl>
+        )}
       </header>
 
       {layout === 'map' ? (
@@ -112,10 +141,10 @@ export default function PresentationView({ map, lens, pres, selectedId, onSelect
 
         {layout === 'profile' && (
           <>
-            <h2 className="p-h2">Highlights</h2>
+            <Sec>Highlights</Sec>
             {highlights[0] && <Feature e={highlights[0]} />}
             {highlights.length > 1 && <div className="case-grid hl-grid">{highlights.slice(1).map((e) => <Item key={e.id} e={e} reflect />)}</div>}
-            <h2 className="p-h2">What I do</h2>
+            <Sec>What I do</Sec>
             <div className="chapter-grid">
               {fullLines.map((l) => {
                 const evs = onLine(l).filter((e) => e.type !== 'goal');
@@ -130,7 +159,7 @@ export default function PresentationView({ map, lens, pres, selectedId, onSelect
               })}
             </div>
             {reflections.at(-1) && <blockquote className="pull">“{reflections.at(-1).text.split('\n\n')[0]}”<cite>{/^Reflection: /.test(reflections.at(-1).event.title) ? `From a reflection: “${reflections.at(-1).event.title.replace(/^Reflection: /, '')}”` : `From a reflection on “${reflections.at(-1).event.title}”`}</cite></blockquote>}
-            {goals.length > 0 && <><h2 className="p-h2">Next</h2><ul className="goal-list">{goals.map((e) => <li key={e.id} onClick={() => open(e.id)}><b>{e.title}</b> <span>{month(e.date)}</span></li>)}</ul></>}
+            {goals.length > 0 && <><Sec>Next</Sec><ul className="goal-list">{goals.map((e) => <li key={e.id} onClick={() => open(e.id)}><b>{e.title}</b> <span>{month(e.date)}</span></li>)}</ul></>}
           </>
         )}
 
@@ -161,7 +190,7 @@ export default function PresentationView({ map, lens, pres, selectedId, onSelect
                           <div>
                             <div className="narr-stop-head"><b>{e.title}</b> <VerifyBadge level={e.verification} event={e} />
                               <p>{e.about || e.summary}</p></div>
-                            {firstImage(e) && <img className="narr-img" src={firstImage(e).url} alt={firstImage(e).caption} loading="lazy" />}
+                            <Fig e={e} className="narr-img" />
                             {e.reflections.map((r) => <blockquote key={r.id} className="refl-quote"><span className="refl-prompt">Reflection: {r.prompt}</span>{r.text.split('\n\n').map((para, i) => <p key={i}>{para}</p>)}</blockquote>)}
                           </div>
                         </li>
@@ -183,7 +212,7 @@ export default function PresentationView({ map, lens, pres, selectedId, onSelect
               {fullLines.map((l) => pres.narratives?.[l.id] && <p key={l.id}>{pres.narratives[l.id]}</p>)}
               <p className="sig">{map.student.name}</p>
             </section>
-            <h2 className="p-h2">Evidence for this course</h2>
+            <Sec>Evidence for this course</Sec>
             {fullLines.map((l) => {
               const evs = onLine(l).filter((e) => e.type !== 'goal');
               if (!evs.length) return null;
@@ -196,7 +225,7 @@ export default function PresentationView({ map, lens, pres, selectedId, onSelect
             })}
             {thinLines.length > 0 && (
               <section className="context">
-                <h2 className="p-h2">Other context</h2>
+                <Sec>Other context</Sec>
                 <div className="chips">{thinLines.map((l) => <span key={l.id} className="line-chip static" style={{ '--c': l.colour }}><i className={l.pattern === 'cased' ? 'cased' : undefined} />{l.name} · {onLine(l).length}</span>)}</div>
               </section>
             )}
@@ -209,8 +238,8 @@ export default function PresentationView({ map, lens, pres, selectedId, onSelect
           <div className="case-grid">
             {past.filter((e) => SHOWCASE.includes(e.type)).reverse().map((e) => (
               <article key={e.id} className="case-card" style={{ '--c': lineById[e.lineIds[0]]?.colour }} onClick={() => open(e.id)}>
-                <div className="case-top"><span>{TYPE_LABEL[e.type]}</span><span>{fmtDate(e.date)}</span></div>
-                {firstImage(e) && <img className="p-img" src={firstImage(e).url} alt={firstImage(e).caption} loading="lazy" />}
+                <div className="case-top"><span><i className="p-dot" />{TYPE_LABEL[e.type]}</span><span>{fmtDate(e.date)}</span></div>
+                <Fig e={e} caption={false} />
                 <h3>{e.title}</h3>
                 <p>{e.about || e.summary}</p>
                 {quote(e)}
@@ -224,16 +253,16 @@ export default function PresentationView({ map, lens, pres, selectedId, onSelect
           <>
             <div className="impact-stats">
               <span><b>{past.length}</b> contributions</span>
-              <span><b>{past.length ? new Set(past.map((e) => year(e.date))).size : 0}</b> years active</span>
-              <span><b>{past.filter((e) => e.endorsements.length).length}</b> teacher endorsements</span>
-              <span><b>{past.filter((e) => e.verification === 'school-verified').length}</b> school-verified</span>
+              <span><b>{years}</b> years active</span>
+              <span><b>{endorsed}</b> teacher endorsements</span>
+              <span><b>{verified}</b> school-verified</span>
             </div>
             <ol className="timeline">
               {past.map((e, i) => (
                 <li key={e.id} style={{ '--c': lineById[e.lineIds.find((id) => lens.lineState[id] !== 'hidden')]?.colour }} onClick={() => open(e.id)}>
                   <span className="tl-date">{i === 0 || year(past[i - 1].date) !== year(e.date) ? <b>{year(e.date)}</b> : null}{month(e.date).split(' ')[0]}</span>
                   <span className="tl-dot" />
-                  <span className="tl-body"><b>{e.title}</b><span>{e.summary}</span>{firstImage(e) && <img className="tl-img" src={firstImage(e).url} alt={firstImage(e).caption} loading="lazy" />}{voice(e, false)}{quote(e)}<span className="tl-meta">{chips(e)}<VerifyBadge level={e.verification} event={e} /></span></span>
+                  <span className="tl-body"><b>{e.title}</b><span>{e.summary}</span><Fig e={e} className="tl-img" caption={false} />{voice(e, false)}{quote(e)}<span className="tl-meta">{chips(e)}<VerifyBadge level={e.verification} event={e} /></span></span>
                 </li>
               ))}
             </ol>
@@ -241,7 +270,14 @@ export default function PresentationView({ map, lens, pres, selectedId, onSelect
         )}
       </div>
 
-      <footer className="pres-foot"><VerifyLegend /><span>Every item shows how it was verified. Students choose and order items but cannot edit verified facts.</span>{pres.theme === 'nist' && <Logo className="pres-mark" />}</footer>
+      <footer className="pres-foot">
+        <div className="pf-row"><VerifyLegend /><span>Every item shows how it was verified. Students choose and order items but cannot edit verified facts.</span>{pres.theme === 'nist' && <Logo className="pres-mark" />}</div>
+        {credits.length > 0 && (
+          <p className="pres-credits">Example photos (stock images standing in for students' own):{' '}
+            {credits.map((c, i) => <span key={c.source}>{i > 0 && '; '}<a href={c.source} target="_blank" rel="noreferrer noopener">{c.title || 'Photo'}</a> by {c.creator}, {c.licenceUrl ? <a href={c.licenceUrl} target="_blank" rel="noreferrer noopener">{c.licence}</a> : c.licence}</span>)}
+          </p>
+        )}
+      </footer>
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import studentsData from '../data/students.json';
 import linesData from '../data/lines.json';
 import eventsData from '../data/events.json';
+import { photoUrl, usePhotos } from './photos.js';
 import reflectionsData from '../data/reflections.json';
 import endorsementsData from '../data/endorsements.json';
 import teachersData from '../data/teachers.json';
@@ -668,7 +669,7 @@ export function addReflection({ studentId, eventId, prompt, text, visibility = '
 export function addStation(studentId, f) {
   const e = {
     id: uid('ev-'), studentId, title: f.title, date: f.date || TODAY, lineIds: f.lineIds, type: f.type || 'project', summary: f.summary || '',
-    about: f.about || '', evidence: f.evidence || [...(f.image ? [{ kind: 'image', url: f.image, caption: f.imageCaption || 'Photo' }] : []), ...(f.files || [])],
+    about: f.about || '', evidence: f.evidence || [...(f.image ? [{ kind: 'image', url: photoUrl(f.image), caption: f.imageCaption || 'Photo' }] : []), ...(f.files || [])],
     verification: 'student-added', visibility: f.visibility || 'advisor', source: { system: f.via || 'Manual entry', ref: null },
     ...(f.cas ? { cas: f.cas } : {}),
     ...(f.promptId ? { promptId: String(f.promptId).slice(0, 80) } : {}), // written with subject prompts (getPromptsFor)
@@ -1225,6 +1226,7 @@ store.events.push(
 
 // ── F2 to F4: the demo survives a reload, can be reset, and stays in step across tabs ─
 // Everything lives in this browser's localStorage. A new build version starts clean.
+usePhotos(store);
 const SEED = JSON.stringify(store);
 // The key carries a hash of the seed, so a deploy that changes the seed data starts everyone clean.
 const STORE_KEY = `tp-store-${[...SEED].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0, 2166136261).toString(36)}`;
@@ -1240,6 +1242,7 @@ function apply(saved) {
   applying = true;
   for (const k of Object.keys(store)) delete store[k];
   Object.assign(store, saved.store);
+  usePhotos(store); // saves from before the stock photos still point at the drawings
   // Saves from before the roster import have no class lists.
   store.classes ||= []; store.enrolments ||= [];
   // Collections of features removed in October 2026 (never used in the pilot): dropped on load.

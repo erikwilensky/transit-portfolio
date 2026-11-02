@@ -1,4 +1,5 @@
 import { fmtDate } from '../format.js';
+import { photoUrl } from '../photos.js';
 
 // Realistic renderings of a piece of evidence: a certificate, a result slip, a code repository,
 // a video or audio page, a web page or dashboard, a spreadsheet, a slide deck or a multi-page document.
@@ -20,7 +21,7 @@ export function Blocks({ blocks = [] }) {
     if (k === 'quote') return <blockquote key={i}>{a[0]}</blockquote>;
     if (k === 'code') return <pre key={i}><code>{a[0]}</code></pre>;
     if (k === 'note') return <aside key={i} className="ed-note"><b>{a[0]}</b>{a[1]}</aside>;
-    if (k === 'fig') return <figure key={i}>{a[1] ? <img src={a[1]} alt="" /> : <div className="ed-figph" aria-hidden="true" />}<figcaption>{a[0]}</figcaption></figure>;
+    if (k === 'fig') return <figure key={i}>{a[1] ? <img src={photoUrl(a[1])} alt="" /> : <div className="ed-figph" aria-hidden="true" />}<figcaption>{a[0]}</figcaption></figure>;
     if (k === 'table') return <div key={i} className="ed-tablewrap"><table className="ed-table"><thead><tr>{a[0].map((c) => <th key={c}>{c}</th>)}</tr></thead><tbody>{a[1].map((r, j) => <tr key={j}>{r.map((c, m) => <td key={m}>{c}</td>)}</tr>)}</tbody></table></div>;
     if (k === 'stats') return <div key={i} className="ed-stats">{a[0].map(([l, v]) => <div key={l}><b>{v}</b><small>{l}</small></div>)}</div>;
     if (k === 'bars') {
@@ -97,7 +98,7 @@ const hash = (s) => [...s].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7)
 function Video({ d, poster }) {
   return (
     <div className="ed-video">
-      <div className="ed-player">{d.img || poster ? <img src={d.img || poster} alt="" /> : <div className="ed-poster" aria-hidden="true"><b>{d.title}</b></div>}<span className="ed-play" aria-hidden="true">▶</span><span className="ed-dur">{d.dur}</span></div>
+      <div className="ed-player">{d.img || poster ? <img src={photoUrl(d.img || poster)} alt="" /> : <div className="ed-poster" aria-hidden="true"><b>{d.title}</b></div>}<span className="ed-play" aria-hidden="true">▶</span><span className="ed-dur">{d.dur}</span></div>
       <h3>{d.title}</h3>
       <small className="ed-sub">{d.host || 'NIST Media'} · {d.views} views</small>
       <Blocks blocks={[].concat(d.desc)} />
