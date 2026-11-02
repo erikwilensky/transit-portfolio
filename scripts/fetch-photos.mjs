@@ -1,16 +1,19 @@
 // Downloads the stock photos used by the example students' evidence (public/evidence/photos)
 // and records who took each one (public/evidence/photos/credits.json).
 //
-// Every photo comes from Unsplash under the Unsplash Licence (free to use, including in
-// software, no permission needed). Unsplash+ (paid) photos are skipped. Credits are shown
-// in the app anyway, because it is the decent thing to do.
+// Photos come from Openverse (api.openverse.org), the open-licence image search run by
+// WordPress, limited to licences that allow reuse in software with a credit: CC0, public
+// domain mark and CC BY. Every photo's creator, licence and source are shown in the app.
 //
-// Run on a machine that can reach unsplash.com:   node scripts/fetch-photos.mjs
+// Run on a machine that can reach api.openverse.org:   node scripts/fetch-photos.mjs
 //   --only=name1,name2   re-fetch just these
 //   --pick=name:3        use the 4th search result for that photo instead of the 1st
 //   --query=name:"new search words"  try different words for that photo
-// The script prints each photo's own description so a person can check it fits.
+// The script prints each photo's title so a person can check it fits. On a Mac it shrinks
+// each photo to 1400px with sips.
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 // name (matches the old illustration's file name) → search words
 export const PHOTOS = {
@@ -83,20 +86,28 @@ const dir = new URL('../public/evidence/photos/', import.meta.url);
 mkdirSync(dir, { recursive: true });
 const creditsFile = new URL('credits.json', dir);
 const credits = existsSync(creditsFile) ? JSON.parse(readFileSync(creditsFile, 'utf8')) : {};
-const UA = { 'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Safari/537.36', accept: 'application/json' };
+const UA = { 'user-agent': 'transit-portfolio-demo/1.0 (school portfolio demo; example photos)', accept: 'application/json' };
+const LICENCE = { cc0: 'CC0', pdm: 'Public domain', by: 'CC BY' };
 
 for (const [name, query] of Object.entries(PHOTOS)) {
   if (only && !only.has(name)) continue;
-  const r = await fetch(`https://unsplash.com/napi/search/photos?query=${encodeURIComponent(query)}&per_page=20&orientation=landscape`, { headers: UA });
+  const q = new URLSearchParams({ q: query, license: 'cc0,pdm,by', category: 'photograph', aspect_ratio: 'wide', size: 'large', mature: 'false', page_size: '20' });
+  const r = await fetch(`https://api.openverse.org/v1/images/?${q}`, { headers: UA });
   if (!r.ok) { console.log(`FAIL ${name}: search ${r.status}`); continue; }
-  const free = (await r.json()).results.filter((p) => !p.premium && !p.plus && p.urls?.raw);
-  const p = free[picks[name] || 0];
-  if (!p) { console.log(`FAIL ${name}: no free result for "${query}"`); continue; }
-  const img = await fetch(`${p.urls.raw}&w=1200&h=800&fit=crop&crop=entropy&q=70&fm=jpg`);
-  if (!img.ok) { console.log(`FAIL ${name}: download ${img.status}`); continue; }
-  writeFileSync(new URL(`${name}.jpg`, dir), Buffer.from(await img.arrayBuffer()));
-  credits[name] = { photographer: p.user?.name, profile: p.user?.links?.html, photo: p.links?.html, licence: 'Unsplash Licence', description: p.alt_description || p.description || '' };
-  console.log(`OK   ${name.padEnd(16)} ${p.user?.name} · ${credits[name].description}`);
-  await new Promise((res) => setTimeout(res, 400));
+  const found = (await r.json()).results.filter((p) => p.url && (!p.width || p.width >= 1000));
+  const p = found[picks[name] || 0];
+  if (!p) { console.log(`FAIL ${name}: no result for "${query}"`); continue; }
+  const img = await fetch(p.url, { headers: { 'user-agent': UA['user-agent'] } });
+  if (!img.ok) { console.log(`FAIL ${name}: download ${img.status} (try --pick=${name}:${(picks[name] || 0) + 1})`); continue; }
+  const file = fileURLToPath(new URL(`${name}.jpg`, dir));
+  writeFileSync(file, Buffer.from(await img.arrayBuffer()));
+  try { execFileSync('sips', ['-s', 'format', 'jpeg', '-s', 'formatOptions', '72', '-Z', '1400', file, '--out', file], { stdio: 'ignore' }); } catch { /* not a Mac: keep the original */ }
+  credits[name] = {
+    title: p.title || '', creator: p.creator || 'Unknown', creatorUrl: p.creator_url || null,
+    licence: `${LICENCE[p.license] || p.license.toUpperCase()}${p.license === 'by' ? ` ${p.license_version}` : ''}`, licenceUrl: p.license_url || null,
+    source: p.foreign_landing_url || p.url, provider: p.source || p.provider,
+  };
+  console.log(`OK   ${name.padEnd(16)} ${credits[name].licence.padEnd(10)} ${credits[name].creator} · ${credits[name].title}`);
+  await new Promise((res) => setTimeout(res, 1200));
 }
 writeFileSync(creditsFile, `${JSON.stringify(credits, null, 2)}\n`);
