@@ -6,3 +6,4 @@ server/build/
 .env
 .env.pilot
 .claude/worktrees/
+graphify-out/
