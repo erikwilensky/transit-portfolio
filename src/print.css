@@ -182,3 +182,33 @@
   .al-paper .alp-meta { font-size: 8.5pt; color: #4a566c; }
   .al-paper .alp-note { font-size: 8.5pt; color: #4a566c; border-top: 1px solid #cfd6e2; padding-top: 2mm; margin: 0; }
 }
+
+/* The professional presentation pass (cover band, numbered sections, figures) on paper. */
+@media print {
+  .pres > :not(.pres-head) { margin-inline: 0 !important; }
+  .pres { border-radius: 0; }
+  .pres-head.pres-cover { padding: 6mm 7mm 5mm !important; gap: 4mm; border-radius: 2mm; grid-template-columns: minmax(0, 1fr) 70mm !important; }
+  .pres-cover::after { width: 10mm !important; top: 5mm !important; right: 6mm !important; }
+  .pres-cover h1, .pres-cover .pres-kicker, .pres-cover .pres-sub { color: inherit !important; }
+  .pres-cover .pres-kicker { color: #78D5E1 !important; }
+  .pc-name { font-size: 22pt; } .pc-title { font-size: 11.5pt; } .pres-cover .pres-sub { margin-top: 2mm; font-size: 8.5pt; color: #b9c6da !important; }
+  .pc-facts { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; row-gap: 2mm; }
+  .pc-facts dt { font-size: 6.5pt; } .pc-facts dd { font-size: 13pt; }
+  .pc-facts div { padding: 0 0 0 3mm !important; }
+  .p-h2 { font-size: 12.5pt; margin: 3mm 0 2.5mm; padding-bottom: 1.5mm; }
+  .p-h2::before { font-size: 8.5pt; }
+  .p-fig figcaption { font-size: 7.5pt; margin-top: 1mm; }
+  .p-feature .pf-img { padding: 3mm 0 3mm 3mm !important; aspect-ratio: auto; }
+  .p-feature .pf-img .p-img { aspect-ratio: 3 / 2; max-height: 42mm; }
+  .cv .p-fig { display: none; }
+  .cv .cv-main .p-item { display: block; padding: 2mm 0; margin: 0; }
+  .tl-body { display: block !important; padding-bottom: 3mm; }
+  .tl-body > .p-fig { float: right; width: 38mm !important; margin: 0 0 2mm 4mm !important; }
+  .tl-body > .p-fig .p-img { max-height: 26mm; }
+  .tl-body::after { content: ''; display: block; clear: both; }
+  .impact-stats { margin: 0 0 4mm; } .impact-stats span { padding: 2mm 3mm 2mm 0; } .impact-stats b { font-size: 16pt; }
+  .pull { padding: 3mm 0; font-size: 12.5pt; }
+  .pres-credits { font-size: 6.5pt; line-height: 1.35; }
+  .pres-credits a::after, .ev-credit a::after { content: none !important; }
+  .narr-stops .p-fig { margin: 0 0 2mm 5mm !important; }
+}

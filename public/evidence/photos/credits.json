@@ -1,0 +1,443 @@
+{
+  "aq-sensor": {
+    "title": "Linux Day Ivrea 2021 - talk FabLab Arduino sensore qualit\u00e0 aria",
+    "creator": "Valerio Bozzolan",
+    "creatorUrl": "https://commons.wikimedia.org/wiki/User:Valerio_Bozzolan",
+    "licence": "CC0",
+    "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en/",
+    "source": "https://commons.wikimedia.org/w/index.php?curid=111561276",
+    "provider": "wikimedia"
+  },
+  "arcade": {
+    "title": "Flashbacks arcade, Seaside Heights, NJ, 7/22/08 - 1 of 5",
+    "creator": "goodrob13",
+    "creatorUrl": "https://www.flickr.com/photos/25030443@N03",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://www.flickr.com/photos/25030443@N03/2793665742",
+    "provider": "flickr"
+  },
+  "beach-cleanup": {
+    "title": "BOSS Program Leads Successful Beach Cleanup at Tracks Beach Park",
+    "creator": "usaghawaii",
+    "creatorUrl": "https://www.flickr.com/photos/61219566@N08",
+    "licence": "Public domain",
+    "licenceUrl": "https://creativecommons.org/publicdomain/mark/1.0/",
+    "source": "https://www.flickr.com/photos/61219566@N08/53401615712",
+    "provider": "flickr"
+  },
+  "bowl": {
+    "title": "Bowl of contentment",
+    "creator": "UnnarYmir",
+    "creatorUrl": "https://www.flickr.com/photos/54771619@N05",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://www.flickr.com/photos/54771619@N05/6770210411",
+    "provider": "flickr"
+  },
+  "climb": {
+    "title": "Bouldering",
+    "creator": "liquene",
+    "creatorUrl": "https://www.flickr.com/photos/28807271@N04",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://www.flickr.com/photos/28807271@N04/4137504741",
+    "provider": "flickr"
+  },
+  "compost-bin": {
+    "title": "DIY compost bin",
+    "creator": "PumpkinsGarden.com",
+    "creatorUrl": "https://www.flickr.com/photos/88331985@N02",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://www.flickr.com/photos/88331985@N02/8070914191",
+    "provider": "flickr"
+  },
+  "ev-001": {
+    "title": "Swimming pool with lane ropes in place",
+    "creator": "Xander from Yellowknife, NT, Canada",
+    "creatorUrl": "https://www.flickr.com/people/95546065@N00",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://commons.wikimedia.org/w/index.php?curid=5387026",
+    "provider": "wikimedia"
+  },
+  "ev-003": {
+    "title": "Water Pollution with Trash Disposal of Waste at the Garbage Beach",
+    "creator": "epSos.de",
+    "creatorUrl": null,
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://commons.wikimedia.org/w/index.php?curid=27942728",
+    "provider": "wikimedia"
+  },
+  "ev-012": {
+    "title": "Writing in Notebook at Desk",
+    "creator": "Image Catalog",
+    "creatorUrl": "https://www.flickr.com/photos/132795455@N08",
+    "licence": "CC0",
+    "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "source": "https://www.flickr.com/photos/132795455@N08/18692128651",
+    "provider": "flickr"
+  },
+  "ev-013": {
+    "title": "bullet journaling nov 2016",
+    "creator": "distelfliege",
+    "creatorUrl": "https://www.flickr.com/photos/7432654@N02",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://www.flickr.com/photos/7432654@N02/31232467726",
+    "provider": "flickr"
+  },
+  "ev-014": {
+    "title": "2 infrared sensors, arduino nano, breadboard",
+    "creator": "WILLPOWER STUDIOS",
+    "creatorUrl": "https://www.flickr.com/photos/99717632@N00",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://www.flickr.com/photos/99717632@N00/38351311196",
+    "provider": "flickr"
+  },
+  "ev-015": {
+    "title": "Student Studying in the Communications Library",
+    "creator": "IllinoisLibrary",
+    "creatorUrl": "https://www.flickr.com/photos/45214447@N07",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://www.flickr.com/photos/45214447@N07/11056539964",
+    "provider": "flickr"
+  },
+  "ev-017": {
+    "title": "Charged electricity meter",
+    "creator": "Kai Hendry",
+    "creatorUrl": "https://www.flickr.com/photos/16105436@N00",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://www.flickr.com/photos/16105436@N00/2995782665",
+    "provider": "flickr"
+  },
+  "ev-018": {
+    "title": "One end of an Olympic-sized swimming pool inside a brick building with a curved metal roof supported by orange girders. Blue and white ropes separate eight lanes from each other. Richmond, Melbourne, Victoria, Australia.",
+    "creator": "David Jackmanson",
+    "creatorUrl": "https://www.flickr.com/photos/58301516@N00",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://www.flickr.com/photos/58301516@N00/40584425901",
+    "provider": "flickr"
+  },
+  "ev-031": {
+    "title": "Laptop Code",
+    "creator": "Matthew Henry",
+    "creatorUrl": "https://stocksnap.io/author/200",
+    "licence": "CC0",
+    "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "source": "https://stocksnap.io/photo/laptop-code-0KAT80KW5F",
+    "provider": "stocksnap"
+  },
+  "ev-034": {
+    "title": "fountain pen open journal",
+    "creator": "Unknown",
+    "creatorUrl": null,
+    "licence": "CC0",
+    "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "source": "https://www.rawpixel.com/image/3298903/free-photo-image-cc0-creative-commons",
+    "provider": "rawpixel"
+  },
+  "ev-101": {
+    "title": "Design Sketching",
+    "creator": "Jordanhill School D&T Dept",
+    "creatorUrl": "https://www.flickr.com/photos/42042252@N02",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://www.flickr.com/photos/42042252@N02/3968172841",
+    "provider": "flickr"
+  },
+  "ev-105": {
+    "title": "Practice. Practice. Practice.",
+    "creator": "Phil Roeder",
+    "creatorUrl": "https://www.flickr.com/photos/88876166@N00",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://www.flickr.com/photos/88876166@N00/16760089648",
+    "provider": "flickr"
+  },
+  "ev-111": {
+    "title": "Mixing Console, Piano and Laptop",
+    "creator": "dejankrsmanovic",
+    "creatorUrl": "https://www.flickr.com/photos/155403590@N07",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://www.flickr.com/photos/155403590@N07/39893711973",
+    "provider": "flickr"
+  },
+  "ev-112": {
+    "title": "Small Bedroom Recording Studio",
+    "creator": "dejankrsmanovic",
+    "creatorUrl": "https://www.flickr.com/photos/155403590@N07",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://www.flickr.com/photos/155403590@N07/46148886084",
+    "provider": "flickr"
+  },
+  "ev-113": {
+    "title": "Arcade control panel prototype",
+    "creator": "Daniel & Ericka",
+    "creatorUrl": "https://www.flickr.com/photos/45547845@N00",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://www.flickr.com/photos/45547845@N00/5398643353",
+    "provider": "flickr"
+  },
+  "ev-118": {
+    "title": "110210-G-6623H-369-Jazz Band",
+    "creator": "US Coast Guard Academy",
+    "creatorUrl": "https://www.flickr.com/photos/43228104@N07",
+    "licence": "Public domain",
+    "licenceUrl": "https://creativecommons.org/publicdomain/mark/1.0/",
+    "source": "https://www.flickr.com/photos/43228104@N07/5448781839",
+    "provider": "flickr"
+  },
+  "ev-121": {
+    "title": "Project 365 #44: 130209 A Bit of a Mix Up",
+    "creator": "comedy_nose",
+    "creatorUrl": "https://www.flickr.com/photos/23408922@N07",
+    "licence": "Public domain",
+    "licenceUrl": "https://creativecommons.org/publicdomain/mark/1.0/",
+    "source": "https://www.flickr.com/photos/23408922@N07/3276362047",
+    "provider": "flickr"
+  },
+  "ev-201": {
+    "title": "Messy hands sculpting pottery wheel",
+    "creator": "Unknown",
+    "creatorUrl": null,
+    "licence": "CC0",
+    "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "source": "https://www.rawpixel.com/image/3282629/free-photo-image-cultura-mano-artesania",
+    "provider": "rawpixel"
+  },
+  "ev-204": {
+    "title": "Notepad Pen",
+    "creator": "Steve Johnson",
+    "creatorUrl": "http://artbystevej.com",
+    "licence": "CC0",
+    "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "source": "https://stocksnap.io/photo/notepad-pen-A4GPO5BBZD",
+    "provider": "stocksnap"
+  },
+  "ev-209": {
+    "title": "To do list",
+    "creator": "freestocks.org",
+    "creatorUrl": "https://www.flickr.com/photos/135396164@N05",
+    "licence": "CC0",
+    "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "source": "https://www.flickr.com/photos/135396164@N05/28123133694",
+    "provider": "flickr"
+  },
+  "ev-210": {
+    "title": "Lots of Bowls",
+    "creator": "Tobyotter",
+    "creatorUrl": "https://www.flickr.com/photos/78428166@N00",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://www.flickr.com/photos/78428166@N00/8561050486",
+    "provider": "flickr"
+  },
+  "ev-211": {
+    "title": "Japanese Flashcards",
+    "creator": "muninn.net",
+    "creatorUrl": "https://www.flickr.com/photos/28024094@N08",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://www.flickr.com/photos/28024094@N08/5643033953",
+    "provider": "flickr"
+  },
+  "ev-300": {
+    "title": "Picture Books",
+    "creator": "Enokson",
+    "creatorUrl": "https://www.flickr.com/photos/47823583@N03",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://www.flickr.com/photos/47823583@N03/4385119849",
+    "provider": "flickr"
+  },
+  "ev-302": {
+    "title": "Walking the dog",
+    "creator": "freestocks.org",
+    "creatorUrl": "https://www.flickr.com/photos/135396164@N05",
+    "licence": "CC0",
+    "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "source": "https://www.flickr.com/photos/135396164@N05/29546505111",
+    "provider": "flickr"
+  },
+  "ev-304": {
+    "title": "Service intern Gwen Casebeer helps students with their net",
+    "creator": "USFWS/Southeast",
+    "creatorUrl": "https://www.flickr.com/photos/41464593@N02",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://www.flickr.com/photos/41464593@N02/8026511302",
+    "provider": "flickr"
+  },
+  "ev-306": {
+    "title": "Foucault's Pendulum",
+    "creator": "sylvar",
+    "creatorUrl": "https://www.flickr.com/photos/44124401501@N01",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://www.flickr.com/photos/44124401501@N01/70589378",
+    "provider": "flickr"
+  },
+  "ev-309": {
+    "title": "Jazz Stage",
+    "creator": "G.A.I.N",
+    "creatorUrl": "https://www.flickr.com/photos/59496030@N02",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://www.flickr.com/photos/59496030@N02/8385398806",
+    "provider": "flickr"
+  },
+  "ev-313": {
+    "title": "Inking",
+    "creator": "TrotterFechan",
+    "creatorUrl": "https://www.flickr.com/photos/89786933@N02",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://www.flickr.com/photos/89786933@N02/31721953216",
+    "provider": "flickr"
+  },
+  "ev-315": {
+    "title": "Maths homework",
+    "creator": "wonderferret",
+    "creatorUrl": "https://www.flickr.com/photos/65555826@N00",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://www.flickr.com/photos/65555826@N00/2316621808",
+    "provider": "flickr"
+  },
+  "ev-319": {
+    "title": "workshop - espa\u00e7o e suas reverbera\u00e7\u00f5es",
+    "creator": "c\u00e1ssio abreu",
+    "creatorUrl": "https://www.flickr.com/photos/67711421@N00",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://www.flickr.com/photos/67711421@N00/2819746168",
+    "provider": "flickr"
+  },
+  "ev-320": {
+    "title": "ShinyBox at LowSwing Studio",
+    "creator": "Marc Wathieu",
+    "creatorUrl": "https://www.flickr.com/photos/88133570@N00",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://www.flickr.com/photos/88133570@N00/5395304183",
+    "provider": "flickr"
+  },
+  "ev-324": {
+    "title": "Choir Concert 11.27.12",
+    "creator": "Southern Arkansas University",
+    "creatorUrl": "https://www.flickr.com/photos/35731015@N02",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://www.flickr.com/photos/35731015@N02/8231993047",
+    "provider": "flickr"
+  },
+  "ev-340": {
+    "title": "Dunshaughlin 10KM Road Race 2014 - at the 1.1 mile mark",
+    "creator": "Peter Mooney",
+    "creatorUrl": "https://www.flickr.com/photos/25874444@N00",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://www.flickr.com/photos/25874444@N00/14454769416",
+    "provider": "flickr"
+  },
+  "ev-344": {
+    "title": "Diver at Paradise Reef, Red Sea, Egypt #SCUBA",
+    "creator": "Derek Keats",
+    "creatorUrl": "https://www.flickr.com/photos/93242958@N00",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://www.flickr.com/photos/93242958@N00/6377766829",
+    "provider": "flickr"
+  },
+  "football": {
+    "title": "KG_Girls_Soccer_2010_2540",
+    "creator": "KG Sand Soccer",
+    "creatorUrl": "https://www.flickr.com/photos/39255507@N03",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://www.flickr.com/photos/39255507@N03/4567285528",
+    "provider": "flickr"
+  },
+  "hackathon-1st": {
+    "title": "Hackathon participants at Wikimania 2024",
+    "creator": "Tulipasylvestris",
+    "creatorUrl": "https://commons.wikimedia.org/wiki/User:Tulipasylvestris",
+    "licence": "CC BY 4.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/4.0/",
+    "source": "https://commons.wikimedia.org/w/index.php?curid=151354735",
+    "provider": "wikimedia"
+  },
+  "lamp": {
+    "title": "White paper-style hanging pendant lamp glowing warmly from the ceiling inside a room with dark trim and reddish-orange walls. A window and ceiling light fixture are visible in the background.",
+    "creator": "appealdahal",
+    "creatorUrl": "https://wordpress.org/photos/author/appealdahal/",
+    "licence": "CC0",
+    "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "source": "https://wordpress.org/photos/photo/68369febf2/",
+    "provider": "wordpress"
+  },
+  "mangroves": {
+    "title": "starr-230503-0472-Rhizophora_mangle-lots_of_seedlings_and_thickets_in_wetland_with_Kim-Laie_Wetland_Kihei-Maui",
+    "creator": "Starr Environmental",
+    "creatorUrl": "https://www.flickr.com/photos/97499887@N06",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://www.flickr.com/photos/97499887@N06/53709905787",
+    "provider": "flickr"
+  },
+  "mural": {
+    "title": "Community Art mural, Brighton, UK",
+    "creator": "jay galvin",
+    "creatorUrl": "https://www.flickr.com/photos/36957368@N00",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://www.flickr.com/photos/36957368@N00/8253394791",
+    "provider": "flickr"
+  },
+  "pcb": {
+    "title": "Printed Circuit Board 9990",
+    "creator": "Ashley Pomeroy",
+    "creatorUrl": "https://commons.wikimedia.org/wiki/User:Ashley_Pomeroy",
+    "licence": "CC BY 4.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/4.0/",
+    "source": "https://commons.wikimedia.org/w/index.php?curid=131630287",
+    "provider": "wikimedia"
+  },
+  "phone-stands": {
+    "title": "3D Printer at the Fab Lab",
+    "creator": "kakissel",
+    "creatorUrl": "https://www.flickr.com/photos/74419347@N00",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://www.flickr.com/photos/74419347@N00/6165114664",
+    "provider": "flickr"
+  },
+  "piano-stage": {
+    "title": "Playing the grand piano",
+    "creator": "Ren\u00e9 Voorburg",
+    "creatorUrl": "https://www.flickr.com/photos/49980274@N02",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://www.flickr.com/photos/49980274@N02/4893858330",
+    "provider": "flickr"
+  },
+  "sketchbook": {
+    "title": "Sketchbook Drawing Ideas",
+    "creator": "WILLPOWER STUDIOS",
+    "creatorUrl": "https://www.flickr.com/photos/99717632@N00",
+    "licence": "CC BY 2.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "source": "https://www.flickr.com/photos/99717632@N00/14221055685",
+    "provider": "flickr"
+  }
+}
