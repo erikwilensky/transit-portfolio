@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { getActivity, TODAY } from '../api.js';
 import { ago, fmtDate } from '../format.js';
+import Icon from '../components/Icon.jsx';
 
 const KINDS = [['all', 'Everything'], ['view', 'Link views'], ['endorse', 'Endorsements'], ['sync', 'Imports'], ['change', 'My changes']];
-const ICON = { view: '◉', endorse: '✓', endorsement: '✓', sync: '⇣', station: '＋', reflection: '¶', visibility: '◐', link: '⛓', line: '⟿', privacy: '◐', prompt: '?', capture: '▣', onboarding: '★' };
+const ICON = { view: 'eye', endorse: 'grade', endorsement: 'grade', sync: 'sync', station: 'plus', reflection: 'note', visibility: 'lock', link: 'link', line: 'route', privacy: 'lock', prompt: 'question', capture: 'camera', onboarding: 'star' };
 const group = (k) => (k === 'endorsement' ? 'endorse' : ['station', 'reflection', 'visibility', 'link', 'line', 'privacy', 'capture', 'onboarding'].includes(k) ? 'change' : k);
 
 // X5: nothing happens to a student's record without a trace.
@@ -35,7 +36,7 @@ export default function Activity({ studentId, version }) {
             <h3>{d === TODAY ? 'Today' : fmtDate(d)}</h3>
             <ul>{items.map((a, i) => (
               <li key={i} className={`act k-${group(a.kind)}${a.live ? ' live' : ''}`}>
-                <span className="act-ic" aria-hidden="true">{ICON[a.kind] || '•'}</span>
+                <span className="act-ic" aria-hidden="true">{ICON[a.kind] ? <Icon name={ICON[a.kind]} /> : '•'}</span>
                 <span className="act-t"><b>{a.actor}</b> {a.text.charAt(0).toLowerCase() + a.text.slice(1)}</span>
                 <time>{a.live ? ago(a.ts) : a.ts.slice(11, 16)}</time>
               </li>

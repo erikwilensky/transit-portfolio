@@ -10,6 +10,7 @@ import { personaById } from '../personas.js';
 import { fmtDate } from '../format.js';
 import './peer-feedback.css';
 import './safeguarding.css';
+import Icon from './Icon.jsx';
 
 const STAFF = ['advisor', 'teacher', 'counsellor', 'coordinator', 'leadership'];
 const viewer = () => personaById(location.hash.replace(/^#\/?/, '').split('/')[0]);
@@ -32,7 +33,7 @@ export function PeerFromClasses({ studentId, simple = false, toast, version }) {
         const mine = given.filter((f) => f.eventId === m.eventId);
         return (
           <li key={m.eventId} className="pf-moment">
-            {m.image ? <img src={m.image} alt="" /> : <span className="pf-ph" aria-hidden="true">★</span>}
+            {m.image ? <img src={m.image} alt="" /> : <span className="pf-ph" aria-hidden="true"><Icon name="star" /></span>}
             <span className="pf-what"><b>{m.title}</b><small>{m.name} · {m.className}</small>
               {mine.map((f) => <span key={f.id} className="pf-mine">You said: {f.parts.map(peerText).join(' ')}{f.thanked && <em> · {m.name} said thank you</em>}</span>)}</span>
             <button className={mine.length ? 'ghost' : 'primary'} disabled={left <= 0} onClick={() => setGiving(m)}>{mine.length ? 'Give more' : 'Give kind feedback'}</button>

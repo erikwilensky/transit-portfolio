@@ -47,3 +47,32 @@ export async function setDisplay(patch) {
 onAuth((s) => { if (signedIn(s) && !inPreview()) { cur = cleanDisplay(s.user.display); save(cur); apply(); } });
 mq?.addEventListener?.('change', apply);
 apply();
+
+// Full-screen overlays that are not .modal-back dialogs (print sheets, sign-in cards, conference and meeting modes;
+// src/App.jsx handles .modal-back): focus moves into one when it opens, Tab stays inside it, and focus returns to
+// where it was when it closes. Each overlay closes on Escape itself.
+const OVERLAY = '.sc-overlay, .cas-code-overlay, .cf-overlay, .meeting, .slc-mode, .mu-overlay';
+const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+if (typeof document !== 'undefined' && typeof MutationObserver !== 'undefined') {
+  const open = []; // [overlay, the element focused before it]
+  new MutationObserver(() => {
+    for (const el of document.querySelectorAll(OVERLAY)) {
+      if (open.some(([o]) => o === el)) continue;
+      open.push([el, document.activeElement]);
+      if (!el.contains(document.activeElement)) [...el.querySelectorAll(FOCUSABLE)].find((x) => x.offsetParent !== null)?.focus();
+    }
+    for (let i = open.length - 1; i >= 0; i--) {
+      if (open[i][0].isConnected) continue;
+      const [, back] = open.splice(i, 1)[0];
+      if (back?.isConnected && !open.length) back.focus();
+    }
+  }).observe(document.documentElement, { childList: true, subtree: true });
+  addEventListener('keydown', (e) => {
+    const dlg = e.key === 'Tab' && !document.querySelector('.modal-back') && open.at(-1)?.[0];
+    if (!dlg) return;
+    const f = [...dlg.querySelectorAll(FOCUSABLE)].filter((x) => x.offsetParent !== null);
+    if (!f.length) return;
+    const i = f.indexOf(document.activeElement);
+    if (e.shiftKey && i <= 0) { e.preventDefault(); f.at(-1).focus(); } else if (!e.shiftKey && (i === -1 || i === f.length - 1)) { e.preventDefault(); f[0].focus(); }
+  });
+}

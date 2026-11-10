@@ -56,7 +56,9 @@ export default (app) => {
         // The change may have half-run: save and announce anyway, so every device resyncs.
         console.error(`Action ${fn} failed:`, e.message);
         done(e.status || 422);
-        return { status: e.status || 422, body: { error: e.message, rev: changed({ fn, error: true }), prev } };
+        // A bug or malformed arguments (a TypeError and the like): a plain answer, never the code's own words.
+        const internal = !e.status && (e instanceof TypeError || e instanceof ReferenceError || e instanceof RangeError || e instanceof SyntaxError);
+        return { status: e.status || 422, body: { error: internal ? 'That change could not be made.' : e.message, rev: changed({ fn, error: true }), prev } };
       }
     });
     send(res, out.status, out.body);

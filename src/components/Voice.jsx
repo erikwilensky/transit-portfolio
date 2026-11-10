@@ -5,6 +5,7 @@ import { UploadStatus, evKind, useUpload } from './FileAttach.jsx';
 import { MAX_SECS, canListen, canRecord, canSpeak, clock, hush, joinSpoken, markMicNoteSeen, micNoteSeen, onReadAloud, readAloudOn, recognitionCtor, recordType, setReadAloud, speak, speechLang, transcript, voiceFileName } from '../voice.js';
 import './voice.css';
 import { shown } from '../thai.js';
+import Icon from './Icon.jsx';
 
 // Speak to type: a mic beside a text box. What is said appears as it is said, and stays editable.
 export function MicButton({ value = '', onChange, label = 'Say it instead of typing' }) {
@@ -137,5 +138,5 @@ export function VoiceRecorder({ onAdded, onCancel }) {
 export function VoiceNotes({ evidence = [] }) {
   const list = evidence.filter((ev) => ev?.url && evKind(ev) === 'audio');
   if (!list.length) return null;
-  return <ul className="vc-notes">{list.map((ev, i) => <li key={ev.url.slice(0, 80) + i}><span aria-hidden="true">♪</span><audio controls preload="metadata" src={ev.url} aria-label={ev.caption || 'Voice note'} /></li>)}</ul>;
+  return <ul className="vc-notes">{list.map((ev, i) => <li key={ev.url.slice(0, 80) + i}><span aria-hidden="true"><Icon name="audio" /></span><audio controls preload="metadata" src={ev.url} aria-label={ev.caption || 'Voice note'} /></li>)}</ul>;
 }
