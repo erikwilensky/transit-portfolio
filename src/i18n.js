@@ -400,6 +400,10 @@ const STU = {
   'link views': 'การเปิดลิงก์', imports: 'การนำเข้า', 'Show older': 'แสดงที่เก่ากว่า', 'Link views': 'การเปิดลิงก์', Endorsements: 'การรับรอง', Imports: 'การนำเข้า', 'My changes': 'สิ่งที่ฉันเปลี่ยน', 'just now': 'เมื่อสักครู่',
   // the presentation studio (src/components/Studio.jsx, TierToggle, LensCompare, src/themes/themes.js, api LENSES); the preview itself stays English
   'No presentations yet.': 'ยังไม่มีงานนำเสนอ', 'Ask your advisor or the pilot admin to set up your presentations.': 'ขอให้ครูที่ปรึกษาหรือผู้ดูแลระบบของโครงการนำร่องตั้งค่างานนำเสนอให้',
+  'Course and university': 'หลักสูตรและมหาวิทยาลัย', Course: 'หลักสูตร', 'Lines that match this course': 'สายที่ตรงกับหลักสูตรนี้',
+  'Matching lines show in full. The rest become short context.': 'สายที่ตรงกันแสดงเต็ม ที่เหลือเป็นบริบทสั้น ๆ', 'Your words': 'คำพูดของคุณ',
+  'Opening line': 'ประโยคเปิด', 'Skills, one per line': 'ทักษะ บรรทัดละหนึ่งอย่าง', 'For example, Data Science': 'เช่น วิทยาการข้อมูล',
+  'For example, Northbridge University': 'เช่น มหาวิทยาลัยนอร์ทบริดจ์', 'One or two sentences a reader sees first.': 'หนึ่งหรือสองประโยคที่ผู้อ่านเห็นก่อน',
   Audience: 'ผู้ชม', Mode: 'โหมด', Design: 'การออกแบบ', Preview: 'ตัวอย่าง', 'Skill tier': 'ระดับทักษะ', Theme: 'ธีม', 'Include a small journey map': 'ใส่แผนที่เส้นทางขนาดเล็ก', 'Lines to show': 'สายที่จะแสดง',
   'Three choices and a link: a polished page in about two minutes. Ended lines and reflections stay private unless': 'เลือกสามอย่างแล้วได้ลิงก์ ได้หน้าสวย ๆ ในราวสองนาที สายที่จบแล้วและบทสะท้อนคิดจะเป็นส่วนตัว เว้นแต่', 'publishes them.': 'จะเผยแพร่เอง',
   Layout: 'รูปแบบหน้า', 'Line order and narrative': 'ลำดับสายและการเล่าเรื่อง', 'Why this course': 'ทำไมถึงเลือกหลักสูตรนี้', 'Build your own site': 'สร้างเว็บไซต์ของคุณเอง',
