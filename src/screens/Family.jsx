@@ -28,7 +28,8 @@ const SAY = {
     recorded: (d, h) => `Recorded by the school on ${d} (${h})`, how: { email: 'by email', paper: 'on paper', person: 'in person', other: 'other' },
     withdrawn: 'Withdrawn',
     olderT: (f) => `${f} manages sharing`,
-    olderP: (f) => `Consent was recorded when ${f} joined in Year 7. From Year 10, ${f} decides what is shared and with whom; you can still ask the school for a copy of the record at any time.`,
+    olderP: (f) => `From Year 10, ${f} decides what is shared and with whom, so no parent consent is needed. You can still ask the school for a copy of the record at any time.`,
+    olderOk: 'No consent needed',
     onFile: 'Consent on file', waiting: 'Waiting for consent',
     digestT: 'Weekly digest', digestP: 'A short summary each Friday of what changed in each child’s record, in the language you choose.',
     lang: 'Language', child: 'Child',
@@ -53,7 +54,8 @@ const SAY = {
     recorded: (d, h) => `โรงเรียนบันทึกไว้เมื่อ ${d} (${h})`, how: { email: 'ทางอีเมล', paper: 'ทางเอกสาร', person: 'ด้วยตนเอง', other: 'อื่น ๆ' },
     withdrawn: 'ถอนความยินยอมแล้ว',
     olderT: (f) => `${f} ดูแลการแบ่งปันเอง`,
-    olderP: (f) => `บันทึกความยินยอมไว้แล้วตั้งแต่ ${f} เข้าเรียน Year 7 ตั้งแต่ Year 10 ${f} เป็นผู้ตัดสินใจว่าจะแบ่งปันอะไรกับใคร คุณยังขอสำเนาข้อมูลจากโรงเรียนได้ทุกเมื่อ`,
+    olderP: (f) => `ตั้งแต่ Year 10 ${f} เป็นผู้ตัดสินใจว่าจะแบ่งปันอะไรกับใคร จึงไม่ต้องมีความยินยอมจากผู้ปกครอง คุณยังขอสำเนาข้อมูลจากโรงเรียนได้ทุกเมื่อ`,
+    olderOk: 'ไม่ต้องขอความยินยอม',
     onFile: 'มีความยินยอมแล้ว', waiting: 'รอความยินยอม',
     digestT: 'สรุปประจำสัปดาห์', digestP: 'สรุปสั้น ๆ ทุกวันศุกร์ว่ามีอะไรเปลี่ยนแปลงในบันทึกของลูกแต่ละคน ในภาษาที่คุณเลือก',
     lang: 'ภาษา', child: 'บุตรหลาน',
@@ -157,7 +159,7 @@ function Consent({ persona, childId, go, lang }) {
     <>
       <Head persona={persona} childId={childId} screen="consent" go={go} lang={lang} title={say.consentT} lede={say.consentP} />
       {!youngStudent(s) ? (
-        <div className="card-sec fam-older"><span className="status s-ok"><i>✓</i>{say.onFile}</span><h3>{say.olderT(f)}</h3><p>{say.olderP(f)}</p></div>
+        <div className="card-sec fam-older"><span className="status s-ok"><i>✓</i>{say.olderOk}</span><h3>{say.olderT(f)}</h3><p>{say.olderP(f)}</p></div>
       ) : (
         <div className="card-sec fam-older">
           <span className={`status ${on ? 's-ok' : 's-warn'}`}><i>{on ? '✓' : '!'}</i>{on ? say.onFile : say.waiting}</span>

@@ -32,6 +32,8 @@ export default function Accounts({ toast, persona }) {
   const [roster, setRoster] = useState(false);
   const [cards, setCards] = useState(false);
   const [letters, setLetters] = useState(false);
+  const [listsRev, setListsRev] = useState(0); // a class-list import or SIS sync changes who is leaving
+  const [find, setFind] = useState(''); // a whole school is about 1,100 accounts
   useEffect(() => { admin.list().then(setData, (x) => setErr(x.message)); }, []);
   if (err && !data) return <div className="acc"><p className="auth-err">{err}</p></div>;
   if (!data) return <div className="acc"><p className="auth-lede">Loading accounts…</p></div>;
@@ -87,16 +89,21 @@ export default function Accounts({ toast, persona }) {
           <button className="linkish" onClick={() => setLink(null)}>Done</button>
         </section>
       )}
-      <SisSync toast={toast} onApplied={setData} />
-      {roster && <RosterImport key={String(roster)} startOfYear={roster === 'year'} onClose={() => setRoster(false)} onDone={(j) => { setData(j); toast('Class lists imported'); }} />}
+      <SisSync toast={toast} onApplied={(j) => { setData(j); setListsRev((n) => n + 1); }} />
+      {roster && <RosterImport key={String(roster)} startOfYear={roster === 'year'} onClose={() => setRoster(false)} onDone={(j) => { setData(j); setListsRev((n) => n + 1); toast('Class lists imported'); }} />}
       {cards && <AdminCards toast={toast} onClose={() => setCards(false)} onMade={() => admin.list().then(setData, () => {})} />}
       {letters && <AdminFamily toast={toast} onClose={() => setLetters(false)} onChange={() => admin.list().then(setData, () => {})} />}
       {form && <AccountForm form={form} setForm={setForm} data={data} onSubmit={save} />}
-      <LeaverArchive toast={toast} onErased={() => admin.list().then(setData, (x) => setErr(x.message))} />
+      <LeaverArchive key={listsRev} toast={toast} onErased={() => admin.list().then(setData, (x) => setErr(x.message))} />
+      {data.accounts.length > 10 && (
+        <label className="auth-field acc-find"><span>Find an account</span><input type="search" value={find} onChange={(e) => setFind(e.target.value)} placeholder="Name, email, role or linked record" /></label>
+      )}
+      {(() => { const q = find.trim().toLowerCase(); const shown = q ? data.accounts.filter((a) => [a.name, a.email, ROLE_NAME[a.kind] || a.kind, linkText(a)].join(' ').toLowerCase().includes(q)) : data.accounts; return <>
+      {q && <p className="fineprint" aria-live="polite">{shown.length === 1 ? '1 account matches' : `${shown.length} accounts match`}</p>}
       <table className="acc-table">
         <thead><tr><th>Name</th><th>Role</th><th>Linked to</th><th>Status</th><th><span className="sr-only">Actions</span></th></tr></thead>
         <tbody>
-          {[...data.accounts].sort((x, y) => !!y.paused - !!x.paused).map((a) => (
+          {[...shown].sort((x, y) => !!y.paused - !!x.paused).map((a) => (
             <tr key={a.id}>
               <td><b>{a.name}</b><small>{a.email}</small></td>
               <td>{ROLE_NAME[a.kind] || a.kind}{a.admin && a.kind !== 'admin' && <small>Can manage accounts</small>}</td>
@@ -116,7 +123,7 @@ export default function Accounts({ toast, persona }) {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></>; })()}
       <p className="fineprint">Removing an account stops that person signing in. Their record and map stay. A paused account (someone no longer in the class lists) cannot sign in until you unpause it, or a later import has them again. A new setup link signs them out everywhere and ends their old password.</p>
       <StudentData data={data} toast={toast} by={persona.teacherId || null} reload={() => admin.list().then(setData, (x) => setErr(x.message))} />
       <SubjectLines toast={toast} />
@@ -145,7 +152,7 @@ function StudentData({ data, toast, reload, by }) {
       <h2 id="accd-h">A student's data</h2>
       <p className="auth-lede">Under Thailand's PDPA a student, or their parent, may ask for a copy of everything the school holds about them, or for it to be removed.</p>
       <div className="auth-row">
-        <label className="auth-field"><span>Student</span><select value={sid} onChange={(e) => pick(e.target.value)}><option value="">Choose a student</option>{data.students.map((x) => <option key={x.id} value={x.id}>{x.name} · Year {x.grade + 1}</option>)}</select></label>
+        <label className="auth-field"><span>Student</span><select value={sid} onChange={(e) => pick(e.target.value)}><option value="">Choose a student</option>{[...data.students].sort((a, b) => a.name.localeCompare(b.name)).map((x) => <option key={x.id} value={x.id}>{x.name} · Year {x.grade + 1}</option>)}</select></label>
       </div>
       {s && <div className="auth-row">
         <a className="auth-btn as-link" href={exportUrl(s.id, true)} download>Download their data (ZIP)</a>
@@ -174,12 +181,15 @@ function AccountForm({ form: f, setForm, data, onSubmit }) {
   const up = (k) => (e) => setForm({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
   const isStaff = STAFF.includes(f.kind);
   const toggleChild = (id) => setForm({ ...f, children: f.children.includes(id) ? f.children.filter((c) => c !== id) : [...f.children, id] });
+  const [kidQ, setKidQ] = useState('');
+  const byName = [...data.students].sort((a, b) => a.name.localeCompare(b.name));
+  const kids = byName.filter((s) => f.children.includes(s.id) || (kidQ.trim() && `${s.name} ${s.homeroom || ''}`.toLowerCase().includes(kidQ.trim().toLowerCase()))).slice(0, 60);
   return (
     <form className="acc-form" onSubmit={onSubmit} aria-labelledby="accf-h">
       <h2 id="accf-h">{f.editing ? `Edit ${f.name}` : 'Add an account'}</h2>
       <div className="acc-grid">
         <label className="auth-field"><span>Full name</span><input required value={f.name} onChange={up('name')} autoFocus /></label>
-        <label className="auth-field"><span>School email</span><input type="email" required value={f.email} onChange={up('email')} disabled={!!f.editing} /></label>
+        <label className="auth-field"><span>{f.kind === 'parent' ? 'Email' : 'School email'}</span><input type="email" required value={f.email} onChange={up('email')} disabled={!!f.editing} /></label>
         <label className="auth-field"><span>Role</span><select value={f.kind} onChange={(e) => setForm({ ...f, kind: e.target.value, how: e.target.value === 'parent' || e.target.value === 'admin' ? 'existing' : f.how })}>{ROLES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
       </div>
       {(f.kind === 'student' || isStaff) && (
@@ -195,7 +205,7 @@ function AccountForm({ form: f, setForm, data, onSubmit }) {
           <label className="auth-field"><span>Programme</span><select value={f.programme} onChange={up('programme')}>{PROGRAMMES.map((p) => <option key={p}>{p}</option>)}</select></label>
         </>}
         {f.kind === 'student' && f.how === 'existing' && (
-          <label className="auth-field wide"><span>Student</span><select required value={f.studentId} onChange={up('studentId')}><option value="">Choose a student</option>{data.students.map((s) => <option key={s.id} value={s.id}>{s.name} · Year {s.grade + 1} · {s.programme}</option>)}</select></label>
+          <label className="auth-field wide"><span>Student</span><select required value={f.studentId} onChange={up('studentId')}><option value="">Choose a student</option>{byName.map((s) => <option key={s.id} value={s.id}>{s.name} · Year {s.grade + 1} · {s.programme}</option>)}</select></label>
         )}
         {isStaff && f.how === 'new' && <label className="auth-field wide"><span>Subject or job</span><input value={f.staffRole} onChange={up('staffRole')} placeholder="For example: Chemistry, or Advisor 3A" /></label>}
         {isStaff && f.how === 'existing' && (
@@ -204,7 +214,8 @@ function AccountForm({ form: f, setForm, data, onSubmit }) {
       </div>
       {f.kind === 'parent' && (
         <fieldset className="acc-kids"><legend>Their children</legend>
-          {data.students.map((s) => <label key={s.id}><input type="checkbox" checked={f.children.includes(s.id)} onChange={() => toggleChild(s.id)} /> {s.name} · Year {s.grade + 1}</label>)}
+          <label className="auth-field acc-kid-find"><span className="sr-only">Find a student</span><input type="search" value={kidQ} onChange={(e) => setKidQ(e.target.value)} placeholder="Type a student’s name or homeroom" /></label>
+          {kids.map((s) => <label key={s.id}><input type="checkbox" checked={f.children.includes(s.id)} onChange={() => toggleChild(s.id)} /> {s.name} · Year {s.grade + 1}{s.homeroom ? ` · ${s.homeroom}` : ''}</label>)}
         </fieldset>
       )}
       {f.kind === 'leadership' && <label className="acc-check"><input type="checkbox" checked={f.admin} onChange={up('admin')} /> Can manage accounts</label>}

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { auditLog } from '../api.js';
 import { fmtDate } from '../format.js';
+import { pilotPersona } from '../personas.js';
 
 const KINDS = { view: 'Link views', link: 'Sharing', endorse: 'Endorsements', endorsement: 'Endorsements', sync: 'Imports', station: 'Stations', reflection: 'Reflections', prompt: 'Prompts', request: 'Requests', line: 'Lines', goal: 'Goals', share: 'Teacher pointers' };
 const GROUPS = ['all', 'view', 'link', 'endorse', 'sync', 'station', 'reflection', 'prompt'];
@@ -29,7 +30,7 @@ export default function AuditLog({ version }) {
         <div className="meter">
           <div><b>{all.length.toLocaleString()}</b><span>entries</span></div>
           <div><b>{all.filter((a) => a.kind === 'view').length}</b><span>share-link views</span></div>
-          <div><b>{all.filter((a) => a.live).length}</b><span>during this demo</span></div>
+          <div><b>{all.filter((a) => a.live).length}</b><span>{pilotPersona() ? 'logged as they happened' : 'during this demo'}</span></div>
         </div>
       </header>
       <div className="al-bar">
@@ -43,7 +44,7 @@ export default function AuditLog({ version }) {
         <tbody>{rows.slice(0, n).map((a, i) => <tr key={a.id || i} className={a.live ? 'live' : ''}><td>{a.live ? 'Just now' : when(a.ts)}</td><td>{a.student}</td><td>{a.actor}</td><td><span className="au-kind">{KINDS[a.kind] || a.kind}</span>{a.text}</td></tr>)}</tbody>
       </table>
       {rows.length > n && <button className="ghost au-more" onClick={() => setN(n + 100)}>Show more ({rows.length - n} left)</button>}
-      <p className="fineprint">Entries before today are generated from the demo record; entries marked “Just now” were made during this session.</p>
+      <p className="fineprint">{pilotPersona() ? 'Sign-ins, downloads and account changes are in the Activity log.' : 'Entries before today are generated from the demo record; entries marked “Just now” were made during this session.'}</p>
     </div>
   );
 }

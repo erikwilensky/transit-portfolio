@@ -128,5 +128,16 @@ const setupWith = async (U, token, extra = {}) => {
       for (let i = 0; i < n; i++) { await s.locator('.lens-switch button').nth(i).click(); await s.waitForTimeout(200); if (await s.locator('text=This screen hit a problem').count()) errs.push(`lens ${i}`); }
       ok(n >= 3 && !errs.length, `studio: ${n} lenses open on the starter presentations${errs.length ? ` (${errs.join(', ')})` : ''}`); }
     await tour(a, 'admin, after the import', ['accounts']);
+    // A later import that moves Fern to Year 13: the leaver archive panel follows it without a reload.
+    ok(/No one is leaving/.test(await a.locator('.la').innerText()), 'leaver archive: no Year 13 yet');
+    const y13 = JSON.parse(fs.readFileSync(path.join(FX, 'roster.json'), 'utf8')); y13.students.find((x) => x.id === 'S2001').year = 13;
+    await a.click('text=Import class lists'); await a.waitForSelector('#roster-h');
+    await a.setInputFiles('.acc-file input', { name: 'roster.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(y13)) });
+    await a.waitForSelector('.acc-counts'); await a.click('.acc-roster button:has-text("Import")'); await a.waitForSelector('.acc-ok');
+    await a.waitForSelector('.la .la-sum', { timeout: 5000 }).catch(() => {});
+    ok(/1 leaving student\b/.test(await a.locator('.la').innerText()), 'leaver archive: Fern is listed right after the import, no reload');
+    // Finding one account among many.
+    await a.fill('.acc-find input', 'fern.gale@'); await a.waitForTimeout(200);
+    ok(await a.locator('.acc-table tbody tr').count() === 1 && /Fern Gale/.test(await a.locator('.acc-table').innerText()), 'Find an account narrows the table');
   } finally { await b.close(); srv.p.kill(); }
 })().catch((e) => { console.error(e); srv?.p?.kill(); process.exit(1); });

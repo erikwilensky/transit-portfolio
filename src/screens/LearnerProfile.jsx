@@ -11,7 +11,7 @@ function Bars({ rows, n, label }) {
         <li key={r.k} title={`${r.n} of ${n} students`}>
           <span className="lpb-k">{r.k}</span>
           <span className="lpb-track"><span className={`lpb-bar${r.n === Math.min(...rows.map((x) => x.n)) ? ' low' : ''}`} style={{ width: `${(r.n / max) * 100}%` }} /></span>
-          <span className="lpb-n">{Math.round((r.n / n) * 100)}%</span>
+          <span className="lpb-n">{n ? Math.round((r.n / n) * 100) : 0}%</span>
         </li>
       ))}
     </ul>

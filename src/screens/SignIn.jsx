@@ -191,7 +191,7 @@ export function AccountMenu({ persona, onPassword, onFeedback, onNotifications }
   const t = authT(getLang());
   return (
     <div className="menu persona-menu acct-menu" role="menu">
-      <div className="acct-who"><b>{persona.name}</b><small>{th && persona.kind === 'parent' ? persona.role.replace(/^Family · /, 'ครอบครัว · ') : persona.role}</small><small>{persona.account?.email}</small></div>
+      <div className="acct-who"><b>{persona.name}</b><small>{th && persona.kind === 'parent' ? persona.role.replace(/^Family · /, 'ครอบครัว · ').replace(/ and /g, ' และ ') : persona.role}</small><small>{persona.account?.email}</small></div>
       {devices > 0 && <div className="acct-devices">{th ? SAY_TH.devices(devices) : `Signed in on ${devices === 1 ? 'this device only' : `${devices} devices`}`}</div>}
       <button role="menuitem" onClick={onPassword}><span><b>{t('Change password')}</b></span></button>
       {onNotifications && <button role="menuitem" className="ns-menu" onClick={onNotifications}><span><b>{th ? 'การแจ้งเตือน' : 'Notifications'}</b><small>{th ? 'เลือกสิ่งที่แสดงและช่วงเวลาเงียบ' : 'What reaches your bell, and quiet hours'}</small></span></button>}

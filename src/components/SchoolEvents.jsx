@@ -67,7 +67,7 @@ export default function SchoolEventsScreen({ persona, version, toast }) {
   const [importing, setImporting] = useState(false);
   const past = list.filter((x) => x.end < TODAY), next = list.filter((x) => x.end >= TODAY);
   return (
-    <div className="se-screen">
+    <div className="page se-screen">
       <header className="se-head">
         <div><h1>School events</h1><p className="fineprint">{manager ? 'Sports day, trips, concerts, service days. After each one, the students it was for get a card on their home to add something from it.' : whole ? 'Who added something after each school event.' : 'Who of your advisees and classes added something after each school event.'}</p></div>
         {manager && <div className="se-head-acts"><button className="ghost" onClick={() => setImporting(true)}>Import from CSV</button><button className="primary" onClick={() => setEditing({})}>Add an event</button></div>}

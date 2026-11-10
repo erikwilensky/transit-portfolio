@@ -51,7 +51,7 @@ export function LineChart({ data, unit = '', height = 180, label }) {
 
 // One stacked bar with a legend and direct labels.
 export function StackBar({ parts, label, onSelect }) {
-  const total = parts.reduce((n, p) => n + p.value, 0);
+  const total = parts.reduce((n, p) => n + p.value, 0) || 1; // no parts yet: 0%, not NaN%
   return (
     <div className="stackbar" role="img" aria-label={label}>
       <div className="sb-bar">{parts.map((p, i) => <span key={p.label} className={`sb-seg dv${i + 1}`} style={{ flex: p.value }} title={`${p.label}: ${Math.round((100 * p.value) / total)}%`} />)}</div>
