@@ -454,6 +454,7 @@ const SYS = { sis: 'SIS', lms: 'ManageBac', cas: 'CAS log', clubs: 'Clubs & Spor
 if (!store.simWeeks) store.simWeeks = {};
 // One new item per system, dated in the past week, with lines suggested from the student's own lines.
 export function simulateWeek(studentId) {
+  if (store.cleanStart) return []; // a demo prop: a pilot record never gets made-up "school-verified" items
   const st = getStudent(studentId);
   const wk = store.simWeeks[studentId] = (store.simWeeks[studentId] || 0) + 1;
   const made = [];
@@ -816,7 +817,7 @@ export function capturePhone(studentId, f) {
     evidence: f.image ? [{ kind: 'image', url: f.image, caption: 'Photo from phone' }] : [], verification: 'student-added', visibility: 'advisor',
     source: { system: 'Phone capture', ref: null }, sourceId: 'phone', suggestedLineIds: f.lineIds || [], quickReflection: f.reflection };
   store.inbox.unshift(e);
-  log(studentId, getStudent(studentId).name, 'capture', `Captured “${f.title}” on her phone`);
+  log(studentId, getStudent(studentId).name, 'capture', `Captured “${f.title}” on a phone`);
   emit();
   return e;
 }

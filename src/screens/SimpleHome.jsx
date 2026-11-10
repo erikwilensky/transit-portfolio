@@ -94,7 +94,7 @@ export default function SimpleHome({ map, studentId, toast, version, addRequest,
         <button className="sh-card add" onClick={() => setAdding(true)}><span className="sh-ic" aria-hidden="true">＋</span><b>Add something I did</b><small>A club, a project, a match, anything</small></button>
         <button className="sh-card goal" onClick={() => setPlanning(true)}><span className="sh-ic" aria-hidden="true">→</span><b>Something I want to do</b><small>Plan it, and tick it off when it happens</small></button>
         {question && <button className="sh-card ask" onClick={() => setAsking(question)}>
-          <span className="sh-ic" aria-hidden="true">?</span><b>{signals.length ? `Your advisor asked you something` : 'Answer a question'}</b>
+          <span className="sh-ic" aria-hidden="true">?</span><b>{!signals.length ? 'Answer a question' : !signals[0].from ? 'A question for you' : signals[0].from.id === map.student.advisorId ? 'Your advisor asked you something' : `${callName(signals[0].from.name)} asked you something`}</b>
           <small>{question.prompt}</small>
           {signals.length > 0 && <span className="sh-dot" aria-label="New" />}
         </button>}

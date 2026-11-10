@@ -6,6 +6,7 @@ import { TYPE_LABEL, VIS_LABEL } from '../format.js';
 import { AttachButton, PendingFiles, UploadStatus, useUpload } from './FileAttach.jsx';
 import { evidenceFor } from '../upload.js';
 import { SkillsStep, saveSkills } from './SkillsGrowth.jsx';
+import { isPilot } from '../auth.js';
 
 export const SUGGEST = { computing: 't-01', science: 't-02', music: 't-03', design: 't-04', languages: 't-05', art: 't-06', service: 't-08', environment: 't-08', 'maya-datasci': 't-01', 'arun-musictech': 't-03' };
 const PHOTOS = [['hackathon-1st', 'Results board'], ['stem-club', 'Club session'], ['aq-dashboard', 'Screenshot'], ['mural', 'Finished work']];
@@ -61,7 +62,7 @@ export default function AddStation({ map, studentId, onClose, onAdded, prefill =
             <div className="photo-row">
               {f.image && <img src={f.image} alt="" className="photo-prev" />}
               <label className={`ghost file-btn${photo.busy ? ' busy' : ''}`}>{photo.busy ? 'Uploading…' : 'From this device'}<input type="file" accept="image/*" disabled={photo.busy} onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; pickPhoto(file); }} /></label>
-              {PHOTOS.map(([n, cap]) => <button key={n} type="button" className={`photo-pick${f.image?.includes(n) ? ' on' : ''}`} onClick={() => set({ image: `evidence/${n}.svg`, imageCaption: cap })}><img src={`evidence/${n}.svg`} alt={cap} /></button>)}
+              {!isPilot() && PHOTOS.map(([n, cap]) => <button key={n} type="button" className={`photo-pick${f.image?.includes(n) ? ' on' : ''}`} onClick={() => set({ image: `evidence/${n}.svg`, imageCaption: cap })}><img src={`evidence/${n}.svg`} alt={cap} /></button>)}
             </div>
             <UploadStatus up={photo} />
           </div>

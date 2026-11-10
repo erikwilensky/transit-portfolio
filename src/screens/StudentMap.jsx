@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { applyLens, getIntensity, getStore, getStudentMap, LEARNER_PROFILE, suggestInterchanges, TODAY } from '../api.js';
+import { applyLens, getIntensity, getStore, getStudentMap, LEARNER_PROFILE, requestFor, suggestInterchanges, TODAY } from '../api.js';
 import LineDialog from '../components/LineDialog.jsx';
 import PhoneCapture from '../components/PhoneCapture.jsx';
 import MetroMap from '../components/MetroMap.jsx';
@@ -176,7 +176,7 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
       </div>
       <div className="home-map">
         {view === 'map' ? <MetroMap recent={simple} map={shown} lens={lens} selectedId={selected} onSelect={setSelected} onSignal={(g) => (g.open ? setSignal(g) : setSelected(g.eventId))} fitKey={studentId} newIds={newIds} badgeIds={seeAs === 'student' ? badgeIds : null} />
-          : <StationList events={listed} map={shown} selected={selected} onSelect={setSelected} />}
+          : <StationList events={listed} map={shown} selected={selected} onSelect={setSelected} empty={!map.events.length} onAdd={seeAs === 'student' ? () => setAdding({}) : null} />}
         <StationPanel event={event} map={map} onClose={() => setSelected(null)} readOnly={seeAs !== 'student'} toast={toast} />
       </div>
       {full && (replay || scrub !== null) && <div className="scrubber">
@@ -205,16 +205,17 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
       {phone && <PhoneCapture map={map} studentId={studentId} onClose={() => setPhone(false)} onSent={() => { setPhone(false); go(persona.id, 'inbox'); }} />}
       {adding && (
         <AddStation map={map} studentId={studentId} prefill={adding} onClose={() => { setAdding(null); setTourStage(null); }}
-          onAdded={(e) => { setAdding(null); setTourStage(null); markNew(e.id); setSelected(e.id); toast(e.verification === 'student-added' && adding.requestFrom !== '' ? `Added “${e.title}”. Endorsement requested.` : `Added “${e.title}”`); }} />
+          onAdded={(e) => { setAdding(null); setTourStage(null); markNew(e.id); setSelected(e.id); toast(e.verification === 'student-added' && requestFor(e.id) ? `Added “${e.title}”. Endorsement requested.` : `Added “${e.title}”`); }} />
       )}
     </div>
   );
 }
 
 // F10: the same stations as a list, newest first, grouped by Year. Phones and screen readers start here.
-function StationList({ events, map, selected, onSelect }) {
+function StationList({ events, map, selected, onSelect, empty, onAdd }) {
   const groups = [];
   for (const e of events) { const y = yearOf(e, map.student); if (groups.at(-1)?.y !== y) groups.push({ y, items: [] }); groups.at(-1).items.push(e); }
+  if (empty) return <div className="st-list empty"><p>Nothing on your map yet. Add a station for something you did, and it appears here.</p>{onAdd && <button className="primary" onClick={onAdd}>＋ {'Add a station'}</button>}</div>;
   if (!events.length) return <div className="st-list empty"><p>No stations match. Try fewer words or clear the filters.</p></div>;
   return (
     <div className="st-list">

@@ -6,8 +6,9 @@ import StationPanel from './StationPanel.jsx';
 import { VerifyBadge } from './Badge.jsx';
 import ReaderRequests from './ReaderRequests.jsx';
 import ImportDialog from './ImportDialog.jsx';
+import { isPilot } from '../auth.js';
 
-const GLYPH = { sis: 'SIS', lms: 'LMS', cas: 'CAS', clubs: 'CLB', github: 'GH', exams: 'EXM', classroom: 'GC', csv: 'CSV', calendar: 'ICS', mine: 'ME' };
+const GLYPH = { sis: 'SIS', lms: 'LMS', cas: 'CAS', clubs: 'CLB', github: 'GH', exams: 'EXM', classroom: 'GC', csv: 'CSV', calendar: 'ICS', mine: 'ME', phone: 'PH', import: 'IMP' };
 
 export default function IntegrationsPanel({ map, lens, newIds, onAdded, toast, version }) {
   const [syncing, setSyncing] = useState([]);
@@ -50,7 +51,7 @@ export default function IntegrationsPanel({ map, lens, newIds, onAdded, toast, v
       <div className="int-head">
         <h2>Connected systems</h2>
         <button className="ghost" onClick={() => setImporting(true)} title="Bring in your own records from a spreadsheet or a calendar file">Import a file</button>
-        <button className="ghost" onClick={simulate} disabled={!!syncing.length} title="Each connected system sends one new item, as if a school week had passed">Simulate next week</button>
+        {!isPilot() && <button className="ghost" onClick={simulate} disabled={!!syncing.length} title="Each connected system sends one new item, as if a school week had passed">Simulate next week</button>}
         <button className="primary" onClick={() => run(integrations.map((i) => i.id))} disabled={!!syncing.length || !totalPending}>
           {syncing.length ? 'Syncing…' : `Sync all · ${totalPending} new`}
         </button>
@@ -67,7 +68,7 @@ export default function IntegrationsPanel({ map, lens, newIds, onAdded, toast, v
                 <div><h3>{i.name}</h3><small>{i.detail} · {i.mode}</small></div>
               </div>
               <dl>
-                <dt>Last synced</dt><dd>{off ? 'never' : busy ? 'syncing…' : ago(i.lastSynced)}</dd>
+                <dt>Last synced</dt><dd>{off ? 'never' : busy ? 'syncing…' : i.lastSynced ? ago(i.lastSynced) : 'never'}</dd>
                 <dt>Items</dt><dd>{i.itemCount.toLocaleString()}</dd>
               </dl>
               <div className="int-foot">
