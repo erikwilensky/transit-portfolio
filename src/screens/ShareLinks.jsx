@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { extraViews, getActivity, getPrivacy, isGated, logLink, SHARED_LABEL, TODAY } from '../api.js';
-import { appUrl, fmtDate, ago } from '../format.js';
+import { appUrl, fmtDate, ago, addDays, shareToken } from '../format.js';
 import Qr from '../components/Qr.jsx';
 
-const addDays = (d, n) => new Date(new Date(d).getTime() + n * 86400000).toISOString().slice(0, 10);
 const days = (d) => Math.round((new Date(d) - new Date(TODAY)) / 86400000);
 
 // S6: every link the student has made, who it was for, whether anyone opened it, and the off switch.
@@ -19,7 +18,7 @@ export default function ShareLinks({ studentId, drafts, updateDraft, toast, vers
   const patch = (p, token, ch, msg) => { updateDraft(p.id, { shareLinks: p.shareLinks.map((x) => (x.token === token ? { ...x, ...ch } : x)) }); logLink(studentId, msg); toast(msg); };
   const create = () => {
     const p = drafts.find((d) => d.id === pres); if (!p) return;
-    const token = `tp-${Math.random().toString(36).slice(2, 6)}`;
+    const token = shareToken();
     updateDraft(p.id, { shareLinks: [...p.shareLinks, { token, presentationId: p.id, expiresAt: addDays(TODAY, +len), revoked: false, views: 0, sharedWith: who.trim() || 'Anyone with the link', emailGate: gate }] });
     logLink(studentId, `Created share link /s/${token} for “${p.title}”`);
     setQr(token); setWho(''); toast(`Link created: /s/${token}`);

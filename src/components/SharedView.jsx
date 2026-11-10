@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { applyLens, TODAY } from '../api.js';
+import { applyLens, extraViews, TODAY } from '../api.js';
 import { appUrl, fmtDate } from '../format.js';
 import PresentationView from './PresentationView.jsx';
 import StationPanel from './StationPanel.jsx';
@@ -33,7 +33,7 @@ export default function SharedView({ publicMap, drafts, links }) {
       <div className="browser">
         <div className="browser-bar">
           <span className="dots"><i /><i /><i /></span>
-          <span className="url">portfolio.school.example/s/{link.token}</span>
+          <span className="url">{appUrl(`s/${link.token}`).replace(/^https?:\/\//, '')}</span>
         </div>
         {link.revoked || expired ? (
           <div className="link-dead">
@@ -45,7 +45,7 @@ export default function SharedView({ publicMap, drafts, links }) {
             <div className="share-note">
               <span>Shared read-only by {publicMap.student.name}</span>
               <span>Link expires {fmtDate(link.expiresAt)}</span>
-              <span>{link.views} views logged</span>
+              <span>{link.views + extraViews(link.token)} {link.views + extraViews(link.token) === 1 ? 'view logged' : 'views logged'}</span>
             </div>
             <PrintHead kicker="Shared portfolio" />
             <VerifyScope.Provider value><PresentationView map={publicMap} lens={lens} pres={pres} selectedId={selected} onSelect={setSelected} />

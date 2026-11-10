@@ -29,6 +29,10 @@ export function verifyCode(eventId) {
 const PUBLIC_BASE = import.meta.env?.VITE_PUBLIC_URL || '';
 export const appBase = () => (PUBLIC_BASE ? PUBLIC_BASE.replace(/[#?].*$/, '').replace(/\/?$/, '/') : location.href.replace(/[#?].*$/, ''));
 export const appUrl = (hash) => `${appBase()}#/${hash}`;
+// A share link's token: long and random, so nobody can guess another student's link (tp- plus 16 letters and digits).
+export const shareToken = () => `tp-${[...crypto.getRandomValues(new Uint8Array(16))].map((n) => 'abcdefghijkmnpqrstuvwxyz23456789'[n & 31]).join('')}`;
+// A date n days after an ISO day.
+export const addDays = (d, n) => new Date(new Date(d).getTime() + n * 86400000).toISOString().slice(0, 10);
 
 // P12: a short code for each line, so lines that share a colour can be named without it.
 export const lineCode = (l) => l.code || (l.name.includes(' ') ? l.name.split(/[\s·]+/).filter(Boolean).map((w) => w[0]).join('').slice(0, 3) : l.name.slice(0, 3)).toUpperCase();

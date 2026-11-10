@@ -571,6 +571,7 @@ select { font: inherit; font-size: 14px; padding: 7px 10px; border-radius: 9px; 
 .cv-page.pat-gradient { background-image: radial-gradient(60% 50% at 10% 0%, color-mix(in srgb, var(--c-accent) 26%, transparent), transparent), radial-gradient(50% 40% at 100% 20%, color-mix(in srgb, var(--c-accent2) 20%, transparent), transparent); }
 .cv-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--c-gap); max-width: var(--c-max); margin: 0 auto; align-items: start; }
 .cv-block { grid-column: span var(--span); position: relative; border-radius: var(--c-radius); min-width: 0; }
+.cv-block:empty { display: none; } /* a block with nothing to show a reader */
 .cv-block.a-center { text-align: center; }
 .cv-block.a-center .cv-foot, .cv-block.a-center .cv-tags, .cv-block.a-center .cv-stats { justify-content: center; }
 .cv-block.s-card, .cv-block.s-accent, .cv-block.s-inverse { padding: calc(var(--c-gap) + 4px); }
@@ -700,6 +701,8 @@ select { font: inherit; font-size: 14px; padding: 7px 10px; border-radius: 9px; 
 }
 @container (min-width: 641px) and (max-width: 900px) {
   .cv-block[style*="--span: 2"] { grid-column: span 3; }
+  /* …except beside a ⅔ block, so the pair still shares a row (on A4 paper too). */
+  .cv-block[style*="--span: 4"] + .cv-block[style*="--span: 2"], .cv-block[style*="--span: 2"]:has(+ .cv-block[style*="--span: 4"]) { grid-column: span 2; }
   .cv-stations[style*="--cols: 4"], .cv-stations[style*="--cols: 3"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 .studio-preview:has(.cv-page), .browser-body:has(.cv-page) { overflow: auto; }
@@ -2356,6 +2359,8 @@ label.file-btn { display: inline-flex; align-items: center; cursor: pointer; }
 
 .pres-intro { font-size: clamp(17px, 2.1cqw, 20px); line-height: 1.55; max-width: 62ch; font-weight: 300; }
 .pres-minimap { max-width: none; border-radius: 8px; }
+/* "A small journey map": proportional on a phone, never taller than a band on a wide page (svg.metro.mini sets height: auto). */
+.pres-minimap svg.metro.mini { max-height: 200px; }
 
 /* Numbered section headings: 01 Highlights, 02 What I do… */
 .pres > .fade-in { counter-reset: psec; }
@@ -2443,6 +2448,7 @@ label.file-btn { display: inline-flex; align-items: center; cursor: pointer; }
 .pres-foot .pf-row { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; }
 .pres-credits { margin: 0; font-size: 11.5px; line-height: 1.5; color: var(--muted); font-weight: 400; }
 .pres-credits a { color: inherit; text-decoration: underline; text-decoration-color: var(--rule-strong); }
+.cv-credits { max-width: var(--c-max); margin: var(--c-gap) auto 0; color: var(--c-muted); }
 @media (max-width: 600px) { .pc-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pc-facts div:nth-child(3) { border-left: 0; padding-left: 0; } .impact-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .impact-stats span:nth-child(3) { border-left: 0; padding-left: 0; } }
 @container pres (min-width: 720px) {
   .tl-body:has(> .p-fig) { display: grid; grid-template-columns: minmax(0, 1fr) 220px; column-gap: 22px; align-content: start; }
