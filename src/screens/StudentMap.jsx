@@ -177,6 +177,7 @@ export default function StudentMap({ map, studentId, toast, focusId, go, persona
       <div className="home-map">
         {view === 'map' ? <MetroMap recent={simple} map={shown} lens={lens} selectedId={selected} onSelect={setSelected} onSignal={(g) => (g.open ? setSignal(g) : setSelected(g.eventId))} fitKey={studentId} newIds={newIds} badgeIds={seeAs === 'student' ? badgeIds : null} />
           : <StationList events={listed} map={shown} selected={selected} onSelect={setSelected} empty={!map.events.length} onAdd={seeAs === 'student' ? () => setAdding({}) : null} />}
+        {view === 'map' && !map.events.length && seeAs === 'student' && <div className="map-empty"><p>Nothing on your map yet. Add a station for something you did, and it appears here.</p><button className="primary" onClick={() => setAdding({})}>＋ {'Add a station'}</button></div>}
         <StationPanel event={event} map={map} onClose={() => setSelected(null)} readOnly={seeAs !== 'student'} toast={toast} />
       </div>
       {full && (replay || scrub !== null) && <div className="scrubber">
