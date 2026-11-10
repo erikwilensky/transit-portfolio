@@ -110,7 +110,7 @@ test('Google Classroom Takeout: coursework and submissions across files', () => 
   assert.equal(draw.studentId, 'st-03');
   assert.equal(draw.candidate.date, '2026-10-09');
   assert.equal(draw.candidate.sourceId, 'classroom');
-  assert.match(draw.candidate.summary, /Grade 10 Biology.*mark 9\/10/);
+  assert.match(draw.candidate.summary, /Year 10 Biology.*mark 9\/10/);
   assert.equal(draw.candidate.evidence[1].url, 'https://classroom.google.com/c/x/a/cw1');
   assert.match(r.items.find((i) => i.label === 'Cell quiz' && i.candidate).candidate.summary, /late/);
   assert.match(r.items.find((i) => i.problem?.includes('somchai')).problem, /No student found/);

@@ -1,6 +1,7 @@
 import { CONSENT, extraViews, getActivity, getStore, getStudents, TODAY, SHARED_LABEL } from '../api.js';
 import { ago, fmtDate } from '../format.js';
 import { isPilot } from '../auth.js';
+import Icon from '../components/Icon.jsx';
 
 const DATA_MAP = [
   ['Student record (stations, lines)', 'School data core, Bangkok', 'Student; advisor and staff by visibility', 'Until graduation + 1 year, then exported and deleted'],
@@ -45,7 +46,7 @@ export default function Pdpa({ drafts, version, go, persona }) {
         <section className="card">
           <h2>Recent share-link views</h2>
           <ul className="views">{views.slice(0, 7).map((v, i) => (
-            <li key={i} className={v.live ? 'live' : ''}><span className="act-ic">◉</span><span><b>{v.actor}</b> opened {v.student.split(' ')[0]}’s link {v.text.replace('Viewed share link ', '')}</span><time>{v.live ? ago(v.ts) : fmtDate(v.ts.slice(0, 10))}</time></li>
+            <li key={i} className={v.live ? 'live' : ''}><span className="act-ic" aria-hidden="true"><Icon name="eye" /></span><span><b>{v.actor}</b> opened {v.student.split(' ')[0]}’s link {v.text.replace('Viewed share link ', '')}</span><time>{v.live ? ago(v.ts) : fmtDate(v.ts.slice(0, 10))}</time></li>
           ))}</ul>
           <p className="fineprint">Students see the same log on their own Activity page and can switch any link off.</p>
         </section>

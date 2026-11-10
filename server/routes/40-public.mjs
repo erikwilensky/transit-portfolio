@@ -1,6 +1,7 @@
 // Public share links (#/s/<token>) and printed verify codes (#/v/<code>), for readers outside the school.
 // No sign-in. Each answer carries only what that one link or code shares, never the whole record.
-import { send, readJson } from '../lib.mjs';
+import { send, readJson, clientIp } from '../lib.mjs';
+import { bump } from '../auth.mjs';
 import { api, changed } from '../store.mjs';
 
 const fail = (status, message) => Object.assign(new Error(message), { status });
@@ -79,12 +80,18 @@ export function publicVerify(code) {
 
 const reader = (link, body) => (EMAIL.test(body?.email || '') ? String(body.email).trim().slice(0, 200) : null);
 
+// No sign-in here, so one address cannot flood a student: past a few views of one link in 15 minutes the page still opens
+// but no further view is counted (each count is a saved change every open app hears about), and past a few requests for
+// more time or evidence they are refused.
+const VIEWS = 20, ASKS = 5;
+const counted = (req, token) => bump(`pv:${clientIp(req)}:${token}`) <= VIEWS;
+const asked = (req, token) => { if (bump(`pa:${clientIp(req)}:${token}`) > ASKS) throw fail(429, 'Too many requests from here. Try again later.'); };
+
 export default (app) => {
   app.get('/api/public/share/:token', (req, res, { token }) => {
     const { pres, link } = findLink(token);
     if (api.isGated(link)) return send(res, 200, { gated: true, ...publicSnapshot(token, { gate: true }) });
-    api.recordView(token, pres.studentId, 'Anonymous viewer');
-    changed({ kind: 'view', token });
+    if (counted(req, token)) { api.recordView(token, pres.studentId, 'Anonymous viewer'); changed({ kind: 'view', token }); }
     send(res, 200, { gated: false, ...publicSnapshot(token) });
   });
 
@@ -93,8 +100,7 @@ export default (app) => {
     const { pres, link } = findLink(token);
     const email = reader(link, await readJson(req));
     if (!email) throw fail(400, 'Enter a work email to open this portfolio.');
-    api.recordView(token, pres.studentId, email);
-    changed({ kind: 'view', token });
+    if (counted(req, token)) { api.recordView(token, pres.studentId, email); changed({ kind: 'view', token }); }
     send(res, 200, { gated: false, ...publicSnapshot(token) });
   });
 
@@ -102,6 +108,7 @@ export default (app) => {
   app.post('/api/public/share/:token/extend', async (req, res, { token }) => {
     const { pres, link } = findLink(token);
     const body = await readJson(req);
+    asked(req, token);
     const who = reader(link, body) || link.sharedWith || api.SHARED_LABEL[token] || 'A viewer';
     const persona = api.toStudent(pres.studentId);
     api.notify(persona, `${who} asked to extend link /s/${token}`, { persona, screen: 'links' });
@@ -116,6 +123,7 @@ export default (app) => {
     const text = String(body.text || '').trim().slice(0, 2000);
     const snap = publicSnapshot(token);
     if (!text || !snap.store.events.some((e) => e.id === body.eventId)) throw fail(400, 'Nothing to ask about.');
+    asked(req, token);
     api.askEvidence(body.eventId, reader(link, body) || link.sharedWith || api.SHARED_LABEL[token] || 'A reader', text);
     changed({ kind: 'request' });
     send(res, 200, { ok: true });
