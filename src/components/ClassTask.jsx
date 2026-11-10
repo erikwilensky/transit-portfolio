@@ -28,7 +28,7 @@ export default function ClassTask({ teacherId, onClose, toast }) {
           ))}
         </div>
         {task.done ? (
-          <p className="ct-done"><span className="status s-ok"><i>✓</i>Done</span> {task.done.count} station{task.done.count === 1 ? '' : 's'} endorsed on {fmtDate(task.done.at)} and sent to students’ inboxes.</p>
+          <p className="ct-done"><span className="status s-ok"><i aria-hidden="true">✓</i>Done</span> {task.done.count} station{task.done.count === 1 ? '' : 's'} endorsed on {fmtDate(task.done.at)} and sent to students’ inboxes.</p>
         ) : (
           <>
             <ul className="ct-list">

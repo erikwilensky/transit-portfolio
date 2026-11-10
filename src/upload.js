@@ -124,11 +124,27 @@ const loadImage = (file) => new Promise((resolve, reject) => {
 });
 
 // Data URLs open poorly in a new tab or frame (browsers block them); a blob URL works.
+// A file's address comes from the record, which a student writes: only plain web, app and data addresses are
+// shown, and a blob made here is only ever a type that cannot run script on this site (never HTML or SVG).
+const VIEW_TYPES = /^(image\/(png|jpeg|gif|webp|avif|heic|heif)|application\/pdf|audio\/[\w.+-]+|video\/[\w.+-]+|text\/plain|text\/csv)$/;
+// A link straight to a file address from the record: undefined for javascript: and other schemes, and for data: of a
+// type that could run script.
+export function safeHref(url) {
+  if (typeof url !== 'string') return undefined;
+  const scheme = /^\s*([a-z][a-z0-9+.-]*):/i.exec(url.replace(/[\u0000-\u001f]/g, ''))?.[1]?.toLowerCase();
+  if (scheme && !['http', 'https', 'data', 'blob'].includes(scheme)) return undefined;
+  if (scheme === 'data' && !VIEW_TYPES.test(/^\s*data:([^;,]*)/i.exec(url)?.[1].toLowerCase() || '')) return undefined;
+  return url;
+}
 export function viewUrl(url) {
-  if (!url?.startsWith('data:')) return url;
+  if (typeof url !== 'string') return undefined;
+  const scheme = /^\s*([a-z][a-z0-9+.-]*):/i.exec(url.replace(/[\u0000-\u001f]/g, ''))?.[1]?.toLowerCase();
+  if (scheme && !['http', 'https', 'data', 'blob'].includes(scheme)) return undefined; // never javascript: and the like
+  if (!url.startsWith('data:')) return url;
   try {
     const [head, b64] = url.split(',');
-    const type = head.slice(5).split(';')[0];
+    let type = head.slice(5).split(';')[0].toLowerCase();
+    if (!VIEW_TYPES.test(type)) type = 'application/octet-stream';
     const bin = atob(b64); const a = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
     return URL.createObjectURL(new Blob([a], { type }));

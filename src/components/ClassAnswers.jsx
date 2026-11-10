@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { answersCsv, declineRequest, endorse, promptReview, REVIEW_LABEL, snapshot } from '../api.js';
 import { fmtDate } from '../format.js';
+import { safeHref } from '../upload.js';
 import { CHIPS } from '../screens/TeacherQueue.jsx';
 import './class-answers.css';
 import PhraseTools from './Phrases.jsx';
@@ -98,7 +99,7 @@ export default function ClassAnswers({ promptId, teacherId, back, version, toast
           return (
             <article key={r.studentId} className={`ca-card${can && sel.includes(rid) ? ' on' : ''}`} tabIndex={0} aria-label={`${r.student?.name || 'A student'}: ${REVIEW_LABEL[r.status]}`} onKeyDown={(ev) => key(ev, r)}>
               {can ? <label className="q-pick"><input type="checkbox" checked={sel.includes(rid)} onChange={() => toggle(rid)} aria-label={`Select ${r.student?.name || 'this answer'}`} /></label> : <span />}
-              {r.photo ? <a href={r.photo.url} target="_blank" rel="noreferrer"><img className="ca-img" src={r.photo.url} alt={r.photo.caption || 'Photo'} /></a> : <span className="ca-img none" aria-hidden="true" />}
+              {r.photo ? <a href={safeHref(r.photo.url)} target="_blank" rel="noreferrer"><img className="ca-img" src={r.photo.url} alt={r.photo.caption || 'Photo'} /></a> : <span className="ca-img none" aria-hidden="true" />}
               <div className="ca-body">
                 <div className="ca-meta"><b>{r.student?.name || 'A student'}</b>{r.student?.homeroom && <span>{r.student.homeroom}</span>}<small>{fmtDate(r.answer.date)}</small><span className={`ca-st ca-${r.status}`}>{REVIEW_LABEL[r.status]}</span></div>
                 <p>{r.answer.text}</p>
