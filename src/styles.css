@@ -867,7 +867,7 @@ select { font: inherit; font-size: 14px; padding: 7px 10px; border-radius: 9px; 
 .st { font-size: 11.5px; font-weight: 600; border-radius: 999px; padding: 2px 8px; margin-right: 8px; }
 .st-endorsed { background: color-mix(in srgb, var(--b-green) 18%, transparent); color: var(--ok); }
 .st-declined, .st-returned { background: color-mix(in srgb, var(--b-orange) 20%, transparent); color: var(--warn); }
-@media (max-width: 760px) { .q-card { grid-template-columns: 26px 1fr; } .q-img { grid-column: 2; width: 100%; } .q-body { grid-column: 1 / -1; } .q-actions { flex-wrap: wrap; } }
+@media (max-width: 760px) { .q-card { grid-template-columns: 26px 1fr; } .q-img { grid-column: 2; width: 100%; } .q-body { grid-column: 1 / -1; } .q-actions { flex-wrap: wrap; } .q-actions input { flex: 1 1 100%; } .q-img.none { aspect-ratio: auto; padding: 8px; justify-self: start; width: auto; } }
 
 /* ══ CAS grid ═══════════════════════════════════════════════ */
 .cas-wrap { display: grid; grid-template-columns: 1fr 300px; gap: 14px; align-items: start; }

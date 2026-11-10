@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import ClassTask from '../components/ClassTask.jsx';
-import { declineRequest, endorse, getRequests, getStore, getTeacher, getLine, snapshot } from '../api.js';
+import { declineRequest, endorse, getClassTasks, getRequests, getStore, getTeacher, getLine, snapshot } from '../api.js';
 import { fmtDate, TYPE_LABEL, inkOn } from '../format.js';
 import { VerifyBadge } from '../components/Badge.jsx';
 import SponsorPanel from '../components/SponsorPanel.jsx';
@@ -62,8 +62,8 @@ export default function TeacherQueue({ teacherId, toast, version, focus, go, per
           <div className="kicker">Endorsement queue</div>
           <h1>{t.name}</h1>
           <p>{t.role} · items that need a teacher’s eye.{isPilot() ? '' : ` About 3 minutes each; ${autoShare}% of stations verify themselves with no teacher needed.`}</p>
-          <button className="ghost ct-open" onClick={() => setClassTask(true)}>Endorse a whole-class task</button>
-          {getSponsored(teacherId).some((e) => e.sponsor.status === 'invited') && <a className="sp-jump" href="#sponsor" onClick={(ev) => { ev.preventDefault(); document.getElementById('sponsor')?.scrollIntoView({ behavior: 'smooth' }); }}>{getSponsored(teacherId).filter((e) => e.sponsor.status === 'invited').length} new sponsor invitation ↓</a>}
+          {getClassTasks(teacherId).length > 0 && <button className="ghost ct-open" onClick={() => setClassTask(true)}>Endorse a whole-class task</button>}
+          {getSponsored(teacherId).some((e) => e.sponsor.status === 'invited') && <a className="sp-jump" href="#sponsor" onClick={(ev) => { ev.preventDefault(); document.getElementById('sponsor')?.scrollIntoView({ behavior: 'smooth' }); }}>{(() => { const n = getSponsored(teacherId).filter((e) => e.sponsor.status === 'invited').length; return `${n} new sponsor invitation${n === 1 ? '' : 's'} ↓`; })()}</a>}
         </div>
         <div className="meter" aria-label="Workload this term">
           <div><b>{waitingAll.length}</b><span>waiting</span></div>

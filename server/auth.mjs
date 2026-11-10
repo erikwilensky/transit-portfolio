@@ -195,6 +195,10 @@ const STAFF_EXTRA = {
   remindClass: (u, a) => teachesClass(u, api.getClassPrompt(a[0])?.classId),
   answerPrompt: () => false, skipPrompt: () => false,
 };
+// A student's own moments, privacy, presentations and lines: only the student changes them. An advisor or subject teacher
+// in reach must not rename, delete, retag or re-share them (or turn a private moment visible to themselves).
+for (const f of ['setVisibility', 'editStation', 'deleteStation', 'setTags', 'setPrivacy', 'setStudentDrafts', 'completeGoal',
+  'addBranch', 'endLine', 'restartLine', 'setIntensity', 'completeOnboarding', 'resubmit', 'answerEvidence']) STAFF_EXTRA[f] = () => false;
 export function canAct(user, fn, args = []) {
   if (!user || typeof fn !== 'string') return false;
   // Undo sends a whole copy of the record, and in a pilot every browser holds only its own part of it.

@@ -1199,7 +1199,8 @@ export function auditLog() {
 }
 
 // ── Sponsors: a teacher attached to planned work before it happens, even outside any school system ─
-export const getSponsored = (teacherId) => store.events.filter((e) => e.sponsor?.teacherId === teacherId).map((e) => ({ ...e, student: getStudent(e.studentId) }));
+// A goal the student closed ("Not doing this any more") leaves the sponsor's list.
+export const getSponsored = (teacherId) => store.events.filter((e) => e.sponsor?.teacherId === teacherId && !e.closedOn).map((e) => ({ ...e, student: getStudent(e.studentId) }));
 export function answerSponsor(eventId, ok, expectations) {
   const e = getEvent(eventId); const t = teacherById[e.sponsor.teacherId];
   e.sponsor = { ...e.sponsor, status: ok ? 'accepted' : 'declined', expectations: expectations || '', answeredOn: TODAY };
@@ -1537,8 +1538,12 @@ export function classRoster(classId, teacherId) {
   if (!c) return null;
   const sids = currentPlaces(new Set([c.id])).out.get(c.id), inClass = new Set(sids), root = rootIndex();
   const last = new Map(), pending = new Map();
+  // "Last moment" names only what this teacher may open on the student's map (MyClasses StudentRead): everything at
+  // advisor level for their own advisees, otherwise school-level moments and those the student asked them about or they sponsor.
+  const asked = new Set(store.requests.filter((r) => r.teacherId === teacherId).map((r) => r.eventId));
+  const sees = (e) => (getStudent(e.studentId)?.advisorId === teacherId && VISIBLE_TO.advisor.includes(e.visibility)) || VISIBLE_TO.school.includes(e.visibility) || asked.has(e.id) || e.sponsor?.teacherId === teacherId;
   if (c.lineId) for (const e of store.events) {
-    if (!inClass.has(e.studentId) || e.type === 'goal' || e.date > TODAY || !e.lineIds.some((l) => root(l) === c.lineId)) continue;
+    if (!inClass.has(e.studentId) || e.type === 'goal' || e.date > TODAY || !e.lineIds.some((l) => root(l) === c.lineId) || !sees(e)) continue;
     const p = last.get(e.studentId);
     if (!p || e.date > p.date || (e.date === p.date && e.id > p.id)) last.set(e.studentId, e);
   }
