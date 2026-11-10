@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { addGoal, addReflection, addStation, completeGoal, deleteStation, editStation, endorserChoices, getEvent, getLine, getPromptsFor, getStudent, getTeacher, getTeachers, requestFor, setVisibility, snapshot, teachersOf, TODAY } from '../api.js';
+import { addGoal, addReflection, addStation, completeGoal, deleteStation, editStation, endorserChoices, familyViewer, getEvent, getLine, getPromptsFor, getStudent, getTeacher, getTeachers, requestFor, setVisibility, snapshot, teachersOf, TODAY } from '../api.js';
 import { fmtDate } from '../format.js';
 import { isPilot } from '../auth.js';
 import { evidenceFor } from '../upload.js';
@@ -519,22 +519,25 @@ function Moment({ e, map, onClose, onReflect, toast }) {
   );
 }
 
-// The only sharing a Simple student needs: which moments their family sees.
+// The only sharing a Simple student needs: which moments their family sees. Years 7 to 9: families see what the advisor
+// sees; from Year 10 what the student shares with the school (api.familyViewer), so sharing sets that level.
 export function ShowFamily({ map, toast }) {
   const moments = useMemo(() => map.events.filter((e) => e.type !== 'goal').sort((a, b) => b.date.localeCompare(a.date)), [map]);
   const first = map.student.name.split(' ')[0];
+  const young = familyViewer(map.student.id) === 'advisor';
+  const isShared = (e) => (young ? e.visibility !== 'private' : e.visibility === 'school' || e.visibility === 'publishable');
   return (
     <div className="simple">
       <section className="sh-hello">
         <h1>Show my family</h1>
-        <p>Your family can see the moments you share with your advisor. Keep anything you like just for you, {first}.</p>
+        <p>{young ? 'Your family can see the moments you share with your advisor. Keep anything you like just for you,' : 'Your family can see the moments you share with the school. Keep anything you like just for you,'} {first}.</p>
       </section>
-      <ul className="sh-fam">{moments.map((e) => { const shared = e.visibility !== 'private'; return (
+      <ul className="sh-fam">{moments.map((e) => { const shared = isShared(e); return (
         <li key={e.id}>
           <span><b>{e.title}</b><small>{fmtDate(e.date)}</small></span>
           <div className="seg" role="radiogroup" aria-label={`Who sees ${e.title}`}>
             <button className={!shared ? 'on' : ''} aria-checked={!shared} role="radio" onClick={() => { if (shared) { const snap = snapshot(); setVisibility(e.id, 'private'); toast('Just for you now', snap); } }}>Just me</button>
-            <button className={shared ? 'on' : ''} aria-checked={shared} role="radio" onClick={() => { if (!shared) { const snap = snapshot(); setVisibility(e.id, 'advisor'); toast('Your advisor and family can see it', snap); } }}>My advisor and family</button>
+            <button className={shared ? 'on' : ''} aria-checked={shared} role="radio" onClick={() => { if (!shared) { const snap = snapshot(); setVisibility(e.id, young ? 'advisor' : 'school'); toast(young ? 'Your advisor and family can see it' : 'Your teachers and family can see it', snap); } }}>{young ? 'My advisor and family' : 'My teachers and family'}</button>
           </div>
         </li>
       ); })}</ul>

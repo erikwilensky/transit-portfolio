@@ -242,6 +242,8 @@ const STU = {
   'Nothing on your map yet. Add a station for something you did, and it appears here.': 'แผนที่ของคุณยังว่างอยู่ เพิ่มสถานีสำหรับสิ่งที่คุณทำ แล้วจะแสดงที่นี่',
   never: 'ยังไม่เคย',
   'A question for you': 'คำถามสำหรับคุณ',
+  'Your family can see the moments you share with the school. Keep anything you like just for you,': 'ครอบครัวของคุณเห็นเรื่องราวที่คุณแบ่งปันกับโรงเรียน เรื่องไหนอยากเก็บไว้ดูคนเดียวก็ทำได้นะ',
+  'My teachers and family': 'ครูและครอบครัว', 'Your teachers and family can see it': 'ครูและครอบครัวเห็นได้',
   Me: 'ฉัน', School: 'โรงเรียน', Public: 'สาธารณะ', 'Add a station': 'เพิ่มสถานี', '❚❚ Pause': '❚❚ หยุด', '▶ Replay': '▶ เล่นย้อน', 'anyone with a link': 'ทุกคนที่มีลิงก์', 'school staff': 'บุคลากรของโรงเรียน',
   'your advisor': 'ครูที่ปรึกษาของคุณ', Pause: 'หยุด', 'Play the journey': 'เล่นเส้นทาง', 'Reflection saved. The signal is clear.': 'บันทึกบทสะท้อนคิดแล้ว สัญญาณหายไปแล้ว',
   'See my map as': 'ดูแผนที่ของฉันในฐานะ', Search: 'ค้นหา', 'Search stations, reflections and lines': 'ค้นหาสถานี บทสะท้อนคิด และสาย', 'Show as': 'แสดงเป็น', Kind: 'ประเภท', Verification: 'การยืนยัน',
