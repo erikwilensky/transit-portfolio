@@ -141,7 +141,7 @@ export default function CustomView({ map, lens, design, editable = false, select
           <div className="cv-lines">{shownLines.map((l) => {
             const evs = onLine(l.id);
             if (!evs.length) return null;
-            return <section key={l.id} style={{ '--c': l.colour }}><h3><i />{l.name}</h3><p>{evs[0].date.slice(0, 4)}–{l.status === 'ended' ? evs.at(-1).date.slice(0, 4) : 'now'} · {evs.length} stations</p>
+            return <section key={l.id} style={{ '--c': l.colour }}><h3><i />{l.name}</h3><p>{evs[0].date.slice(0, 4)}–{l.status === 'ended' ? evs.at(-1).date.slice(0, 4) : 'now'} · {evs.length} station{evs.length === 1 ? '' : 's'}</p>
               <ul>{evs.slice(-3).reverse().map((e) => <li key={e.id} onClick={() => open(e.id)}>{e.title}</li>)}</ul></section>;
           })}</div>
         </div>

@@ -77,7 +77,7 @@ export default function ShareLanding({ token, drafts, embedded = false, remote =
           <div className="landing-banner">
             <span><b>Shared with:</b> {link.sharedWith || SHARED_WITH[token] || 'Anyone with the link'}</span>
             <span className={daysLeft < 21 ? 'soon' : ''}><b>Expires</b> {fmtDate(link.expiresAt)} ({daysLeft} days)</span>
-            <span>{link.views + extraViews(token)} views logged</span>
+            <span>{link.views + extraViews(token)} {link.views + extraViews(token) === 1 ? 'view logged' : 'views logged'}</span>
             <span className="spacer" />
             {!link.site && <div className="seg small" role="group" aria-label="Reading mode"><button className={view === 'full' ? 'on' : ''} aria-pressed={view === 'full'} onClick={() => setView('full')}>Full portfolio</button><button className={view === 'skim' ? 'on' : ''} aria-pressed={view === 'skim'} onClick={() => setView('skim')}>60-second view</button></div>}
             {!link.site && <PrintButton title={view === 'skim' ? docName(map.student.name, 'Portfolio summary') : presentationName(map.student.name, pres)} />}

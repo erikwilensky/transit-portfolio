@@ -700,6 +700,8 @@ select { font: inherit; font-size: 14px; padding: 7px 10px; border-radius: 9px; 
 }
 @container (min-width: 641px) and (max-width: 900px) {
   .cv-block[style*="--span: 2"] { grid-column: span 3; }
+  /* …except beside a ⅔ block, so the pair still shares a row (on A4 paper too). */
+  .cv-block[style*="--span: 4"] + .cv-block[style*="--span: 2"], .cv-block[style*="--span: 2"]:has(+ .cv-block[style*="--span: 4"]) { grid-column: span 2; }
   .cv-stations[style*="--cols: 4"], .cv-stations[style*="--cols: 3"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 .studio-preview:has(.cv-page), .browser-body:has(.cv-page) { overflow: auto; }
@@ -2356,6 +2358,8 @@ label.file-btn { display: inline-flex; align-items: center; cursor: pointer; }
 
 .pres-intro { font-size: clamp(17px, 2.1cqw, 20px); line-height: 1.55; max-width: 62ch; font-weight: 300; }
 .pres-minimap { max-width: none; border-radius: 8px; }
+/* "A small journey map": proportional on a phone, never taller than a band on a wide page (svg.metro.mini sets height: auto). */
+.pres-minimap svg.metro.mini { max-height: 200px; }
 
 /* Numbered section headings: 01 Highlights, 02 What I do… */
 .pres > .fade-in { counter-reset: psec; }
