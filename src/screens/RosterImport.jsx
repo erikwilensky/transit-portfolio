@@ -7,6 +7,8 @@ import { StartOfYear } from '../components/YearHandover.jsx';
 const PARTS = [['teachers', 'Staff'], ['students', 'Students'], ['classes', 'Classes'], ['enrolments', 'Class places']];
 const readAll = (files) => Promise.all([...files].map((f) => f.text().then((text) => ({ name: f.name, text }))));
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+// A long list of class names (a whole school has hundreds): the first few, the rest behind "and N more".
+const Names = ({ list }) => (list.length <= 12 ? <>{list.join(', ')}.</> : <>{list.slice(0, 10).join(', ')} <details className="ri-more"><summary>and {list.length - 10} more</summary>{list.slice(10).join(', ')}.</details></>);
 
 // Pilot admin: the school's class lists in, then a sign-in link for everyone with an email (docs/roster-format.md).
 export default function RosterImport({ onDone, onClose, startOfYear = false }) {
@@ -84,7 +86,7 @@ function Preview({ step, pause, setPause }) {
     <ul className="acc-notes">
       <li>{newAccounts.toCreate ? `${plural(newAccounts.toCreate, 'person', 'people')} with an email will get a sign-in account and a setup link.` : 'Nobody new needs a sign-in account.'}{newAccounts.skipped ? ` ${plural(newAccounts.skipped, 'person', 'people')} already have one.` : ''}</li>
       {summary.ended.enrolments > 0 && <li>{plural(summary.ended.enrolments, 'class place')} not in this file will end (kept as history).</li>}
-      {summary.unmatchedClasses.length > 0 && <li>{plural(summary.unmatchedClasses.length, 'class', 'classes')} {summary.unmatchedClasses.length === 1 ? 'matches' : 'match'} no line on the map and will have none: {summary.unmatchedClasses.map((c) => c.name).join(', ')}.</li>}
+      {summary.unmatchedClasses.length > 0 && <li>{plural(summary.unmatchedClasses.length, 'class', 'classes')} {summary.unmatchedClasses.length === 1 ? 'matches' : 'match'} no line on the map and will have none (choose their lines under Subjects and lines on Accounts): <Names list={summary.unmatchedClasses.map((c) => c.name)} /></li>}
       {gone.length > 0 && <li>{plural(gone.length, 'record')} in Transit Portfolio {gone.length === 1 ? 'is' : 'are'} not in this file. Nothing is removed; check them yourself: {gone.slice(0, 20).map((x) => x.name || x.id).join(', ')}{gone.length > 20 ? ` and ${gone.length - 20} more` : ''}.</li>}
       {returning.length > 0 && <li>{plural(returning.length, 'paused account')} {returning.length === 1 ? 'is' : 'are'} in this file again and will be unpaused: {returning.map((a) => a.name).join(', ')}.</li>}
       {warnings.map((w, i) => <li key={i}>{w}</li>)}
@@ -105,6 +107,6 @@ function Done({ result, school, download }) {
       <p className="auth-lede">{plural(newAccounts.created.length, 'sign-in account')} made. Each person needs their own one-time setup link: it works once and expires in 7 days. The links are shown only now, so download them before you leave this page. You can also print sign-in cards per homeroom from Accounts (that makes new links).</p>
       <button className="auth-btn acc-dl" onClick={download}>Download sign-in links (CSV)</button>
     </> : <p className="auth-lede">No new sign-in accounts were needed.</p>}
-    {summary.unmatchedClasses.length > 0 && <p className="auth-note">Classes with no line: {summary.unmatchedClasses.map((c) => c.name).join(', ')}.</p>}
+    {summary.unmatchedClasses.length > 0 && <div className="auth-note">Classes with no line: <Names list={summary.unmatchedClasses.map((c) => c.name)} /></div>}
   </>;
 }

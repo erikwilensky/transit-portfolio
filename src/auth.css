@@ -131,3 +131,6 @@
 .auth-lang button { color: #fff; }
 .auth-lang button.on { background: #fff; color: #002855; box-shadow: none; }
 .auth-page[lang="th"] .auth-lede, .auth-page[lang="th"] .auth-band p { line-height: 1.65; }
+.ri-more { display: inline; }
+.ri-more summary { display: inline; cursor: pointer; color: #4F529B; font-weight: 600; }
+.ri-more[open] summary { display: block; margin-bottom: 4px; }
