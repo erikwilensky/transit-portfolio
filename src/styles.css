@@ -870,7 +870,7 @@ select { font: inherit; font-size: 14px; padding: 7px 10px; border-radius: 9px; 
 .st { font-size: 11.5px; font-weight: 600; border-radius: 999px; padding: 2px 8px; margin-right: 8px; }
 .st-endorsed { background: color-mix(in srgb, var(--b-green) 18%, transparent); color: var(--ok); }
 .st-declined, .st-returned { background: color-mix(in srgb, var(--b-orange) 20%, transparent); color: var(--warn); }
-@media (max-width: 760px) { .q-card { grid-template-columns: 26px 1fr; } .q-img { grid-column: 2; width: 100%; } .q-body { grid-column: 1 / -1; } .q-actions { flex-wrap: wrap; } }
+@media (max-width: 760px) { .q-card { grid-template-columns: 26px 1fr; } .q-img { grid-column: 2; width: 100%; } .q-body { grid-column: 1 / -1; } .q-actions { flex-wrap: wrap; } .q-actions input { flex: 1 1 100%; } .q-img.none { aspect-ratio: auto; padding: 8px; justify-self: start; width: auto; } }
 
 /* ══ CAS grid ═══════════════════════════════════════════════ */
 .cas-wrap { display: grid; grid-template-columns: 1fr 300px; gap: 14px; align-items: start; }
@@ -1424,6 +1424,7 @@ a.ghost { text-decoration: none; display: inline-flex; align-items: center; font
 .pc-link { display: flex; gap: 12px; align-items: center; } .pc-link > div { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; } .pc-link small { color: var(--muted); font-size: 12.5px; }
 .pc-link .ghost { text-decoration: none; font-size: 13px; padding: 5px 10px; }
 .as-head .primary { margin-left: auto; }
+@media (max-width: 640px) { .as-head { padding: 12px 16px; } .as-head .cb-back { flex-basis: 100%; text-align: left; } .as-head > div { flex: 1 1 0; min-width: calc(100% - 64px); } .as-head .spacer { display: none; } .as-head .primary { margin-left: 0; } }
 .pv-body { display: grid; grid-template-columns: 320px 1fr; min-height: calc(100vh - 100px); }
 .pv-intro { padding: 20px; border-right: 1px solid var(--rule); background: var(--surface); } .pv-intro h1 { font-size: 24px; } .pv-intro p { color: var(--muted); }
 .pv-intro > :is(h2, h3) { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 16px 0 6px; }

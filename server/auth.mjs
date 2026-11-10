@@ -195,6 +195,10 @@ const STAFF_EXTRA = {
   remindClass: (u, a) => teachesClass(u, api.getClassPrompt(a[0])?.classId),
   answerPrompt: () => false, skipPrompt: () => false,
 };
+// A student's own moments, privacy, presentations and lines: only the student changes them (admins aside). Staff, whole-school
+// roles included, must not rename, delete, retag or re-share them (or turn a private moment visible to themselves).
+const STUDENT_OWN = new Set(['setVisibility', 'editStation', 'deleteStation', 'setTags', 'setPrivacy', 'setStudentDrafts', 'completeGoal',
+  'addBranch', 'endLine', 'restartLine', 'setIntensity', 'completeOnboarding', 'resubmit', 'answerEvidence']);
 export function canAct(user, fn, args = []) {
   if (!user || typeof fn !== 'string') return false;
   // Undo sends a whole copy of the record, and in a pilot every browser holds only its own part of it.
@@ -233,6 +237,7 @@ export function canAct(user, fn, args = []) {
     // A nudge: the student's own advisor, or whole-school staff, as themselves.
     if (fn === 'nudgeStudent') return STAFF.includes(user.kind) && !!user.teacherId && args[1] === user.teacherId && (reachOf(user) === null || api.getStudent(args[0])?.advisorId === user.teacherId);
     if (STAFF.includes(user.kind)) {
+      if (STUDENT_OWN.has(fn)) return false;
       const reach = reachOf(user);
       if (reach === null) return true;
       if (WHOLE_SCHOOL_ONLY.has(fn)) return false;

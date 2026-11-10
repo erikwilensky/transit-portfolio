@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 // Screens in the top bar. At most four sit in the bar (five when there are only five); the rest,
 // and whatever does not fit, go under "More", so nothing is hidden without a cue.
@@ -9,6 +9,14 @@ export default function NavBar({ items, isOn, onGo, hrefOf, moreLabel = 'More' }
   const [fit, setFit] = useState(cap);
   const [open, setOpen] = useState(false);
   const activeIdx = items.findIndex(([id]) => isOn(id));
+  // The More menu closes when the screen changes some other way (a link on the page, Back) or on Escape.
+  useEffect(() => {
+    if (!open) return undefined;
+    const close = () => setOpen(false);
+    const key = (e) => { if (e.key === 'Escape') close(); };
+    window.addEventListener('hashchange', close); window.addEventListener('keydown', key);
+    return () => { window.removeEventListener('hashchange', close); window.removeEventListener('keydown', key); };
+  }, [open]);
   useLayoutEffect(() => {
     const calc = () => {
       if (!wrap.current || !measure.current) return;
