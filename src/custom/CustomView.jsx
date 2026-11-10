@@ -4,6 +4,7 @@ import { VerifyBadge } from '../components/Badge.jsx';
 import { applyLens } from '../api.js';
 import { fmtDate, inkOn } from '../format.js';
 import { BLOCKS, SPANS, themeVars } from './design.js';
+import { photoCredit } from '../photos.js';
 
 const SPAN_STEPS = SPANS.map(([n]) => n).sort((a, b) => a - b);
 const firstImage = (e) => e?.evidence.find((x) => x.kind === 'image');
@@ -28,6 +29,8 @@ export default function CustomView({ map, lens, design, editable = false, select
   const shownLines = lens.order.filter((id) => lens.lineState[id] !== 'hidden').map((id) => lineById[id]).filter(Boolean);
   const onLine = (lineId) => (lineId === 'all' || !lineId ? past : past.filter((e) => e.lineIds.includes(lineId)));
   const gridRef = useRef(null);
+  // The example students' stock photos are credited under the page, as on the other formats.
+  const credits = [...new Map(vis.flatMap((e) => e.evidence.filter((x) => x.kind === 'image')).map((x) => photoCredit(x.url)).filter(Boolean).map((c) => [c.source, c])).values()];
   const [drag, setDrag] = useState(null); // { id, over, pos }
 
   const setBlock = (id, patch, transient) => onChange?.({ ...design, blocks: design.blocks.map((b) => (b.id === id ? { ...b, ...patch } : b)) }, transient);
@@ -228,6 +231,11 @@ export default function CustomView({ map, lens, design, editable = false, select
         ))}
         {editable && !design.blocks.length && <div className="cv-empty big">Add a block from the panel to start your page.</div>}
       </div>
+      {credits.length > 0 && (
+        <p className="pres-credits cv-credits">Example photos (stock images standing in for students' own):{' '}
+          {credits.map((c, i) => <span key={c.source}>{i > 0 && '; '}<a href={c.source} target="_blank" rel="noreferrer noopener">{c.title || 'Photo'}</a> by {c.creator}, {c.licenceUrl ? <a href={c.licenceUrl} target="_blank" rel="noreferrer noopener">{c.licence}</a> : c.licence}</span>)}
+        </p>
+      )}
     </div>
   );
 }
