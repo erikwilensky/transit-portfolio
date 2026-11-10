@@ -159,11 +159,7 @@ function Consent({ persona, childId, go, lang }) {
     <>
       <Head persona={persona} childId={childId} screen="consent" go={go} lang={lang} title={say.consentT} lede={say.consentP} />
       {!youngStudent(s) ? (
-<<<<<<< HEAD
-        <div className="card-sec fam-older"><span className="status s-ok"><i>✓</i>{say.olderOk}</span><h3>{say.olderT(f)}</h3><p>{say.olderP(f)}</p></div>
-=======
-        <div className="card-sec fam-older"><span className="status s-ok"><i aria-hidden="true">✓</i>{say.onFile}</span><h3>{say.olderT(f)}</h3><p>{say.olderP(f)}</p></div>
->>>>>>> worktree-agent-a7efe4cf4f2842dff
+        <div className="card-sec fam-older"><span className="status s-ok"><i aria-hidden="true">✓</i>{say.olderOk}</span><h3>{say.olderT(f)}</h3><p>{say.olderP(f)}</p></div>
       ) : (
         <div className="card-sec fam-older">
           <span className={`status ${on ? 's-ok' : 's-warn'}`}><i>{on ? '✓' : '!'}</i>{on ? say.onFile : say.waiting}</span>
