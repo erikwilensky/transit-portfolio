@@ -193,6 +193,7 @@ const STU = {
   "The school's systems know a few things you did this term. They arrive on your lines by themselves, already verified.": 'ระบบของโรงเรียนรู้จักบางอย่างที่คุณทำในภาคเรียนนี้แล้ว สิ่งเหล่านั้นจะขึ้นบนสายของคุณเองและได้รับการยืนยันแล้ว',
   from: 'จาก', '✓ verified': '✓ ยืนยันแล้ว', 'How it looks to others': 'คนอื่นจะเห็นแบบไหน', 'Pick a simple look': 'เลือกหน้าตาง่าย ๆ',
   'When you want to show your map to family, it uses this. Everything stays inside the school until a parent says yes.': 'เมื่อคุณอยากให้ครอบครัวดูแผนที่ จะใช้แบบนี้ ทุกอย่างอยู่ภายในโรงเรียนจนกว่าผู้ปกครองจะยินยอม',
+  'When you want to show your map to family, it uses this. Nothing leaves the school until you share it.': 'เมื่อคุณอยากให้ครอบครัวดูแผนที่ จะใช้แบบนี้ ไม่มีอะไรออกไปนอกโรงเรียนจนกว่าคุณจะแบ่งปัน',
   'Go to my map': 'ไปที่แผนที่ของฉัน', Postcard: 'โปสการ์ด', 'One photo and a sentence per line. Good for family.': 'หนึ่งรูปกับหนึ่งประโยคต่อสาย เหมาะสำหรับครอบครัว',
   Scrapbook: 'สมุดภาพ', 'Photos first, a few words under each.': 'รูปภาพมาก่อน มีคำอธิบายสั้น ๆ ใต้แต่ละรูป', Poster: 'โปสเตอร์', 'Big title, your lines as colourful bands.': 'หัวเรื่องใหญ่ สายของคุณเป็นแถบสีสดใส',
   // Simple home (src/screens/SimpleHome.jsx)
@@ -509,6 +510,7 @@ const STU_RE = [
   [/^(.+) asked for more$/, (m) => `${m[1]} ขอข้อมูลเพิ่ม`],
   [/^(.+) asked you something$/, (m) => `${m[1]} ถามคุณ`],
   [/^Your map starts on (.+)\.$/, (m) => `แผนที่ของคุณเริ่มวันที่ ${D(m[1])}`],
+  [/^It starts in Year (\d+) and grows until you graduate\. Every time you do something, a station appears on a line\.$/, (m) => `แผนที่เริ่มตั้งแต่ Year ${m[1]} และเติบโตไปจนคุณเรียนจบ ทุกครั้งที่คุณทำอะไรสักอย่าง จะมีสถานีใหม่ขึ้นบนสาย`],
   [/^You planned it for (.+)$/, (m) => `คุณวางแผนไว้วันที่ ${D(m[1])}`],
   [/^By (\d.+)$/, (m) => `ภายใน ${D(m[1])}`],
   [/^Who sees (.+)$/, (m) => `ใครเห็น ${m[1]} ได้บ้าง`],

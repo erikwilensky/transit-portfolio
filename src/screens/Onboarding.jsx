@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { completeOnboarding, getSchoolLines, STARTERS, hasStarters } from '../api.js';
+import { completeOnboarding, getSchoolLines, STARTERS, hasStarters, youngStudent } from '../api.js';
 
 const TEMPLATES = [['postcard', 'Postcard', 'One photo and a sentence per line. Good for family.'], ['scrapbook', 'Scrapbook', 'Photos first, a few words under each.'], ['poster', 'Poster', 'Big title, your lines as colourful bands.']];
 const INTEREST = { science: 'Experiments', computing: 'Coding and games', environment: 'Nature and animals', sport: 'Sport', service: 'Helping people', music: 'Music', design: 'Making things', languages: 'Languages', art: 'Art and drawing' };
@@ -19,6 +19,10 @@ export default function Onboarding({ map, studentId, onDone }) {
     return () => clearInterval(t);
   }, [step, picked.length]);
   const s = map.student;
+  // Every new student comes through here, not only Year 7: the map starts in their first Year, and only Years 7 to 9 need
+  // a parent's yes before anything leaves the school (api.youngStudent).
+  const first = (s.startGrade || s.grade) + 1;
+  const years = Array.from({ length: Math.max(1, 14 - first) }, (_, i) => `Y${first + i}`);
   return (
     <div className="onboard">
       <div className="ob-card">
@@ -40,9 +44,9 @@ export default function Onboarding({ map, studentId, onDone }) {
           <>
             <div className="kicker">Your starter lines</div>
             <h1>This is your map</h1>
-            <p>It starts in Year 7 and grows until you graduate. Every time you do something, a station appears on a line.</p>
+            <p>{`It starts in Year ${first} and grows until you graduate. Every time you do something, a station appears on a line.`}</p>
             <svg className="ob-map" viewBox={`0 0 640 ${40 + chosen.length * 54}`} role="img" aria-label="Starter lines">
-              {['Y7', 'Y8', 'Y9', 'Y10', 'Y11', 'Y12', 'Y13'].map((g, i) => <text key={g} x={90 + i * 80} y={18} className="ob-g">{g}</text>)}
+              {years.map((g, i) => <text key={g} x={90 + i * (years.length > 1 ? 480 / (years.length - 1) : 0)} y={18} className="ob-g">{g}</text>)}
               {chosen.map((l, i) => { const y = 50 + i * 54; return (
                 <g key={l.id}><path d={`M90 ${y} H150`} stroke={l.colour} strokeWidth="9" strokeLinecap="round" className="ob-line" style={{ animationDelay: `${i * 0.2}s` }} /><path d={`M150 ${y} H610`} stroke={l.colour} strokeWidth="5" strokeDasharray="2 10" strokeLinecap="round" opacity=".55" /><text x={8} y={y + 4} className="ob-l">{l.name}</text></g>
               ); })}
@@ -65,7 +69,7 @@ export default function Onboarding({ map, studentId, onDone }) {
           <>
             <div className="kicker">How it looks to others</div>
             <h1>Pick a simple look</h1>
-            <p>When you want to show your map to family, it uses this. Everything stays inside the school until a parent says yes.</p>
+            <p>{youngStudent(s) ? 'When you want to show your map to family, it uses this. Everything stays inside the school until a parent says yes.' : 'When you want to show your map to family, it uses this. Nothing leaves the school until you share it.'}</p>
             <div className="ob-tpls">{TEMPLATES.map(([k, l, d]) => (
               <button key={k} className={`ob-tpl t-${k}${tpl === k ? ' on' : ''}`} onClick={() => setTpl(k)} aria-pressed={tpl === k}>
                 <span className="ob-thumb">{chosen.map((c) => <i key={c.id} style={{ background: c.colour }} />)}</span><b>{l}</b><small>{d}</small>
