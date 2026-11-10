@@ -45,6 +45,32 @@ function StudioInner({ level = 'full', map, drafts, audience, setAudience, tier,
     const h = pres.filters.hiddenLines;
     set({ filters: { ...pres.filters, hiddenLines: h.includes(id) ? h.filter((x) => x !== id) : [...h, id] } });
   };
+  const setFocus = (id) => { const f = pres.focusLines || []; set({ focusLines: f.includes(id) ? f.filter((x) => x !== id) : [...f, id] }); };
+  // The Specific university page needs a course, a university and the lines that match the course.
+  const specificFields = pres.audience === 'specific' && (
+    <>
+      <h3>Course and university</h3>
+      <label className="cb-field"><span>Course</span><input value={pres.targetName || ''} onChange={(e) => set({ targetName: e.target.value })} placeholder="For example, Data Science" /></label>
+      <label className="cb-field"><span>University</span><input value={pres.institution || ''} onChange={(e) => set({ institution: e.target.value })} placeholder="For example, Northbridge University" /></label>
+      <h3>Lines that match this course</h3>
+      <ul className="line-toggles">
+        {map.lines.filter((l) => !pres.filters.hiddenLines.includes(l.id)).map((l) => (
+          <li key={l.id}><label><input type="checkbox" checked={(pres.focusLines || []).includes(l.id)} onChange={() => setFocus(l.id)} /><i style={{ background: l.colour }} />{l.name}</label></li>
+        ))}
+      </ul>
+      <p className="fineprint">Matching lines show in full. The rest become short context.</p>
+    </>
+  );
+  // The student's own words around the verified record: the page title, an opening line and, for employers, skills.
+  const subtitle = pres.title?.startsWith(`${map.student.name}: `) ? pres.title.slice(map.student.name.length + 2) : pres.title || '';
+  const wordFields = (
+    <>
+      <h3>Your words</h3>
+      <label className="cb-field"><span>Title</span><input value={subtitle} onChange={(e) => set({ title: `${map.student.name}: ${e.target.value}` })} /></label>
+      <label className="cb-field"><span>Opening line</span><textarea rows={3} value={pres.intro || ''} onChange={(e) => set({ intro: e.target.value })} placeholder="One or two sentences a reader sees first." /></label>
+      {pres.audience === 'employer' && <label className="cb-field"><span>Skills, one per line</span><textarea rows={4} value={(pres.skills || []).join('\n')} onChange={(e) => set({ skills: e.target.value.split('\n') })} /></label>}
+    </>
+  );
   const move = (id, d) => {
     const order = [...lens.order];
     const i = order.indexOf(id), j = i + d;
@@ -82,6 +108,7 @@ function StudioInner({ level = 'full', map, drafts, audience, setAudience, tier,
                 ))}
               </div>
               <label className="map-toggle"><input type="checkbox" checked={!!pres.showMap} onChange={() => set({ showMap: !pres.showMap })} /> Include a small journey map</label>
+              {specificFields}
               <h3>Lines to show</h3>
               <ul className="line-toggles">
                 {map.lines.map((l) => (
@@ -101,6 +128,8 @@ function StudioInner({ level = 'full', map, drafts, audience, setAudience, tier,
                 {Object.entries(LAYOUTS).map(([id, label]) => <button key={id} className={pres.layout === id ? 'on' : ''} onClick={() => set({ layout: id })}>{label}</button>)}
               </div>
               <label className="map-toggle"><input type="checkbox" checked={!!pres.showMap} onChange={() => set({ showMap: !pres.showMap })} /> Include a small journey map</label>
+              {wordFields}
+              {specificFields}
               <h3>Line order and narrative</h3>
               <ol className="builder-lines">
                 {lens.order.map((id, i) => {
