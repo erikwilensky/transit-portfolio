@@ -1421,6 +1421,7 @@ a.ghost { text-decoration: none; display: inline-flex; align-items: center; font
 .pc-link { display: flex; gap: 12px; align-items: center; } .pc-link > div { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; } .pc-link small { color: var(--muted); font-size: 12.5px; }
 .pc-link .ghost { text-decoration: none; font-size: 13px; padding: 5px 10px; }
 .as-head .primary { margin-left: auto; }
+@media (max-width: 640px) { .as-head { padding: 12px 16px; } .as-head .cb-back { flex-basis: 100%; text-align: left; } .as-head > div { flex: 1 1 0; min-width: calc(100% - 64px); } .as-head .spacer { display: none; } .as-head .primary { margin-left: 0; } }
 .pv-body { display: grid; grid-template-columns: 320px 1fr; min-height: calc(100vh - 100px); }
 .pv-intro { padding: 20px; border-right: 1px solid var(--rule); background: var(--surface); } .pv-intro h1 { font-size: 24px; } .pv-intro p { color: var(--muted); }
 .pv-intro > :is(h2, h3) { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 16px 0 6px; }

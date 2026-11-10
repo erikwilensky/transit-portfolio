@@ -175,7 +175,7 @@ test('canAct: advisors and teachers act only on students they reach, as themselv
   assert.ok(!canAct(sato, 'importCandidates', [[{ studentId: 'st-01' }], { sourceId: 'csv', by: { teacherId: 't-06' } }]));
   assert.ok(!canAct(nair, 'editStation', ['ev-205', {}]) && !canAct(nair, 'setVisibility', ['nope', 'private']), 'unknown or out-of-reach stations');
   for (const [fn, args] of [['editStation', ['ev-042', { title: 'x' }]], ['setVisibility', ['ev-042', 'public']], ['deleteStation', ['ev-042']], ['setTags', ['ev-042', { lp: [], atl: [] }]], ['setPrivacy', ['st-01', { added: 'public' }]], ['setStudentDrafts', ['st-01', []]]]) {
-    assert.ok(!canAct(nair, fn, args), `${fn}: only the student changes their own moments, privacy and presentations, not their advisor`);
+    assert.ok(!canAct(nair, fn, args) && !canAct({ kind: 'counsellor', teacherId: 't-09' }, fn, args), `${fn}: only the student changes their own moments, privacy and presentations, not staff`);
   }
   for (const fn of ['addSchoolLine', 'renameLine', 'decideBranch', 'setRollout', 'matchRoster']) assert.ok(!canAct(nair, fn, ['x']), fn);
   assert.ok(canAct(nair, 'markNotificationsRead', ['nair']) && canAct(nair, 'recordView', ['tp-x', 'st-09']));
