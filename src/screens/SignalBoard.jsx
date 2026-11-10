@@ -7,7 +7,7 @@ const TEMPLATES = {
   terminus: ['What did this line give you?', 'What will you keep from it?', 'Would you start it again? Why or why not?'],
   quiet: ['Pick one station from this term. What did you learn there?', 'What are you proudest of since August?'],
 };
-const KIND = { branch: 'New branch', terminus: 'Line ended', quiet: 'Quiet map' };
+const KIND = { branch: 'New branch', terminus: 'Line ended', quiet: 'Few reflections' };
 
 // A2: open signals across the advisory, with a kind prompt ready to send.
 export default function SignalBoard({ persona, toast, go, version }) {
@@ -25,9 +25,9 @@ export default function SignalBoard({ persona, toast, go, version }) {
         <div>
           <div className="kicker">Signals · {advisoryOf(persona.teacherId).name}</div>
           <h1>Where a question would help</h1>
-          <p>A signal appears when a line starts or ends without a reflection, or when a map has gone quiet. Send one kind question; it appears as a signal on the student's own map.</p>
+          <p>A signal appears when a line starts or ends without a reflection, or when a student has shared few reflections. Send one kind question; it appears as a signal on the student's own map.</p>
         </div>
-        <div className="meter"><div><b>{rows.length - sent.length}</b><span>signals to look at</span></div><div><b>{waiting.length}</b><span>prompts waiting for an answer</span></div></div>
+        <div className="meter"><div><b>{rows.length - sent.length}</b><span>signal{rows.length - sent.length === 1 ? '' : 's'} to look at</span></div><div><b>{waiting.length}</b><span>prompt{waiting.length === 1 ? '' : 's'} waiting for an answer</span></div></div>
       </header>
       <div className="sig-list">
         {rows.map((r) => {

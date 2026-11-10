@@ -6,6 +6,7 @@ import { UploadStatus, useUpload } from './FileAttach.jsx';
 import { DropOffer } from './PhotoDrop.jsx';
 import './spotted.css';
 import PhraseTools, { phraseBox } from './Phrases.jsx';
+import Icon from './Icon.jsx';
 
 // Spotted moments (api.spotMoment, acceptSpotted, declineSpotted): a teacher saw a student do something worth keeping
 // and suggests it for their journey. Teacher side: SpotDialog (My classes, advisor's student page) and SpottedList.
@@ -86,7 +87,7 @@ export function SpottedForMe({ studentId, simple, toast, version }) {
   return (
     <div className={`spot-me${simple ? ' big' : ''}`} role="region" aria-label={`${who} spotted something you did`}>
       <div className="spot-card">
-        <span className="spot-ic" aria-hidden="true">★</span>
+        <span className="spot-ic" aria-hidden="true"><Icon name="star" /></span>
         <div className="spot-body">
           <small>{who} spotted something you did{list.length > 1 ? ` · ${list.length} to look at` : ''}</small>
           <b>{x.title}</b>

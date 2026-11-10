@@ -24,7 +24,8 @@
 .se-coming-t { display: grid; } .se-coming-t b { font-weight: 600; font-size: 14px; } .se-coming-t small { color: var(--muted); font-size: 12.5px; }
 .se-coming .ghost { padding: 4px 10px; font-size: 13px; border-radius: 999px; }
 
-.se-screen { max-width: 980px; margin: 0 auto; }
+.se-screen { max-width: 980px; margin: 0 auto; padding: 24px 24px 48px; }
+@media (max-width: 640px) { .se-screen { padding: 16px 16px 40px; } }
 .se-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; align-items: flex-start; margin-bottom: 14px; }
 .se-head h1 { margin: 0 0 4px; } .se-head-acts { display: flex; gap: 8px; flex-wrap: wrap; }
 .se-screen h2 { font-size: 17px; margin: 18px 0 8px; }

@@ -38,7 +38,7 @@ export default function SchoolDashboard({ go, version, persona, toast }) {
       </header>
       <div className="tiles">
         <button className="tile" onClick={() => setDrill({ kind: 'active' })}><b>71%</b><span>of students added a station this term</span><small className="tile-more">Which students?</small></button>
-        <button className="tile" onClick={() => setDrill({ kind: 'verified' })}><b>{Math.round((100 * (mix[0].value + mix[1].value)) / events.length)}%</b><span>of stations verified by the school or a teacher</span><small className="tile-more">By source</small></button>
+        <button className="tile" onClick={() => setDrill({ kind: 'verified' })}><b>{events.length ? Math.round((100 * (mix[0].value + mix[1].value)) / events.length) : 0}%</b><span>of stations verified by the school or a teacher</span><small className="tile-more">By source</small></button>
         <button className="tile" onClick={() => setDrill({ kind: 'requests' })}><b>{pending}</b><span>endorsement requests waiting</span><small className="tile-more">By teacher</small></button>
         <button className="tile" onClick={() => setDrill({ kind: 'time' })}><b>3 min</b><span>average teacher time per endorsement</span><small className="tile-more">By teacher</small></button>
       </div>
@@ -56,7 +56,7 @@ export default function SchoolDashboard({ go, version, persona, toast }) {
         <section className="card">
           <h2>Where the evidence comes from</h2>
           <StackBar parts={[{ label: 'School systems', value: mix[0].value }, { label: 'Teacher endorsed', value: mix[1].value }, { label: 'Student added', value: mix[2].value }]} label="Share of stations by verification level" onSelect={(i) => setDrill({ kind: 'level', i })} />
-          <p className="fineprint">Live from the demo record: {events.length} stations across {students.length} students.</p>
+          <p className="fineprint">Live from the record: {events.length} stations across {students.length} students.</p>
         </section>
         <section className="card">
           <h2>Integration health</h2>

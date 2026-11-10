@@ -32,7 +32,7 @@ export default function SponsorPanel({ teacherId, toast }) {
       ))}
       {active.map((e) => (
         <article key={e.id} className="sp-card">
-          <div className="sp-top"><Lines e={e} /><b>{e.title}</b><span className="app-st sp-accepted">{days(e.date) >= 0 ? `Due in ${days(e.date)} days` : 'Past its date'}</span></div>
+          <div className="sp-top"><Lines e={e} /><b>{e.title}</b><span className="app-st sp-accepted">{days(e.date) > 1 ? `Due in ${days(e.date)} days` : days(e.date) === 1 ? 'Due tomorrow' : days(e.date) === 0 ? 'Due today' : 'Past its date'}</span></div>
           <small>{e.student.name} · Year {e.student.grade + 1} · sponsoring since {fmtDate(e.sponsor.answeredOn)}</small>
           {e.sponsor.expectations && <p className="sp-exp"><small>Your expectations</small>{e.sponsor.expectations}</p>}
           {e.sponsor.checkIns.length > 0 && <ul className="sp-log">{e.sponsor.checkIns.map((c, i) => <li key={i}><small>{fmtDate(c.date)} · {c.by === 'student' ? e.student.name.split(' ')[0] : 'You'}</small>{c.text}</li>)}</ul>}

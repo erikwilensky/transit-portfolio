@@ -1,6 +1,7 @@
 // Public share links (#/s/<token>) and printed verify codes (#/v/<code>), for readers outside the school.
 // No sign-in. Each answer carries only what that one link or code shares, never the whole record.
-import { send, readJson } from '../lib.mjs';
+import { send, readJson, clientIp } from '../lib.mjs';
+import { bump, failCount } from '../auth.mjs';
 import { api, changed } from '../store.mjs';
 
 const fail = (status, message) => Object.assign(new Error(message), { status });
@@ -8,7 +9,8 @@ const EMAIL = /^\S+@\S+\.\S+$/;
 
 // The presentation and link behind a token, or an error a reader can understand.
 export function findLink(token) {
-  for (const list of Object.values(api.getDrafts())) for (const pres of list || []) {
+  for (const [sid, list] of Object.entries(api.getDrafts())) for (const pres of list || []) {
+    if (pres?.studentId !== sid) continue; // a presentation only ever speaks for the student whose list it is in
     const link = pres.shareLinks?.find((l) => l.token === token);
     if (link) {
       if (link.revoked) throw fail(410, 'This link has been withdrawn. The student controls who can read their portfolio. Ask them for a new link.');
@@ -49,7 +51,8 @@ export function publicSnapshot(token, { gate = false } = {}) {
   const parents = new Set([...lineIds].map((id) => api.getLine(id)?.parentLineId).filter(Boolean));
   store.lines = gate ? [] : full.lines.filter((l) => lineIds.has(l.id) || parents.has(l.id)).map((l) => structuredClone(l));
   store.events = full.events.filter((e) => eventIds.has(e.id) && e.studentId === sid && e.visibility === 'publishable')
-    .map(({ sponsor, ...e }) => ({ ...structuredClone(e), lineIds: e.lineIds.filter((id) => lineIds.has(id)) }));
+    // A goal's sponsor, weekly check-ins (how it is going, what is stuck) and teachers' encouragement stay inside the school.
+    .map(({ sponsor, checkins, checkinSnooze, encouragements, ...e }) => ({ ...structuredClone(e), lineIds: e.lineIds.filter((id) => lineIds.has(id)) }));
   const shown = new Set(store.events.map((e) => e.id));
   store.reflections = full.reflections.filter((r) => shown.has(r.eventId) && r.visibility === 'publishable').map((r) => ({ ...r }));
   store.endorsements = full.endorsements.filter((n) => shown.has(n.eventId)).map(({ id, eventId, teacherId, note, date }) => ({ id, eventId, teacherId, note, date }));
@@ -79,29 +82,43 @@ export function publicVerify(code) {
 
 const reader = (link, body) => (EMAIL.test(body?.email || '') ? String(body.email).trim().slice(0, 200) : null);
 
+// No sign-in here, so one address cannot flood a student: past a few views of one link in 15 minutes the page still opens
+// but no further view is counted (each count is a saved change every open app hears about), and past a few requests for
+// more time or evidence they are refused.
+const VIEWS = 20, ASKS = 5;
+// Wrong tokens and verify codes count per address (PUBLIC_MISS_LIMIT in 15 minutes, default 60, then 429), so nobody can
+// walk through possible links or codes.
+const MISSES = Number(process.env.PUBLIC_MISS_LIMIT) || 60;
+const lookup = (req, fn) => {
+  const k = `pm:${clientIp(req)}`;
+  if (failCount(k) >= MISSES) throw fail(429, 'Too many wrong links or codes from here. Try again in 15 minutes.');
+  try { return fn(); } catch (e) { if (e.status === 404) bump(k); throw e; }
+};
+const counted = (req, token) => bump(`pv:${clientIp(req)}:${token}`) <= VIEWS;
+const asked = (req, token) => { if (bump(`pa:${clientIp(req)}:${token}`) > ASKS) throw fail(429, 'Too many requests from here. Try again later.'); };
+
 export default (app) => {
   app.get('/api/public/share/:token', (req, res, { token }) => {
-    const { pres, link } = findLink(token);
+    const { pres, link } = lookup(req, () => findLink(token));
     if (api.isGated(link)) return send(res, 200, { gated: true, ...publicSnapshot(token, { gate: true }) });
-    api.recordView(token, pres.studentId, 'Anonymous viewer');
-    changed({ kind: 'view', token });
+    if (counted(req, token)) { api.recordView(token, pres.studentId, 'Anonymous viewer'); changed({ kind: 'view', token }); }
     send(res, 200, { gated: false, ...publicSnapshot(token) });
   });
 
   // Email-gated links: the reader gives an email first; it is logged next to the view.
   app.post('/api/public/share/:token/open', async (req, res, { token }) => {
-    const { pres, link } = findLink(token);
+    const { pres, link } = lookup(req, () => findLink(token));
     const email = reader(link, await readJson(req));
     if (!email) throw fail(400, 'Enter a work email to open this portfolio.');
-    api.recordView(token, pres.studentId, email);
-    changed({ kind: 'view', token });
+    if (counted(req, token)) { api.recordView(token, pres.studentId, email); changed({ kind: 'view', token }); }
     send(res, 200, { gated: false, ...publicSnapshot(token) });
   });
 
   // "Request more time" on a link: tells the student.
   app.post('/api/public/share/:token/extend', async (req, res, { token }) => {
-    const { pres, link } = findLink(token);
+    const { pres, link } = lookup(req, () => findLink(token));
     const body = await readJson(req);
+    asked(req, token);
     const who = reader(link, body) || link.sharedWith || api.SHARED_LABEL[token] || 'A viewer';
     const persona = api.toStudent(pres.studentId);
     api.notify(persona, `${who} asked to extend link /s/${token}`, { persona, screen: 'links' });
@@ -111,15 +128,16 @@ export default (app) => {
 
   // "Ask for more evidence" on a station this link shows.
   app.post('/api/public/share/:token/ask', async (req, res, { token }) => {
-    const { link } = findLink(token);
+    const { link } = lookup(req, () => findLink(token));
     const body = await readJson(req);
     const text = String(body.text || '').trim().slice(0, 2000);
     const snap = publicSnapshot(token);
     if (!text || !snap.store.events.some((e) => e.id === body.eventId)) throw fail(400, 'Nothing to ask about.');
+    asked(req, token);
     api.askEvidence(body.eventId, reader(link, body) || link.sharedWith || api.SHARED_LABEL[token] || 'A reader', text);
     changed({ kind: 'request' });
     send(res, 200, { ok: true });
   });
 
-  app.get('/api/public/verify/:code', (req, res, { code }) => send(res, 200, publicVerify(code)));
+  app.get('/api/public/verify/:code', (req, res, { code }) => send(res, 200, lookup(req, () => publicVerify(code))));
 };

@@ -76,7 +76,7 @@ export default function Privacy({ studentId, drafts, toast, go, persona, version
           <h3>Consent</h3>
           {consent === 'pending'
             ? <><p><span className="status s-warn"><i>!</i>Waiting for a parent</span></p><p className="fineprint">Students in Years 7 to 9 need a parent's consent before anything can be made publishable. Until then, everything stays inside the school. Your advisor records it when your family gives it to the school.</p></>
-            : <><p><span className="status s-ok"><i>✓</i>Parent consent on file</span></p><p className="fineprint">Recorded by the school. Under Thailand's PDPA you can ask the school to correct or delete your data at any time{isPilot() ? ': ask the pilot admin, who can remove your record' : ''}.</p></>}
+            : <><p><span className="status s-ok"><i aria-hidden="true">✓</i>Parent consent on file</span></p><p className="fineprint">Recorded by the school. Under Thailand's PDPA you can ask the school to correct or delete your data at any time{isPilot() ? ': ask the pilot admin, who can remove your record' : ''}.</p></>}
         </div>
 
         {isPilot() && <div className="card-sec pv-screens">

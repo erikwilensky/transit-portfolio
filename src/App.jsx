@@ -83,6 +83,8 @@ import { VerifyProvider } from './components/VerifyModal.jsx';
 import { TOURS, tourMinutes, stopCount } from './tour.js';
 import ThisWeek from './screens/ThisWeek.jsx';
 import { TODAY } from './api.js';
+import { getPrivacy } from './api.js';
+import { addDays, shareToken } from './format.js';
 import { isMonday } from './week.js';
 import { QADrawer, TourCard, TourRoute } from './components/TourCards.jsx';
 import { LeaverBuilder, PublicLeaver } from './components/Leaver.jsx';
@@ -476,7 +478,7 @@ function StudentScreens({ screen, param, studentId, drafts, setDrafts, audience,
   const gapsOf = (pres) => { const l = applyLens(map, pres, { hiddenLines: pres.filters.hiddenLines }); return map.events.filter((e) => l.visible.has(e.id) && e.type !== 'goal' && e.visibility !== 'publishable'); };
   const askShare = (pres, opts = {}) => { if (!opts.site && gapsOf(pres).length) return setGapFor(pres); share(pres, opts); };
   const share = (pres, { site } = {}) => {
-    const link = { token: `tp-${Math.random().toString(36).slice(2, 6)}`, presentationId: pres.id, expiresAt: '2026-12-31', revoked: false, views: 0, ...(site ? { site: true, sharedWith: 'Anyone with the link' } : {}) };
+    const link = { token: shareToken(), presentationId: pres.id, expiresAt: addDays(TODAY, getPrivacy(studentId).linkDays || 90), revoked: false, views: 0, ...(site ? { site: true, sharedWith: 'Anyone with the link' } : {}) };
     const patch = { shareLinks: [...pres.shareLinks, link] };
     if (site) {
       // F17: the hand-built site goes out under a share link and becomes a station on the Computing line.

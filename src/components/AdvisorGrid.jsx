@@ -34,7 +34,7 @@ export default function AdvisorGrid({ advisorId, onOpen, toast, version, focus }
         </div>
         <div className="adv-summary">
           <span className={flagged ? '' : 'zero'}><b>{flagged}</b> student{flagged === 1 ? '' : 's'} with few reflections</span>
-          <span><b>{cohort.reduce((n, c) => n + c.openSignals, 0)}</b> open reflection signals</span>
+          <span><b>{cohort.reduce((n, c) => n + c.openSignals, 0)}</b> open reflection signal{cohort.reduce((n, c) => n + c.openSignals, 0) === 1 ? '' : 's'}</span>
         </div>
       </div>
       {isPilot() && <NewToYou advisorId={advisorId} version={version} onOpen={onOpen} />}
@@ -66,8 +66,8 @@ export default function AdvisorGrid({ advisorId, onOpen, toast, version, focus }
                 <MetroMap map={c} lens={lens} mini />
               </button>
               <div className="adv-stats">
-                <span><b>{c.events.length}</b> stations</span>
-                <span><b>{c.lines.length}</b> lines</span>
+                <span><b>{c.events.length}</b> station{c.events.length === 1 ? '' : 's'}</span>
+                <span><b>{c.lines.length}</b> line{c.lines.length === 1 ? '' : 's'}</span>
                 <span title="Reflections the student has shared with their advisor. Private reflections are not counted."><b>{c.reflectionCount}</b> shared with advisor</span>
               </div>
               {(() => { const g = growth(c.student.id); const d = g.now.reflections - g.before.reflections; const ds = g.now.stations - g.before.stations; if (!(g.now.stations || g.now.reflections || g.before.stations || g.before.reflections)) return <div className="adv-growth">Nothing on the map yet</div>; return (

@@ -23,7 +23,7 @@ export function verificationRecord(eventId) {
   const e = getEvent(eventId);
   if (!e) return null;
   const s = getStudent(e.studentId);
-  const endorsements = getStore().endorsements.filter((n) => n.eventId === e.id).map((n) => ({ ...n, teacher: getTeacher(n.teacherId) }));
+  const endorsements = getStore().endorsements.filter((n) => n.eventId === e.id).map((n) => ({ ...n, teacher: getTeacher(n.teacherId) || { name: 'A teacher', role: 'NIST' } }));
   return buildRecord(e, s, endorsements);
 }
 

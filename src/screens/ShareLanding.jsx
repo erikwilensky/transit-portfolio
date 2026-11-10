@@ -77,7 +77,7 @@ export default function ShareLanding({ token, drafts, embedded = false, remote =
           <div className="landing-banner">
             <span><b>Shared with:</b> {link.sharedWith || SHARED_WITH[token] || 'Anyone with the link'}</span>
             <span className={daysLeft < 21 ? 'soon' : ''}><b>Expires</b> {fmtDate(link.expiresAt)} ({daysLeft} days)</span>
-            <span>{link.views + extraViews(token)} views logged</span>
+            <span>{link.views + extraViews(token)} {link.views + extraViews(token) === 1 ? 'view logged' : 'views logged'}</span>
             <span className="spacer" />
             {!link.site && <div className="seg small" role="group" aria-label="Reading mode"><button className={view === 'full' ? 'on' : ''} aria-pressed={view === 'full'} onClick={() => setView('full')}>Full portfolio</button><button className={view === 'skim' ? 'on' : ''} aria-pressed={view === 'skim'} onClick={() => setView('skim')}>60-second view</button></div>}
             {!link.site && <PrintButton title={view === 'skim' ? docName(map.student.name, 'Portfolio summary') : presentationName(map.student.name, pres)} />}
@@ -123,7 +123,7 @@ function Skim({ map, lens, pres, onOpen }) {
         <div>
           <h1>{map.student.name}</h1>
           <p>{pres.intro || pres.title}</p>
-          <small>Year {map.student.grade + 1} · {map.student.programme} · {evs.length} stations, {verified} verified by the school or a teacher · the full portfolio reads in about {mins} minute{mins === 1 ? '' : 's'}</small>
+          <small>Year {map.student.grade + 1} · {map.student.programme} · {evs.length} station{evs.length === 1 ? '' : 's'}, {verified} verified by the school or a teacher · the full portfolio reads in about {mins} minute{mins === 1 ? '' : 's'}</small>
         </div>
       </div>
       <h2 className="skim-h">Three highlights</h2>

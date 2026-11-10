@@ -25,4 +25,15 @@
   .mc-table thead { display: none; }
   .mc-table tr { display: block; padding: 8px 0; border-bottom: 1px solid var(--rule); }
   .mc-table td { display: block; border: 0; padding: 2px 12px; }
+  /* Phone: tick and name on one row, then Year · homeroom, last moment, requests and the spotted button. */
+  .mc-table tbody tr { display: flex; flex-wrap: wrap; align-items: center; }
+  .mc-table tbody td.mc-tick { width: auto; padding-right: 0; }
+  .mc-table tbody td:nth-child(2) { flex: 1 1 0; min-width: calc(100% - 48px); padding-left: 8px; }
+  .mc-table tbody td:nth-child(3), .mc-table tbody td:nth-child(4) { flex: 0 0 auto; color: var(--muted); font-size: 13px; }
+  .mc-table tbody td:nth-child(3) { padding-left: 40px; padding-right: 0; }
+  .mc-table tbody td:nth-child(4) { padding-left: 4px; }
+  .mc-table tbody td:nth-child(4)::before { content: '· '; }
+  .mc-table tbody td:nth-child(5) { flex: 1 1 100%; padding-left: 40px; }
+  .mc-table tbody td:nth-child(6), .mc-table tbody td:nth-child(7) { flex: 0 0 auto; padding-left: 40px; }
+  .mc-table tbody td:nth-child(6):has(> small:only-child) { display: none; }
 }

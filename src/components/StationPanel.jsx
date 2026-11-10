@@ -87,7 +87,7 @@ export default function StationPanel({ event, map, onClose, readOnly = false, on
           {event.reflections?.map((r) => (
             <section key={r.id} className="reflection">
               <h3>{t('Reflection')}{!readOnly && <span className="vis-tag">· {VIS_LABEL[r.visibility || 'private']}</span>}</h3>
-              <div className="prompt">{t('Signal:')} {r.prompt}</div>
+              {r.prompt && r.prompt !== 'My own reflection' && <div className="prompt">{t('Signal:')} {r.prompt}</div>}
               {r.text && r.text.split('\n\n').map((para, i) => <p key={i}>{para}</p>)}
               {r.files?.length > 0 && <ul className="evidence rf-files">{r.files.map((ev, i) => <li key={i}>{ev.kind === 'image'
                 ? <button className="ev-open" onClick={() => setView(ev)} aria-label={`Open ${photoAlt(ev, event.title)} full size`}><img src={ev.url} alt={photoAlt(ev, event.title)} loading="lazy" /></button>

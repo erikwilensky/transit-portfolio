@@ -195,10 +195,15 @@ const STAFF_EXTRA = {
   remindClass: (u, a) => teachesClass(u, api.getClassPrompt(a[0])?.classId),
   answerPrompt: () => false, skipPrompt: () => false,
 };
+// A student's own moments, privacy, presentations and lines: only the student changes them (admins aside). Staff, whole-school
+// roles included, must not rename, delete, retag or re-share them (or turn a private moment visible to themselves).
+const STUDENT_OWN = new Set(['setVisibility', 'editStation', 'deleteStation', 'setTags', 'setPrivacy', 'setStudentDrafts', 'completeGoal',
+  'addBranch', 'endLine', 'restartLine', 'setIntensity', 'completeOnboarding', 'resubmit', 'answerEvidence']);
 export function canAct(user, fn, args = []) {
   if (!user || typeof fn !== 'string') return false;
   // Undo sends a whole copy of the record, and in a pilot every browser holds only its own part of it.
   if (fn === 'restore') return false;
+  if (fn === 'setStudentDrafts') { try { if (!draftsOk(args)) return false; } catch { return false; } }
   if (user.kind === 'parent') { try { return parentOk(user, fn, args); } catch { return false; } }
   if (fn === 'recordFamilyConsent') { try { return consentOk(user, args); } catch { return false; } }
   if (SPOT_FNS.has(fn)) { try { return spotOk(user, fn, args); } catch { return false; } }
@@ -232,6 +237,7 @@ export function canAct(user, fn, args = []) {
     // A nudge: the student's own advisor, or whole-school staff, as themselves.
     if (fn === 'nudgeStudent') return STAFF.includes(user.kind) && !!user.teacherId && args[1] === user.teacherId && (reachOf(user) === null || api.getStudent(args[0])?.advisorId === user.teacherId);
     if (STAFF.includes(user.kind)) {
+      if (STUDENT_OWN.has(fn)) return false;
       const reach = reachOf(user);
       if (reach === null) return true;
       if (WHOLE_SCHOOL_ONLY.has(fn)) return false;
@@ -246,6 +252,20 @@ export function canAct(user, fn, args = []) {
     }
   } catch { /* malformed arguments */ }
   return false;
+}
+
+// ── A student's presentations (api.setStudentDrafts(studentId, list)) ──
+// The whole list is written at once, so whoever may write it (the student, staff in reach) must not make a presentation
+// that names another student (a public page under a classmate's name) or a share link whose token another student's
+// presentation or a leaver portfolio already uses (which would take over that link).
+const TOKEN = /^[A-Za-z0-9_-]{4,80}$/;
+function draftsOk([sid, list]) {
+  if (typeof sid !== 'string' || !Array.isArray(list)) return false;
+  const others = new Set();
+  for (const [id, l] of Object.entries(api.getDrafts() || {})) if (id !== sid) for (const p of l || []) for (const x of p?.shareLinks || []) others.add(x.token);
+  for (const p of Object.values(api.getStore().leaver || {})) for (const x of p?.links || []) others.add(x.token);
+  return list.every((p) => p && typeof p === 'object' && p.studentId === sid && (p.shareLinks === undefined || (Array.isArray(p.shareLinks)
+    && p.shareLinks.every((x) => typeof x?.token === 'string' && TOKEN.test(x.token) && !others.has(x.token)))));
 }
 
 // ── Moment comments (api.addMomentComment, editMomentComment, deleteMomentComment, markCommentsRead) ──

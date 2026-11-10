@@ -14,8 +14,8 @@ import sampleSubs from '../imports/fixtures/takeout/submissions.json?raw';
 const SAMPLES = {
   'mb-cas': [{ name: 'cas-experiences-sample.csv', text: sampleCas }],
   'mb-tasks': [{ name: 'tasks-sample.csv', text: sampleTasks }],
-  'gc-grades': [{ name: 'Grade 10 Biology grades.csv', text: sampleGrades }],
-  'gc-takeout': [{ name: 'Grade 10 Biology.json', text: sampleCourse }, { name: 'submissions.json', text: sampleSubs }],
+  'gc-grades': [{ name: 'Year 10 Biology grades.csv', text: sampleGrades }],
+  'gc-takeout': [{ name: 'Year 10 Biology.json', text: sampleCourse }, { name: 'submissions.json', text: sampleSubs }],
   generic: [{ name: 'items-sample.csv', text: sampleGeneric }],
   ics: [{ name: 'fixtures-sample.ics', text: sampleIcs }],
 };

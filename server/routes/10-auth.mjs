@@ -66,7 +66,7 @@ function resolveLink(b) {
 }
 export const listBody = () => ({
   accounts: A.allAccounts().map(A.publicUser).map((u) => ({ ...u, setupPending: !u.hasPassword })),
-  students: api.getStudents({ includeCohort: true }).map((s) => ({ id: s.id, name: s.name, grade: s.grade, programme: s.programme })),
+  students: api.getStudents({ includeCohort: true }).map((s) => ({ id: s.id, name: s.name, grade: s.grade, programme: s.programme, homeroom: s.homeroom || '' })),
   teachers: api.getTeachers().map((t) => ({ id: t.id, name: t.name, role: t.role })),
 });
 

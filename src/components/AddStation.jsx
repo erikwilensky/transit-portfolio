@@ -2,10 +2,11 @@ import { useMemo, useState } from 'react';
 import { addStation, endorserChoices, getIntensity, getLine, getPromptsFor, getTeachers, teachersOf, templateText, TODAY } from '../api.js';
 import { IdeasPanel } from './SubjectPrompts.jsx';
 import { GuideFields, GuideOffer } from './MomentTemplates.jsx';
-import { TYPE_LABEL, VIS_LABEL } from '../format.js';
+import { fmtDate, TYPE_LABEL, VIS_LABEL } from '../format.js';
 import { AttachButton, PendingFiles, UploadStatus, useUpload } from './FileAttach.jsx';
 import { evidenceFor } from '../upload.js';
 import { SkillsStep, saveSkills } from './SkillsGrowth.jsx';
+import { isPilot } from '../auth.js';
 
 export const SUGGEST = { computing: 't-01', science: 't-02', music: 't-03', design: 't-04', languages: 't-05', art: 't-06', service: 't-08', environment: 't-08', 'maya-datasci': 't-01', 'arun-musictech': 't-03' };
 const PHOTOS = [['hackathon-1st', 'Results board'], ['stem-club', 'Club session'], ['aq-dashboard', 'Screenshot'], ['mural', 'Finished work']];
@@ -21,6 +22,8 @@ export default function AddStation({ map, studentId, onClose, onAdded, prefill =
   const mine = teachersOf(studentId); // from the class lists; the demo has none and keeps its own list
   const teachers = mine.length ? endorserChoices(studentId) : getTeachers().filter((t) => !['t-07', 't-09', 't-10'].includes(t.id));
   const dp = map.student.grade >= 11;
+  // The map starts in August of the student's first Year here: an earlier date would sit, mislabelled, on its first term.
+  const minDate = map.student.g9StartYear ? `${map.student.g9StartYear + (map.student.startGrade || 9) - 9}-08-01` : '';
   // At the Simple level: what, which line, a photo and a sentence. Date, kind and who can see it keep their defaults.
   const simple = getIntensity(studentId) === 'simple';
   const toggleLine = (id) => {
@@ -28,7 +31,7 @@ export default function AddStation({ map, studentId, onClose, onAdded, prefill =
     set({ lineIds, requestFrom: f.requestFrom || (mine.length ? mine.find((m) => m.lineId === lineIds[0])?.teacher.id : SUGGEST[lineIds[0]]) || '' });
   };
   const photo = useUpload();
-  const ok = f.title.trim() && f.lineIds.length && !photo.busy;
+  const ok = f.title.trim() && f.lineIds.length && !photo.busy && f.date >= minDate && f.date <= TODAY;
   // Subject prompts for the first line picked (class's, line's or built-in); counted once shown open or a starter is used.
   const prompts = useMemo(() => (f.lineIds[0] ? getPromptsFor(studentId, f.lineIds[0]) : null), [studentId, f.lineIds[0]]); // eslint-disable-line react-hooks/exhaustive-deps
   const [usedIdeas, setUsedIdeas] = useState(null);
@@ -49,7 +52,7 @@ export default function AddStation({ map, studentId, onClose, onAdded, prefill =
         <h2>{simple ? 'What did you do?' : 'Add something to your map'}</h2>
         <div className="form-grid">
           <label className="span2">What happened<input value={f.title} onChange={(e) => set({ title: e.target.value })} placeholder="e.g. Bangkok Smart City hackathon: 1st place" /></label>
-          {!simple && <><label>When<input type="date" value={f.date} max={TODAY} onChange={(e) => set({ date: e.target.value })} /></label>
+          {!simple && <><label>When<input type="date" value={f.date} min={minDate} max={TODAY} onChange={(e) => set({ date: e.target.value })} />{f.date && f.date < minDate && <small className="date-note">{`Your map starts on ${fmtDate(minDate)}.`}</small>}</label>
           <label>Kind<select value={f.type} onChange={(e) => set({ type: e.target.value })}>{Object.entries(TYPE_LABEL).filter(([k]) => k !== 'goal').map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label></>}
           <div className="span2 field"><span>{simple ? 'Which colour does it belong to?' : 'Which line, or lines (two or more makes an interchange)'}</span>
             <div className="chips">{lines.map((l) => <button key={l.id} type="button" className={`line-chip${f.lineIds.includes(l.id) ? '' : ' off'}`} style={{ '--c': l.colour }} aria-pressed={f.lineIds.includes(l.id)} onClick={() => toggleLine(l.id)}><i className={l.pattern === 'cased' ? 'cased' : undefined} />{l.name}</button>)}</div>
@@ -61,7 +64,7 @@ export default function AddStation({ map, studentId, onClose, onAdded, prefill =
             <div className="photo-row">
               {f.image && <img src={f.image} alt="" className="photo-prev" />}
               <label className={`ghost file-btn${photo.busy ? ' busy' : ''}`}>{photo.busy ? 'Uploading…' : 'From this device'}<input type="file" accept="image/*" disabled={photo.busy} onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; pickPhoto(file); }} /></label>
-              {PHOTOS.map(([n, cap]) => <button key={n} type="button" className={`photo-pick${f.image?.includes(n) ? ' on' : ''}`} onClick={() => set({ image: `evidence/${n}.svg`, imageCaption: cap })}><img src={`evidence/${n}.svg`} alt={cap} /></button>)}
+              {!isPilot() && PHOTOS.map(([n, cap]) => <button key={n} type="button" className={`photo-pick${f.image?.includes(n) ? ' on' : ''}`} onClick={() => set({ image: `evidence/${n}.svg`, imageCaption: cap })}><img src={`evidence/${n}.svg`} alt={cap} /></button>)}
             </div>
             <UploadStatus up={photo} />
           </div>

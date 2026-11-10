@@ -1,6 +1,7 @@
-import { CONSENT, extraViews, getActivity, getStore, getStudents, TODAY, SHARED_LABEL } from '../api.js';
+import { CONSENT, consentOnFile, extraViews, getActivity, getStore, getStudents, TODAY, SHARED_LABEL } from '../api.js';
 import { ago, fmtDate } from '../format.js';
 import { isPilot } from '../auth.js';
+import Icon from '../components/Icon.jsx';
 
 const DATA_MAP = [
   ['Student record (stations, lines)', 'School data core, Bangkok', 'Student; advisor and staff by visibility', 'Until graduation + 1 year, then exported and deleted'],
@@ -18,11 +19,14 @@ export default function Pdpa({ drafts, version, go, persona }) {
   // Pilot: private stations never reach staff; the server sends only how many there are (store.scope).
   const hiddenPrivate = getStore().scope?.privateStations || 0;
   const vis = ['private', 'advisor', 'school', 'publishable'].map((k) => [k, events.filter((e) => e.visibility === k).length + (k === 'private' ? hiddenPrivate : 0)]);
-  const maxVis = Math.max(...vis.map((v) => v[1]));
+  const maxVis = Math.max(1, ...vis.map((v) => v[1]));
   const links = Object.values(drafts).flat().flatMap((p) => p.shareLinks.map((l) => ({ ...l, title: p.title, studentId: p.studentId })));
   const working = links.filter((l) => !l.revoked && l.expiresAt >= TODAY);
   const views = getStudents().flatMap((s) => getActivity(s.id).filter((a) => a.kind === 'view').map((a) => ({ ...a, student: s.name }))).sort((a, b) => (b.live ? 1 : 0) - (a.live ? 1 : 0) || b.ts.localeCompare(a.ts));
   const changes = getStudents().flatMap((s) => getActivity(s.id)).filter((a) => ['visibility', 'link', 'privacy', 'line'].includes(a.kind)).length;
+  // Pilot: consent as the school recorded it, Years 7 to 9 only (from Year 10 the student decides); the demo's figures otherwise.
+  const pilot = isPilot();
+  const consent = pilot ? [6, 7, 8].map((grade) => { const ss = getStudents({ includeCohort: true }).filter((s) => s.grade === grade); const on = ss.filter((s) => consentOnFile(s.id)).length; return { grade, students: ss.length, parent: on, pending: ss.length - on }; }) : CONSENT;
   return (
     <div className="page pdpa">
       <header className="page-head">
@@ -38,14 +42,14 @@ export default function Pdpa({ drafts, version, go, persona }) {
         <div className="tile"><b>{working.length}</b><span>share links working; every one expires</span></div>
         <div className="tile"><b>{links.reduce((n, l) => n + l.views + extraViews(l.token), 0)}</b><span>link views logged, with who and when</span></div>
         <div className="tile"><b>{Math.round((100 * vis[3][1]) / Math.max(1, events.length + hiddenPrivate))}%</b><span>of stations publishable, each one by the student's own choice</span></div>
-        <div className="tile"><b>0</b><span>open data requests (2 handled this year)</span></div>
+        {!pilot && <div className="tile"><b>0</b><span>open data requests (2 handled this year)</span></div>}
       </div>
 
       <div className="dash-grid">
         <section className="card">
           <h2>Recent share-link views</h2>
           <ul className="views">{views.slice(0, 7).map((v, i) => (
-            <li key={i} className={v.live ? 'live' : ''}><span className="act-ic">◉</span><span><b>{v.actor}</b> opened {v.student.split(' ')[0]}’s link {v.text.replace('Viewed share link ', '')}</span><time>{v.live ? ago(v.ts) : fmtDate(v.ts.slice(0, 10))}</time></li>
+            <li key={i} className={v.live ? 'live' : ''}><span className="act-ic" aria-hidden="true"><Icon name="eye" /></span><span><b>{v.actor}</b> opened {v.student.split(' ')[0]}’s link {v.text.replace('Viewed share link ', '')}</span><time>{v.live ? ago(v.ts) : fmtDate(v.ts.slice(0, 10))}</time></li>
           ))}</ul>
           <p className="fineprint">Students see the same log on their own Activity page and can switch any link off.</p>
         </section>
@@ -62,17 +66,17 @@ export default function Pdpa({ drafts, version, go, persona }) {
         <section className="card">
           <h2>Parent consent by year group</h2>
           <ul className="sb-legend"><li><i className="dv1" />Consent on file</li><li><i className="dv3" />Waiting for a parent</li></ul>
-          <ul className="consent">{CONSENT.map((c) => (
+          <ul className="consent">{consent.map((c) => (
             <li key={c.grade}><span>Y{c.grade + 1}</span>
-              {c.parent ? <span className="cbar"><i className="ok" style={{ flex: c.parent }} />{c.pending > 0 && <i className="pend" style={{ flex: c.pending }} />}</span> : <span className="cbar none">Not onboarded yet</span>}
-              <small>{c.parent ? `${c.parent}/${c.students}${c.pending ? ` · ${c.pending} waiting` : ''}` : ''}</small></li>
+              {c.parent || c.pending ? <span className="cbar">{c.parent > 0 && <i className="ok" style={{ flex: c.parent }} />}{c.pending > 0 && <i className="pend" style={{ flex: c.pending }} />}</span> : <span className="cbar none">{pilot ? 'No students' : 'Not onboarded yet'}</span>}
+              <small>{c.parent || c.pending ? `${c.parent}/${c.students}${c.pending ? ` · ${c.pending} waiting` : ''}` : ''}</small></li>
           ))}</ul>
-          <p className="fineprint">Without consent, nothing can be made publishable; the record stays inside the school.</p>
+          <p className="fineprint">{pilot ? 'From Year 10, students decide what is shared, so no parent consent is needed. Advisors and the pilot admin record consent on file. ' : ''}Without consent, nothing can be made publishable; the record stays inside the school.</p>
         </section>
         <section className="card">
           <h2>Who can read each station</h2>
           <ul className="visbars">{vis.map(([k, n]) => <li key={k}><span>{k === 'publishable' ? 'Publishable' : k === 'school' ? 'School staff' : k === 'advisor' ? 'Advisor only' : 'Private'}</span><span className="vb"><i style={{ width: `${(100 * n) / maxVis}%` }} /></span><b>{n}</b></li>)}</ul>
-          <p className="fineprint">New items start advisor-only; students chose to publish the rest. Every change a student makes to visibility, links or lines goes in the audit log ({changes} so far in this demo).</p>
+          <p className="fineprint">New items start advisor-only; students chose to publish the rest. Every change a student makes to visibility, links or lines goes in the audit log ({changes} so far{pilot ? '' : ' in this demo'}).</p>
         </section>
       </div>
 

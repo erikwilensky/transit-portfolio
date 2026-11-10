@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { declineRequest, dueWords, editTask, endorse, extendTask, getSchoolLines, handInTask, setTask, shortName, snapshot, taskGrid, tasksFor, tasksForClass, TODAY } from '../api.js';
 import { fmtDate } from '../format.js';
-import { ACCEPT, evidenceFor } from '../upload.js';
+import { ACCEPT, evidenceFor, safeHref } from '../upload.js';
 import { UploadStatus, useUpload } from './FileAttach.jsx';
 import { CHIPS } from '../screens/TeacherQueue.jsx';
 import { Said, SayIt } from './Voice.jsx';
@@ -150,10 +150,10 @@ export function TaskGrid({ taskId, teacherId, back, version, toast }) {
                 {r.row?.due && <small>More time: until {fmtDate(r.row.due)}</small>}</div>
               {r.event ? (
                 <div className="tk-moment">
-                  {r.photo ? <a href={r.photo.url} target="_blank" rel="noreferrer"><img className="ca-img" src={r.photo.url} alt={r.photo.caption || 'Photo'} /></a> : <span className="ca-img none" aria-hidden="true" />}
+                  {r.photo ? <a href={safeHref(r.photo.url)} target="_blank" rel="noreferrer"><img className="ca-img" src={r.photo.url} alt={r.photo.caption || 'Photo'} /></a> : <span className="ca-img none" aria-hidden="true" />}
                   <div><small>Handed in {fmtDate(r.row.date)}{r.row.again ? ', and again after you asked for more' : ''}</small>
                     {r.text && <p>{r.text}</p>}
-                    {r.files.length > 0 && <ul className="tk-files">{r.files.map((x, i) => <li key={i}><a href={x.url} target="_blank" rel="noreferrer">{x.name || x.caption || 'File'}</a></li>)}</ul>}
+                    {r.files.length > 0 && <ul className="tk-files">{r.files.map((x, i) => <li key={i}><a href={safeHref(x.url)} target="_blank" rel="noreferrer">{x.name || x.caption || 'File'}</a></li>)}</ul>}
                     {t.checklist.length > 0 && <small>Ticked {r.row.ticked?.length || 0} of {t.checklist.length}</small>}
                     {r.check === 'more' && r.request?.reason && <blockquote className="q-note">You asked: “{r.request.reason}”</blockquote>}</div>
                 </div>

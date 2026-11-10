@@ -132,7 +132,7 @@ export default function PresentationView({ map, lens, pres, selectedId, onSelect
       ) : pres.showMap && (
         <figure className="pres-minimap">
           <MetroMap map={map} lens={lens} mini />
-          <figcaption>Journey overview: {shownLines.length} lines, {past.length} stations</figcaption>
+          <figcaption>Journey overview: {shownLines.length} line{shownLines.length === 1 ? '' : 's'}, {past.length} station{past.length === 1 ? '' : 's'}</figcaption>
         </figure>
       )}
 
@@ -152,7 +152,7 @@ export default function PresentationView({ map, lens, pres, selectedId, onSelect
                 return (
                   <section key={l.id} className="chapter" style={{ '--c': l.colour }}>
                     <h3><i />{l.name}{l.status === 'ended' && <small> · ended</small>}</h3>
-                    <p className="p-muted">{year(evs[0].date)}–{l.status === 'ended' ? year(evs.at(-1).date) : 'now'} · {evs.length} stations</p>
+                    <p className="p-muted">{year(evs[0].date)}–{l.status === 'ended' ? year(evs.at(-1).date) : 'now'} · {evs.length} station{evs.length === 1 ? '' : 's'}</p>
                     <ul>{evs.slice(-3).reverse().map((e) => <li key={e.id} onClick={() => open(e.id)}>{e.title}</li>)}</ul>
                   </section>
                 );
@@ -207,12 +207,12 @@ export default function PresentationView({ map, lens, pres, selectedId, onSelect
           <>
             <section className="letter">
               <p className="p-muted">To the admissions team{pres.institution ? `, ${pres.institution}` : ''}</p>
-              <h2>Why {pres.targetName}</h2>
-              <p>{pres.whyCourse}</p>
+              <h2>Why {pres.targetName || 'this course'}</h2>
+              {pres.whyCourse && <p>{pres.whyCourse}</p>}
               {fullLines.map((l) => pres.narratives?.[l.id] && <p key={l.id}>{pres.narratives[l.id]}</p>)}
               <p className="sig">{map.student.name}</p>
             </section>
-            <Sec>Evidence for this course</Sec>
+            {fullLines.some((l) => onLine(l).some((e) => e.type !== 'goal')) && <Sec>Evidence for this course</Sec>}
             {fullLines.map((l) => {
               const evs = onLine(l).filter((e) => e.type !== 'goal');
               if (!evs.length) return null;
@@ -292,8 +292,8 @@ function Cv({ map, pres, past, fullLines, shownLines, Item }) {
     <div className="cv">
       <aside className="cv-side">
         <h2>{map.student.name}</h2>
-        <p>{pres.intro}</p>
-        {pres.skills && <><h3>Skills</h3><ul>{pres.skills.map((s) => <li key={s}>{s}</li>)}</ul></>}
+        {pres.intro && <p>{pres.intro}</p>}
+        {pres.skills?.some((s) => s.trim()) && <><h3>Skills</h3><ul>{pres.skills.filter((s) => s.trim()).map((s, i) => <li key={i}>{s}</li>)}</ul></>}
         <h3>Interests</h3>
         <div className="chips small">{shownLines.map((l) => <span key={l.id} className="line-chip static" style={{ '--c': l.colour }}><i className={l.pattern === 'cased' ? 'cased' : undefined} />{l.name.split(' ·')[0]}</span>)}</div>
         <h3>Education</h3>
