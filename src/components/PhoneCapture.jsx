@@ -1,18 +1,21 @@
 import { useState } from 'react';
 import { capturePhone } from '../api.js';
 import { UploadStatus, useUpload } from './FileAttach.jsx';
+import { isPilot } from '../auth.js';
 
 const SHOTS = [['hackathon-1st', 'Results board'], ['stem-club', 'Club session'], ['beach-cleanup', 'Beach cleanup'], ['mural', 'Mural']];
 
 // A phone frame: snap a photo, add one line, and it lands in the inbox (X8).
+// The sample photos and words are demo props: a pilot student starts with their own photo and an empty form.
 export default function PhoneCapture({ map, studentId, onClose, onSent }) {
   const [step, setStep] = useState(0);
-  const [shot, setShot] = useState(SHOTS[0][0]);
+  const demo = !isPilot();
+  const [shot, setShot] = useState(demo ? SHOTS[0][0] : null);
   const [own, setOwn] = useState(null); // a real photo from the camera or the device
   const up = useUpload();
-  const src = own || `evidence/${shot}.svg`;
-  const [title, setTitle] = useState('Smart City hackathon: we won');
-  const [refl, setRefl] = useState('Splitting the work in the first hour made the difference.');
+  const src = own || (shot ? `evidence/${shot}.svg` : null);
+  const [title, setTitle] = useState(demo ? 'Smart City hackathon: we won' : '');
+  const [refl, setRefl] = useState(demo ? 'Splitting the work in the first hour made the difference.' : '');
   const [lines, setLines] = useState(map.lines.some((l) => l.id === 'computing') ? ['computing'] : []);
   const [t0] = useState(() => Date.now());
   const secs = () => Math.max(12, Math.round((Date.now() - t0) / 1000));
@@ -24,8 +27,8 @@ export default function PhoneCapture({ map, studentId, onClose, onSent }) {
           <div className="phone-bar"><span>9:41</span><span>NIST Portfolio</span><span>●●●</span></div>
           {step === 0 && (
             <div className="ph-screen ph-cam">
-              <img src={src} alt="" className="ph-view" />
-              <div className="ph-thumbs">{SHOTS.map(([n, c]) => <button key={n} className={!own && n === shot ? 'on' : ''} onClick={() => { setOwn(null); setShot(n); }} aria-label={c}><img src={`evidence/${n}.svg`} alt="" /></button>)}
+              {src ? <img src={src} alt="" className="ph-view" /> : <div className="ph-view" />}
+              <div className="ph-thumbs">{demo && SHOTS.map(([n, c]) => <button key={n} className={!own && n === shot ? 'on' : ''} onClick={() => { setOwn(null); setShot(n); }} aria-label={c}><img src={`evidence/${n}.svg`} alt="" /></button>)}
                 {own && <button className="on" aria-label="Your photo"><img src={own} alt="" /></button>}</div>
               <label className={`ph-real${up.busy ? ' busy' : ''}`}>{up.busy ? 'Uploading…' : 'Use the camera'}<input type="file" accept="image/*" capture="environment" disabled={up.busy} onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; up.run(file, (r) => setOwn(r.url)); }} /></label>
               <UploadStatus up={up} />
@@ -34,7 +37,7 @@ export default function PhoneCapture({ map, studentId, onClose, onSent }) {
           )}
           {step === 1 && (
             <div className="ph-screen ph-form">
-              <img src={src} alt="" className="ph-mini" />
+              {src && <img src={src} alt="" className="ph-mini" />}
               <label>What happened?<input value={title} onChange={(e) => setTitle(e.target.value)} /></label>
               <label>One line about it<textarea rows={3} value={refl} onChange={(e) => setRefl(e.target.value)} /></label>
               <div className="ph-lines">{map.lines.filter((l) => l.status !== 'ended').map((l) => <button key={l.id} className={`line-chip${lines.includes(l.id) ? '' : ' off'}`} style={{ '--c': l.colour }} onClick={() => setLines(lines.includes(l.id) ? lines.filter((x) => x !== l.id) : [...lines, l.id])}><i className={l.pattern === 'cased' ? 'cased' : undefined} />{l.name}</button>)}</div>
