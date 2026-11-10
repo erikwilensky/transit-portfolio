@@ -571,6 +571,7 @@ select { font: inherit; font-size: 14px; padding: 7px 10px; border-radius: 9px; 
 .cv-page.pat-gradient { background-image: radial-gradient(60% 50% at 10% 0%, color-mix(in srgb, var(--c-accent) 26%, transparent), transparent), radial-gradient(50% 40% at 100% 20%, color-mix(in srgb, var(--c-accent2) 20%, transparent), transparent); }
 .cv-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--c-gap); max-width: var(--c-max); margin: 0 auto; align-items: start; }
 .cv-block { grid-column: span var(--span); position: relative; border-radius: var(--c-radius); min-width: 0; }
+.cv-block:empty { display: none; } /* a block with nothing to show a reader */
 .cv-block.a-center { text-align: center; }
 .cv-block.a-center .cv-foot, .cv-block.a-center .cv-tags, .cv-block.a-center .cv-stats { justify-content: center; }
 .cv-block.s-card, .cv-block.s-accent, .cv-block.s-inverse { padding: calc(var(--c-gap) + 4px); }

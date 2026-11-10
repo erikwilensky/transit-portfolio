@@ -82,6 +82,7 @@ export default function CustomView({ map, lens, design, editable = false, select
       case 'stations': {
         const evs = p.source === 'pick' ? p.eventIds.map((id) => byId[id]).filter(Boolean)
           : onLine(p.lineId).filter((e) => !p.types?.length || p.types.includes(e.type)).slice().reverse().slice(0, p.limit);
+        if (!evs.length && !editable) return null; // a reader never sees a heading over nothing
         return (
           <div>
             {heading}
@@ -103,7 +104,10 @@ export default function CustomView({ map, lens, design, editable = false, select
         );
       }
       case 'gallery': {
-        const imgs = onLine(p.lineId).slice().reverse().flatMap((e) => e.evidence.filter((x) => x.kind === 'image').map((x) => ({ ...x, e }))).slice(0, p.limit);
+        // One tile per picture: a picture used on two stations shows once.
+        const seen = new Set();
+        const imgs = onLine(p.lineId).slice().reverse().flatMap((e) => e.evidence.filter((x) => x.kind === 'image').map((x) => ({ ...x, e }))).filter((x) => !seen.has(x.url) && seen.add(x.url)).slice(0, p.limit);
+        if (!imgs.length && !p.extra?.length) return empty('No pictures on this line yet');
         return (
           <div>{heading}
             <div className="cv-gallery" style={{ '--cols': p.columns }}>
@@ -130,6 +134,7 @@ export default function CustomView({ map, lens, design, editable = false, select
       }
       case 'timeline': {
         const evs = onLine(p.lineId).slice(-p.limit).reverse();
+        if (!evs.length) return empty('No stations on this line yet');
         return (
           <div>{heading}
             <ol className="cv-timeline">{evs.map((e) => <li key={e.id} style={{ '--c': lineById[e.lineIds[0]]?.colour }} onClick={() => open(e.id)}><span className="cv-kicker">{fmtDate(e.date)}</span><b>{e.title}</b><span>{e.summary}</span></li>)}</ol>
@@ -153,6 +158,7 @@ export default function CustomView({ map, lens, design, editable = false, select
       );
       case 'goals': {
         const goals = vis.filter((e) => e.type === 'goal');
+        if (!goals.length) return empty('No planned goals to show');
         return <div>{heading}<ul className="cv-goals">{goals.map((e) => <li key={e.id} onClick={() => open(e.id)}><b>{e.title}</b><span>{fmtDate(e.date)}</span></li>)}</ul></div>;
       }
       case 'divider': return <div className={`cv-divider d-${p.style}`}>{p.style === 'metro' && <><i /><i /><i /></>}</div>;

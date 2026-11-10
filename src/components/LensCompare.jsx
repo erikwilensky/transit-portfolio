@@ -45,6 +45,8 @@ export default function LensCompare({ map, drafts, initial }) {
     return out;
   }, [map, la, lb]);
   const n = (k) => rows.filter((r) => r.kind === k).length;
+  // Stations each audience shows (planned goals are not stations, and the ribbon leaves them out too).
+  const count = (l) => map.events.filter((e) => e.type !== 'goal' && l.visible.has(e.id)).length;
   const pick = (val, set, other) => (
     <select value={val} onChange={(ev) => set(ev.target.value)} aria-label="Audience">
       {opts.map((p) => <option key={p.audience} value={p.audience} disabled={p.audience === other}>{LENSES[p.audience].label}</option>)}
@@ -54,7 +56,7 @@ export default function LensCompare({ map, drafts, initial }) {
   return (
     <div className="lens-compare">
       <p className="lc-sum">
-        <b>{la.visible.size}</b> stations for {LENSES[a].label}, <b>{lb.visible.size}</b> for {LENSES[b].label}. Same verified record: {[
+        <b>{count(la)}</b> stations for {LENSES[a].label}, <b>{count(lb)}</b> for {LENSES[b].label}. Same verified record: {[
           n('grew') && `${n('grew')} grow`, n('faded') && `${n('faded')} fade`, (n('added') + n('dropped')) && `${n('added') + n('dropped')} appear in only one`, `${n('kept') + n('moved')} stay as they are`,
         ].filter(Boolean).join(', ')}.
       </p>

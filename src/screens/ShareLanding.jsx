@@ -123,7 +123,7 @@ function Skim({ map, lens, pres, onOpen }) {
         <div>
           <h1>{map.student.name}</h1>
           <p>{pres.intro || pres.title}</p>
-          <small>Year {map.student.grade + 1} · {map.student.programme} · {evs.length} stations, {verified} verified by the school or a teacher · the full portfolio reads in about {mins} minute{mins === 1 ? '' : 's'}</small>
+          <small>Year {map.student.grade + 1} · {map.student.programme} · {evs.length} station{evs.length === 1 ? '' : 's'}, {verified} verified by the school or a teacher · the full portfolio reads in about {mins} minute{mins === 1 ? '' : 's'}</small>
         </div>
       </div>
       <h2 className="skim-h">Three highlights</h2>
