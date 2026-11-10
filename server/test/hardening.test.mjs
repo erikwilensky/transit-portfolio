@@ -34,6 +34,14 @@ test('requests for more time from one address stop after a few', async () => {
   assert.deepEqual(codes, [200, 200, 200, 200, 200, 429, 429]);
 });
 
+test('wrong share links and verify codes from one address stop after 60', async () => {
+  const codes = [];
+  for (let i = 0; i < 62; i++) codes.push((await fetch(`${U}/api/public/${i % 2 ? 'share/tp-nope' : 'verify/NIST-ZZZZZZ'}${i}`)).status);
+  assert.ok(codes.slice(0, 60).every((s) => s === 404));
+  assert.deepEqual(codes.slice(60), [429, 429]);
+  assert.equal((await fetch(`${U}/api/public/share/tp-g3n2`)).status, 429, 'even a real link, for a while');
+});
+
 test('a change with malformed arguments does not show the code\'s error text', async () => {
   const r = await fetch(`${U}/api/action`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ fn: 'addStation', args: ['st-01', null] }) });
   const j = await r.json();

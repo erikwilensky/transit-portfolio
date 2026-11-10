@@ -19,7 +19,8 @@ export default function ShareLinks({ studentId, drafts, updateDraft, toast, vers
   const patch = (p, token, ch, msg) => { updateDraft(p.id, { shareLinks: p.shareLinks.map((x) => (x.token === token ? { ...x, ...ch } : x)) }); logLink(studentId, msg); toast(msg); };
   const create = () => {
     const p = drafts.find((d) => d.id === pres); if (!p) return;
-    const token = `tp-${Math.random().toString(36).slice(2, 6)}`;
+    // Long and random (crypto), so nobody can find a link by trying addresses; the demo's seeded links keep their short ones.
+    const token = `tp-${btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')}`;
     updateDraft(p.id, { shareLinks: [...p.shareLinks, { token, presentationId: p.id, expiresAt: addDays(TODAY, +len), revoked: false, views: 0, sharedWith: who.trim() || 'Anyone with the link', emailGate: gate }] });
     logLink(studentId, `Created share link /s/${token} for “${p.title}”`);
     setQr(token); setWho(''); toast(`Link created: /s/${token}`);
