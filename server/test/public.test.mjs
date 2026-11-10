@@ -98,3 +98,15 @@ test('verify codes: publishable only, one station', () => {
   assert.throws(() => publicVerify(verifyCode(priv.id)), (e) => e.status === 404);
   assert.throws(() => publicVerify('NIST-ZZZZZZ'), (e) => e.status === 404);
 });
+
+test("a published goal's weekly check-ins and teachers' encouragement stay inside the school", () => {
+  const { pres, link } = live().find((x) => x.link.token === 'tp-g3n2');
+  const line = publicSnapshot(link.token).store.events[0].lineIds[0];
+  const goal = api.addGoal(pres.studentId, { title: 'Public goal with a check-in', date: '2027-03-01', lineId: line });
+  api.setVisibility(goal.id, 'publishable');
+  api.checkInGoal(goal.id, { status: 'stuck', note: 'SECRET-CHECKIN-NOTE', next: 'SECRET-NEXT-STEP' });
+  api.getEvent(goal.id).encouragements = [{ id: 'en-x', by: 't-01', line: '', text: 'SECRET-ENCOURAGEMENT', at: '2026-10-26T00:00:00Z' }];
+  const snap = publicSnapshot(link.token), json = JSON.stringify(snap);
+  assert.ok(snap.store.events.some((e) => e.id === goal.id), 'the goal itself is shared');
+  for (const s of ['SECRET-CHECKIN-NOTE', 'SECRET-NEXT-STEP', 'SECRET-ENCOURAGEMENT']) assert.ok(!json.includes(s), `leaks ${s}`);
+});

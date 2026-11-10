@@ -49,7 +49,8 @@ export function publicSnapshot(token, { gate = false } = {}) {
   const parents = new Set([...lineIds].map((id) => api.getLine(id)?.parentLineId).filter(Boolean));
   store.lines = gate ? [] : full.lines.filter((l) => lineIds.has(l.id) || parents.has(l.id)).map((l) => structuredClone(l));
   store.events = full.events.filter((e) => eventIds.has(e.id) && e.studentId === sid && e.visibility === 'publishable')
-    .map(({ sponsor, ...e }) => ({ ...structuredClone(e), lineIds: e.lineIds.filter((id) => lineIds.has(id)) }));
+    // A goal's sponsor, weekly check-ins (how it is going, what is stuck) and teachers' encouragement stay inside the school.
+    .map(({ sponsor, checkins, checkinSnooze, encouragements, ...e }) => ({ ...structuredClone(e), lineIds: e.lineIds.filter((id) => lineIds.has(id)) }));
   const shown = new Set(store.events.map((e) => e.id));
   store.reflections = full.reflections.filter((r) => shown.has(r.eventId) && r.visibility === 'publishable').map((r) => ({ ...r }));
   store.endorsements = full.endorsements.filter((n) => shown.has(n.eventId)).map(({ id, eventId, teacherId, note, date }) => ({ id, eventId, teacherId, note, date }));
